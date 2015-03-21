@@ -15,7 +15,7 @@ import (
 
 var VERSION string = "Unknown"
 
-func start_profyle(profyle string) {
+func StartProfiling(profile string) {
 
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -24,7 +24,7 @@ func start_profyle(profyle string) {
 	}
 
 	time_str := "cpu"
-	if profyle == "cpu" {
+	if profile == "cpu" {
 		file_name := fmt.Sprintf("%s/%s.prof", pwd, time_str)
 		f, err := os.Create(file_name)
 		if err != nil {
@@ -33,7 +33,7 @@ func start_profyle(profyle string) {
 		}
 		ptp.Log(ptp.INFO, "Start cpu profiling to file %s", file_name)
 		pprof.StartCPUProfile(f)
-	} else if profyle == "memory" {
+	} else if profile == "memory" {
 		_, err := os.Create(fmt.Sprintf("%s/%s.p2p_mem_prof", pwd, time_str))
 		if err != nil {
 			ptp.Log(ptp.ERROR, "Create mem_prof file failed. %v", err)
@@ -79,7 +79,7 @@ func main() {
 	daemon := flag.NewFlagSet("p2p in daemon mode", flag.ContinueOnError)
 	daemon.StringVar(&argSaveFile, "save", "", "Path to restore file")
 	daemon.StringVar(&argRPCPort, "rpc", "52523", "Port for RPC communication")
-	daemon.StringVar(&argProfile, "profyle", "", "Starts PTP package with profiling. Possible values : memory, cpu")
+	daemon.StringVar(&argProfile, "profile", "", "Starts PTP package with profiling. Possible values : memory, cpu")
 
 	start := flag.NewFlagSet("Startup options", flag.ContinueOnError)
 	start.StringVar(&argIp, "ip", "dhcp", "`IP` address to be used in local system. Should be specified in CIDR format or `dhcp` is used by default to receive free unused IP")
@@ -130,7 +130,7 @@ func main() {
 		debug.Parse(os.Args[2:])
 		Debug(argRPCPort)
 	case "version":
-		fmt.Printf("p2p Cloud project %s\n", VERSION)
+		fmt.Printf("p2p Cloud project %s. Packet version: %s\n", VERSION, ptp.PACKET_VERSION)
 		os.Exit(0)
 	case "help":
 		if len(os.Args) > 2 {
@@ -285,7 +285,7 @@ func Debug(rpcPort string) {
 }
 
 func Daemon(port, saveFile, profiling string) {
-	start_profyle(profiling)
+	StartProfiling(profiling)
 	Instances = make(map[string]Instance)
 	ptp.InitErrors()
 
