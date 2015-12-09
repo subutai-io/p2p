@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/danderson/tuntap"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -15,16 +17,28 @@ type PTPCloud struct {
 	Mac        string
 	Mask       string
 	DeviceName string
+	IPTool     string `yaml:"iptool"`
 	Device     *tuntap.Interface
 }
 
 func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) *PTPCloud {
+	var err error
+
 	ptp.IP = ip
 	ptp.Mac = mac
 	ptp.Mask = mask
 	ptp.DeviceName = device
 
-	var err error
+	// Extract necessary information from config file
+	// TODO: Remove hard-coded path
+	yamlFile, err := ioutil.ReadFile("config.yaml")
+	if err != nil {
+		log.Printf("[ERROR] Failed to load config: %v", err)
+	}
+	err = yaml.Unmarshal(yamlFile, ptp)
+	if err != nil {
+		log.Printf("[ERROR] Failed to parse config: %v", err)
+	}
 
 	ptp.Device, err = tuntap.Open(ptp.DeviceName, tuntap.DevTap)
 	if ptp.Device == nil {
@@ -35,7 +49,7 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) *PTPCloud {
 
 	// Configure new device
 	log.Printf("[INFO] Setting %s IP on device %s\n", ptp.IP, ptp.DeviceName)
-	setip := exec.Command("/usr/bin/ip", "addr", "add", ptp.IP, "dev", ptp.DeviceName)
+	setip := exec.Command(ptp.IPTool, "addr", "add", ptp.IP, "dev", ptp.DeviceName)
 	err = setip.Run()
 	if err != nil {
 		log.Fatalf("[FATAL] Failed to set IP: %v", err)
