@@ -70,6 +70,7 @@ func main() {
 	var argMask string
 	var argMac string
 	var argDev string
+	var argDirect string
 
 	// TODO: Improve this
 	flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
