@@ -18,9 +18,11 @@ type PTPCloud struct {
 	Mask       string
 	DeviceName string
 	IPTool     string `yaml:"iptool"`
+	Interface  *os.File
 	Device     *tuntap.Interface
 }
 
+// Creates Device
 func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) *PTPCloud {
 	var err error
 
@@ -45,6 +47,12 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) *PTPCloud {
 		log.Fatalf("[FATAL] Failed to open TAP device: %v", err)
 	} else {
 		log.Printf("[INFO] %v TAP Device created", ptp.DeviceName)
+	}
+
+	linkup := exec.Command(ptp.IPTool, "link", "set", "dev", ptp.DeviceName, "up")
+	err = linkup.Run()
+	if err != nil {
+		log.Fatalf("Failed to up link")
 	}
 
 	// Configure new device
