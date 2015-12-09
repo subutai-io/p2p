@@ -57,7 +57,7 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) *PTPCloud {
 
 	// Configure new device
 	log.Printf("[INFO] Setting %s IP on device %s\n", ptp.IP, ptp.DeviceName)
-	setip := exec.Command(ptp.IPTool, "addr", "add", ptp.IP, "dev", ptp.DeviceName)
+	setip := exec.Command(ptp.IPTool, "addr", "add", ptp.IP+"/24", "dev", ptp.DeviceName)
 	err = setip.Run()
 	if err != nil {
 		log.Fatalf("[FATAL] Failed to set IP: %v", err)
@@ -100,6 +100,10 @@ func main() {
 	}()
 
 	for {
-
+		packet, err := ptp.Device.ReadPacket()
+		if err != nil {
+			log.Printf("Error reading packet: %s", err)
+		}
+		log.Printf("Packet received: %s", string(packet.Packet))
 	}
 }
