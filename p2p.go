@@ -18,9 +18,11 @@ type PTPCloud struct {
 	Mask       string
 	DeviceName string
 	IPTool     string `yaml:"iptool"`
+	Interface  *os.File
 	Device     *tuntap.Interface
 }
 
+// Creates Device
 func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) *PTPCloud {
 	var err error
 
@@ -47,9 +49,15 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) *PTPCloud {
 		log.Printf("[INFO] %v TAP Device created", ptp.DeviceName)
 	}
 
+	linkup := exec.Command(ptp.IPTool, "link", "set", "dev", ptp.DeviceName, "up")
+	err = linkup.Run()
+	if err != nil {
+		log.Fatalf("Failed to up link")
+	}
+
 	// Configure new device
 	log.Printf("[INFO] Setting %s IP on device %s\n", ptp.IP, ptp.DeviceName)
-	setip := exec.Command(ptp.IPTool, "addr", "add", ptp.IP, "dev", ptp.DeviceName)
+	setip := exec.Command(ptp.IPTool, "addr", "add", ptp.IP+"/24", "dev", ptp.DeviceName)
 	err = setip.Run()
 	if err != nil {
 		log.Fatalf("[FATAL] Failed to set IP: %v", err)
@@ -65,9 +73,12 @@ func main() {
 
 	// TODO: Improve this
 	flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
-	flag.StringVar(&argMask, "mask", "none", "IP Address to be used")
-	flag.StringVar(&argMac, "mac", "none", "IP Address to be used")
-	flag.StringVar(&argDev, "dev", "none", "IP Address to be used")
+	// TODO: Parse this properly
+	flag.StringVar(&argMask, "mask", "none", "Network mask")
+	// TODO: Implement this
+	flag.StringVar(&argMac, "mac", "none", "MAC Address for a TUN/TAP interface")
+	flag.StringVar(&argDev, "dev", "none", "TUN/TAP interface name")
+	flag.StringVar(&argDirect, "direct", "none", "IP to connect to directly")
 
 	flag.Parse()
 	if argIp == "none" || argMask == "none" || argDev == "none" {
@@ -92,6 +103,10 @@ func main() {
 	}()
 
 	for {
-
+		packet, err := ptp.Device.ReadPacket()
+		if err != nil {
+			log.Printf("Error reading packet: %s", err)
+		}
+		log.Printf("Packet received: %s", string(packet.Packet))
 	}
 }
