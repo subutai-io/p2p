@@ -3,8 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/lab11/go-tuntap/tuntap"
-	//	"github.com/danderson/tuntap"
+	"github.com/danderson/tuntap"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
@@ -41,7 +40,7 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) *PTPCloud {
 		log.Printf("[ERROR] Failed to parse config: %v", err)
 	}
 
-	ptp.Device, err = tuntap.Open(ptp.DeviceName, tuntap.DevTap, false)
+	ptp.Device, err = tuntap.Open(ptp.DeviceName, tuntap.DevTap)
 	if ptp.Device == nil {
 		log.Fatalf("[FATAL] Failed to open TAP device: %v", err)
 	} else {
