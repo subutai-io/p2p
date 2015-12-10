@@ -36,25 +36,18 @@ func (dht *DHTClient) AddConnection(connections []*net.UDPConn, conn *net.UDPCon
 }
 
 func (dht *DHTClient) ConnectAndHandshake(router string) (*net.UDPConn, error) {
-	log.Printf("Connecting to a router %s", router)
+	log.Printf("[DHT-INFO] Connecting to a router %s", router)
 	addr, err := net.ResolveUDPAddr("udp", router)
 	if err != nil {
 		log.Printf("[DHT-ERROR]: Failed to resolve router address: %v", err)
 		return nil, err
 	}
-	local, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
-	if err != nil {
-		log.Printf("[DHT-ERROR]: Failed to resolve local address: %v", err)
-		return nil, err
-	}
-	conn, err := net.DialUDP("udp", local, addr)
+	conn, err := net.DialUDP("udp", nil, addr)
 	if err != nil {
 		log.Printf("[DHT-ERROR]: Failed to establish connection: %v", err)
 		return nil, err
 	}
 	defer conn.Close()
-
-	//go dht.Receive(conn)
 
 	dht.Connection = dht.AddConnection(dht.Connection, conn)
 
@@ -82,9 +75,6 @@ func (dht *DHTClient) ConnectAndHandshake(router string) (*net.UDPConn, error) {
 }
 
 func (dht *DHTClient) ListenDHT() {
-	for conn := range dht.Connection {
-
-	}
 }
 
 func (dht *DHTClient) Initialize(config *DHTClient) {
