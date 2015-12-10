@@ -1,7 +1,6 @@
 package main
 
 import (
-	"dht"
 	"flag"
 	"fmt"
 	"github.com/danderson/tuntap"
@@ -11,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"p2p/dht"
 )
 
 type PTPCloud struct {
@@ -67,6 +67,10 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) *PTPCloud {
 }
 
 func main() {
+	var dht DHTClient
+	config := DHTClientConfig()
+	dht.Initialize(config)
+
 	var argIp string
 	var argMask string
 	var argMac string
