@@ -1,6 +1,7 @@
 package main
 
 import (
+	"dht"
 	"flag"
 	"fmt"
 	"github.com/danderson/tuntap"
