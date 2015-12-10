@@ -67,9 +67,10 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) *PTPCloud {
 }
 
 func main() {
-	var dht DHTClient
-	config := DHTClientConfig()
-	dht.Initialize(config)
+	var dhtClient dht.DHTClient
+	config := dhtClient.DHTClientConfig()
+	dhtClient.Initialize(config)
+	os.Exit(0)
 
 	var argIp string
 	var argMask string
