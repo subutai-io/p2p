@@ -5,3 +5,5 @@
 # Binary
 main
 p2p
+cp/cp
+tests/test*
