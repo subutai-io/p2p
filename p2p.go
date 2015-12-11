@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"p2p/dht"
 )
 
 type PTPCloud struct {
@@ -66,11 +67,13 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) *PTPCloud {
 }
 
 func main() {
+
 	var argIp string
 	var argMask string
 	var argMac string
 	var argDev string
 	var argDirect string
+	var argHash string
 
 	// TODO: Improve this
 	flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
@@ -80,6 +83,7 @@ func main() {
 	flag.StringVar(&argMac, "mac", "none", "MAC Address for a TUN/TAP interface")
 	flag.StringVar(&argDev, "dev", "none", "TUN/TAP interface name")
 	flag.StringVar(&argDirect, "direct", "none", "IP to connect to directly")
+	flag.StringVar(&argHash, "hash", "none", "Infohash")
 
 	flag.Parse()
 	if argIp == "none" || argMask == "none" || argDev == "none" {
@@ -88,6 +92,11 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
+
+	var dhtClient dht.DHTClient
+	config := dhtClient.DHTClientConfig()
+	config.NetworkHash = argHash
+	dhtClient.Initialize(config)
 
 	var ptp PTPCloud
 	ptp.CreateDevice(argIp, argMac, argMask, argDev)
@@ -108,6 +117,8 @@ func main() {
 		if err != nil {
 			log.Printf("Error reading packet: %s", err)
 		}
-		log.Printf("Packet received: %s", string(packet.Packet))
+		//log.Printf("Packet received: %s", string(packet.Packet))
+		log.Printf("Packet received: %d", string(packet.Protocol))
+
 	}
 }

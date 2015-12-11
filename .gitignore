@@ -5,3 +5,9 @@
 # Binary
 main
 p2p
+cp/cp
+p2p-cp/p2p-cp
+tests/test*
+
+# Logs
+*.log
