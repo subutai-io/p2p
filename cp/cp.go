@@ -19,12 +19,24 @@ type Node struct {
 	LastPing time.Time
 }
 
+type Infohash struct {
+	Hash     string
+	NodeAddr string
+}
+
+type DHTRouter struct {
+	NodesNumber int
+	Port        int
+	Hashes      []Infohash
+}
+
 func CheckError(err error) {
 	if err != nil {
 		log.Panic("[ERROR] %v", err)
 	}
 }
 
+// Generate UUID, assigns it to a node and returns UUID as a string
 func (node *Node) GenerateID() string {
 	var err error
 	var id uuid.UUID
@@ -43,6 +55,7 @@ func (node *Node) isPingRequired(n *Node) bool {
 	return false
 }
 
+// Currently unused
 func handleConnection(c *net.Conn) int {
 	return 1
 }
@@ -50,11 +63,6 @@ func handleConnection(c *net.Conn) int {
 func AllocateNodeList() {
 	log.Printf("[INFO] Allocating memory for %d nodes slice", MaximumNodes)
 	NodeList = make([]Node, MaximumNodes)
-}
-
-type DHTRouter struct {
-	NodesNumber int
-	Port        int
 }
 
 func (dht *DHTRouter) SetupServer() *net.UDPConn {
@@ -81,20 +89,49 @@ func (dht *DHTRouter) RegisterNode(n Node) {
 	}
 }
 
+// Extracts DHTRequest from received packet
 func (dht *DHTRouter) Extract(b []byte) (request commons.DHTRequest, err error) {
 	defer func() {
 		if x := recover(); x != nil {
-			log.Panicf("Bencode Unmarshal failed %q, %v", string(b), x)
+			log.Printf("[ERROR] Bencode Unmarshal failed %q, %v", string(b), x)
 		}
 	}()
 	if e2 := bencode.Unmarshal(bytes.NewBuffer(b), &request); e2 == nil {
 		err = nil
 		return
 	} else {
-		log.Printf("Received from peer: %v %q", request, e2)
+		log.Printf("[DEBUG] Received from peer: %v %q", request, e2)
 		return request, e2
 	}
+}
 
+// Returns a bencoded representation of a DHTResponse
+func (dht *DHTRouter) Compose(command, id, dest string) string {
+	var resp commons.DHTResponse
+	// Command is mandatory
+	resp.Command = command
+	// Defaults
+	resp.Id = "0"
+	resp.Dest = "0"
+	if id != "" {
+		resp.Id = id
+	}
+	if dest != "" {
+		resp.Dest = dest
+	}
+	return dht.EncodeResponse(resp)
+}
+
+func (dht *DHTRouter) EncodeResponse(resp commons.DHTResponse) string {
+	if resp.Command == "" {
+		return ""
+	}
+	var b bytes.Buffer
+	if err := bencode.Marshal(&b, resp); err != nil {
+		log.Printf("[ERROR] Failed to Marshal bencode %v", err)
+		return ""
+	}
+	return b.String()
 }
 
 func (dht *DHTRouter) ResponseConn(req commons.DHTRequest, addr string, n Node) commons.DHTResponse {
@@ -109,8 +146,57 @@ func (dht *DHTRouter) ResponseFind(req commons.DHTRequest, addr string) commons.
 	var resp commons.DHTResponse
 	resp.Command = req.Command
 	resp.Id = "0"
+	var foundDest string
+	// Comma separated list of found destinations
+	for i := 0; i < len(dht.Hashes); i++ {
+		if dht.Hashes[i].Hash == req.Hash {
+			// We found required hash. Check if we're not the node who requested it
+			if dht.Hashes[i].NodeAddr == addr {
+				continue
+			} else {
+				foundDest += dht.Hashes[i].NodeAddr + ","
+			}
+		}
+	}
+	if foundDest == "" {
+		// Save new hash
+		var h Infohash
+		h.Hash = req.Hash
+		h.NodeAddr = addr
+		dht.Hashes = append(dht.Hashes, h)
+	}
+	/*
+		for hash := range dht.Hashes {
+			if hash.Hash == req.Hash {
+				// We found required hash. Check if we're not the node who requested it
+				if hash.NodeAddr == addr {
+					continue
+				} else {
+					foundDest += "," + hash.NodeAddr
+				}
+			}
+		}
+	*/
+	resp.Dest = foundDest
+	return resp
+}
+
+func (dht *DHTRouter) ResponsePing(req commons.DHTRequest, addr string) commons.DHTResponse {
+	var resp commons.DHTResponse
+	resp.Command = req.Command
+	resp.Id = "0"
 	resp.Dest = "0"
 	return resp
+}
+
+func (dht *DHTRouter) Send(conn *net.UDPConn, addr *net.UDPAddr, msg string) {
+	if msg != "" {
+		_, err := conn.WriteToUDP([]byte(msg), addr)
+		if err != nil {
+			log.Printf("[ERROR] Failed to write to UDP: %v", err)
+		}
+	}
+
 }
 
 func (dht *DHTRouter) Listen(conn *net.UDPConn) {
@@ -124,7 +210,7 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 		n.Endpoint = addr.String()
 		dht.RegisterNode(n)
 	}
-	log.Printf("%s: %s", addr, string(buf[:512]))
+	log.Printf("[DEBUG] %s: %s", addr, string(buf[:512]))
 
 	// Try to bencode
 	req, err := dht.Extract(buf[:512])
@@ -134,21 +220,14 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 		resp = dht.ResponseConn(req, addr.String(), n)
 	case "find":
 		resp = dht.ResponseFind(req, addr.String())
+	case "ping":
+		resp = dht.ResponsePing(req, addr.String())
 	default:
 		log.Printf("[ERROR] Unknown command received: %s", req.Command)
+		resp.Command = ""
 	}
 
-	var b bytes.Buffer
-	if err := bencode.Marshal(&b, resp); err != nil {
-		log.Printf("[ERROR] Failed to Marshal bencode %v", err)
-		return
-	}
-
-	msg := b.String()
-	_, err = conn.WriteToUDP([]byte(msg), addr)
-	if err != nil {
-		log.Printf("Failed to write to UDP: %v", err)
-	}
+	dht.Send(conn, addr, dht.EncodeResponse(resp))
 }
 
 func init() {
@@ -166,7 +245,7 @@ func main() {
 	MaximumNodes = 100
 	AllocateNodeList()
 	log.Printf("[INFO] Initialization complete")
-	log.Printf("Starting...")
+	log.Printf("[INFO] Starting bootstrap node")
 	var dht DHTRouter
 	dht.Port = 6881
 	listener := dht.SetupServer()
