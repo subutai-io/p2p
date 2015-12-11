@@ -44,7 +44,7 @@ func (dht *DHTClient) ConnectAndHandshake(router string) (*net.UDPConn, error) {
 		log.Printf("[DHT-ERROR]: Failed to resolve router address: %v", err)
 		return nil, err
 	}
-	conn, err := net.DialUDP("udp", nil, addr)
+	conn, err := net.DialUDP("udp4", nil, addr)
 	if err != nil {
 		log.Printf("[DHT-ERROR]: Failed to establish connection: %v", err)
 		return nil, err

@@ -67,7 +67,7 @@ func AllocateNodeList() {
 
 func (dht *DHTRouter) SetupServer() *net.UDPConn {
 	log.Printf("[INFO] Setting UDP server at %d port", dht.Port)
-	udp, err := net.ListenUDP("udp", &net.UDPAddr{Port: dht.Port})
+	udp, err := net.ListenUDP("udp4", &net.UDPAddr{Port: dht.Port})
 	CheckError(err)
 	return udp
 }
