@@ -22,7 +22,7 @@ type OutgoingData struct {
 }
 
 func main() {
-	ServerAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:6881")
+	ServerAddr, err := net.ResolveUDPAddr("udp", "dht2.subut.ai:6881")
 	CheckError(err)
 
 	LocalAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")

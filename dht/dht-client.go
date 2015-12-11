@@ -51,6 +51,7 @@ func (dht *DHTClient) ConnectAndHandshake(router string) (*net.UDPConn, error) {
 	}
 	//defer conn.Close()
 
+	log.Printf("[DHT-INFO]: Ready to bootstrap with %s [%s]", router, conn.RemoteAddr().String())
 	dht.Connection = dht.AddConnection(dht.Connection, conn)
 
 	// Handshake
@@ -122,6 +123,7 @@ func (dht *DHTClient) EncodeRequest(req commons.DHTRequest) string {
 }
 
 func (dht *DHTClient) ListenDHT(conn *net.UDPConn) {
+	log.Printf("[DHT-INFO] Bootstraping via %s", conn.RemoteAddr().String())
 	for {
 		var buf [512]byte
 		_, addr, err := conn.ReadFromUDP(buf[0:])
@@ -140,7 +142,7 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) {
 					if err != nil {
 						log.Printf("[DHT-ERROR] Failed to send FIND packet: %v", err)
 					} else {
-						log.Printf("[DHT-INFO] Received connection confirmation from tracker")
+						log.Printf("[DHT-INFO] Received connection confirmation from tracker %s", conn.RemoteAddr().String())
 					}
 				} else if data.Command == "ping" {
 					msg := dht.Compose("ping", "", "")
@@ -178,7 +180,6 @@ func (dht *DHTClient) Initialize(config *DHTClient) {
 			dht.FailedRouters[0] = router
 		} else {
 			go dht.ListenDHT(conn)
-
 		}
 	}
 }
