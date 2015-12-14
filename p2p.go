@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/danderson/tuntap"
+	"golang.org/x/net/ipv4"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
@@ -119,6 +120,15 @@ func main() {
 		}
 		//log.Printf("Packet received: %s", string(packet.Packet))
 		log.Printf("Packet received: %d", string(packet.Protocol))
+		header, err := ipv4.ParseHeader(packet.Packet)
+		if packet.Truncated {
+			log.Printf("[DEBUG] Truncated packet")
+		}
+		if err != nil {
+			log.Printf("[ERROR] Failed to parse IPv4 packet: %v", err)
+		} else {
 
+			log.Printf("[DEBUG] Destination: %s", header.Dst.String())
+		}
 	}
 }
