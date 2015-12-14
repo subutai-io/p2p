@@ -199,3 +199,12 @@ func main() {
 		//}
 	}
 }
+
+// WriteToDevice writes data to created TUN/TAP device
+func (ptp *PTPCloud) WriteToDevice(b []byte) {
+	var p *tuntap.Packet
+	p.Protocol = 2054
+	p.Truncated = false
+	p.Packet = b
+	ptp.Device.WritePacket(p)
+}
