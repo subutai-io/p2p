@@ -4,6 +4,7 @@ type DHTRequest struct {
 	Id      string "i"
 	Hash    string "h"
 	Command string "c"
+	IP      string "a"
 }
 
 type DHTResponse struct {

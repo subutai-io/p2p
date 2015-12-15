@@ -5,12 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mdlayher/ethernet"
-	"golang.org/x/net/icmp"
-	//"golang.org/x/net/ipv4"
 	"io"
 	"log"
 	"net"
-	"strings"
 )
 
 var (
@@ -61,6 +58,10 @@ func (ptp *PTPCloud) handlePacketARP(contents []byte) {
 	}
 	// Send a reply
 	var reply ARPPacket
+
+	//for _, peer := ptp.NetworkPeers {
+
+	//}
 	hwAddr, err := net.ParseMAC("0c:8b:fd:ab:30:ee")
 	if err != nil {
 		log.Printf("[ERROR] Failed to parse MAC")

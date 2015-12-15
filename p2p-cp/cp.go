@@ -29,8 +29,12 @@ type Node struct {
 	// Unique identifier in a form of UUID generated randomly upoc connection of a node
 	ID string
 
-	// IP Address of a node
+	// IP Address of a node that is listening for incoming connections
+	// from future network participants
 	Endpoint string
+
+	// Address that was received during connection
+	ConnectionAddress string
 
 	// Last time we pinged it.
 	LastPing time.Time
@@ -192,6 +196,12 @@ func (dht *DHTRouter) EncodeResponse(resp commons.DHTResponse) string {
 // ResponseConn method generates a response to a "conn" network message received as a first packet
 // from a newly connected node. Response writes an ID of the node
 func (dht *DHTRouter) ResponseConn(req commons.DHTRequest, addr string, n Node) commons.DHTResponse {
+	// First we want to update Endpoint for this node
+	for _, node := range NodeList {
+		if node.ConnectionAddress == addr {
+			node.Endpoint = req.IP
+		}
+	}
 	var resp commons.DHTResponse
 	resp.Command = req.Command
 	resp.Id = n.ID
@@ -274,7 +284,8 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 	if dht.IsNewPeer(addr.String()) {
 		log.Printf("[INFO] New Peer connected: %s. Registering", addr)
 		n.ID = n.GenerateID(dht.Hashes)
-		n.Endpoint = addr.String()
+		n.Endpoint = ""
+		n.ConnectionAddress = addr.String()
 		dht.RegisterNode(n)
 	}
 	log.Printf("[DEBUG] %s: %s", addr, string(buf[:512]))

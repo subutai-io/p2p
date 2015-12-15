@@ -7,10 +7,13 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
 	"p2p/dht"
+	//	"strings"
+	"time"
 )
 
 // Main structure
@@ -36,6 +39,15 @@ type PTPCloud struct {
 
 	// Representation of TUN/TAP Device
 	Device *tuntap.Interface
+
+	NetworkPeers []NetworkPeer
+}
+
+type NetworkPeer struct {
+	PeerIP      net.IP
+	PeerPort    int
+	PeerLocalIP net.IP
+	PeerHW      net.HardwareAddr
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -124,6 +136,23 @@ func handlePacket(ptp *PTPCloud, contents []byte, proto int) {
 	}
 }
 
+// Listen TAP interface for incoming packets
+func (ptp *PTPCloud) ListenInterface() {
+	// Read packets received by TUN/TAP device and send them to a handlePacket goroutine
+	// This goroutine will decide what to do with this packet
+	for {
+		packet, err := ptp.Device.ReadPacket()
+		if err != nil {
+			log.Printf("Error reading packet: %s", err)
+		}
+		if packet.Truncated {
+			log.Printf("[DEBUG] Truncated packet")
+		}
+		// TODO: Make handlePacket as a part of PTPCloud
+		go handlePacket(ptp, packet.Packet, packet.Protocol)
+	}
+}
+
 func main() {
 	// TODO: Move this to init() function
 	var (
@@ -162,6 +191,7 @@ func main() {
 	config := dhtClient.DHTClientConfig()
 	config.NetworkHash = argHash
 	dhtClient.Initialize(config)
+	return
 
 	ptp := new(PTPCloud)
 	ptp.CreateDevice(argIp, argMac, argMask, argDev)
@@ -179,21 +209,20 @@ func main() {
 		}
 	}()
 
-	var b []byte
-	ptp.WriteToDevice(b)
+	go ptp.ListenInterface()
+}
 
-	// Read packets received by TUN/TAP device and send them to a handlePacket goroutine
-	// This goroutine will decide what to do with this packet
-	for {
-		packet, err := ptp.Device.ReadPacket()
-		if err != nil {
-			log.Printf("Error reading packet: %s", err)
+func (ptp *PTPCloud) UpdatePeersTable(dht *dht.DHTClient) {
+	//timestamp := time.Now().Local()
+	for _ = range time.Tick(15 * time.Second) {
+		if len(ptp.NetworkPeers) != len(dht.NetworkPeers) {
+			//for _, peer := range dht.NetworkPeers {
+			//			p := strings.Split(peer, ":")
+			/*for _, lp := range ptp.NetworkPeers {
+			}
+			*/
+			//}
 		}
-		if packet.Truncated {
-			log.Printf("[DEBUG] Truncated packet")
-		}
-		// TODO: Make handlePacket as a part of PTPCloud
-		go handlePacket(ptp, packet.Packet, packet.Protocol)
 	}
 }
 
