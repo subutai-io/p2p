@@ -126,12 +126,20 @@ func (dht *DHTRouter) SetupServer() *net.UDPConn {
 // IsNewPeer returns true if connected peer was not connected yes, false otherwise
 func (dht *DHTRouter) IsNewPeer(addr string) bool {
 	// TODO: Rewrite with use of ranges
-	for i := 0; i < MaximumNodes; i++ {
-		if NodeList[i].ConnectionAddress == addr {
+	for _, node := range NodeList {
+		if node.ConnectionAddress == addr {
 			return false
 		}
 	}
 	return true
+	/*
+		for i := 0; i < MaximumNodes; i++ {
+			if NodeList[i].ConnectionAddress == addr {
+				return false
+			}
+		}
+		return true
+	*/
 }
 
 // Adds newly connected DHT node to a list of DHT participants
@@ -199,10 +207,15 @@ func (dht *DHTRouter) EncodeResponse(resp commons.DHTResponse) string {
 func (dht *DHTRouter) ResponseConn(req commons.DHTRequest, addr string, n Node) commons.DHTResponse {
 	// First we want to update Endpoint for this node
 	// Let's resolve new address from original IP and by port received from client
-	a, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", addr, req.Port))
-	for _, node := range NodeList {
+	a1, _ := net.ResolveUDPAddr("udp", addr)
+	a, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%s", a1.IP.String(), req.Port))
+	if err != nil {
+		log.Printf("[DHT-ERROR] Failed to resolve UDP Address: %v", err)
+	}
+	log.Printf("[DHT-DEBUG] UDP RESOLVED: %s", a.String())
+	for i, node := range NodeList {
 		if node.ConnectionAddress == addr {
-			node.Endpoint = a.String()
+			NodeList[i].Endpoint = a.String()
 		}
 	}
 	var resp commons.DHTResponse
@@ -212,12 +225,48 @@ func (dht *DHTRouter) ResponseConn(req commons.DHTRequest, addr string, n Node) 
 	return resp
 }
 
+func (dht *DHTRouter) RegisterHash(addr string, hash string) {
+	for i, node := range NodeList {
+		if node.ConnectionAddress == addr {
+			NodeList[i].AssociatedHash = hash
+			log.Printf("[DEBUG] Registering hash '%s' for %s", hash, addr)
+		}
+	}
+}
+
 // ResponseFind method generates a response to a "find" network message which sent by DHT client
 // when they want to build a p2p network based on infohash string.
 // This method goes over list of hashes and collects information about all nodes with the
 // same hash separated by comma
 func (dht *DHTRouter) ResponseFind(req commons.DHTRequest, addr string) commons.DHTResponse {
+	for _, n := range NodeList {
+		log.Printf("Node: %s, Hash: %s", n.ConnectionAddress, n.AssociatedHash)
+	}
+
+	var foundDest string
+	var hashExists bool = false
+	for _, node := range NodeList {
+		if node.AssociatedHash == req.Hash {
+			if node.ConnectionAddress == addr {
+				hashExists = true
+				// Skip if we are the node who requested hash
+				continue
+			}
+			log.Printf("[DEBUG] Found match in hash '%s' with peer %s", req.Hash, node.AssociatedHash)
+			foundDest += node.Endpoint + ","
+		}
+	}
+	if !hashExists {
+		// Hash was not found for current node. Add it
+		dht.RegisterHash(addr, req.Hash)
+	}
 	var resp commons.DHTResponse
+	resp.Command = req.Command
+	resp.Id = "0"
+	resp.Dest = foundDest
+	return resp
+	/*var resp commons.DHTResponse
+
 	resp.Command = req.Command
 	resp.Id = "0"
 	var foundDest string
@@ -228,7 +277,11 @@ func (dht *DHTRouter) ResponseFind(req commons.DHTRequest, addr string) commons.
 			if dht.Hashes[i].NodeAddr == addr {
 				continue
 			} else {
-				foundDest += dht.Hashes[i].NodeAddr + ","
+				for _, node := range NodeList {
+					if node.ConnectionAddress == addr {
+						foundDest += node.Endpoint + ","
+					}
+				}
 			}
 		}
 	}
@@ -251,8 +304,10 @@ func (dht *DHTRouter) ResponseFind(req commons.DHTRequest, addr string) commons.
 			}
 		}
 	*/
-	resp.Dest = foundDest
-	return resp
+	/*
+		resp.Dest = foundDest
+		return resp
+	*/
 }
 
 // ResponsePing responses to a received "ping" message
@@ -289,7 +344,9 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 		n.ID = n.GenerateID(dht.Hashes)
 		n.Endpoint = ""
 		n.ConnectionAddress = addr.String()
-		dht.RegisterNode(n)
+		n.AssociatedHash = ""
+		NodeList = append(NodeList, n)
+		//dht.RegisterNode(n)
 	}
 	log.Printf("[DEBUG] %s: %s", addr, string(buf[:512]))
 
@@ -324,7 +381,7 @@ func main() {
 	log.SetOutput(f)
 	*/
 	MaximumNodes = 100
-	AllocateNodeList()
+	//AllocateNodeList()
 	log.Printf("[INFO] Initialization complete")
 	log.Printf("[INFO] Starting bootstrap node")
 	var dht DHTRouter

@@ -21,6 +21,7 @@ type DHTClient struct {
 
 func (dht *DHTClient) DHTClientConfig() *DHTClient {
 	return &DHTClient{
+		//Routers: "localhost:6881",
 		Routers: "dht1.subut.ai:6881",
 		//Routers:     "dht1.subut.ai:6881,dht2.subut.ai:6881,dht3.subut.ai:6881,dht4.subut.ai:6881,dht5.subut.ai:6881",
 		NetworkHash: "",
@@ -156,23 +157,25 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 					}
 				} else if data.Command == "find" {
 					log.Printf("[DHT-INFO] Found peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
-					hosts := strings.Split(data.Dest, ",")
-					var hostExists bool
-					for _, host := range hosts {
-						if host == "" {
-							continue
-						}
-						hostExists = false
-						for _, ehost := range dht.NetworkPeers {
-							if host != ehost {
+					/*
+						hosts := strings.Split(data.Dest, ",")
+						var hostExists bool
+						for _, host := range hosts {
+							if host == "" {
 								continue
 							}
-							hostExists = true
+							hostExists = false
+							for _, ehost := range dht.NetworkPeers {
+								if host != ehost {
+									continue
+								}
+								hostExists = true
+							}
+							if !hostExists {
+								dht.NetworkPeers = append(dht.NetworkPeers, host)
+							}
 						}
-						if !hostExists {
-							dht.NetworkPeers = append(dht.NetworkPeers, host)
-						}
-					}
+					*/
 				}
 			}
 		}

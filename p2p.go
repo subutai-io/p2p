@@ -45,8 +45,7 @@ type PTPCloud struct {
 }
 
 type NetworkPeer struct {
-	PeerIP      net.IP
-	PeerPort    int
+	PeerAddr    *net.UDPAddr
 	PeerLocalIP net.IP
 	PeerHW      net.HardwareAddr
 }
