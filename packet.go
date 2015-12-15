@@ -33,9 +33,16 @@ func (ptp *PTPCloud) handlePacketIPv4(contents []byte) {
 		return
 	}
 	parts := strings.Split(header.Dst.String(), ".")
+	//	log.Printf("[DEBUG] Destination IP: %s", header.Dst.String())
+	log.Printf("%v", header.String())
+
 	if parts[0] != "0" {
 		log.Printf("[TRACE] IPv4 Packet Header: %v", header.String())
 	}
+}
+
+func (ptp *PTPCloud) handlePacketIPv6(contents []byte) {
+
 }
 
 func (ptp *PTPCloud) handlePacketARP(contents []byte) {

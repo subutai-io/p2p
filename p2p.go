@@ -39,7 +39,7 @@ type PTPCloud struct {
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
-func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) (*PTPCloud, error) {
+func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) error {
 	var err error
 
 	ptp.IP = ip
@@ -52,18 +52,18 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) (*PTPCloud, erro
 	yamlFile, err := ioutil.ReadFile("config.yaml")
 	if err != nil {
 		log.Printf("[ERROR] Failed to load config: %v", err)
-		return nil, err
+		return err
 	}
 	err = yaml.Unmarshal(yamlFile, ptp)
 	if err != nil {
 		log.Printf("[ERROR] Failed to parse config: %v", err)
-		return nil, err
+		return err
 	}
 
 	ptp.Device, err = tuntap.Open(ptp.DeviceName, tuntap.DevTap)
 	if ptp.Device == nil {
 		log.Fatalf("[FATAL] Failed to open TAP device: %v", err)
-		return nil, err
+		return err
 	} else {
 		log.Printf("[INFO] %v TAP Device created", ptp.DeviceName)
 	}
@@ -72,7 +72,7 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) (*PTPCloud, erro
 	err = linkup.Run()
 	if err != nil {
 		log.Fatalf("[ERROR] Failed to up link: %v", err)
-		return nil, err
+		return err
 	}
 
 	// Configure new device
@@ -81,16 +81,16 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) (*PTPCloud, erro
 	err = setip.Run()
 	if err != nil {
 		log.Fatalf("[FATAL] Failed to set IP: %v", err)
-		return nil, err
+		return err
 	}
-	return ptp, nil
+	return nil
 }
 
 // Handles a packet that was received by TUN/TAP device
 // Receiving a packet by device means that some application sent a network
 // packet within a subnet in which our application works.
 // This method calls appropriate gorouting for extracted packet protocol
-func (ptp *PTPCloud) handlePacket(contents []byte, proto int) {
+func handlePacket(ptp *PTPCloud, contents []byte, proto int) {
 	/*
 		512   (PUP)
 		2048  (IP)
@@ -105,7 +105,6 @@ func (ptp *PTPCloud) handlePacket(contents []byte, proto int) {
 	case 512:
 		log.Printf("[DEBUG] Received PARC Universal Packet")
 	case 2048:
-		log.Printf("[DEBUG] Received IPv4 Packet")
 		ptp.handlePacketIPv4(contents)
 	case 2054:
 		log.Printf("[DEBUG] Received ARP Packet")
@@ -115,7 +114,7 @@ func (ptp *PTPCloud) handlePacket(contents []byte, proto int) {
 	case 33024:
 		log.Printf("[DEBUG] Received 802.1q Packet")
 	case 34525:
-		log.Printf("[DEBUG] Received IPv6 Packet")
+		ptp.handlePacketIPv6(contents)
 	case 34915:
 		log.Printf("[DEBUG] Received PPPoE Discovery Packet")
 	case 34916:
@@ -164,7 +163,7 @@ func main() {
 	config.NetworkHash = argHash
 	dhtClient.Initialize(config)
 
-	var ptp PTPCloud
+	ptp := new(PTPCloud)
 	ptp.CreateDevice(argIp, argMac, argMask, argDev)
 
 	// Capture SIGINT
@@ -180,6 +179,9 @@ func main() {
 		}
 	}()
 
+	var b []byte
+	ptp.WriteToDevice(b)
+
 	// Read packets received by TUN/TAP device and send them to a handlePacket goroutine
 	// This goroutine will decide what to do with this packet
 	for {
@@ -190,15 +192,23 @@ func main() {
 		if packet.Truncated {
 			log.Printf("[DEBUG] Truncated packet")
 		}
-		go ptp.handlePacket(packet.Packet, packet.Protocol)
+		// TODO: Make handlePacket as a part of PTPCloud
+		go handlePacket(ptp, packet.Packet, packet.Protocol)
 	}
 }
 
 // WriteToDevice writes data to created TUN/TAP device
 func (ptp *PTPCloud) WriteToDevice(b []byte) {
-	var p *tuntap.Packet
+	var p tuntap.Packet
 	p.Protocol = 2054
 	p.Truncated = false
 	p.Packet = b
-	ptp.Device.WritePacket(p)
+	if ptp.Device == nil {
+		log.Printf("[ERROR] TUN/TAP Device not initialized")
+		return
+	}
+	err := ptp.Device.WritePacket(&p)
+	if err != nil {
+		log.Printf("[ERROR] Failed to write to TUN/TAP device")
+	}
 }
