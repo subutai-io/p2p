@@ -184,6 +184,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	udp := new(udpcs.UDPClient)
+	udp.Init("", 0)
+	port := udp.GetPort()
+	log.Printf("[INFO] Started UDP Listener at port %d", port)
+	go udp.Listen(udpcs.Process_p2p_msg)
+
 	// Create new DHT Client, configured it and initialize
 	// During initialization procedure, DHT Client will send
 	// a introduction packet along with a hash to a DHT bootstrap
@@ -191,15 +197,11 @@ func main() {
 	var dhtClient dht.DHTClient
 	config := dhtClient.DHTClientConfig()
 	config.NetworkHash = argHash
+	config.P2PPort = port
 	dhtClient.Initialize(config)
-	return
 
 	ptp := new(PTPCloud)
 	ptp.CreateDevice(argIp, argMac, argMask, argDev)
-
-	udp := new(udpcs.UDPClient)
-	udp.Init("", 5000)
-	go udp.Listen(udpcs.Process_p2p_msg)
 
 	// Capture SIGINT
 	// This is used for development purposes only, but later we should consider updating
@@ -215,6 +217,8 @@ func main() {
 	}()
 
 	go ptp.ListenInterface()
+	for {
+	}
 }
 
 func (ptp *PTPCloud) UpdatePeersTable(dht *dht.DHTClient) {

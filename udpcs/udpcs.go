@@ -121,6 +121,11 @@ func (uc *UDPClient) Init(host string, port int16) error {
 	return nil
 }
 
+func (uc *UDPClient) GetPort() int {
+	addr, _ := net.ResolveUDPAddr("udp", uc.conn.LocalAddr().String())
+	return addr.Port
+}
+
 type udp_received_callback func(count int, src_addr *net.UDPAddr, err error, buff []byte)
 
 func (uc *UDPClient) Listen(fn_received_callback udp_received_callback) {

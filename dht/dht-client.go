@@ -2,6 +2,7 @@ package dht
 
 import (
 	"bytes"
+	"fmt"
 	bencode "github.com/jackpal/bencode-go"
 	"log"
 	"net"
@@ -15,6 +16,7 @@ type DHTClient struct {
 	Connection    []*net.UDPConn
 	NetworkHash   string
 	NetworkPeers  []string
+	P2PPort       int
 }
 
 func (dht *DHTClient) DHTClientConfig() *DHTClient {
@@ -60,6 +62,7 @@ func (dht *DHTClient) ConnectAndHandshake(router string) (*net.UDPConn, error) {
 	req.Id = "0"
 	req.Hash = "0"
 	req.Command = "conn"
+	req.Port = fmt.Sprintf("%d", dht.P2PPort)
 	var b bytes.Buffer
 	if err := bencode.Marshal(&b, req); err != nil {
 		log.Printf("[DHT-ERROR] Failed to Marshal bencode %v", err)

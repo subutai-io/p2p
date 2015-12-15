@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	bencode "github.com/jackpal/bencode-go"
 	"github.com/wayn3h0/go-uuid"
 	"log"
@@ -126,7 +127,7 @@ func (dht *DHTRouter) SetupServer() *net.UDPConn {
 func (dht *DHTRouter) IsNewPeer(addr string) bool {
 	// TODO: Rewrite with use of ranges
 	for i := 0; i < MaximumNodes; i++ {
-		if NodeList[i].Endpoint == addr {
+		if NodeList[i].ConnectionAddress == addr {
 			return false
 		}
 	}
@@ -197,9 +198,11 @@ func (dht *DHTRouter) EncodeResponse(resp commons.DHTResponse) string {
 // from a newly connected node. Response writes an ID of the node
 func (dht *DHTRouter) ResponseConn(req commons.DHTRequest, addr string, n Node) commons.DHTResponse {
 	// First we want to update Endpoint for this node
+	// Let's resolve new address from original IP and by port received from client
+	a, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", addr, req.Port))
 	for _, node := range NodeList {
 		if node.ConnectionAddress == addr {
-			node.Endpoint = req.IP
+			node.Endpoint = a.String()
 		}
 	}
 	var resp commons.DHTResponse
@@ -330,14 +333,5 @@ func main() {
 
 	for {
 		dht.Listen(listener)
-	}
-
-	log.Printf("[INFO] Starting Control Peer")
-	for i := 0; i < MaximumNodes; i++ {
-		var newNode Node
-		newNode.Endpoint = "IP"
-		newNode.GenerateID(dht.Hashes)
-		newNode.LastPing = time.Now()
-		NodeList[i] = newNode
 	}
 }
