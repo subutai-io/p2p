@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"p2p/dht"
 	//	"strings"
+	"p2p/udpcs"
 	"time"
 )
 
@@ -195,6 +196,10 @@ func main() {
 
 	ptp := new(PTPCloud)
 	ptp.CreateDevice(argIp, argMac, argMask, argDev)
+
+	udp := new(udpcs.UDPClient)
+	udp.Init("", 5000)
+	go udp.Listen(udpcs.Process_p2p_msg)
 
 	// Capture SIGINT
 	// This is used for development purposes only, but later we should consider updating
