@@ -5,7 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mdlayher/ethernet"
-	"golang.org/x/net/ipv4"
+	"golang.org/x/net/icmp"
+	//"golang.org/x/net/ipv4"
 	"io"
 	"log"
 	"net"
@@ -27,17 +28,13 @@ var (
 )
 
 func (ptp *PTPCloud) handlePacketIPv4(contents []byte) {
-	header, err := ipv4.ParseHeader(contents)
-	if err != nil {
-		log.Printf("[ERROR] Failed to parse IPv4 packet: %v", err)
-		return
+	f := new(ethernet.Frame)
+	if err := f.UnmarshalBinary(contents); err != nil {
+		log.Printf("[ERROR] Failed to unmarshal IPv4 packet")
 	}
-	parts := strings.Split(header.Dst.String(), ".")
-	//	log.Printf("[DEBUG] Destination IP: %s", header.Dst.String())
-	log.Printf("%v", header.String())
 
-	if parts[0] != "0" {
-		log.Printf("[TRACE] IPv4 Packet Header: %v", header.String())
+	if f.EtherType != ethernet.EtherTypeIPv4 {
+		return
 	}
 }
 
@@ -46,6 +43,8 @@ func (ptp *PTPCloud) handlePacketIPv6(contents []byte) {
 }
 
 func (ptp *PTPCloud) handlePacketARP(contents []byte) {
+	// Prepare new ethernet frame and fill it with
+	// contents of the packet
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		log.Printf("[ERROR] Failed to Unmarshal ARP Binary")
