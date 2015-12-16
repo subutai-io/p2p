@@ -4,18 +4,13 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log"
 	"net"
+	"p2p/commons"
 	"time"
 )
 
 const MAGIC_COOKIE uint16 = 0xabcd
-
-type MSG_TYPE uint16
-
-const (
-	MT_STRING MSG_TYPE = 0
-	//todo add types
-)
 
 type P2PMessageHeader struct {
 	Magic    uint16
@@ -77,7 +72,17 @@ func CreateStringP2PMessage(data string, netProto uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
 	msg.Header.Magic = MAGIC_COOKIE
-	msg.Header.Type = uint16(MT_STRING)
+	msg.Header.Type = uint16(commons.MT_STRING)
+	msg.Header.NetProto = netProto
+	msg.Data = []byte(data)
+	return msg
+}
+
+func CreateIntroP2PMessage(data string, netProto uint16) *P2PMessage {
+	msg := new(P2PMessage)
+	msg.Header = new(P2PMessageHeader)
+	msg.Header.Magic = MAGIC_COOKIE
+	msg.Header.Type = uint16(commons.MT_INTRO)
 	msg.Header.NetProto = netProto
 	msg.Data = []byte(data)
 	return msg
@@ -126,23 +131,23 @@ func (uc *UDPClient) GetPort() int {
 	return addr.Port
 }
 
-type udp_received_callback func(count int, src_addr *net.UDPAddr, err error, buff []byte)
+type UDPReceivedCallback func(count int, src_addr *net.UDPAddr, err error, buff []byte)
 
-func (uc *UDPClient) Listen(fn_received_callback udp_received_callback) {
+func (uc *UDPClient) Listen(fn_received_callback UDPReceivedCallback) {
 	for !uc.Disposed() {
 		n, src, err := uc.conn.ReadFromUDP(uc.input_buffer[:])
+		log.Printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 		fn_received_callback(n, src, err, uc.input_buffer[:])
 	}
 }
 
-func (uc *UDPClient) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) {
+func (uc *UDPClient) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, error) {
 	ser_data := msg.Serialize()
 	n, err := uc.conn.WriteToUDP(ser_data, dst_addr)
 	if err != nil {
-		fmt.Printf("error sending msg : %v\n", err)
-		return
+		return 0, err
 	}
-	fmt.Printf("sent %d bytes\n", n)
+	return n, nil
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////

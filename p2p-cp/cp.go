@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"p2p/commons"
+	"sort"
 	"time"
 )
 
@@ -23,6 +24,9 @@ var (
 	// from list. However, bootstrap node can deal with millions of entries
 	// so possibility of MaximumNodes exceeding is fairly low
 	MaximumNodes int
+
+	// Ping timeout for variables
+	PingTimeout time.Duration = 25
 )
 
 // Representation of a DHT Node that was connected to current DHT Bootstrap node
@@ -42,6 +46,10 @@ type Node struct {
 
 	// Infohash that was associated with this node
 	AssociatedHash string
+
+	Addr *net.UDPAddr
+
+	MissedPing int
 }
 
 // Infohash is a 20-bytes string and associated IP Address
@@ -66,6 +74,8 @@ type DHTRouter struct {
 
 	// List of infohashes
 	Hashes []Infohash
+
+	Connection *net.UDPConn
 }
 
 // Generate UUID, assigns it to a node and returns UUID as a string
@@ -344,6 +354,7 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 		n.ID = n.GenerateID(dht.Hashes)
 		n.Endpoint = ""
 		n.ConnectionAddress = addr.String()
+		n.Addr = addr
 		n.AssociatedHash = ""
 		NodeList = append(NodeList, n)
 		//dht.RegisterNode(n)
@@ -359,13 +370,43 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 	case "find":
 		resp = dht.ResponseFind(req, addr.String())
 	case "ping":
-		resp = dht.ResponsePing(req, addr.String())
+		for i, node := range NodeList {
+			if node.Addr.String() == addr.String() {
+				NodeList[i].MissedPing = 0
+			}
+		}
+		resp.Command = ""
 	default:
 		log.Printf("[ERROR] Unknown command received: %s", req.Command)
 		resp.Command = ""
 	}
 
-	dht.Send(conn, addr, dht.EncodeResponse(resp))
+	if resp.Command != "" {
+		dht.Send(conn, addr, dht.EncodeResponse(resp))
+	}
+}
+
+func (dht *DHTRouter) Ping(conn *net.UDPConn) {
+	req := new(commons.DHTRequest)
+	req.Command = "ping"
+	var removeKeys []int
+	for {
+		for _, i := range removeKeys {
+			NodeList = append(NodeList[:i], NodeList[i+1:]...)
+			log.Printf("[NOTICE] %s timeout reached. Disconnecting", NodeList[i].ConnectionAddress)
+		}
+		removeKeys = removeKeys[:0]
+		time.Sleep(PingTimeout * time.Second)
+		for i, node := range NodeList {
+			NodeList[i].MissedPing = NodeList[i].MissedPing + 1
+			resp := dht.ResponsePing(*req, node.ConnectionAddress)
+			dht.Send(conn, node.Addr, dht.EncodeResponse(resp))
+			if NodeList[i].MissedPing >= 4 {
+				removeKeys = append(removeKeys, i)
+			}
+		}
+		sort.Sort(sort.Reverse(sort.IntSlice(removeKeys)))
+	}
 }
 
 func init() {
@@ -381,14 +422,17 @@ func main() {
 	log.SetOutput(f)
 	*/
 	MaximumNodes = 100
+	//PingTimeout = 13
 	//AllocateNodeList()
 	log.Printf("[INFO] Initialization complete")
 	log.Printf("[INFO] Starting bootstrap node")
 	var dht DHTRouter
 	dht.Port = 6881
-	listener := dht.SetupServer()
+	dht.Connection = dht.SetupServer()
+
+	go dht.Ping(dht.Connection)
 
 	for {
-		dht.Listen(listener)
+		dht.Listen(dht.Connection)
 	}
 }
