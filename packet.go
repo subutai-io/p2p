@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"p2p/udpcs"
 )
 
 var (
@@ -24,7 +25,8 @@ var (
 	errInvalidARPPacket = errors.New("invalid ARP packet")
 )
 
-func (ptp *PTPCloud) handlePacketIPv4(contents []byte) {
+// Handles a IPv4 packet and sends it to it's destination
+func (ptp *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		log.Printf("[ERROR] Failed to unmarshal IPv4 packet")
@@ -32,6 +34,16 @@ func (ptp *PTPCloud) handlePacketIPv4(contents []byte) {
 
 	if f.EtherType != ethernet.EtherTypeIPv4 {
 		return
+	}
+
+	msg := udpcs.CreateNencP2PMessage(contents, uint16(proto))
+	size, err := ptp.SendTo(f.Destination, msg)
+	if err != nil {
+		log.Printf("[ERROR] Failed to send message inside P2P: %v", err)
+		return
+	}
+	if size <= 0 {
+		log.Printf("[ERROR] Zero bytes were send inside P2P")
 	}
 }
 
@@ -56,21 +68,35 @@ func (ptp *PTPCloud) handlePacketARP(contents []byte) {
 	if err := p.UnmarshalARP(f.Payload); err != nil {
 		return
 	}
-	// Send a reply
-	var reply ARPPacket
 
 	//for _, peer := ptp.NetworkPeers {
 
 	//}
-	hwAddr, err := net.ParseMAC("0c:8b:fd:ab:30:ee")
-	if err != nil {
-		log.Printf("[ERROR] Failed to parse MAC")
+	log.Printf("[DEBUG] Peers: %v, Target IP: %s", ptp.NetworkPeers, p.TargetIP.String())
+	var hwAddr net.HardwareAddr = nil
+	for _, peer := range ptp.NetworkPeers {
+		if peer.PeerLocalIP.String() == p.TargetIP.String() {
+			hwAddr = peer.PeerHW
+		}
 	}
+	/*
+		hwAddr, err := net.ParseMAC("0c:8b:fd:ab:30:ee")
+		if err != nil {
+			log.Printf("[ERROR] Failed to parse MAC")
+		}
+	*/
 	// TODO: Put there normal IP from list of ips
+	// Send a reply
+	if hwAddr == nil {
+		log.Printf("[ERROR] Cannot find hardware address for requested IP")
+		return
+	}
+	var reply ARPPacket
 	ip := net.ParseIP(p.TargetIP.String())
 	response, err := reply.NewPacket(OperationReply, hwAddr, ip, p.SenderHardwareAddr, p.SenderIP)
 	if err != nil {
 		log.Printf("[ERROR] Failed to create ARP reply")
+		return
 	}
 	rp, err := response.MarshalBinary()
 	if err != nil {

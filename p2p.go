@@ -12,11 +12,11 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"p2p/dht"
-	//	"strings"
 	"p2p/commons"
+	"p2p/dht"
 	"p2p/udpcs"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -137,7 +137,7 @@ func handlePacket(ptp *PTPCloud, contents []byte, proto int) {
 	case 512:
 		log.Printf("[DEBUG] Received PARC Universal Packet")
 	case 2048:
-		ptp.handlePacketIPv4(contents)
+		ptp.handlePacketIPv4(contents, proto)
 	case 2054:
 		log.Printf("[DEBUG] Received ARP Packet")
 		ptp.handlePacketARP(contents)
@@ -280,14 +280,18 @@ func (ptp *PTPCloud) IntroducePeers() {
 		}
 		ptp.NetworkPeers[i].PeerAddr = addr
 		// Send introduction packet
-		var intro string = ptp.IP + "," + ptp.Mac
-		msg := udpcs.CreateIntroP2PMessage(intro, 0)
+		msg := ptp.PrepareIntroductionMessage(ptp.IP, ptp.Mac)
 		_, err = ptp.UDPSocket.SendMessage(msg, addr)
 		if err != nil {
 			log.Printf("[ERROR] Failed to send introduction to %s", addr.String())
 		}
-		ptp.NetworkPeers[i].Unknown = false
 	}
+}
+
+func (ptp *PTPCloud) PrepareIntroductionMessage(ip, mac string) *udpcs.P2PMessage {
+	var intro string = ip + "," + mac
+	msg := udpcs.CreateIntroP2PMessage(intro, 0)
+	return msg
 }
 
 // This method goes over peers and removes obsolete ones
@@ -381,8 +385,60 @@ func GenerateMAC() (string, net.HardwareAddr) {
 	return mac, hw
 }
 
+// AddPeer adds new peer into list of network participants. If peer was added previously
+// information about him will be updated. If not, new entry will be added
+func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, ip net.IP, mac net.HardwareAddr) {
+	var found bool = false
+	for i, peer := range ptp.NetworkPeers {
+		if peer.CleanAddr == addr.String() {
+			found = true
+			ptp.NetworkPeers[i].PeerAddr = addr
+			ptp.NetworkPeers[i].PeerLocalIP = ip
+			ptp.NetworkPeers[i].PeerHW = mac
+			ptp.NetworkPeers[i].Unknown = false
+		}
+	}
+	if !found {
+		var newPeer NetworkPeer
+		newPeer.CleanAddr = addr.String()
+		newPeer.PeerAddr = addr
+		newPeer.PeerLocalIP = ip
+		newPeer.PeerHW = mac
+		newPeer.Unknown = false
+		ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+	}
+}
+
+func (ptp *PTPCloud) ParseIntroString(intro string) (net.IP, net.HardwareAddr) {
+	parts := strings.Split(intro, ",")
+	if len(parts) != 2 {
+		log.Printf("[ERROR] Failed to parse introduction stirng")
+		return nil, nil
+	}
+	ip := net.ParseIP(parts[0])
+	if ip == nil {
+		log.Printf("[ERROR] Failed to parse IP address from introduction packet")
+		return nil, nil
+	}
+	mac, err := net.ParseMAC(parts[1])
+	if err != nil {
+		log.Printf("[ERROR] Failed to parse MAC address from introduction packet: %v", err)
+		return nil, nil
+	}
+	return ip, mac
+}
+
+func (ptp *PTPCloud) IsPeerUnknown(addr *net.UDPAddr) bool {
+	for _, peer := range ptp.NetworkPeers {
+		if peer.CleanAddr == addr.String() {
+			return peer.Unknown
+		}
+	}
+	return true
+}
+
+// Handler for new messages received from P2P network
 func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error, rcv_bytes []byte) {
-	log.Printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	if err != nil {
 		log.Printf("[ERROR] P2P Message Handle: %v", err)
 		return
@@ -399,10 +455,34 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 	var msgType commons.MSG_TYPE = commons.MSG_TYPE(msg.Header.Type)
 	switch msgType {
 	case commons.MT_INTRO:
-		log.Printf("[DEBUG] Introduction message received")
+		log.Printf("[DEBUG] Introduction message received: %s", string(msg.Data))
+		// Don't do anything if we already know everything about this peer
+		if !ptp.IsPeerUnknown(src_addr) {
+			return
+		}
+		ip, mac := ptp.ParseIntroString(string(msg.Data))
+		ptp.AddPeer(src_addr, ip, mac)
+		msg := ptp.PrepareIntroductionMessage(ptp.IP, ptp.Mac)
+		_, err := ptp.UDPSocket.SendMessage(msg, src_addr)
+		if err != nil {
+			log.Printf("[ERROR] Failed to respond to introduction message: %v", err)
+		}
+	case commons.MT_NENC:
+		log.Printf("[DEBUG] Received P2P Message")
+		ptp.WriteToDevice(msg.Data)
 	default:
 		log.Printf("[ERROR] Unknown message received")
 	}
 
 	log.Printf("processed message from %s, msg_data : %s\n", src_addr.String(), msg.Data)
+}
+
+func (ptp *PTPCloud) SendTo(dst net.HardwareAddr, msg *udpcs.P2PMessage) (int, error) {
+	for _, peer := range ptp.NetworkPeers {
+		if peer.PeerHW.String() == dst.String() {
+			size, err := ptp.UDPSocket.SendMessage(msg, peer.PeerAddr)
+			return size, err
+		}
+	}
+	return 0, nil
 }

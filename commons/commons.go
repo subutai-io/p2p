@@ -16,7 +16,10 @@ type DHTResponse struct {
 type MSG_TYPE uint16
 
 const (
-	MT_STRING MSG_TYPE = 0 // String
-	MT_INTRO  MSG_TYPE = 1 // Introduction packet
+	MT_STRING MSG_TYPE = 0 + iota // String
+	MT_INTRO           = 1        // Introduction packet
+	MT_NENC            = 2        // Not encrypted message
+	MT_ENC             = 3        // Encrypted message
+	MT_PING            = 4        // Internal ping message
 	//todo add types
 )
