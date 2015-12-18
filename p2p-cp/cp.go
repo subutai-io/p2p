@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	bencode "github.com/jackpal/bencode-go"
 	"github.com/wayn3h0/go-uuid"
@@ -413,14 +414,8 @@ func init() {
 }
 
 func main() {
-	/*f, err := os.OpenFile("cp.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Printf("[ERROR] Error opening file: %v", err)
-	}
-	defer f.Close()
-
-	log.SetOutput(f)
-	*/
+	var argDht int
+	flag.IntVar(&argDht, "dht", -1, "Port that DHT Bootstrap will listening to")
 	MaximumNodes = 100
 	//PingTimeout = 13
 	//AllocateNodeList()
