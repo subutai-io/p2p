@@ -1,4 +1,4 @@
-package main
+package enc
 
 import (
 	"crypto/aes"
@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-func main() {
+func encTest() {
 	plaintext := "Hello, world"
 	fmt.Printf("%s\n", plaintext)
 
