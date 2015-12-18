@@ -20,12 +20,6 @@ var (
 	// This list should always be checked if item is unique by IP and hash
 	NodeList []Node
 
-	// Maximum number of nodes that can connect to DHT bootstrap node
-	// When maximum number is exceeded, the most oldest entries should be wiped
-	// from list. However, bootstrap node can deal with millions of entries
-	// so possibility of MaximumNodes exceeding is fairly low
-	MaximumNodes int
-
 	// Ping timeout for variables
 	PingTimeout time.Duration = 25
 )
@@ -51,6 +45,9 @@ type Node struct {
 	Addr *net.UDPAddr
 
 	MissedPing int
+
+	// When disabled - node will not be interracted.
+	Disabled bool
 }
 
 // Infohash is a 20-bytes string and associated IP Address
@@ -116,12 +113,6 @@ func handleConnection(c *net.Conn) int {
 	return 1
 }
 
-// Allocated NodeList slice with maximum nodes
-func AllocateNodeList() {
-	log.Printf("[INFO] Allocating memory for %d nodes slice", MaximumNodes)
-	NodeList = make([]Node, MaximumNodes)
-}
-
 // SetupServers prepares a DHT router listening socket that DHT clients
 // will send UDP packets to
 func (dht *DHTRouter) SetupServer() *net.UDPConn {
@@ -143,26 +134,6 @@ func (dht *DHTRouter) IsNewPeer(addr string) bool {
 		}
 	}
 	return true
-	/*
-		for i := 0; i < MaximumNodes; i++ {
-			if NodeList[i].ConnectionAddress == addr {
-				return false
-			}
-		}
-		return true
-	*/
-}
-
-// Adds newly connected DHT node to a list of DHT participants
-// New nodes not always added to the end of list as due to timeout
-// some nodes may be wiped from the middle of the list. Therefore
-// we go through full slice unless we find wiped node with empty ID
-func (dht *DHTRouter) RegisterNode(n Node) {
-	for i := 0; i < MaximumNodes; i++ {
-		if NodeList[i].ID == "" {
-			NodeList[i] = n
-		}
-	}
 }
 
 // Extracts DHTRequest from received packet
@@ -404,30 +375,30 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 			dht.Send(conn, node.Addr, dht.EncodeResponse(resp))
 			if NodeList[i].MissedPing >= 4 {
 				removeKeys = append(removeKeys, i)
+				NodeList[i].Disabled = true
 			}
 		}
 		sort.Sort(sort.Reverse(sort.IntSlice(removeKeys)))
 	}
 }
 
-func init() {
-}
-
 func main() {
 	var argDht int
 	flag.IntVar(&argDht, "dht", -1, "Port that DHT Bootstrap will listening to")
-	MaximumNodes = 100
-	//PingTimeout = 13
-	//AllocateNodeList()
 	log.Printf("[INFO] Initialization complete")
 	log.Printf("[INFO] Starting bootstrap node")
-	var dht DHTRouter
-	dht.Port = 6881
-	dht.Connection = dht.SetupServer()
+	if argDht > 0 {
+		var dht DHTRouter
+		dht.Port = argDht
+		dht.Connection = dht.SetupServer()
 
-	go dht.Ping(dht.Connection)
+		go dht.Ping(dht.Connection)
 
-	for {
-		dht.Listen(dht.Connection)
+		for {
+			dht.Listen(dht.Connection)
+		}
+	} else {
+		// Act as a normal (proxy) control peer
+
 	}
 }
