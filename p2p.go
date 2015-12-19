@@ -14,7 +14,7 @@ import (
 	"os/signal"
 	"p2p/commons"
 	"p2p/dht"
-	"p2p/enc"
+	//"p2p/enc"
 	"p2p/udpcs"
 	"sort"
 	"strings"
@@ -56,7 +56,10 @@ type PTPCloud struct {
 
 type NetworkPeer struct {
 	Unknown     bool
+	Handshaked  bool
 	CleanAddr   string
+	ProxyID     int
+	Forwarder   *net.UDPAddr
 	PeerAddr    *net.UDPAddr
 	PeerLocalIP net.IP
 	PeerHW      net.HardwareAddr
@@ -339,20 +342,6 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 	return c
 }
 
-func (ptp *PTPCloud) UpdatePeersTable(dht *dht.DHTClient) {
-	//timestamp := time.Now().Local()
-	for _ = range time.Tick(15 * time.Second) {
-		if len(ptp.NetworkPeers) != len(dht.NetworkPeers) {
-			//for _, peer := range dht.NetworkPeers {
-			//			p := strings.Split(peer, ":")
-			/*for _, lp := range ptp.NetworkPeers {
-			}
-			*/
-			//}
-		}
-	}
-}
-
 // WriteToDevice writes data to created TUN/TAP device
 func (ptp *PTPCloud) WriteToDevice(b []byte) {
 	var p tuntap.Packet
@@ -397,6 +386,7 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, ip net.IP, mac net.HardwareAddr)
 			ptp.NetworkPeers[i].PeerLocalIP = ip
 			ptp.NetworkPeers[i].PeerHW = mac
 			ptp.NetworkPeers[i].Unknown = false
+			ptp.NetworkPeers[i].Handshaked = true
 		}
 	}
 	if !found {
@@ -406,8 +396,13 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, ip net.IP, mac net.HardwareAddr)
 		newPeer.PeerLocalIP = ip
 		newPeer.PeerHW = mac
 		newPeer.Unknown = false
+		newPeer.Handshaked = true
 		ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
 	}
+}
+
+func (p *NetworkPeer) ProbeConnection() bool {
+	return false
 }
 
 func (ptp *PTPCloud) ParseIntroString(intro string) (net.IP, net.HardwareAddr) {

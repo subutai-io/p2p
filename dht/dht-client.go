@@ -53,14 +53,7 @@ func (dht *DHTClient) ConnectAndHandshake(router string) (*net.UDPConn, error) {
 		return nil, err
 	}
 
-	laddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:12000", DetectIP()))
-	if err != nil {
-		laddr = nil
-		log.Printf("[DHT-ERROR] Failed to resolve local address: %v", err)
-	}
-	laddr = nil
-
-	conn, err := net.DialUDP("udp4", laddr, addr)
+	conn, err := net.DialUDP("udp4", nil, addr)
 	if err != nil {
 		log.Printf("[DHT-ERROR]: Failed to establish connection: %v", err)
 		return nil, err
@@ -137,6 +130,8 @@ func (dht *DHTClient) EncodeRequest(req commons.DHTRequest) string {
 	return b.String()
 }
 
+// After receiving a list of peers from DHT we will parse the list
+// and add every new peer into list of peers
 func (dht *DHTClient) UpdateLastCatch(catch string) {
 	peers := strings.Split(catch, ",")
 	for _, p := range peers {
@@ -155,6 +150,9 @@ func (dht *DHTClient) UpdateLastCatch(catch string) {
 	}
 }
 
+// UpdatePeers sends "find" request to a DHT Bootstrap node, so it can respond
+// with a list of peers that we can connect to
+// This method should be called periodically in case any new peers was discovered
 func (dht *DHTClient) UpdatePeers() {
 	msg := dht.Compose("find", "", dht.NetworkHash)
 	for _, conn := range dht.Connection {
@@ -166,6 +164,9 @@ func (dht *DHTClient) UpdatePeers() {
 	}
 }
 
+// Listens for packets received from DHT bootstrap node
+// Every packet is unmarshaled and turned into Request structure
+// which we should analyze and respond
 func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 	log.Printf("[DHT-INFO] Bootstraping via %s", conn.RemoteAddr().String())
 	for {
@@ -200,12 +201,15 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 						log.Printf("[DHT-INFO] Found peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
 						dht.UpdateLastCatch(data.Dest)
 					}
+				} else if data.Command == "regcp" {
+					// We've received a registration confirmation message from DHT bootstrap node
 				}
 			}
 		}
 	}
 }
 
+// This method initializes DHT by splitting list of routers and connect to each one
 func (dht *DHTClient) Initialize(config *DHTClient) *DHTClient {
 	dht = config
 	routers := strings.Split(dht.Routers, ",")
