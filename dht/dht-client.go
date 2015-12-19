@@ -200,26 +200,6 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 						log.Printf("[DHT-INFO] Found peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
 						dht.UpdateLastCatch(data.Dest)
 					}
-
-					/*
-						hosts := strings.Split(data.Dest, ",")
-						var hostExists bool
-						for _, host := range hosts {
-							if host == "" {
-								continue
-							}
-							hostExists = false
-							for _, ehost := range dht.NetworkPeers {
-								if host != ehost {
-									continue
-								}
-								hostExists = true
-							}
-							if !hostExists {
-								dht.NetworkPeers = append(dht.NetworkPeers, host)
-							}
-						}
-					*/
 				}
 			}
 		}
