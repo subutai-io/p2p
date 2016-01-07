@@ -24,8 +24,8 @@ type DHTClient struct {
 func (dht *DHTClient) DHTClientConfig() *DHTClient {
 	return &DHTClient{
 		//Routers: "localhost:6881",
-		//Routers: "dht1.subut.ai:6881",
-		Routers: "172.16.192.5:6881",
+		Routers: "dht1.subut.ai:6881",
+		//Routers: "172.16.192.5:6881",
 		//Routers:     "dht1.subut.ai:6881,dht2.subut.ai:6881,dht3.subut.ai:6881,dht4.subut.ai:6881,dht5.subut.ai:6881",
 		NetworkHash: "",
 	}
@@ -66,7 +66,11 @@ func (dht *DHTClient) ConnectAndHandshake(router string) (*net.UDPConn, error) {
 	req.Id = "0"
 	req.Hash = "0"
 	req.Command = "conn"
+	// TODO: rename Port to something more clear
 	req.Port = fmt.Sprintf("%d", dht.P2PPort)
+	for _, ip := range ptp.LocalIPs {
+		req.Port = req.Port + "|" + ip
+	}
 	var b bytes.Buffer
 	if err := bencode.Marshal(&b, req); err != nil {
 		log.Printf("[DHT-ERROR] Failed to Marshal bencode %v", err)
@@ -180,28 +184,31 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 			if err != nil {
 				log.Printf("[DHT-ERROR] Failed to extract a message: %v", err)
 			} else {
-				if data.Command == "conn" {
-					// Send a hash
-					msg := dht.Compose("find", "", dht.NetworkHash)
+				if data.Command == commons.CMD_CONN {
+					// Send a hash within FIND command
+					// Afterwards application should wait for response from DHT
+					// with list of clients. This may not happen if this client is the
+					// first connected node.
+					msg := dht.Compose(commons.CMD_FIND, "", dht.NetworkHash)
 					_, err = conn.Write([]byte(msg))
 					if err != nil {
 						log.Printf("[DHT-ERROR] Failed to send FIND packet: %v", err)
 					} else {
 						log.Printf("[DHT-INFO] Received connection confirmation from tracker %s", conn.RemoteAddr().String())
 					}
-				} else if data.Command == "ping" {
-					log.Printf("PING")
-					msg := dht.Compose("ping", "", "")
+				} else if data.Command == commons.CMD_PING {
+					msg := dht.Compose(commons.CMD_PING, "", "")
 					_, err = conn.Write([]byte(msg))
 					if err != nil {
 						log.Printf("[DHT-ERROR] Failed to send PING packet: %v", err)
 					}
-				} else if data.Command == "find" {
+				} else if data.Command == commons.CMD_FIND {
+					// This means we've received a list of nodes we can connect to
 					if data.Dest != "" {
 						log.Printf("[DHT-INFO] Found peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
 						dht.UpdateLastCatch(data.Dest)
 					}
-				} else if data.Command == "regcp" {
+				} else if data.Command == commons.CMD_REGCP {
 					// We've received a registration confirmation message from DHT bootstrap node
 				}
 			}

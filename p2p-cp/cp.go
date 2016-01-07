@@ -218,7 +218,6 @@ func (dht *DHTRouter) ResponseConn(req commons.DHTRequest, addr string, n Node) 
 	if err != nil {
 		log.Printf("[DHT-ERROR] Failed to resolve UDP Address: %v", err)
 	}
-	log.Printf("[DHT-DEBUG] UDP RESOLVED: %s", a.String())
 	for i, node := range NodeList {
 		if node.ConnectionAddress == addr {
 			NodeList[i].Endpoint = a.String()
@@ -373,26 +372,26 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 	req, err := dht.Extract(buf[:512])
 	var resp commons.DHTResponse
 	switch req.Command {
-	case "conn":
+	case commons.CMD_CONN:
 		// Connection handshake
 		resp = dht.ResponseConn(req, addr.String(), n)
-	case "find":
+	case commons.CMD_FIND:
 		// Find by infohash request
 		resp = dht.ResponseFind(req, addr.String())
-	case "ping":
+	case commons.CMD_PING:
 		for i, node := range NodeList {
 			if node.Addr.String() == addr.String() {
 				NodeList[i].MissedPing = 0
 			}
 		}
 		resp.Command = ""
-	case "regcp":
+	case commons.CMD_REGCP:
 		// Register new control peer
 		resp = dht.ResponseRegCP(req, addr.String())
-	case "cp":
+	case commons.CMD_CP:
 		// Find control peer
 		resp = dht.ResponseCP(req, addr.String())
-	case "badcp":
+	case commons.CMD_BADCP:
 		// Given Control Peer cannot be communicated
 		// TODO: Move this to a separate method
 		for i, cp := range dht.ControlPeers {
@@ -445,6 +444,7 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 func main() {
 	var argDht int
 	flag.IntVar(&argDht, "dht", -1, "Port that DHT Bootstrap will listening to")
+	flag.Parse()
 	log.Printf("[INFO] Initialization complete")
 	log.Printf("[INFO] Starting bootstrap node")
 	if argDht > 0 {

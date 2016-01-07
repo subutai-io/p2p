@@ -52,6 +52,8 @@ type PTPCloud struct {
 	NetworkPeers []NetworkPeer
 
 	UDPSocket *udpcs.UDPClient
+
+	LocalIPs []net.IP
 }
 
 type NetworkPeer struct {
@@ -177,6 +179,50 @@ func (ptp *PTPCloud) ListenInterface() {
 	}
 }
 
+func (ptp *PTPCloud) FindNetworkAddresses() {
+	log.Printf("[INFO] Looking for available network interfaces")
+	inf, err := net.Interfaces()
+	if err != nil {
+		log.Printf("[ERROR] Failed to retrieve list of network interfaces")
+		return
+	}
+	for _, i := range inf {
+		addresses, err := i.Addrs()
+
+		if err != nil {
+			log.Printf("[ERROR] Failed to retrieve address for interface %v", err)
+			continue
+		}
+		for _, addr := range addresses {
+			var decision string = "Ignoring"
+			var ipType string = "Unknown"
+			ip, _, err := net.ParseCIDR(addr.String())
+			if err != nil {
+				log.Printf("[ERROR] Failed to parse CIDR notation: %v", err)
+			}
+			if ip.IsLoopback() {
+				ipType = "Loopback"
+			} else if ip.IsMulticast() {
+				ipType = "Multicast"
+			} else if ip.IsGlobalUnicast() {
+				decision = "Saving"
+				ipType = "Global Unicast"
+			} else if ip.IsLinkLocalUnicast() {
+				ipType = "Link Local Unicast"
+			} else if ip.IsLinkLocalMulticast() {
+				ipType = "Link Local Multicast"
+			} else if ip.IsInterfaceLocalMulticast() {
+				ipType = "Interface Local Multicast"
+			}
+			log.Printf("[INFO] Interface %s: %s. Type: %s. %s", i.Name, addr.String(), ipType, decision)
+			if decision == "Saving" {
+				ptp.LocalIPs = append(ptp.LocalIPs, ip)
+			}
+		}
+	}
+	log.Printf("[INFO] %d interfaces were saved", len(ptp.LocalIPs))
+}
+
 func main() {
 	// TODO: Move this to init() function
 	var (
@@ -230,6 +276,7 @@ func main() {
 	config.NetworkHash = argHash
 
 	ptp := new(PTPCloud)
+	ptp.FindNetworkAddresses()
 	ptp.HardwareAddr = hw
 	ptp.CreateDevice(argIp, argMac, argMask, argDev)
 	ptp.UDPSocket = new(udpcs.UDPClient)
