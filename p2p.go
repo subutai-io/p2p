@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"p2p/commons"
 	"p2p/dht"
+	//"p2p/enc"
 	"p2p/udpcs"
 	"sort"
 	"strings"
@@ -51,11 +52,17 @@ type PTPCloud struct {
 	NetworkPeers []NetworkPeer
 
 	UDPSocket *udpcs.UDPClient
+
+	LocalIPs []net.IP
 }
 
 type NetworkPeer struct {
+	ID          string
 	Unknown     bool
+	Handshaked  bool
 	CleanAddr   string
+	ProxyID     int
+	Forwarder   *net.UDPAddr
 	PeerAddr    *net.UDPAddr
 	PeerLocalIP net.IP
 	PeerHW      net.HardwareAddr
@@ -173,6 +180,50 @@ func (ptp *PTPCloud) ListenInterface() {
 	}
 }
 
+func (ptp *PTPCloud) FindNetworkAddresses() {
+	log.Printf("[INFO] Looking for available network interfaces")
+	inf, err := net.Interfaces()
+	if err != nil {
+		log.Printf("[ERROR] Failed to retrieve list of network interfaces")
+		return
+	}
+	for _, i := range inf {
+		addresses, err := i.Addrs()
+
+		if err != nil {
+			log.Printf("[ERROR] Failed to retrieve address for interface %v", err)
+			continue
+		}
+		for _, addr := range addresses {
+			var decision string = "Ignoring"
+			var ipType string = "Unknown"
+			ip, _, err := net.ParseCIDR(addr.String())
+			if err != nil {
+				log.Printf("[ERROR] Failed to parse CIDR notation: %v", err)
+			}
+			if ip.IsLoopback() {
+				ipType = "Loopback"
+			} else if ip.IsMulticast() {
+				ipType = "Multicast"
+			} else if ip.IsGlobalUnicast() {
+				decision = "Saving"
+				ipType = "Global Unicast"
+			} else if ip.IsLinkLocalUnicast() {
+				ipType = "Link Local Unicast"
+			} else if ip.IsLinkLocalMulticast() {
+				ipType = "Link Local Multicast"
+			} else if ip.IsInterfaceLocalMulticast() {
+				ipType = "Interface Local Multicast"
+			}
+			log.Printf("[INFO] Interface %s: %s. Type: %s. %s", i.Name, addr.String(), ipType, decision)
+			if decision == "Saving" {
+				ptp.LocalIPs = append(ptp.LocalIPs, ip)
+			}
+		}
+	}
+	log.Printf("[INFO] %d interfaces were saved", len(ptp.LocalIPs))
+}
+
 func main() {
 	// TODO: Move this to init() function
 	var (
@@ -226,6 +277,7 @@ func main() {
 	config.NetworkHash = argHash
 
 	ptp := new(PTPCloud)
+	ptp.FindNetworkAddresses()
 	ptp.HardwareAddr = hw
 	ptp.CreateDevice(argIp, argMac, argMask, argDev)
 	ptp.UDPSocket = new(udpcs.UDPClient)
@@ -320,36 +372,22 @@ func (ptp *PTPCloud) PurgePeers(catched []string) {
 // Returns amount of peers that has been added
 func (ptp *PTPCloud) SyncPeers(catched []string) int {
 	var c int
-	for _, addr := range catched {
+	for _, id := range catched {
 		var found bool = false
 		for _, peer := range ptp.NetworkPeers {
-			if peer.CleanAddr == addr {
+			if peer.ID == id {
 				found = true
 			}
 		}
 		if !found {
 			var newPeer NetworkPeer
-			newPeer.CleanAddr = addr
+			newPeer.ID = id
 			newPeer.Unknown = true
 			ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
 			c = c + 1
 		}
 	}
 	return c
-}
-
-func (ptp *PTPCloud) UpdatePeersTable(dht *dht.DHTClient) {
-	//timestamp := time.Now().Local()
-	for _ = range time.Tick(15 * time.Second) {
-		if len(ptp.NetworkPeers) != len(dht.NetworkPeers) {
-			//for _, peer := range dht.NetworkPeers {
-			//			p := strings.Split(peer, ":")
-			/*for _, lp := range ptp.NetworkPeers {
-			}
-			*/
-			//}
-		}
-	}
 }
 
 // WriteToDevice writes data to created TUN/TAP device
@@ -396,6 +434,7 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, ip net.IP, mac net.HardwareAddr)
 			ptp.NetworkPeers[i].PeerLocalIP = ip
 			ptp.NetworkPeers[i].PeerHW = mac
 			ptp.NetworkPeers[i].Unknown = false
+			ptp.NetworkPeers[i].Handshaked = true
 		}
 	}
 	if !found {
@@ -405,8 +444,13 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, ip net.IP, mac net.HardwareAddr)
 		newPeer.PeerLocalIP = ip
 		newPeer.PeerHW = mac
 		newPeer.Unknown = false
+		newPeer.Handshaked = true
 		ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
 	}
+}
+
+func (p *NetworkPeer) ProbeConnection() bool {
+	return false
 }
 
 func (ptp *PTPCloud) ParseIntroString(intro string) (net.IP, net.HardwareAddr) {

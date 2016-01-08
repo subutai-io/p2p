@@ -1,4 +1,4 @@
-package main
+package enc
 
 import (
 	"crypto/aes"
@@ -16,7 +16,7 @@ const (
 
 /////////////////////////////////////////////////////
 
-func main() {
+func EncryptTest() {
 	plaintext := "123456789012345678901234567890123456789"
 	fmt.Printf("%s\n", plaintext)
 

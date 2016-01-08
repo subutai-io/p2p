@@ -23,3 +23,20 @@ const (
 	MT_PING            = 4        // Internal ping message
 	//todo add types
 )
+
+const (
+	// Connection handshake
+	CMD_CONN string = "conn"
+	// Find peers request
+	CMD_FIND string = "find"
+	// Get IPs of node
+	CMD_NODE string = "node"
+	// Ping
+	CMD_PING string = "ping"
+	// Register new Control Peer
+	CMD_REGCP string = "regcp"
+	// Given CP cannot be communicated
+	CMD_BADCP string = "badcp"
+	// Find Control Peer
+	CMD_CP string = "cp"
+)
