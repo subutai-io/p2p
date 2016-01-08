@@ -19,6 +19,7 @@ type DHTClient struct {
 	NetworkPeers  []string
 	P2PPort       int
 	LastCatch     []string
+	ID            string
 }
 
 func (dht *DHTClient) DHTClientConfig() *DHTClient {
@@ -154,11 +155,23 @@ func (dht *DHTClient) UpdateLastCatch(catch string) {
 	}
 }
 
+// This function sends a request to DHT bootstrap node with ID of
+// target node we want to connect to
+func (dht *DHTClient) RequestPeersIPs(id string) {
+	msg := dht.Compose(commons.CMD_NODE, id, "")
+	for _, conn := range dht.Connection {
+		_, err := conn.Write([]byte(msg))
+		if err != nil {
+			log.Printf("[DHT-ERROR] Failed to send 'node' request to %s: %v", conn.RemoveAddr().String(), err)
+		}
+	}
+}
+
 // UpdatePeers sends "find" request to a DHT Bootstrap node, so it can respond
 // with a list of peers that we can connect to
 // This method should be called periodically in case any new peers was discovered
 func (dht *DHTClient) UpdatePeers() {
-	msg := dht.Compose("find", "", dht.NetworkHash)
+	msg := dht.Compose(commons.CMD_FIND, "", dht.NetworkHash)
 	for _, conn := range dht.Connection {
 		log.Printf("[DHT-DEBUG] Updating peer %s", conn.RemoteAddr().String())
 		_, err := conn.Write([]byte(msg))
@@ -185,6 +198,7 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 				log.Printf("[DHT-ERROR] Failed to extract a message: %v", err)
 			} else {
 				if data.Command == commons.CMD_CONN {
+					dht.ID = data.Id
 					// Send a hash within FIND command
 					// Afterwards application should wait for response from DHT
 					// with list of clients. This may not happen if this client is the
@@ -205,7 +219,7 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 				} else if data.Command == commons.CMD_FIND {
 					// This means we've received a list of nodes we can connect to
 					if data.Dest != "" {
-						log.Printf("[DHT-INFO] Found peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
+						//log.Printf("[DHT-INFO] Found peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
 						dht.UpdateLastCatch(data.Dest)
 					}
 				} else if data.Command == commons.CMD_REGCP {

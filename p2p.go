@@ -57,6 +57,7 @@ type PTPCloud struct {
 }
 
 type NetworkPeer struct {
+	ID          string
 	Unknown     bool
 	Handshaked  bool
 	CleanAddr   string
@@ -371,16 +372,16 @@ func (ptp *PTPCloud) PurgePeers(catched []string) {
 // Returns amount of peers that has been added
 func (ptp *PTPCloud) SyncPeers(catched []string) int {
 	var c int
-	for _, addr := range catched {
+	for _, id := range catched {
 		var found bool = false
 		for _, peer := range ptp.NetworkPeers {
-			if peer.CleanAddr == addr {
+			if peer.ID == id {
 				found = true
 			}
 		}
 		if !found {
 			var newPeer NetworkPeer
-			newPeer.CleanAddr = addr
+			newPeer.ID = id
 			newPeer.Unknown = true
 			ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
 			c = c + 1

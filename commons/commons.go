@@ -29,6 +29,8 @@ const (
 	CMD_CONN string = "conn"
 	// Find peers request
 	CMD_FIND string = "find"
+	// Get IPs of node
+	CMD_NODE string = "node"
 	// Ping
 	CMD_PING string = "ping"
 	// Register new Control Peer
