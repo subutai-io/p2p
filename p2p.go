@@ -285,7 +285,7 @@ func main() {
 	port := ptp.UDPSocket.GetPort()
 	log.Printf("[INFO] Started UDP Listener at port %d", port)
 	config.P2PPort = port
-	dhtClient = dhtClient.Initialize(config)
+	dhtClient = dhtClient.Initialize(config, ptp.LocalIPs)
 
 	go ptp.UDPSocket.Listen(ptp.HandleP2PMessage)
 

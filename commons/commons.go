@@ -1,5 +1,6 @@
 package commons
 
+// TODO: Modify these structures
 type DHTRequest struct {
 	Id      string "i"
 	Hash    string "h"
@@ -15,6 +16,7 @@ type DHTResponse struct {
 
 type MSG_TYPE uint16
 
+// Internal network packet type
 const (
 	MT_STRING MSG_TYPE = 0 + iota // String
 	MT_INTRO           = 1        // Introduction packet
@@ -24,6 +26,7 @@ const (
 	//todo add types
 )
 
+// List of commands used in DHT
 const (
 	// Connection handshake
 	CMD_CONN string = "conn"
