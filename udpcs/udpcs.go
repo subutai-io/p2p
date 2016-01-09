@@ -198,5 +198,8 @@ func Process_p2p_msg(count int, src_addr *net.UDPAddr, err error, rcv_bytes []by
 		return
 	}
 
-	fmt.Printf("processed message from %s, msg_data : %s\n", src_addr.String(), msg.Data)
+	fmt.Printf("processed message from %s, msg_count %d, msg_data : %s\n",
+		src_addr.String(),
+		count,
+		msg.Data)
 }

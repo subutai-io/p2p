@@ -46,7 +46,7 @@ func (dht *DHTClient) AddConnection(connections []*net.UDPConn, conn *net.UDPCon
 }
 
 // ConnectAndHandshake sends an initial packet to a DHT bootstrap node
-func (dht *DHTClient) ConnectAndHandshake(router string) (*net.UDPConn, error) {
+func (dht *DHTClient) ConnectAndHandshake(router string, ips []net.IP) (*net.UDPConn, error) {
 	log.Printf("[DHT-INFO] Connecting to a router %s", router)
 	addr, err := net.ResolveUDPAddr("udp", router)
 	if err != nil {
@@ -69,8 +69,8 @@ func (dht *DHTClient) ConnectAndHandshake(router string) (*net.UDPConn, error) {
 	req.Command = "conn"
 	// TODO: rename Port to something more clear
 	req.Port = fmt.Sprintf("%d", dht.P2PPort)
-	for _, ip := range ptp.LocalIPs {
-		req.Port = req.Port + "|" + ip
+	for _, ip := range ips {
+		req.Port = req.Port + "|" + ip.String()
 	}
 	var b bytes.Buffer
 	if err := bencode.Marshal(&b, req); err != nil {
@@ -162,7 +162,7 @@ func (dht *DHTClient) RequestPeersIPs(id string) {
 	for _, conn := range dht.Connection {
 		_, err := conn.Write([]byte(msg))
 		if err != nil {
-			log.Printf("[DHT-ERROR] Failed to send 'node' request to %s: %v", conn.RemoveAddr().String(), err)
+			log.Printf("[DHT-ERROR] Failed to send 'node' request to %s: %v", conn.RemoteAddr().String(), err)
 		}
 	}
 }
@@ -224,6 +224,8 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 					}
 				} else if data.Command == commons.CMD_REGCP {
 					// We've received a registration confirmation message from DHT bootstrap node
+				} else if data.Command == commons.CMD_NODE {
+					// We've received an IPs associated with target node
 				}
 			}
 		}
@@ -231,12 +233,12 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 }
 
 // This method initializes DHT by splitting list of routers and connect to each one
-func (dht *DHTClient) Initialize(config *DHTClient) *DHTClient {
+func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 	dht = config
 	routers := strings.Split(dht.Routers, ",")
 	dht.FailedRouters = make([]string, len(routers))
 	for _, router := range routers {
-		conn, err := dht.ConnectAndHandshake(router)
+		conn, err := dht.ConnectAndHandshake(router, ips)
 		if err != nil || conn == nil {
 			dht.FailedRouters[0] = router
 		} else {
