@@ -57,8 +57,12 @@ type PTPCloud struct {
 }
 
 type NetworkPeer struct {
-	ID          string
-	Unknown     bool
+	// ID of the node received from DHT Bootstrap node
+	ID string
+	// Whether informaton about this node is filled or not
+	// Normally it should be filled after peer-to-peer handshake procedure
+	Unknown bool
+	//
 	Handshaked  bool
 	CleanAddr   string
 	ProxyID     int
