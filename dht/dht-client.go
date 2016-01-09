@@ -20,6 +20,13 @@ type DHTClient struct {
 	P2PPort       int
 	LastCatch     []string
 	ID            string
+	// TODO: Update list
+	Peers []PeerIP
+}
+
+type PeerIP struct {
+	ID  string
+	ips []string
 }
 
 func (dht *DHTClient) DHTClientConfig() *DHTClient {
@@ -157,7 +164,7 @@ func (dht *DHTClient) UpdateLastCatch(catch string) {
 
 // This function sends a request to DHT bootstrap node with ID of
 // target node we want to connect to
-func (dht *DHTClient) RequestPeersIPs(id string) {
+func (dht *DHTClient) RequestPeerIPs(id string) {
 	msg := dht.Compose(commons.CMD_NODE, id, "")
 	for _, conn := range dht.Connection {
 		_, err := conn.Write([]byte(msg))
@@ -219,8 +226,28 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 				} else if data.Command == commons.CMD_FIND {
 					// This means we've received a list of nodes we can connect to
 					if data.Dest != "" {
-						//log.Printf("[DHT-INFO] Found peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
-						dht.UpdateLastCatch(data.Dest)
+						ids := strings.Split(data.Dest, "|")
+						if len(ids) == 0 {
+							log.Printf("[DHT-ERROR] Malformed list of peers received")
+						} else {
+							// Go over list of received peer IDs and look if we know
+							// anything about them. Add every new peer into list of peers
+							for _, id := range ids {
+								var found bool = false
+								for _, peer := range dht.Peers {
+									if peer.ID == id {
+										found = true
+									}
+								}
+								if !found {
+									var p PeerIP
+									p.ID = id
+									dht.Peers = append(dht.Peers, p)
+								}
+							}
+							//log.Printf("[DHT-INFO] Found peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
+							dht.UpdateLastCatch(data.Dest)
+						}
 					}
 				} else if data.Command == commons.CMD_REGCP {
 					// We've received a registration confirmation message from DHT bootstrap node

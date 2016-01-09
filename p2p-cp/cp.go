@@ -106,6 +106,7 @@ func (node *Node) GenerateID(hashes []Infohash) string {
 	var err error
 	var id uuid.UUID
 	id, err = uuid.NewTimeBased()
+
 	if err != nil {
 		log.Panic("[ERROR] Failed to generate UUID: %v", err)
 		node.ID = ""

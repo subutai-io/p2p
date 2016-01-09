@@ -25,7 +25,6 @@ type MSG_TYPE uint16
 
 // Main structure
 type PTPCloud struct {
-
 	// IP Address assigned to device at startup
 	IP string
 
@@ -54,6 +53,8 @@ type PTPCloud struct {
 	UDPSocket *udpcs.UDPClient
 
 	LocalIPs []net.IP
+
+	dht *dht.DHTClient
 }
 
 type NetworkPeer struct {
@@ -62,14 +63,20 @@ type NetworkPeer struct {
 	// Whether informaton about this node is filled or not
 	// Normally it should be filled after peer-to-peer handshake procedure
 	Unknown bool
-	//
-	Handshaked  bool
-	CleanAddr   string
-	ProxyID     int
-	Forwarder   *net.UDPAddr
-	PeerAddr    *net.UDPAddr
+	// This variables indicates whether handshake mechanism was started or not
+	Handshaked bool
+	// Clean address
+	CleanAddr string
+	// ID of the proxy used to communicate with the node
+	ProxyID   int
+	Forwarder *net.UDPAddr
+	PeerAddr  *net.UDPAddr
+	// IP of the peer we are connected to.
 	PeerLocalIP net.IP
-	PeerHW      net.HardwareAddr
+	// Hardware address of node's TUN/TAP device
+	PeerHW net.HardwareAddr
+	// Endpoint is the same as CleanAddr TODO: Remove CleanAddr
+	Endpoint string
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -147,6 +154,7 @@ func handlePacket(ptp *PTPCloud, contents []byte, proto int) {
 	switch proto {
 	case 512:
 		log.Printf("[DEBUG] Received PARC Universal Packet")
+		ptp.handlePARCUniversalPacket(contents)
 	case 2048:
 		ptp.handlePacketIPv4(contents, proto)
 	case 2054:
@@ -154,14 +162,18 @@ func handlePacket(ptp *PTPCloud, contents []byte, proto int) {
 		ptp.handlePacketARP(contents)
 	case 32821:
 		log.Printf("[DEBUG] Received RARP Packet")
+		ptp.handleRARPPacket(contents)
 	case 33024:
 		log.Printf("[DEBUG] Received 802.1q Packet")
+		ptp.handle8012qPacket(contents)
 	case 34525:
 		ptp.handlePacketIPv6(contents)
 	case 34915:
 		log.Printf("[DEBUG] Received PPPoE Discovery Packet")
+		ptp.handlePPPoEDiscoveryPacket(contents)
 	case 34916:
 		log.Printf("[DEBUG] Received PPPoE Session Packet")
+		ptp.handlePPPoESessionPacket(contents)
 	default:
 		log.Printf("[DEBUG] Received Undefined Packet")
 	}
@@ -184,6 +196,8 @@ func (ptp *PTPCloud) ListenInterface() {
 	}
 }
 
+// This method lists interfaces available in the system and retrieves their
+// IP addresses
 func (ptp *PTPCloud) FindNetworkAddresses() {
 	log.Printf("[INFO] Looking for available network interfaces")
 	inf, err := net.Interfaces()
@@ -289,7 +303,7 @@ func main() {
 	port := ptp.UDPSocket.GetPort()
 	log.Printf("[INFO] Started UDP Listener at port %d", port)
 	config.P2PPort = port
-	dhtClient = dhtClient.Initialize(config, ptp.LocalIPs)
+	ptp.dht = dhtClient.Initialize(config, ptp.LocalIPs)
 
 	go ptp.UDPSocket.Listen(ptp.HandleP2PMessage)
 
@@ -309,7 +323,7 @@ func main() {
 	go ptp.ListenInterface()
 	for {
 		time.Sleep(3 * time.Second)
-		dhtClient.UpdatePeers()
+		ptp.dht.UpdatePeers()
 		// Wait two seconds before synchronizing with catched peers
 		time.Sleep(2 * time.Second)
 		ptp.PurgePeers(dhtClient.LastCatch)
@@ -325,18 +339,23 @@ func main() {
 // about his device
 func (ptp *PTPCloud) IntroducePeers() {
 	for i, peer := range ptp.NetworkPeers {
+		// Skip if know this peer
 		if !peer.Unknown {
 			continue
 		}
-		log.Printf("[DEBUG] Introducing to %s", peer.CleanAddr)
-		addr, err := net.ResolveUDPAddr("udp", peer.CleanAddr)
+		// Skip if we don't endpoint address for this peer
+		if peer.Endpoint == "" {
+			continue
+		}
+		log.Printf("[DEBUG] Introducing to %s", peer.Endpoint)
+		addr, err := net.ResolveUDPAddr("udp", peer.Endpoint)
 		if err != nil {
 			log.Printf("[ERROR] Failed to resolve UDP address during Introduction: %v", err)
 			continue
 		}
 		ptp.NetworkPeers[i].PeerAddr = addr
 		// Send introduction packet
-		msg := ptp.PrepareIntroductionMessage(ptp.IP, ptp.Mac)
+		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID, ptp.Mac)
 		_, err = ptp.UDPSocket.SendMessage(msg, addr)
 		if err != nil {
 			log.Printf("[ERROR] Failed to send introduction to %s", addr.String())
@@ -344,8 +363,8 @@ func (ptp *PTPCloud) IntroducePeers() {
 	}
 }
 
-func (ptp *PTPCloud) PrepareIntroductionMessage(ip, mac string) *udpcs.P2PMessage {
-	var intro string = ip + "," + mac
+func (ptp *PTPCloud) PrepareIntroductionMessage(id, mac string) *udpcs.P2PMessage {
+	var intro string = id + "," + mac
 	msg := udpcs.CreateIntroP2PMessage(intro, 0)
 	return msg
 }
@@ -353,6 +372,23 @@ func (ptp *PTPCloud) PrepareIntroductionMessage(ip, mac string) *udpcs.P2PMessag
 // This method goes over peers and removes obsolete ones
 // Peer becomes obsolete when it goes out of DHT
 func (ptp *PTPCloud) PurgePeers(catched []string) {
+	var rem []int
+	for i, peer := range ptp.NetworkPeers {
+		var f bool = false
+		for _, newPeer := range ptp.dht.Peers {
+			if newPeer.ID == peer.ID {
+				f = true
+			}
+		}
+		if !f {
+			rem = append(rem, i)
+		}
+	}
+	for i := range rem {
+		ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
+	}
+
+	// TODO: Old Scheme. Remove it before release
 	var remove []int
 	for i, peer := range ptp.NetworkPeers {
 		var found bool = false
@@ -375,6 +411,27 @@ func (ptp *PTPCloud) PurgePeers(catched []string) {
 // adds every new peer into list of peers
 // Returns amount of peers that has been added
 func (ptp *PTPCloud) SyncPeers(catched []string) int {
+	var count int
+
+	for _, id := range ptp.dht.Peers {
+		var found bool = false
+		for _, peer := range ptp.NetworkPeers {
+			if peer.ID == id.ID {
+				found = true
+			}
+		}
+		if !found {
+			count = count + 1
+			var newPeer NetworkPeer
+			newPeer.ID = id.ID
+			newPeer.Unknown = true
+			ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+			ptp.dht.RequestPeerIPs(id.ID)
+		}
+	}
+	return count
+
+	// TODO: Old Scheme. Remove it before release
 	var c int
 	for _, id := range catched {
 		var found bool = false
@@ -388,6 +445,7 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 			newPeer.ID = id
 			newPeer.Unknown = true
 			ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+			ptp.dht.RequestPeerIPs(id)
 			c = c + 1
 		}
 	}
@@ -429,7 +487,7 @@ func GenerateMAC() (string, net.HardwareAddr) {
 
 // AddPeer adds new peer into list of network participants. If peer was added previously
 // information about him will be updated. If not, new entry will be added
-func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, ip net.IP, mac net.HardwareAddr) {
+func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, mac net.HardwareAddr) {
 	var found bool = false
 	for i, peer := range ptp.NetworkPeers {
 		if peer.CleanAddr == addr.String() {
@@ -508,9 +566,9 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 		if !ptp.IsPeerUnknown(src_addr) {
 			return
 		}
-		ip, mac := ptp.ParseIntroString(string(msg.Data))
-		ptp.AddPeer(src_addr, ip, mac)
-		msg := ptp.PrepareIntroductionMessage(ptp.IP, ptp.Mac)
+		id, mac := ptp.ParseIntroString(string(msg.Data))
+		ptp.AddPeer(src_addr, id, mac)
+		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID, ptp.Mac)
 		_, err := ptp.UDPSocket.SendMessage(msg, src_addr)
 		if err != nil {
 			log.Printf("[ERROR] Failed to respond to introduction message: %v", err)
