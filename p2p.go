@@ -251,6 +251,7 @@ func main() {
 		argDev    string
 		argDirect string
 		argHash   string
+		argDht    string
 	)
 
 	// TODO: Improve this
@@ -263,6 +264,7 @@ func main() {
 	// TODO: Direct connection is not implemented yet
 	flag.StringVar(&argDirect, "direct", "none", "IP to connect to directly")
 	flag.StringVar(&argHash, "hash", "none", "Infohash for environment")
+	flag.StringVar(&argDht, "dht", "", "Specify DHT bootstrap node address")
 
 	flag.Parse()
 	if argIp == "none" || argMask == "none" || argDev == "none" {
@@ -303,6 +305,9 @@ func main() {
 	port := ptp.UDPSocket.GetPort()
 	log.Printf("[INFO] Started UDP Listener at port %d", port)
 	config.P2PPort = port
+	if argDht != "" {
+		config.Routers = argDht
+	}
 	ptp.dht = dhtClient.Initialize(config, ptp.LocalIPs)
 
 	go ptp.UDPSocket.Listen(ptp.HandleP2PMessage)
@@ -492,8 +497,9 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, mac net.HardwareAddr)
 	for i, peer := range ptp.NetworkPeers {
 		if peer.CleanAddr == addr.String() {
 			found = true
+			ptp.NetworkPeers[i].ID = id
 			ptp.NetworkPeers[i].PeerAddr = addr
-			ptp.NetworkPeers[i].PeerLocalIP = ip
+			//ptp.NetworkPeers[i].PeerLocalIP = ip
 			ptp.NetworkPeers[i].PeerHW = mac
 			ptp.NetworkPeers[i].Unknown = false
 			ptp.NetworkPeers[i].Handshaked = true
@@ -501,9 +507,10 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, mac net.HardwareAddr)
 	}
 	if !found {
 		var newPeer NetworkPeer
+		newPeer.ID = id
 		newPeer.CleanAddr = addr.String()
 		newPeer.PeerAddr = addr
-		newPeer.PeerLocalIP = ip
+		//newPeer.PeerLocalIP = ip
 		newPeer.PeerHW = mac
 		newPeer.Unknown = false
 		newPeer.Handshaked = true
@@ -567,7 +574,7 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 			return
 		}
 		id, mac := ptp.ParseIntroString(string(msg.Data))
-		ptp.AddPeer(src_addr, id, mac)
+		ptp.AddPeer(src_addr, id.String(), mac)
 		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID, ptp.Mac)
 		_, err := ptp.UDPSocket.SendMessage(msg, src_addr)
 		if err != nil {

@@ -48,6 +48,8 @@ type Node struct {
 
 	// When disabled - node will not be interracted.
 	Disabled bool
+
+	IPList []net.IP
 }
 
 // Control Peer represents a connected control peer that can be used by
@@ -245,10 +247,6 @@ func (dht *DHTRouter) RegisterHash(addr string, hash string) {
 // This method goes over list of hashes and collects information about all nodes with the
 // same hash separated by comma
 func (dht *DHTRouter) ResponseFind(req commons.DHTRequest, addr string) commons.DHTResponse {
-	for _, n := range NodeList {
-		log.Printf("Node: %s, Hash: %s", n.ConnectionAddress, n.AssociatedHash)
-	}
-
 	var foundDest string
 	var hashExists bool = false
 	for _, node := range NodeList {
@@ -259,7 +257,7 @@ func (dht *DHTRouter) ResponseFind(req commons.DHTRequest, addr string) commons.
 				continue
 			}
 			log.Printf("[DEBUG] Found match in hash '%s' with peer %s", req.Hash, node.AssociatedHash)
-			foundDest += node.Endpoint + ","
+			foundDest += node.ID + ","
 		}
 	}
 	if !hashExists {
@@ -318,6 +316,24 @@ func (dht *DHTRouter) ResponseRegCP(req commons.DHTRequest, addr string) commons
 				// TODO: Consider assigning ID to Control Peers, but currently we
 				// don't need such functionality
 				dht.ControlPeers = append(dht.ControlPeers, newCP)
+			}
+		}
+	}
+	return resp
+}
+
+func (dht *DHTRouter) ResponseNode(req commons.DHTRequest, addr string) commons.DHTResponse {
+	var resp commons.DHTResponse
+	resp.Command = req.Command
+	resp.Id = req.Id
+	resp.Dest = "0"
+	for _, node := range NodeList {
+		if node.ID == req.Id {
+			for _, ip := range node.IPList {
+				if resp.Dest == "0" {
+					resp.Dest = ""
+				}
+				resp.Dest = resp.Dest + ip.String() + "|"
 			}
 		}
 	}
@@ -406,6 +422,8 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 		}
 		// TODO: Exclude this Control peer from list for this particular peer
 		resp = dht.ResponseCP(req, addr.String())
+	case commons.CMD_NODE:
+		resp = dht.ResponseNode(req, addr.String())
 	default:
 		log.Printf("[ERROR] Unknown command received: %s", req.Command)
 		resp.Command = ""
