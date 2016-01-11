@@ -216,6 +216,7 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 						log.Printf("[DHT-ERROR] Failed to send FIND packet: %v", err)
 					} else {
 						log.Printf("[DHT-INFO] Received connection confirmation from tracker %s", conn.RemoteAddr().String())
+						log.Printf("[DHT-INFO] Received personal ID for this session: %s", data.Id)
 					}
 				} else if data.Command == commons.CMD_PING {
 					msg := dht.Compose(commons.CMD_PING, "", "")
@@ -245,7 +246,7 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 									dht.Peers = append(dht.Peers, p)
 								}
 							}
-							//log.Printf("[DHT-INFO] Found peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
+							log.Printf("[DHT-INFO] Found peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
 							dht.UpdateLastCatch(data.Dest)
 						}
 					}
