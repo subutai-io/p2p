@@ -196,6 +196,27 @@ func (ptp *PTPCloud) ListenInterface() {
 	}
 }
 
+// This method will generate device name if none were specified at startup
+func (ptp *PTPCloud) GenerateDeviceName(i int) string {
+	var devName string = "vptp" + fmt.Sprintf("%d", i)
+	inf, err := net.Interfaces()
+	if err != nil {
+		log.Printf("[ERROR] Failed to retrieve list of network interfaces")
+		return ""
+	}
+	var exist bool = false
+	for _, i := range inf {
+		if i.Name == devName {
+			exist = true
+		}
+	}
+	if exist {
+		return ptp.GenerateDeviceName(i + 1)
+	} else {
+		return devName
+	}
+}
+
 // This method lists interfaces available in the system and retrieves their
 // IP addresses
 func (ptp *PTPCloud) FindNetworkAddresses() {
@@ -254,20 +275,18 @@ func main() {
 		argDht    string
 	)
 
-	// TODO: Improve this
 	flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
 	// TODO: Parse this properly
-	flag.StringVar(&argMask, "mask", "none", "Network mask")
-	// TODO: Implement this
+	flag.StringVar(&argMask, "mask", "255.255.255.0", "Network mask")
 	flag.StringVar(&argMac, "mac", "none", "MAC Address for a TUN/TAP interface")
-	flag.StringVar(&argDev, "dev", "none", "TUN/TAP interface name")
+	flag.StringVar(&argDev, "dev", "", "TUN/TAP interface name")
 	// TODO: Direct connection is not implemented yet
 	flag.StringVar(&argDirect, "direct", "none", "IP to connect to directly")
 	flag.StringVar(&argHash, "hash", "none", "Infohash for environment")
 	flag.StringVar(&argDht, "dht", "", "Specify DHT bootstrap node address")
 
 	flag.Parse()
-	if argIp == "none" || argMask == "none" || argDev == "none" {
+	if argIp == "none" {
 		fmt.Println("USAGE: p2p [OPTIONS]")
 		fmt.Printf("\nOPTIONS:\n")
 		flag.PrintDefaults()
@@ -299,6 +318,11 @@ func main() {
 	ptp := new(PTPCloud)
 	ptp.FindNetworkAddresses()
 	ptp.HardwareAddr = hw
+
+	if argDev == "" {
+		argDev = ptp.GenerateDeviceName(1)
+	}
+
 	ptp.CreateDevice(argIp, argMac, argMask, argDev)
 	ptp.UDPSocket = new(udpcs.UDPClient)
 	ptp.UDPSocket.Init("", 0)
