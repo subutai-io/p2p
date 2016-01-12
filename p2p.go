@@ -268,13 +268,14 @@ func (ptp *PTPCloud) FindNetworkAddresses() {
 func main() {
 	// TODO: Move this to init() function
 	var (
-		argIp     string
-		argMask   string
-		argMac    string
-		argDev    string
-		argDirect string
-		argHash   string
-		argDht    string
+		argIp      string
+		argMask    string
+		argMac     string
+		argDev     string
+		argDirect  string
+		argHash    string
+		argDht     string
+		argKeyfile string
 	)
 
 	flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
@@ -286,6 +287,7 @@ func main() {
 	flag.StringVar(&argDirect, "direct", "none", "IP to connect to directly")
 	flag.StringVar(&argHash, "hash", "none", "Infohash for environment")
 	flag.StringVar(&argDht, "dht", "", "Specify DHT bootstrap node address")
+	flag.StringVar(&argKeyfile, "key", "", "Path to yaml file containing crypto key")
 
 	flag.Parse()
 	if argIp == "none" {
@@ -307,6 +309,11 @@ func main() {
 	} else {
 		argMac, hw = GenerateMAC()
 		log.Printf("[INFO] Generate MAC for TAP device: %s", argMac)
+	}
+
+	if argKeyfile == "" {
+		var crypter Crypto
+		crypter.ReadKeysFromFile(argKeyfile)
 	}
 
 	// Create new DHT Client, configured it and initialize
