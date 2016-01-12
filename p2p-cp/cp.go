@@ -242,9 +242,9 @@ func (dht *DHTRouter) ResponseConn(req commons.DHTRequest, addr string, n Node) 
 	for i, d := range data {
 		if i == 0 {
 			// Put global IP address first
-			a, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", addr, port))
+			a, err := net.ResolveUDPAddr("udp", addr)
 			if err != nil {
-				log.Printf("[ERROR] Failed to resolve UDP address during handshake")
+				log.Printf("[ERROR] Failed to resolve UDP address during handshake: %v", err)
 				return resp
 			}
 			ipList = append(ipList, a)

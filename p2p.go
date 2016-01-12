@@ -374,7 +374,7 @@ func (ptp *PTPCloud) IntroducePeers() {
 		if !peer.Unknown {
 			continue
 		}
-		// Skip if we don't endpoint address for this peer
+		// Skip if we don't have an endpoint address for this peer
 		if peer.Endpoint == "" {
 			continue
 		}
@@ -451,7 +451,6 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 		}
 		var found bool = false
 		for i, peer := range ptp.NetworkPeers {
-			log.Printf("[DEBUG] !!!!!!!!!!!!!!!!!! %s", peer.ID)
 			if peer.ID == id.ID {
 				found = true
 				// Check if know something new about this peer, e.g. new addresses were
@@ -470,6 +469,17 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 						log.Printf("[INFO] Adding new IP (%s) address to %s", ip, peer.ID)
 						// TODO: Check IP parsing
 						ptp.NetworkPeers[i].KnownIPs = append(ptp.NetworkPeers[i].KnownIPs, net.ParseIP(ip))
+					}
+				}
+
+				// Set and Endpoint from peers if no endpoint were set previously
+				if peer.Endpoint == "" {
+					// First we need to go over each network and see if some of addresses are inside LAN
+					// TODO: Implement
+
+					// TODO: Temporary solution
+					if len(ptp.NetworkPeers[i].KnownIPs) > 0 {
+						peer.Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
 					}
 				}
 			}
