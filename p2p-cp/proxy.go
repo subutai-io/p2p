@@ -1,5 +1,10 @@
 package main
 
+// Connect to a DHT
+// Register with DHT
+// Wait for incoming connections
+// Validate incoming connections with DHT
+
 import (
 	"fmt"
 	"net"

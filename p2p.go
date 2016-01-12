@@ -594,6 +594,7 @@ func (ptp *PTPCloud) ParseIntroString(intro string) (net.IP, net.HardwareAddr) {
 		log.Printf("[ERROR] Failed to parse introduction stirng")
 		return nil, nil
 	}
+	// TODO: Here we have IP now
 	ip := net.ParseIP(parts[0])
 	if ip == nil {
 		log.Printf("[ERROR] Failed to parse IP address from introduction packet")
