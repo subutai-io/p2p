@@ -78,7 +78,7 @@ type NetworkPeer struct {
 	// Endpoint is the same as CleanAddr TODO: Remove CleanAddr
 	Endpoint string
 	// List of peer IP addresses
-	KnownIPs []net.IP
+	KnownIPs []*net.UDPAddr
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -468,7 +468,9 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 					if !ipFound {
 						log.Printf("[INFO] Adding new IP (%s) address to %s", ip, peer.ID)
 						// TODO: Check IP parsing
-						ptp.NetworkPeers[i].KnownIPs = append(ptp.NetworkPeers[i].KnownIPs, net.ParseIP(ip))
+						newIp, _ := net.ResolveUDPAddr("udp", ip)
+						ptp.NetworkPeers[i].KnownIPs = append(ptp.NetworkPeers[i].KnownIPs, newIp)
+						log.Printf("!!!!!!!!!!!!!!!!!!!\n%v\n!!!!!!!!!!!!!!!!!!!!!!!!!!", ptp.NetworkPeers[i].KnownIPs)
 					}
 				}
 
