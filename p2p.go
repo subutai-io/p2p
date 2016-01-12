@@ -95,7 +95,7 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) error {
 	yamlFile, err := ioutil.ReadFile("config.yaml")
 	if err != nil {
 		log.Printf("[ERROR] Failed to load config: %v", err)
-		return err
+		ptp.IPTool = "/sbin/ip"
 	}
 	err = yaml.Unmarshal(yamlFile, ptp)
 	if err != nil {
@@ -311,8 +311,8 @@ func main() {
 		log.Printf("[INFO] Generate MAC for TAP device: %s", argMac)
 	}
 
-	if argKeyfile == "" {
-		var crypter Crypto
+	var crypter Crypto
+	if argKeyfile != "" {
 		crypter.ReadKeysFromFile(argKeyfile)
 	}
 
@@ -393,7 +393,7 @@ func (ptp *PTPCloud) IntroducePeers() {
 		}
 		ptp.NetworkPeers[i].PeerAddr = addr
 		// Send introduction packet
-		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID, ptp.Mac)
+		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID)
 		_, err = ptp.UDPSocket.SendMessage(msg, addr)
 		if err != nil {
 			log.Printf("[ERROR] Failed to send introduction to %s", addr.String())
@@ -403,8 +403,8 @@ func (ptp *PTPCloud) IntroducePeers() {
 	}
 }
 
-func (ptp *PTPCloud) PrepareIntroductionMessage(id, mac string) *udpcs.P2PMessage {
-	var intro string = id + "," + mac
+func (ptp *PTPCloud) PrepareIntroductionMessage(id string) *udpcs.P2PMessage {
+	var intro string = id + "," + ptp.Mac + "," + ptp.IP
 	msg := udpcs.CreateIntroP2PMessage(intro, 0)
 	return msg
 }
@@ -452,7 +452,7 @@ func (ptp *PTPCloud) PurgePeers(catched []string) {
 // adds every new peer into list of peers
 // Returns amount of peers that has been added
 func (ptp *PTPCloud) SyncPeers(catched []string) int {
-	var count int
+	var count int = 0
 
 	for _, id := range ptp.dht.Peers {
 		if id.ID == "" {
@@ -479,7 +479,6 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 						// TODO: Check IP parsing
 						newIp, _ := net.ResolveUDPAddr("udp", ip)
 						ptp.NetworkPeers[i].KnownIPs = append(ptp.NetworkPeers[i].KnownIPs, newIp)
-						log.Printf("!!!!!!!!!!!!!!!!!!!\n%v\n!!!!!!!!!!!!!!!!!!!!!!!!!!", ptp.NetworkPeers[i].KnownIPs)
 					}
 				}
 
@@ -565,14 +564,15 @@ func GenerateMAC() (string, net.HardwareAddr) {
 
 // AddPeer adds new peer into list of network participants. If peer was added previously
 // information about him will be updated. If not, new entry will be added
-func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, mac net.HardwareAddr) {
+func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, ip net.IP, mac net.HardwareAddr) {
 	var found bool = false
 	for i, peer := range ptp.NetworkPeers {
-		if peer.CleanAddr == addr.String() {
+		if peer.ID == id {
 			found = true
+			ptp.NetworkPeers[i].CleanAddr = addr.String()
 			ptp.NetworkPeers[i].ID = id
 			ptp.NetworkPeers[i].PeerAddr = addr
-			//ptp.NetworkPeers[i].PeerLocalIP = ip
+			ptp.NetworkPeers[i].PeerLocalIP = ip
 			ptp.NetworkPeers[i].PeerHW = mac
 			ptp.NetworkPeers[i].Unknown = false
 			ptp.NetworkPeers[i].Handshaked = true
@@ -583,7 +583,7 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, mac net.HardwareAddr)
 		newPeer.ID = id
 		newPeer.CleanAddr = addr.String()
 		newPeer.PeerAddr = addr
-		//newPeer.PeerLocalIP = ip
+		newPeer.PeerLocalIP = ip
 		newPeer.PeerHW = mac
 		newPeer.Unknown = false
 		newPeer.Handshaked = true
@@ -595,24 +595,28 @@ func (p *NetworkPeer) ProbeConnection() bool {
 	return false
 }
 
-func (ptp *PTPCloud) ParseIntroString(intro string) (net.IP, net.HardwareAddr) {
+func (ptp *PTPCloud) ParseIntroString(intro string) (string, net.HardwareAddr, net.IP) {
 	parts := strings.Split(intro, ",")
-	if len(parts) != 2 {
+	if len(parts) != 3 {
 		log.Printf("[ERROR] Failed to parse introduction stirng")
-		return nil, nil
+		return "", nil, nil
 	}
-	// TODO: Here we have IP now
-	ip := net.ParseIP(parts[0])
-	if ip == nil {
-		log.Printf("[ERROR] Failed to parse IP address from introduction packet")
-		return nil, nil
-	}
+	var id string
+	id = parts[0]
+	// Extract MAC
 	mac, err := net.ParseMAC(parts[1])
 	if err != nil {
 		log.Printf("[ERROR] Failed to parse MAC address from introduction packet: %v", err)
-		return nil, nil
+		return "", nil, nil
 	}
-	return ip, mac
+	// Extract IP
+	ip := net.ParseIP(parts[2])
+	if ip == nil {
+		log.Printf("[ERROR] Failed to parse IP address from introduction packet")
+		return "", nil, nil
+	}
+
+	return id, mac, ip
 }
 
 func (ptp *PTPCloud) IsPeerUnknown(addr *net.UDPAddr) bool {
@@ -645,11 +649,12 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 		log.Printf("[DEBUG] Introduction message received: %s", string(msg.Data))
 		// Don't do anything if we already know everything about this peer
 		if !ptp.IsPeerUnknown(src_addr) {
+			log.Printf("[DEBUG] We already know this peer. Skip")
 			return
 		}
-		id, mac := ptp.ParseIntroString(string(msg.Data))
-		ptp.AddPeer(src_addr, id.String(), mac)
-		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID, ptp.Mac)
+		id, mac, ip := ptp.ParseIntroString(string(msg.Data))
+		ptp.AddPeer(src_addr, id, ip, mac)
+		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID)
 		_, err := ptp.UDPSocket.SendMessage(msg, src_addr)
 		if err != nil {
 			log.Printf("[ERROR] Failed to respond to introduction message: %v", err)
@@ -661,7 +666,7 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 		log.Printf("[ERROR] Unknown message received")
 	}
 
-	log.Printf("processed message from %s, msg_data : %s\n", src_addr.String(), msg.Data)
+	//log.Printf("processed message from %s, msg_data : %s\n", src_addr.String(), msg.Data)
 }
 
 func (ptp *PTPCloud) SendTo(dst net.HardwareAddr, msg *udpcs.P2PMessage) (int, error) {
