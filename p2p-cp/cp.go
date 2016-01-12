@@ -12,6 +12,8 @@ import (
 	"net"
 	"p2p/commons"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -49,7 +51,7 @@ type Node struct {
 	// When disabled - node will not be interracted.
 	Disabled bool
 
-	IPList []net.IP
+	IPList []*net.UDPAddr
 }
 
 // Control Peer represents a connected control peer that can be used by
@@ -214,22 +216,70 @@ func (dht *DHTRouter) EncodeResponse(resp commons.DHTResponse) string {
 // ResponseConn method generates a response to a "conn" network message received as a first packet
 // from a newly connected node. Response writes an ID of the node
 func (dht *DHTRouter) ResponseConn(req commons.DHTRequest, addr string, n Node) commons.DHTResponse {
-	// First we want to update Endpoint for this node
-	// Let's resolve new address from original IP and by port received from client
-	a1, _ := net.ResolveUDPAddr("udp", addr)
-	a, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%s", a1.IP.String(), req.Port))
-	if err != nil {
-		log.Printf("[DHT-ERROR] Failed to resolve UDP Address: %v", err)
-	}
-	for i, node := range NodeList {
-		if node.ConnectionAddress == addr {
-			NodeList[i].Endpoint = a.String()
-		}
-	}
 	var resp commons.DHTResponse
 	resp.Command = req.Command
-	resp.Id = n.ID
+	resp.Id = "0"
 	resp.Dest = "0"
+	// First we want to update Endpoint for this node
+	// Let's resolve new address from original IP and by port received from client
+
+	// First element should always be a port number
+	data := strings.Split(req.Port, "|")
+	if len(data) <= 1 {
+		// We should receive information about at least one network interface
+		log.Printf("[DHT-ERROR] Received malformed handshake")
+		return resp
+	}
+
+	port, err := strconv.Atoi(data[0])
+	if err != nil {
+		log.Printf("[ERROR] Failed to parse port from handshake packet")
+		return resp
+	}
+
+	var ipList []*net.UDPAddr
+
+	for i, d := range data {
+		if i == 0 {
+			// Put global IP address first
+			a, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", addr, port))
+			if err != nil {
+				log.Printf("[ERROR] Failed to resolve UDP address during handshake")
+				return resp
+			}
+			ipList = append(ipList, a)
+			continue
+		}
+		if d == "" {
+			continue
+		}
+		udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", d, port))
+		if err != nil {
+			log.Printf("[ERROR] Failed to resolve address during handshake: %v", err)
+			continue
+		}
+		ipList = append(ipList, udpAddr)
+	}
+
+	for i, node := range NodeList {
+		if node.ConnectionAddress == addr {
+			NodeList[i].IPList = ipList
+		}
+	}
+
+	/*
+		a1, _ := net.ResolveUDPAddr("udp", addr)
+		a, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%s", a1.IP.String(), req.Port))
+		if err != nil {
+			log.Printf("[DHT-ERROR] Failed to resolve UDP Address: %v", err)
+		}
+		for i, node := range NodeList {
+			if node.ConnectionAddress == addr {
+				NodeList[i].Endpoint = a.String()
+			}
+		}
+	*/
+	resp.Id = n.ID
 	return resp
 }
 

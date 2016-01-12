@@ -77,6 +77,8 @@ type NetworkPeer struct {
 	PeerHW net.HardwareAddr
 	// Endpoint is the same as CleanAddr TODO: Remove CleanAddr
 	Endpoint string
+	// List of peer IP addresses
+	KnownIPs []net.IP
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -416,6 +418,7 @@ func (ptp *PTPCloud) PurgePeers(catched []string) {
 	for i := range rem {
 		ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
 	}
+	return
 
 	// TODO: Old Scheme. Remove it before release
 	var remove []int
@@ -443,13 +446,36 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 	var count int
 
 	for _, id := range ptp.dht.Peers {
+		if id.ID == "" {
+			continue
+		}
 		var found bool = false
-		for _, peer := range ptp.NetworkPeers {
+		for i, peer := range ptp.NetworkPeers {
+			log.Printf("[DEBUG] !!!!!!!!!!!!!!!!!! %s", peer.ID)
 			if peer.ID == id.ID {
 				found = true
+				// Check if know something new about this peer, e.g. new addresses were
+				// assigned to it
+				for _, ip := range id.Ips {
+					if ip == "" || ip == "0" {
+						continue
+					}
+					var ipFound bool = false
+					for _, kip := range peer.KnownIPs {
+						if kip.String() == ip {
+							ipFound = true
+						}
+					}
+					if !ipFound {
+						log.Printf("[INFO] Adding new IP (%s) address to %s", ip, peer.ID)
+						// TODO: Check IP parsing
+						ptp.NetworkPeers[i].KnownIPs = append(ptp.NetworkPeers[i].KnownIPs, net.ParseIP(ip))
+					}
+				}
 			}
 		}
 		if !found {
+			log.Printf("[INFO] Adding new peer. Requesting peer address")
 			count = count + 1
 			var newPeer NetworkPeer
 			newPeer.ID = id.ID

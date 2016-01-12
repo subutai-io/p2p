@@ -26,7 +26,7 @@ type DHTClient struct {
 
 type PeerIP struct {
 	ID  string
-	ips []string
+	Ips []string
 }
 
 func (dht *DHTClient) DHTClientConfig() *DHTClient {
@@ -73,7 +73,7 @@ func (dht *DHTClient) ConnectAndHandshake(router string, ips []net.IP) (*net.UDP
 	var req commons.DHTRequest
 	req.Id = "0"
 	req.Hash = "0"
-	req.Command = "conn"
+	req.Command = commons.CMD_CONN
 	// TODO: rename Port to something more clear
 	req.Port = fmt.Sprintf("%d", dht.P2PPort)
 	for _, ip := range ips {
@@ -227,7 +227,7 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 				} else if data.Command == commons.CMD_FIND {
 					// This means we've received a list of nodes we can connect to
 					if data.Dest != "" {
-						ids := strings.Split(data.Dest, "|")
+						ids := strings.Split(data.Dest, ",")
 						if len(ids) == 0 {
 							log.Printf("[DHT-ERROR] Malformed list of peers received")
 						} else {
@@ -257,7 +257,7 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 					for i, peer := range dht.Peers {
 						if peer.ID == data.Id {
 							ips := strings.Split(data.Dest, "|")
-							dht.Peers[i].ips = ips
+							dht.Peers[i].Ips = ips
 						}
 					}
 				}
