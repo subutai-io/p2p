@@ -254,6 +254,12 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 					// We've received a registration confirmation message from DHT bootstrap node
 				} else if data.Command == commons.CMD_NODE {
 					// We've received an IPs associated with target node
+					for i, peer := range dht.Peers {
+						if peer.ID == data.Id {
+							ips := strings.Split(data.Dest, "|")
+							dht.Peers[i].ips = ips
+						}
+					}
 				}
 			}
 		}
