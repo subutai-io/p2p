@@ -242,7 +242,8 @@ func (dht *DHTRouter) ResponseConn(req commons.DHTRequest, addr string, n Node) 
 	for i, d := range data {
 		if i == 0 {
 			// Put global IP address first
-			a, err := net.ResolveUDPAddr("udp", addr)
+			dIp, _, _ := net.SplitHostPort(addr)
+			a, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", dIp, port))
 			if err != nil {
 				log.Printf("[ERROR] Failed to resolve UDP address during handshake: %v", err)
 				return resp
@@ -258,7 +259,16 @@ func (dht *DHTRouter) ResponseConn(req commons.DHTRequest, addr string, n Node) 
 			log.Printf("[ERROR] Failed to resolve address during handshake: %v", err)
 			continue
 		}
-		ipList = append(ipList, udpAddr)
+		var found bool = false
+		for _, ip := range ipList {
+			if ip.String() == udpAddr.String() {
+				// Sometimes when interface IP address is equal to global IP address they will duplicate
+				found = true
+			}
+		}
+		if !found {
+			ipList = append(ipList, udpAddr)
+		}
 	}
 
 	for i, node := range NodeList {

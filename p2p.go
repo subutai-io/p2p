@@ -390,6 +390,8 @@ func (ptp *PTPCloud) IntroducePeers() {
 		_, err = ptp.UDPSocket.SendMessage(msg, addr)
 		if err != nil {
 			log.Printf("[ERROR] Failed to send introduction to %s", addr.String())
+		} else {
+			log.Printf("[DEBUG] Introduction sent to %s", peer.Endpoint)
 		}
 	}
 }
@@ -481,14 +483,16 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 
 					// TODO: Temporary solution
 					if len(ptp.NetworkPeers[i].KnownIPs) > 0 {
-						peer.Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
+						log.Printf("[DEBUG] Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
+						ptp.NetworkPeers[i].Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
+						// Increase counter so p2p package will send introduction
+						count = count + 1
 					}
 				}
 			}
 		}
 		if !found {
 			log.Printf("[INFO] Adding new peer. Requesting peer address")
-			count = count + 1
 			var newPeer NetworkPeer
 			newPeer.ID = id.ID
 			newPeer.Unknown = true
