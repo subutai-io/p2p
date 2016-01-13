@@ -453,36 +453,25 @@ func (ptp *PTPCloud) TestConnection(endpoint *net.UDPAddr) bool {
 	msg := udpcs.CreateTestP2PMessage("TEST", 0)
 	conn, err := net.DialUDP("udp4", nil, endpoint)
 	if err != nil {
-		log.Printf("[ERROR] %v", err)
 		return false
 	}
-	log.Printf("!@#!@#!@#")
 	ser := msg.Serialize()
-	log.Printf("serialized BLAD!!!")
-	if conn == nil {
-		log.Printf("HER S GORY")
-	}
 	_, err = conn.Write(ser)
-	log.Printf("!!!!!!!!!!!!!!!!1")
 	if err != nil {
 		conn.Close()
 		return false
 	}
-	log.Printf("!!!!!!!!!!!!!!!!2")
 	t := time.Now()
 	t = t.Add(3 * time.Second)
 	conn.SetReadDeadline(t)
-	log.Printf("!!!!!!!!!!!!!!!!3")
 	for {
 		var buf [4096]byte
 		s, _, err := conn.ReadFromUDP(buf[0:])
 		if err != nil {
-			log.Printf("[!!!!!!!!!!!!!!!!] %v", err)
 			conn.Close()
 			return false
 		}
 		if s > 0 {
-			log.Printf("[!!!!!!!!!!!!!!!!!!!!!!!!!!@#$} ZAEBCA")
 			conn.Close()
 			return true
 		}
@@ -550,6 +539,7 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 									if ptp.TestConnection(kip) {
 										ptp.NetworkPeers[i].Endpoint = kip.IP.String()
 										count = count + 1
+										log.Printf("[DEBUG] Setting endpoint for %s to %s", peer.ID, kip.String())
 									}
 									// TODO: Test connection
 								}
@@ -558,7 +548,7 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 					}
 
 					// If we've failed to find something that is really close to us, skip to global
-					if failback || peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
+					if failback && peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
 						log.Printf("[DEBUG] Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
 						ptp.NetworkPeers[i].Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
 						// Increase counter so p2p package will send introduction
