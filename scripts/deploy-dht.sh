@@ -30,5 +30,5 @@ for host in 1 2 3 4 5; do
     ssh -i $KEY $SSH_USER@dht$host.subut.ai "killall -9 $APP_NAME"
     ssh -i $KEY $SSH_USER@dht$host.subut.ai "killall -9 cp"
     scp -i $KEY $BINARY $SSH_USER@dht$host.subut.ai:~
-    ssh -n -f -i $KEY $SSH_USER@dht$host.subut.ai "~/$APP_NAME 2> /home/ubuntu/p2p-cp.log &" &
+    ssh -n -f -i $KEY $SSH_USER@dht$host.subut.ai "~/$APP_NAME -dht 6881 2> /home/ubuntu/p2p-cp.log &" &
 done
