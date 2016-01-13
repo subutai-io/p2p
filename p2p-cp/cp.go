@@ -502,8 +502,8 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 	var removeKeys []int
 	for {
 		for _, i := range removeKeys {
-			NodeList = append(NodeList[:i], NodeList[i+1:]...)
 			log.Printf("[NOTICE] %s timeout reached. Disconnecting", NodeList[i].ConnectionAddress)
+			NodeList = append(NodeList[:i], NodeList[i+1:]...)
 		}
 		removeKeys = removeKeys[:0]
 		time.Sleep(PingTimeout * time.Second)

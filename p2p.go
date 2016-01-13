@@ -486,9 +486,30 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 				if peer.Endpoint == "" {
 					// First we need to go over each network and see if some of addresses are inside LAN
 					// TODO: Implement
+					var failback bool = false
+					interfaces, err := net.Interfaces()
+					if err != nil {
+						log.Printf("[ERROR] Failed to retrieve list of network interfaces")
+						failback = true
+					}
 
-					// TODO: Temporary solution
-					if len(ptp.NetworkPeers[i].KnownIPs) > 0 {
+					for _, inf := range interfaces {
+						if inf.Name == ptp.DeviceName {
+							continue
+						}
+						addrs, _ := inf.Addrs()
+						for _, addr := range addrs {
+							_, network, _ := net.ParseCIDR(addr.String())
+							for _, kip := range ptp.NetworkPeers[i].KnownIPs {
+								if network.Contains(kip.IP) {
+									ptp.NetworkPeers[i].Endpoint = kip.String()
+								}
+							}
+						}
+					}
+
+					// If we've failed to find something that is really close to us, skip to global
+					if peer.Endpoint == "" && failback && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
 						log.Printf("[DEBUG] Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
 						ptp.NetworkPeers[i].Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
 						// Increase counter so p2p package will send introduction

@@ -107,7 +107,7 @@ type UDPClient struct {
 	port         int16
 	addr         *net.UDPAddr
 	conn         *net.UDPConn
-	input_buffer [1024]byte
+	input_buffer [4096]byte
 	disposed     bool
 }
 
