@@ -167,7 +167,7 @@ func handlePacket(ptp *PTPCloud, contents []byte, proto int) {
 		ptp.handleRARPPacket(contents)
 	case 33024:
 		log.Printf("[DEBUG] Received 802.1q Packet")
-		ptp.handle8012qPacket(contents)
+		ptp.handle8021qPacket(contents)
 	case 34525:
 		ptp.handlePacketIPv6(contents)
 	case 34915:
