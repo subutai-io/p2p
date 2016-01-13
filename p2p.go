@@ -537,7 +537,7 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 
 								if network.Contains(kip.IP) {
 									if ptp.TestConnection(kip) {
-										ptp.NetworkPeers[i].Endpoint = kip.IP.String()
+										ptp.NetworkPeers[i].Endpoint = kip.String()
 										count = count + 1
 										log.Printf("[DEBUG] Setting endpoint for %s to %s", peer.ID, kip.String())
 									}
