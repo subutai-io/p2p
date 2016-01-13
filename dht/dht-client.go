@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	bencode "github.com/jackpal/bencode-go"
-	"log"
 	"net"
 	"p2p/commons"
 	"p2p/go-stun/stun"
+	"p2p/p2p_log"
 	"strings"
 )
 
@@ -54,20 +54,20 @@ func (dht *DHTClient) AddConnection(connections []*net.UDPConn, conn *net.UDPCon
 
 // ConnectAndHandshake sends an initial packet to a DHT bootstrap node
 func (dht *DHTClient) ConnectAndHandshake(router string, ips []net.IP) (*net.UDPConn, error) {
-	log.Printf("[INFO] Connecting to a router %s", router)
+	p2p_log.Log(p2p_log.INFO, "Connecting to a router %s", router)
 	addr, err := net.ResolveUDPAddr("udp", router)
 	if err != nil {
-		log.Printf("[ERROR]: Failed to resolve discovery service address: %v", err)
+		p2p_log.Log(p2p_log.ERROR, "Failed to resolve discovery service address: %v", err)
 		return nil, err
 	}
 
 	conn, err := net.DialUDP("udp4", nil, addr)
 	if err != nil {
-		log.Printf("[ERROR]: Failed to establish connection to discovery service: %v", err)
+		p2p_log.Log(p2p_log.ERROR, "Failed to establish connection to discovery service: %v", err)
 		return nil, err
 	}
 
-	log.Printf("[INFO] Ready to peer discovery via %s [%s]", router, conn.RemoteAddr().String())
+	p2p_log.Log(p2p_log.INFO, "Ready to peer discovery via %s [%s]", router, conn.RemoteAddr().String())
 
 	// Handshake
 	var req commons.DHTRequest
@@ -81,7 +81,7 @@ func (dht *DHTClient) ConnectAndHandshake(router string, ips []net.IP) (*net.UDP
 	}
 	var b bytes.Buffer
 	if err := bencode.Marshal(&b, req); err != nil {
-		log.Printf("[ERROR] Failed to Marshal bencode %v", err)
+		p2p_log.Log(p2p_log.ERROR, "Failed to Marshal bencode %v", err)
 		conn.Close()
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (dht *DHTClient) ConnectAndHandshake(router string, ips []net.IP) (*net.UDP
 	msg := b.String()
 	_, err = conn.Write([]byte(msg))
 	if err != nil {
-		log.Printf("[ERROR] Failed to send packet: %v", err)
+		p2p_log.Log(p2p_log.ERROR, "Failed to send packet: %v", err)
 		conn.Close()
 		return nil, err
 	}
@@ -101,14 +101,14 @@ func (dht *DHTClient) ConnectAndHandshake(router string, ips []net.IP) (*net.UDP
 func (dht *DHTClient) Extract(b []byte) (response commons.DHTResponse, err error) {
 	defer func() {
 		if x := recover(); x != nil {
-			log.Printf("[ERROR] Bencode Unmarshal failed %q, %v", string(b), x)
+			p2p_log.Log(p2p_log.ERROR, "Bencode Unmarshal failed %q, %v", string(b), x)
 		}
 	}()
 	if e2 := bencode.Unmarshal(bytes.NewBuffer(b), &response); e2 == nil {
 		err = nil
 		return
 	} else {
-		log.Printf("[DEBUG] Received from peer: %v %q", response, e2)
+		p2p_log.Log(p2p_log.DEBUG, "Received from peer: %v %q", response, e2)
 		return response, e2
 	}
 }
@@ -136,7 +136,7 @@ func (dht *DHTClient) EncodeRequest(req commons.DHTRequest) string {
 	}
 	var b bytes.Buffer
 	if err := bencode.Marshal(&b, req); err != nil {
-		log.Printf("[ERROR] Failed to Marshal bencode %v", err)
+		p2p_log.Log(p2p_log.ERROR, "Failed to Marshal bencode %v", err)
 		return ""
 	}
 	return b.String()
@@ -169,7 +169,7 @@ func (dht *DHTClient) RequestPeerIPs(id string) {
 	for _, conn := range dht.Connection {
 		_, err := conn.Write([]byte(msg))
 		if err != nil {
-			log.Printf("[ERROR] Failed to send 'node' request to %s: %v", conn.RemoteAddr().String(), err)
+			p2p_log.Log(p2p_log.ERROR, "Failed to send 'node' request to %s: %v", conn.RemoteAddr().String(), err)
 		}
 	}
 }
@@ -180,10 +180,10 @@ func (dht *DHTClient) RequestPeerIPs(id string) {
 func (dht *DHTClient) UpdatePeers() {
 	msg := dht.Compose(commons.CMD_FIND, "", dht.NetworkHash)
 	for _, conn := range dht.Connection {
-		log.Printf("[DEBUG] Updating peer %s", conn.RemoteAddr().String())
+		p2p_log.Log(p2p_log.DEBUG, "Updating peer %s", conn.RemoteAddr().String())
 		_, err := conn.Write([]byte(msg))
 		if err != nil {
-			log.Printf("[ERROR] Failed to send 'find' request to %s: %v", conn.RemoteAddr().String(), err)
+			p2p_log.Log(p2p_log.ERROR, "Failed to send 'find' request to %s: %v", conn.RemoteAddr().String(), err)
 		}
 	}
 }
@@ -192,17 +192,17 @@ func (dht *DHTClient) UpdatePeers() {
 // Every packet is unmarshaled and turned into Request structure
 // which we should analyze and respond
 func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
-	log.Printf("[INFO] Bootstraping via %s", conn.RemoteAddr().String())
+	p2p_log.Log(p2p_log.INFO, "Bootstraping via %s", conn.RemoteAddr().String())
 	for {
 		var buf [512]byte
 		//_, addr, err := conn.ReadFromUDP(buf[0:])
 		_, _, err := conn.ReadFromUDP(buf[0:])
 		if err != nil {
-			log.Printf("[ERROR] Failed to read from Discovery Service: %v", err)
+			p2p_log.Log(p2p_log.ERROR, "Failed to read from Discovery Service: %v", err)
 		} else {
 			data, err := dht.Extract(buf[:512])
 			if err != nil {
-				log.Printf("[ERROR] Failed to extract a message received from discovery service: %v", err)
+				p2p_log.Log(p2p_log.ERROR, "Failed to extract a message received from discovery service: %v", err)
 			} else {
 				if data.Command == commons.CMD_CONN {
 					if dht.ID != "" {
@@ -216,23 +216,24 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 					msg := dht.Compose(commons.CMD_FIND, "", dht.NetworkHash)
 					_, err = conn.Write([]byte(msg))
 					if err != nil {
-						log.Printf("[ERROR] Failed to send `find` request: %v", err)
+						p2p_log.Log(p2p_log.ERROR, "Failed to send 'find' request: %v", err)
 					} else {
-						log.Printf("[INFO] Received connection confirmation from router %s", conn.RemoteAddr().String())
-						log.Printf("[INFO] Received personal ID for this session: %s", data.Id)
+						p2p_log.Log(p2p_log.INFO, "Received connection confirmation from router %s",
+							conn.RemoteAddr().String())
+						p2p_log.Log(p2p_log.INFO, "Received personal ID for this session: %s", data.Id)
 					}
 				} else if data.Command == commons.CMD_PING {
 					msg := dht.Compose(commons.CMD_PING, "", "")
 					_, err = conn.Write([]byte(msg))
 					if err != nil {
-						log.Printf("[ERROR] Failed to send `ping` packet: %v", err)
+						p2p_log.Log(p2p_log.ERROR, "Failed to send 'ping' packet: %v", err)
 					}
 				} else if data.Command == commons.CMD_FIND {
 					// This means we've received a list of nodes we can connect to
 					if data.Dest != "" {
 						ids := strings.Split(data.Dest, ",")
 						if len(ids) == 0 {
-							log.Printf("[ERROR] Malformed list of peers received")
+							p2p_log.Log(p2p_log.ERROR, "Malformed list of peers received")
 						} else {
 							// Go over list of received peer IDs and look if we know
 							// anything about them. Add every new peer into list of peers
@@ -249,7 +250,7 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 									dht.Peers = append(dht.Peers, p)
 								}
 							}
-							log.Printf("[INFO] Received peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
+							p2p_log.Log(p2p_log.INFO, "Received peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
 							dht.UpdateLastCatch(data.Dest)
 						}
 					}
@@ -297,13 +298,11 @@ func DetectIP() string {
 	stun_client.SetServerHost("stun.iptel.org", 3478)
 	_, host, err := stun_client.Discover()
 	if err != nil {
-		log.Printf("Stun discover error %v\n", err)
+		p2p_log.Log(p2p_log.ERROR, "Stun discover error : %v", err)
 		return ""
 	}
-	//fmt.Printf("%s\n", nat_type_str[nat_type])
 	if host != nil {
 		return host.IP()
-		//fmt.Printf("%s:%d\n", host.IP(), host.Port())
 	}
 	return ""
 }

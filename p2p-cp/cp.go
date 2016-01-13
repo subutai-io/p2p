@@ -8,9 +8,9 @@ import (
 	"fmt"
 	bencode "github.com/jackpal/bencode-go"
 	"github.com/wayn3h0/go-uuid"
-	"log"
 	"net"
 	"p2p/commons"
+	log "p2p/p2p_log"
 	"sort"
 	"strconv"
 	"strings"
@@ -99,7 +99,7 @@ func (cp *ControlPeer) ValidateConnection() bool {
 	// TODO: Send something to CP
 	err = conn.Close()
 	if err != nil {
-		log.Printf("[ERROR] Failed to close connection with control peer: %v", err)
+		log.Log(log.ERROR, "Failed to close connection with control peer: %v", err)
 	}
 	return true
 }
@@ -112,7 +112,7 @@ func (node *Node) GenerateID(hashes []Infohash) string {
 	id, err = uuid.NewTimeBased()
 
 	if err != nil {
-		log.Panic("[ERROR] Failed to generate UUID: %v", err)
+		log.Log(log.ERROR, "Failed to generate UUID: %v", err)
 		node.ID = ""
 	} else {
 		// Check if UUID is unique here
@@ -145,10 +145,10 @@ func handleConnection(c *net.Conn) int {
 // SetupServers prepares a DHT router listening socket that DHT clients
 // will send UDP packets to
 func (dht *DHTRouter) SetupServer() *net.UDPConn {
-	log.Printf("[INFO] Setting UDP server at %d port", dht.Port)
+	log.Log(log.INFO, "Setting UDP server at %d port", dht.Port)
 	udp, err := net.ListenUDP("udp4", &net.UDPAddr{Port: dht.Port})
 	if err != nil {
-		log.Printf("[ERROR] Failed to start UDP Listener: %v", err)
+		log.Log(log.ERROR, "Failed to start UDP Listener: %v", err)
 		return nil
 	}
 	return udp
@@ -170,14 +170,14 @@ func (dht *DHTRouter) IsNewPeer(addr string) bool {
 func (dht *DHTRouter) Extract(b []byte) (request commons.DHTRequest, err error) {
 	defer func() {
 		if x := recover(); x != nil {
-			log.Printf("[ERROR] Bencode Unmarshal failed %q, %v", string(b), x)
+			log.Log(log.ERROR, "Bencode Unmarshal failed %q, %v", string(b), x)
 		}
 	}()
 	if err2 := bencode.Unmarshal(bytes.NewBuffer(b), &request); err2 == nil {
 		err = nil
 		return
 	} else {
-		log.Printf("[DEBUG] Received from peer: %v %q", request, err2)
+		log.Log(log.DEBUG, "Received from peer: %v %q", request, err2)
 		return request, err2
 	}
 }
@@ -207,7 +207,7 @@ func (dht *DHTRouter) EncodeResponse(resp commons.DHTResponse) string {
 	}
 	var b bytes.Buffer
 	if err := bencode.Marshal(&b, resp); err != nil {
-		log.Printf("[ERROR] Failed to Marshal bencode %v", err)
+		log.Log(log.ERROR, "Failed to Marshal bencode %v", err)
 		return ""
 	}
 	return b.String()
@@ -227,13 +227,13 @@ func (dht *DHTRouter) ResponseConn(req commons.DHTRequest, addr string, n Node) 
 	data := strings.Split(req.Port, "|")
 	if len(data) <= 1 {
 		// We should receive information about at least one network interface
-		log.Printf("[DHT-ERROR] Received malformed handshake")
+		log.Log(log.ERROR, "DHT Received malformed handshake")
 		return resp
 	}
 
 	port, err := strconv.Atoi(data[0])
 	if err != nil {
-		log.Printf("[ERROR] Failed to parse port from handshake packet")
+		log.Log(log.ERROR, "Failed to parse port from handshake packet")
 		return resp
 	}
 
@@ -245,7 +245,7 @@ func (dht *DHTRouter) ResponseConn(req commons.DHTRequest, addr string, n Node) 
 			dIp, _, _ := net.SplitHostPort(addr)
 			a, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", dIp, port))
 			if err != nil {
-				log.Printf("[ERROR] Failed to resolve UDP address during handshake: %v", err)
+				log.Log(log.ERROR, "Failed to resolve UDP address during handshake: %v", err)
 				return resp
 			}
 			ipList = append(ipList, a)
@@ -256,7 +256,7 @@ func (dht *DHTRouter) ResponseConn(req commons.DHTRequest, addr string, n Node) 
 		}
 		udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", d, port))
 		if err != nil {
-			log.Printf("[ERROR] Failed to resolve address during handshake: %v", err)
+			log.Log(log.ERROR, "Failed to resolve address during handshake: %v", err)
 			continue
 		}
 		var found bool = false
@@ -297,7 +297,7 @@ func (dht *DHTRouter) RegisterHash(addr string, hash string) {
 	for i, node := range NodeList {
 		if node.ConnectionAddress == addr {
 			NodeList[i].AssociatedHash = hash
-			log.Printf("[DEBUG] Registering hash '%s' for %s", hash, addr)
+			log.Log(log.DEBUG, "Registering hash '%s' for %s", hash, addr)
 		}
 	}
 }
@@ -316,7 +316,7 @@ func (dht *DHTRouter) ResponseFind(req commons.DHTRequest, addr string) commons.
 				// Skip if we are the node who requested hash
 				continue
 			}
-			log.Printf("[DEBUG] Found match in hash '%s' with peer %s", req.Hash, node.AssociatedHash)
+			log.Log(log.DEBUG, "Found match in hash '%s' with peer %s", req.Hash, node.AssociatedHash)
 			foundDest += node.ID + ","
 		}
 	}
@@ -351,7 +351,7 @@ func (dht *DHTRouter) ResponseRegCP(req commons.DHTRequest, addr string) commons
 	resp.Dest = "0"
 	laddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
-		log.Printf("[ERROR] Failed to extract CP address: %v", err)
+		log.Log(log.ERROR, "Failed to extract CP address: %v", err)
 		resp.Command = ""
 	} else {
 		var isNew bool = true
@@ -364,13 +364,13 @@ func (dht *DHTRouter) ResponseRegCP(req commons.DHTRequest, addr string) commons
 			// At this point we will send an empty response, so CP will try
 			// to reconnect later, when it's previous instance will be wiped
 			// from list after PING timeout
-			log.Printf("[ERROR] Connected control peer is already in list")
+			log.Log(log.ERROR, "Connected control peer is already in list")
 			resp.Command = ""
 		} else {
 			var newCP ControlPeer
 			newCP.Addr = laddr
 			if !newCP.ValidateConnection() {
-				log.Printf("[ERROR] Failed to connect to Control Peer. Ignoring")
+				log.Log(log.ERROR, "Failed to connect to Control Peer. Ignoring")
 				resp.Command = ""
 			} else {
 				// TODO: Consider assigning ID to Control Peers, but currently we
@@ -419,7 +419,7 @@ func (dht *DHTRouter) Send(conn *net.UDPConn, addr *net.UDPAddr, msg string) {
 	if msg != "" {
 		_, err := conn.WriteToUDP([]byte(msg), addr)
 		if err != nil {
-			log.Printf("[ERROR] Failed to write to UDP: %v", err)
+			log.Log(log.ERROR, "Failed to write to UDP: %v", err)
 		}
 	}
 }
@@ -430,12 +430,12 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 	var buf [512]byte
 	_, addr, err := conn.ReadFromUDP(buf[0:])
 	if err != nil {
-		log.Printf("[ERROR] Failed to read from UDP socket: %v", err)
+		log.Log(log.ERROR, "Failed to read from UDP socket: %v", err)
 		return
 	}
 	var n Node
 	if dht.IsNewPeer(addr.String()) {
-		log.Printf("[INFO] New Peer connected: %s. Registering", addr)
+		log.Log(log.INFO, "New Peer connected: %s. Registering", addr)
 		n.ID = n.GenerateID(dht.Hashes)
 		n.Endpoint = ""
 		n.ConnectionAddress = addr.String()
@@ -443,7 +443,7 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 		n.AssociatedHash = ""
 		NodeList = append(NodeList, n)
 	}
-	log.Printf("[DEBUG] %s: %s", addr, string(buf[:512]))
+	log.Log(log.DEBUG, "%s: %s", addr, string(buf[:512]))
 
 	// Try to bencode
 	req, err := dht.Extract(buf[:512])
@@ -485,7 +485,7 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 	case commons.CMD_NODE:
 		resp = dht.ResponseNode(req, addr.String())
 	default:
-		log.Printf("[ERROR] Unknown command received: %s", req.Command)
+		log.Log(log.ERROR, "Unknown command received: %s", req.Command)
 		resp.Command = ""
 	}
 
@@ -502,7 +502,7 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 	var removeKeys []int
 	for {
 		for _, i := range removeKeys {
-			log.Printf("[NOTICE] %s timeout reached. Disconnecting", NodeList[i].ConnectionAddress)
+			log.Log(log.WARNING, "%s timeout reached. Disconnecting", NodeList[i].ConnectionAddress)
 			NodeList = append(NodeList[:i], NodeList[i+1:]...)
 		}
 		removeKeys = removeKeys[:0]
@@ -524,8 +524,8 @@ func main() {
 	var argDht int
 	flag.IntVar(&argDht, "dht", -1, "Port that DHT Bootstrap will listening to")
 	flag.Parse()
-	log.Printf("[INFO] Initialization complete")
-	log.Printf("[INFO] Starting bootstrap node")
+	log.Log(log.INFO, "Initialization complete")
+	log.Log(log.INFO, "Starting bootstrap node")
 	if argDht > 0 {
 		var dht DHTRouter
 		dht.Port = argDht

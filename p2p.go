@@ -7,7 +7,6 @@ import (
 	"github.com/danderson/tuntap"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -15,6 +14,7 @@ import (
 	"p2p/commons"
 	"p2p/dht"
 	//"p2p/enc"
+	log "p2p/p2p_log"
 	"p2p/udpcs"
 	"strings"
 	"time"
@@ -93,45 +93,45 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) error {
 	// TODO: Remove hard-coded path
 	yamlFile, err := ioutil.ReadFile("config.yaml")
 	if err != nil {
-		log.Printf("[ERROR] Failed to load config: %v", err)
+		log.Log(log.ERROR, "Failed to load config: %v", err)
 		ptp.IPTool = "/sbin/ip"
 	}
 	err = yaml.Unmarshal(yamlFile, ptp)
 	if err != nil {
-		log.Printf("[ERROR] Failed to parse config: %v", err)
+		log.Log(log.ERROR, "Failed to parse config: %v", err)
 		return err
 	}
 
 	ptp.Device, err = tuntap.Open(ptp.DeviceName, tuntap.DevTap)
 	if ptp.Device == nil {
-		log.Fatalf("[FATAL] Failed to open TAP device: %v", err)
+		log.Log(log.ERROR, "Failed to open TAP device: %v", err)
 		return err
 	} else {
-		log.Printf("[INFO] %v TAP Device created", ptp.DeviceName)
+		log.Log(log.INFO, "%v TAP Device created", ptp.DeviceName)
 	}
 
 	linkup := exec.Command(ptp.IPTool, "link", "set", "dev", ptp.DeviceName, "up")
 	err = linkup.Run()
 	if err != nil {
-		log.Fatalf("[ERROR] Failed to up link: %v", err)
+		log.Log(log.ERROR, "Failed to up link: %v", err)
 		return err
 	}
 
 	// Configure new device
-	log.Printf("[INFO] Setting %s IP on device %s\n", ptp.IP, ptp.DeviceName)
+	log.Log(log.INFO, "Setting %s IP on device %s", ptp.IP, ptp.DeviceName)
 	setip := exec.Command(ptp.IPTool, "addr", "add", ptp.IP+"/24", "dev", ptp.DeviceName)
 	err = setip.Run()
 	if err != nil {
-		log.Fatalf("[FATAL] Failed to set IP: %v", err)
+		log.Log(log.ERROR, "Failed to set IP: %v", err)
 		return err
 	}
 
 	// Set MAC to device
-	log.Printf("[INFO] Setting %s MAC on device %s\n", mac, ptp.DeviceName)
+	log.Log(log.INFO, "Setting %s MAC on device %s", mac, ptp.DeviceName)
 	setmac := exec.Command(ptp.IPTool, "link", "set", "dev", ptp.DeviceName, "address", mac)
 	err = setmac.Run()
 	if err != nil {
-		log.Fatalf("[FATAL] Failed to set MAC: %v", err)
+		log.Log(log.ERROR, "Failed to set MAC: %v", err)
 		return err
 	}
 	return nil
@@ -154,29 +154,29 @@ func handlePacket(ptp *PTPCloud, contents []byte, proto int) {
 	*/
 	switch proto {
 	case 512:
-		log.Printf("[DEBUG] Received PARC Universal Packet")
+		log.Log(log.DEBUG, "Received PARC Universal Packet")
 		ptp.handlePARCUniversalPacket(contents)
 	case 2048:
 		ptp.handlePacketIPv4(contents, proto)
 	case 2054:
-		log.Printf("[DEBUG] Received ARP Packet")
+		log.Log(log.DEBUG, "Received ARP Packet")
 		ptp.handlePacketARP(contents)
 	case 32821:
-		log.Printf("[DEBUG] Received RARP Packet")
+		log.Log(log.DEBUG, "Received RARP Packet")
 		ptp.handleRARPPacket(contents)
 	case 33024:
-		log.Printf("[DEBUG] Received 802.1q Packet")
+		log.Log(log.DEBUG, "Received 802.1q Packet")
 		ptp.handle8021qPacket(contents)
 	case 34525:
 		ptp.handlePacketIPv6(contents)
 	case 34915:
-		log.Printf("[DEBUG] Received PPPoE Discovery Packet")
+		log.Log(log.DEBUG, "Received PPPoE Discovery Packet")
 		ptp.handlePPPoEDiscoveryPacket(contents)
 	case 34916:
-		log.Printf("[DEBUG] Received PPPoE Session Packet")
+		log.Log(log.DEBUG, "Received PPPoE Session Packet")
 		ptp.handlePPPoESessionPacket(contents)
 	default:
-		log.Printf("[DEBUG] Received Undefined Packet")
+		log.Log(log.DEBUG, "Received Undefined Packet")
 	}
 }
 
@@ -187,10 +187,10 @@ func (ptp *PTPCloud) ListenInterface() {
 	for {
 		packet, err := ptp.Device.ReadPacket()
 		if err != nil {
-			log.Printf("Error reading packet: %s", err)
+			log.Log(log.ERROR, "Reading packet %s", err)
 		}
 		if packet.Truncated {
-			log.Printf("[DEBUG] Truncated packet")
+			log.Log(log.DEBUG, "Truncated packet")
 		}
 		// TODO: Make handlePacket as a part of PTPCloud
 		go handlePacket(ptp, packet.Packet, packet.Protocol)
@@ -202,7 +202,7 @@ func (ptp *PTPCloud) GenerateDeviceName(i int) string {
 	var devName string = "vptp" + fmt.Sprintf("%d", i)
 	inf, err := net.Interfaces()
 	if err != nil {
-		log.Printf("[ERROR] Failed to retrieve list of network interfaces")
+		log.Log(log.ERROR, "Failed to retrieve list of network interfaces")
 		return ""
 	}
 	var exist bool = false
@@ -221,17 +221,17 @@ func (ptp *PTPCloud) GenerateDeviceName(i int) string {
 // This method lists interfaces available in the system and retrieves their
 // IP addresses
 func (ptp *PTPCloud) FindNetworkAddresses() {
-	log.Printf("[INFO] Looking for available network interfaces")
+	log.Log(log.INFO, "Looking for available network interfaces")
 	inf, err := net.Interfaces()
 	if err != nil {
-		log.Printf("[ERROR] Failed to retrieve list of network interfaces")
+		log.Log(log.ERROR, "Failed to retrieve list of network interfaces")
 		return
 	}
 	for _, i := range inf {
 		addresses, err := i.Addrs()
 
 		if err != nil {
-			log.Printf("[ERROR] Failed to retrieve address for interface %v", err)
+			log.Log(log.ERROR, "Failed to retrieve address for interface. %v", err)
 			continue
 		}
 		for _, addr := range addresses {
@@ -239,7 +239,7 @@ func (ptp *PTPCloud) FindNetworkAddresses() {
 			var ipType string = "Unknown"
 			ip, _, err := net.ParseCIDR(addr.String())
 			if err != nil {
-				log.Printf("[ERROR] Failed to parse CIDR notation: %v", err)
+				log.Log(log.ERROR, "Failed to parse CIDR notation: %v", err)
 			}
 			if ip.IsLoopback() {
 				ipType = "Loopback"
@@ -255,13 +255,13 @@ func (ptp *PTPCloud) FindNetworkAddresses() {
 			} else if ip.IsInterfaceLocalMulticast() {
 				ipType = "Interface Local Multicast"
 			}
-			log.Printf("[INFO] Interface %s: %s. Type: %s. %s", i.Name, addr.String(), ipType, decision)
+			log.Log(log.INFO, "Interface %s: %s. Type: %s. %s", i.Name, addr.String(), ipType, decision)
 			if decision == "Saving" {
 				ptp.LocalIPs = append(ptp.LocalIPs, ip)
 			}
 		}
 	}
-	log.Printf("[INFO] %d interfaces were saved", len(ptp.LocalIPs))
+	log.Log(log.INFO, "%d interfaces were saved", len(ptp.LocalIPs))
 }
 
 func main() {
@@ -306,12 +306,12 @@ func main() {
 		var err2 error
 		hw, err2 = net.ParseMAC(argMac)
 		if err2 != nil {
-			log.Printf("[ERROR] Invalid MAC address provided: %v", err2)
+			log.Log(log.ERROR, "Invalid MAC address provided: %v", err2)
 			return
 		}
 	} else {
 		argMac, hw = GenerateMAC()
-		log.Printf("[INFO] Generate MAC for TAP device: %s", argMac)
+		log.Log(log.INFO, "Generate MAC for TAP device: %s", argMac)
 	}
 
 	var crypter Crypto
@@ -345,7 +345,7 @@ func main() {
 	ptp.UDPSocket = new(udpcs.UDPClient)
 	ptp.UDPSocket.Init("", 0)
 	port := ptp.UDPSocket.GetPort()
-	log.Printf("[INFO] Started UDP Listener at port %d", port)
+	log.Log(log.INFO, "Started UDP Listener at port %d", port)
 	config.P2PPort = port
 	if argDht != "" {
 		config.Routers = argDht
@@ -394,10 +394,10 @@ func (ptp *PTPCloud) IntroducePeers() {
 		if peer.Endpoint == "" {
 			continue
 		}
-		log.Printf("[DEBUG] Introducing to %s", peer.Endpoint)
+		log.Log(log.DEBUG, "Intoducing to %s", peer.Endpoint)
 		addr, err := net.ResolveUDPAddr("udp", peer.Endpoint)
 		if err != nil {
-			log.Printf("[ERROR] Failed to resolve UDP address during Introduction: %v", err)
+			log.Log(log.ERROR, "Failed to resolve UDP address during Introduction: %v", err)
 			continue
 		}
 		ptp.NetworkPeers[i].PeerAddr = addr
@@ -405,9 +405,9 @@ func (ptp *PTPCloud) IntroducePeers() {
 		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID)
 		_, err = ptp.UDPSocket.SendMessage(msg, addr)
 		if err != nil {
-			log.Printf("[ERROR] Failed to send introduction to %s", addr.String())
+			log.Log(log.ERROR, "Failed to send introduction to %s", addr.String())
 		} else {
-			log.Printf("[DEBUG] Introduction sent to %s", peer.Endpoint)
+			log.Log(log.DEBUG, "Introduction sent to %s", peer.Endpoint)
 		}
 	}
 }
@@ -465,6 +465,7 @@ func (ptp *PTPCloud) TestConnection(endpoint *net.UDPAddr) bool {
 	msg := udpcs.CreateTestP2PMessage("TEST", 0)
 	conn, err := net.DialUDP("udp4", nil, endpoint)
 	if err != nil {
+		log.Log(log.ERROR, "%v", err)
 		return false
 	}
 	ser := msg.Serialize()
@@ -480,6 +481,7 @@ func (ptp *PTPCloud) TestConnection(endpoint *net.UDPAddr) bool {
 		var buf [4096]byte
 		s, _, err := conn.ReadFromUDP(buf[0:])
 		if err != nil {
+			log.Log(log.ERROR, "%v", err)
 			conn.Close()
 			return false
 		}
@@ -519,7 +521,7 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 						}
 					}
 					if !ipFound {
-						log.Printf("[INFO] Adding new IP (%s) address to %s", ip, peer.ID)
+						log.Log(log.INFO, "Adding new IP (%s) address to %s", ip, peer.ID)
 						// TODO: Check IP parsing
 						newIp, _ := net.ResolveUDPAddr("udp", ip)
 						ptp.NetworkPeers[i].KnownIPs = append(ptp.NetworkPeers[i].KnownIPs, newIp)
@@ -533,7 +535,7 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 					var failback bool = false
 					interfaces, err := net.Interfaces()
 					if err != nil {
-						log.Printf("[ERROR] Failed to retrieve list of network interfaces")
+						log.Log(log.ERROR, "Failed to retrieve list of network interfaces")
 						failback = true
 					}
 
@@ -545,7 +547,7 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 						for _, addr := range addrs {
 							_, network, _ := net.ParseCIDR(addr.String())
 							for _, kip := range ptp.NetworkPeers[i].KnownIPs {
-								log.Printf("[DEBUG] Probing new IP %s against network %s", kip.IP.String(), network.String())
+								log.Log(log.DEBUG, "Probing new IP %s against network %s", kip.IP.String(), network.String())
 
 								if network.Contains(kip.IP) {
 									if ptp.TestConnection(kip) {
@@ -568,8 +570,8 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 					}
 
 					// If we've failed to find something that is really close to us, skip to global
-					if failback && peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
-						log.Printf("[DEBUG] Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
+					if failback || peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
+						log.Log(log.DEBUG, "Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
 						ptp.NetworkPeers[i].Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
 						// Increase counter so p2p package will send introduction
 						count = count + 1
@@ -578,7 +580,7 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 			}
 		}
 		if !found {
-			log.Printf("[INFO] Adding new peer. Requesting peer address")
+			log.Log(log.INFO, "Adding new peer. Requesting peer address")
 			var newPeer NetworkPeer
 			newPeer.ID = id.ID
 			newPeer.Unknown = true
@@ -616,12 +618,12 @@ func (ptp *PTPCloud) WriteToDevice(b []byte) {
 	p.Truncated = false
 	p.Packet = b
 	if ptp.Device == nil {
-		log.Printf("[ERROR] TUN/TAP Device not initialized")
+		log.Log(log.ERROR, "TUN/TAP Device not initialized")
 		return
 	}
 	err := ptp.Device.WritePacket(&p)
 	if err != nil {
-		log.Printf("[ERROR] Failed to write to TUN/TAP device")
+		log.Log(log.ERROR, "Failed to write to TUN/TAP device")
 	}
 }
 
@@ -629,14 +631,14 @@ func GenerateMAC() (string, net.HardwareAddr) {
 	buf := make([]byte, 6)
 	_, err := rand.Read(buf)
 	if err != nil {
-		log.Printf("[ERROR] Failed to generate MAC: %v", err)
+		log.Log(log.ERROR, "Failed to generate MAC: %v", err)
 		return "", nil
 	}
 	buf[0] |= 2
 	mac := fmt.Sprintf("06:%02x:%02x:%02x:%02x:%02x", buf[1], buf[2], buf[3], buf[4], buf[5])
 	hw, err := net.ParseMAC(mac)
 	if err != nil {
-		log.Printf("[ERROR] Corrupted MAC address generated: %v", err)
+		log.Log(log.ERROR, "Corrupted MAC address generated: %v", err)
 		return "", nil
 	}
 	return mac, hw
@@ -678,7 +680,7 @@ func (p *NetworkPeer) ProbeConnection() bool {
 func (ptp *PTPCloud) ParseIntroString(intro string) (string, net.HardwareAddr, net.IP) {
 	parts := strings.Split(intro, ",")
 	if len(parts) != 3 {
-		log.Printf("[ERROR] Failed to parse introduction stirng")
+		log.Log(log.ERROR, "Failed to parse introduction string")
 		return "", nil, nil
 	}
 	var id string
@@ -686,13 +688,13 @@ func (ptp *PTPCloud) ParseIntroString(intro string) (string, net.HardwareAddr, n
 	// Extract MAC
 	mac, err := net.ParseMAC(parts[1])
 	if err != nil {
-		log.Printf("[ERROR] Failed to parse MAC address from introduction packet: %v", err)
+		log.Log(log.ERROR, "Failed to parse MAC address from introduction packet: %v", err)
 		return "", nil, nil
 	}
 	// Extract IP
 	ip := net.ParseIP(parts[2])
 	if ip == nil {
-		log.Printf("[ERROR] Failed to parse IP address from introduction packet")
+		log.Log(log.ERROR, "Failed to parse IP address from introduction packet")
 		return "", nil, nil
 	}
 
@@ -711,7 +713,7 @@ func (ptp *PTPCloud) IsPeerUnknown(addr *net.UDPAddr) bool {
 // Handler for new messages received from P2P network
 func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error, rcv_bytes []byte) {
 	if err != nil {
-		log.Printf("[ERROR] P2P Message Handle: %v", err)
+		log.Log(log.ERROR, "P2P Message Handle: %v", err)
 		return
 	}
 
@@ -720,16 +722,16 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 
 	msg, des_err := udpcs.P2PMessageFromBytes(buf)
 	if des_err != nil {
-		log.Printf("[ERROR] P2PMessageFromBytes error: %v", des_err)
+		log.Log(log.ERROR, "P2PMessageFromBytes error: %v", des_err)
 		return
 	}
 	var msgType commons.MSG_TYPE = commons.MSG_TYPE(msg.Header.Type)
 	switch msgType {
 	case commons.MT_INTRO:
-		log.Printf("[DEBUG] Introduction message received: %s", string(msg.Data))
+		log.Log(log.DEBUG, "Introduction message received: %s", string(msg.Data))
 		// Don't do anything if we already know everything about this peer
 		if !ptp.IsPeerUnknown(src_addr) {
-			log.Printf("[DEBUG] We already know this peer. Skip")
+			log.Log(log.DEBUG, "We already know this peer. Skip")
 			return
 		}
 		id, mac, ip := ptp.ParseIntroString(string(msg.Data))
@@ -737,22 +739,20 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID)
 		_, err := ptp.UDPSocket.SendMessage(msg, src_addr)
 		if err != nil {
-			log.Printf("[ERROR] Failed to respond to introduction message: %v", err)
+			log.Log(log.ERROR, "Failed to respond to introduction message: %v", err)
 		}
 	case commons.MT_TEST:
 		msg := udpcs.CreateTestP2PMessage("TEST", 0)
 		_, err := ptp.UDPSocket.SendMessage(msg, src_addr)
 		if err != nil {
-			log.Printf("[ERROR] Failed to respond to test message: %v", err)
+			log.Log(log.ERROR, "Failed to respond to test message: %v", err)
 		}
 	case commons.MT_NENC:
-		log.Printf("[DEBUG] Received P2P Message")
+		log.Log(log.DEBUG, "Received P2P Message")
 		ptp.WriteToDevice(msg.Data)
 	default:
-		log.Printf("[ERROR] Unknown message received")
+		log.Log(log.ERROR, "Unknown message received")
 	}
-
-	//log.Printf("processed message from %s, msg_data : %s\n", src_addr.String(), msg.Data)
 }
 
 func (ptp *PTPCloud) SendTo(dst net.HardwareAddr, msg *udpcs.P2PMessage) (int, error) {
