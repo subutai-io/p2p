@@ -54,6 +54,8 @@ type PTPCloud struct {
 	LocalIPs []net.IP
 
 	dht *dht.DHTClient
+
+	Crypter *Crypto
 }
 
 type NetworkPeer struct {
@@ -314,17 +316,6 @@ func main() {
 		log.Log(log.INFO, "Generate MAC for TAP device: %s", argMac)
 	}
 
-	var crypter Crypto
-	if argKeyfile != "" {
-		crypter.ReadKeysFromFile(argKeyfile)
-	}
-	// Normally this will override keyfile
-	if argKey != "" {
-		if len(crypter.Keys) == 0 {
-
-		}
-	}
-
 	// Create new DHT Client, configured it and initialize
 	// During initialization procedure, DHT Client will send
 	// a introduction packet along with a hash to a DHT bootstrap
@@ -339,6 +330,17 @@ func main() {
 
 	if argDev == "" {
 		argDev = ptp.GenerateDeviceName(1)
+	}
+
+	ptp.Crypter = new(Crypto)
+	if argKeyfile != "" {
+		ptp.Crypter.ReadKeysFromFile(argKeyfile)
+	}
+	// Normally this will override keyfile
+	if argKey != "" {
+		if len(ptp.Crypter.Keys) == 0 {
+
+		}
 	}
 
 	ptp.CreateDevice(argIp, argMac, argMask, argDev)
@@ -430,7 +432,7 @@ func (ptp *PTPCloud) PurgePeers(catched []string) {
 			}
 		}
 		if !f {
-			log.Printf("[DEBUG] Peer not found in DHT peer table. Remove it")
+			log.Log(log.DEBUG, ("Peer not found in DHT peer table. Remove it"))
 			rem = append(rem, i)
 		}
 	}
@@ -553,7 +555,7 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 									if ptp.TestConnection(kip) {
 										ptp.NetworkPeers[i].Endpoint = kip.String()
 										count = count + 1
-										log.Printf("[DEBUG] Setting endpoint for %s to %s", peer.ID, kip.String())
+										log.Log(log.DEBUG, "Setting endpoint for %s to %s", peer.ID, kip.String())
 									}
 									// TODO: Test connection
 								}
