@@ -729,6 +729,12 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 		if err != nil {
 			log.Printf("[ERROR] Failed to respond to introduction message: %v", err)
 		}
+	case commons.MT_TEST:
+		msg := udpcs.CreateTestP2PMessage("TEST", 0)
+		_, err := ptp.UDPSocket.SendMessage(msg, src_addr)
+		if err != nil {
+			log.Printf("[ERROR] Failed to respond to test message: %v", err)
+		}
 	case commons.MT_NENC:
 		log.Printf("[DEBUG] Received P2P Message")
 		ptp.WriteToDevice(msg.Data)
