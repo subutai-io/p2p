@@ -23,6 +23,7 @@ const (
 	MT_NENC            = 2        // Not encrypted message
 	MT_ENC             = 3        // Encrypted message
 	MT_PING            = 4        // Internal ping message
+	MT_TEST            = 5
 	//todo add types
 )
 
