@@ -448,6 +448,10 @@ func (ptp *PTPCloud) PurgePeers(catched []string) {
 	}
 }
 
+func (ptp *PTPCloud) TestConnection() {
+
+}
+
 // This method takes a list of catched peers from DHT and
 // adds every new peer into list of peers
 // Returns amount of peers that has been added
@@ -501,8 +505,11 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 						for _, addr := range addrs {
 							_, network, _ := net.ParseCIDR(addr.String())
 							for _, kip := range ptp.NetworkPeers[i].KnownIPs {
+								log.Printf("[DEBUG] Probing new IP %s against network %s", kip.IP.String(), network.String())
 								if network.Contains(kip.IP) {
-									ptp.NetworkPeers[i].Endpoint = kip.String()
+									ptp.NetworkPeers[i].Endpoint = kip.IP.String()
+									count = count + 1
+									// TODO: Test connection
 								}
 							}
 						}
