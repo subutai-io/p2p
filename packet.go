@@ -27,6 +27,7 @@ var (
 
 // Handles a IPv4 packet and sends it to it's destination
 func (ptp *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
+	log.Printf("[TRACE] Handling IPv4 Packet")
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		log.Printf("[ERROR] Failed to unmarshal IPv4 packet")
@@ -49,32 +50,36 @@ func (ptp *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 
 // TODO: Implement IPv6 Support
 func (ptp *PTPCloud) handlePacketIPv6(contents []byte) {
-
+	log.Printf("[TRACE] Handling IPv6 Packet")
 }
 
 // TODO: Implement PARC Universal Support
 func (ptp *PTPCloud) handlePARCUniversalPacket(contents []byte) {
+	log.Printf("[TRACE] Handling PARC Universal Packet")
 
 }
 
 // TODO: Implement RARP Support
 func (ptp *PTPCloud) handleRARPPacket(contents []byte) {
+	log.Printf("[TRACE] Handling RARP Packet")
 
 }
 
 // TODO: Implement 802.1q Support
-func (ptp *PTPCloud) handle8012qPacket(contents []byte) {
+func (ptp *PTPCloud) handle8021qPacket(contents []byte) {
+	log.Printf("[TRACE] Handling 802.1q Packet")
 
 }
 
 // TODO: Implement PPPoE Discovery Support
 func (ptp *PTPCloud) handlePPPoEDiscoveryPacket(contents []byte) {
+	log.Printf("[TRACE] Handling PPPoE Discovery Packet")
 
 }
 
 // TODO: Implement PPPoE Session Support
 func (ptp *PTPCloud) handlePPPoESessionPacket(contents []byte) {
-
+	log.Printf("[TRACE] Handling PPPoE Session Packet")
 }
 
 func (ptp *PTPCloud) handlePacketARP(contents []byte) {

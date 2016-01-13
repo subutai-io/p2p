@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"p2p/commons"
 	"time"
@@ -149,7 +148,6 @@ type UDPReceivedCallback func(count int, src_addr *net.UDPAddr, err error, buff 
 func (uc *UDPClient) Listen(fn_received_callback UDPReceivedCallback) {
 	for !uc.Disposed() {
 		n, src, err := uc.conn.ReadFromUDP(uc.input_buffer[:])
-		log.Printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 		fn_received_callback(n, src, err, uc.input_buffer[:])
 	}
 }
