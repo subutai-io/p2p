@@ -449,28 +449,46 @@ func (ptp *PTPCloud) PurgePeers(catched []string) {
 }
 
 // This method tests connection with specified endpoint
-func (ptp *PTPCloud) TestConnection(endpoint string) bool {
+func (ptp *PTPCloud) TestConnection(endpoint *net.UDPAddr) bool {
 	msg := udpcs.CreateTestP2PMessage("TEST", 0)
-	addr, _ := net.ResolveUDPAddr("udp", endpoint)
-	conn, _ := net.DialUDP("udp4", nil, addr)
-	_, err := conn.Write(msg.Serialize())
+	conn, err := net.DialUDP("udp4", nil, endpoint)
 	if err != nil {
+		log.Printf("[ERROR] %v", err)
 		return false
 	}
+	log.Printf("!@#!@#!@#")
+	ser := msg.Serialize()
+	log.Printf("serialized BLAD!!!")
+	if conn == nil {
+		log.Printf("HER S GORY")
+	}
+	_, err = conn.Write(ser)
+	log.Printf("!!!!!!!!!!!!!!!!1")
+	if err != nil {
+		conn.Close()
+		return false
+	}
+	log.Printf("!!!!!!!!!!!!!!!!2")
 	t := time.Now()
-	t.Add(3 * time.Second)
+	t = t.Add(3 * time.Second)
 	conn.SetReadDeadline(t)
+	log.Printf("!!!!!!!!!!!!!!!!3")
 	for {
 		var buf [4096]byte
 		s, _, err := conn.ReadFromUDP(buf[0:])
 		if err != nil {
 			log.Printf("[!!!!!!!!!!!!!!!!] %v", err)
+			conn.Close()
 			return false
 		}
 		if s > 0 {
+			log.Printf("[!!!!!!!!!!!!!!!!!!!!!!!!!!@#$} ZAEBCA")
+			conn.Close()
 			return true
 		}
 	}
+	conn.Close()
+	return false
 }
 
 // This method takes a list of catched peers from DHT and
@@ -529,7 +547,7 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 								log.Printf("[DEBUG] Probing new IP %s against network %s", kip.IP.String(), network.String())
 
 								if network.Contains(kip.IP) {
-									if ptp.TestConnection(kip.IP.String()) {
+									if ptp.TestConnection(kip) {
 										ptp.NetworkPeers[i].Endpoint = kip.IP.String()
 										count = count + 1
 									}
