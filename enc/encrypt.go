@@ -16,6 +16,16 @@ const (
 
 /////////////////////////////////////////////////////
 
+func MakeEncKey() []byte {
+	key := make([]byte, BLOCK_SIZE)
+
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil
+	}
+	return key
+}
+
 func EncryptTest() {
 	plaintext := "123456789012345678901234567890123456789"
 	fmt.Printf("%s\n", plaintext)

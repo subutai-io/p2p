@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
+	"time"
 )
 
 const (
@@ -15,13 +16,26 @@ const (
 )
 
 type CryptoKey struct {
-	TTL int    `yaml:"ttl"`
-	Key string `yaml:"key"`
+	TTLConfig string `yaml:"ttl"`
+	KeyConfig string `yaml:"key"`
+	Until     time.Time
+	Key       []byte
 }
 
 type Crypto struct {
 	Keys   []CryptoKey
 	Active bool
+}
+
+func (c *Crypto) EncrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKey {
+	var err error
+	ckey.Until, err = time.Parse("2016-01-14 01:18:18.032507415 +0600 KGT", datetime)
+	ckey.Key = []byte(key)
+	if err != nil {
+		log.Printf("[ERROR] Failed to parse provided TTL value: %v", err)
+		return ckey
+	}
+	return ckey
 }
 
 func (c *Crypto) ReadKeysFromFile(filepath string) {
@@ -38,7 +52,7 @@ func (c *Crypto) ReadKeysFromFile(filepath string) {
 		c.Active = false
 		return
 	}
-
+	ckey = c.EncrichKeyValues(ckey, ckey.KeyConfig, ckey.TTLConfig)
 	c.Active = true
 	c.Keys = append(c.Keys, ckey)
 }

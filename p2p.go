@@ -16,7 +16,6 @@ import (
 	"p2p/dht"
 	//"p2p/enc"
 	"p2p/udpcs"
-	"sort"
 	"strings"
 	"time"
 )
@@ -276,6 +275,8 @@ func main() {
 		argHash    string
 		argDht     string
 		argKeyfile string
+		argKey     string
+		argTTL     string
 	)
 
 	flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
@@ -287,7 +288,9 @@ func main() {
 	flag.StringVar(&argDirect, "direct", "none", "IP to connect to directly")
 	flag.StringVar(&argHash, "hash", "none", "Infohash for environment")
 	flag.StringVar(&argDht, "dht", "", "Specify DHT bootstrap node address")
-	flag.StringVar(&argKeyfile, "key", "", "Path to yaml file containing crypto key")
+	flag.StringVar(&argKeyfile, "keyfile", "", "Path to yaml file containing crypto key")
+	flag.StringVar(&argKey, "key", "", "AES crypto key")
+	flag.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
 
 	flag.Parse()
 	if argIp == "none" {
@@ -314,6 +317,12 @@ func main() {
 	var crypter Crypto
 	if argKeyfile != "" {
 		crypter.ReadKeysFromFile(argKeyfile)
+	}
+	// Normally this will override keyfile
+	if argKey != "" {
+		if len(crypter.Keys) == 0 {
+
+		}
 	}
 
 	// Create new DHT Client, configured it and initialize
@@ -421,31 +430,34 @@ func (ptp *PTPCloud) PurgePeers(catched []string) {
 			}
 		}
 		if !f {
+			log.Printf("[DEBUG] Peer not found in DHT peer table. Remove it")
 			rem = append(rem, i)
 		}
 	}
-	for i := range rem {
+	for _, i := range rem {
 		ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
 	}
 	return
 
 	// TODO: Old Scheme. Remove it before release
-	var remove []int
-	for i, peer := range ptp.NetworkPeers {
-		var found bool = false
-		for _, addr := range catched {
-			if addr == peer.CleanAddr {
-				found = true
+	/*
+		var remove []int
+		for i, peer := range ptp.NetworkPeers {
+			var found bool = false
+			for _, addr := range catched {
+				if addr == peer.CleanAddr {
+					found = true
+				}
+			}
+			if !found {
+				remove = append(remove, i)
 			}
 		}
-		if !found {
-			remove = append(remove, i)
+		sort.Sort(sort.Reverse(sort.IntSlice(remove)))
+		for i := range remove {
+			ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
 		}
-	}
-	sort.Sort(sort.Reverse(sort.IntSlice(remove)))
-	for i := range remove {
-		ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
-	}
+	*/
 }
 
 // This method tests connection with specified endpoint
@@ -544,6 +556,14 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 									// TODO: Test connection
 								}
 							}
+						}
+					}
+
+					if ptp.NetworkPeers[i].Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
+						// If endpoint wasn't set let's test connection from outside of the LAN
+						// First one should be the global IP (if DHT works correctly)
+						if !ptp.TestConnection(ptp.NetworkPeers[i].KnownIPs[0]) {
+							// We've failed to
 						}
 					}
 
