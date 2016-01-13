@@ -47,7 +47,33 @@ func (ptp *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	}
 }
 
+// TODO: Implement IPv6 Support
 func (ptp *PTPCloud) handlePacketIPv6(contents []byte) {
+
+}
+
+// TODO: Implement PARC Universal Support
+func (ptp *PTPCloud) handlePARCUniversalPacket(contents []byte) {
+
+}
+
+// TODO: Implement RARP Support
+func (ptp *PTPCloud) handleRARPPacket(contents []byte) {
+
+}
+
+// TODO: Implement 802.1q Support
+func (ptp *PTPCloud) handle8012qPacket(contents []byte) {
+
+}
+
+// TODO: Implement PPPoE Discovery Support
+func (ptp *PTPCloud) handlePPPoEDiscoveryPacket(contents []byte) {
+
+}
+
+// TODO: Implement PPPoE Session Support
+func (ptp *PTPCloud) handlePPPoESessionPacket(contents []byte) {
 
 }
 

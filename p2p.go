@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"p2p/commons"
 	"p2p/dht"
+	//"p2p/enc"
 	"p2p/udpcs"
 	"sort"
 	"strings"
@@ -24,7 +25,6 @@ type MSG_TYPE uint16
 
 // Main structure
 type PTPCloud struct {
-
 	// IP Address assigned to device at startup
 	IP string
 
@@ -51,14 +51,34 @@ type PTPCloud struct {
 	NetworkPeers []NetworkPeer
 
 	UDPSocket *udpcs.UDPClient
+
+	LocalIPs []net.IP
+
+	dht *dht.DHTClient
 }
 
 type NetworkPeer struct {
-	Unknown     bool
-	CleanAddr   string
-	PeerAddr    *net.UDPAddr
+	// ID of the node received from DHT Bootstrap node
+	ID string
+	// Whether informaton about this node is filled or not
+	// Normally it should be filled after peer-to-peer handshake procedure
+	Unknown bool
+	// This variables indicates whether handshake mechanism was started or not
+	Handshaked bool
+	// Clean address
+	CleanAddr string
+	// ID of the proxy used to communicate with the node
+	ProxyID   int
+	Forwarder *net.UDPAddr
+	PeerAddr  *net.UDPAddr
+	// IP of the peer we are connected to.
 	PeerLocalIP net.IP
-	PeerHW      net.HardwareAddr
+	// Hardware address of node's TUN/TAP device
+	PeerHW net.HardwareAddr
+	// Endpoint is the same as CleanAddr TODO: Remove CleanAddr
+	Endpoint string
+	// List of peer IP addresses
+	KnownIPs []*net.UDPAddr
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -136,6 +156,7 @@ func handlePacket(ptp *PTPCloud, contents []byte, proto int) {
 	switch proto {
 	case 512:
 		log.Printf("[DEBUG] Received PARC Universal Packet")
+		ptp.handlePARCUniversalPacket(contents)
 	case 2048:
 		ptp.handlePacketIPv4(contents, proto)
 	case 2054:
@@ -143,14 +164,18 @@ func handlePacket(ptp *PTPCloud, contents []byte, proto int) {
 		ptp.handlePacketARP(contents)
 	case 32821:
 		log.Printf("[DEBUG] Received RARP Packet")
+		ptp.handleRARPPacket(contents)
 	case 33024:
 		log.Printf("[DEBUG] Received 802.1q Packet")
+		ptp.handle8012qPacket(contents)
 	case 34525:
 		ptp.handlePacketIPv6(contents)
 	case 34915:
 		log.Printf("[DEBUG] Received PPPoE Discovery Packet")
+		ptp.handlePPPoEDiscoveryPacket(contents)
 	case 34916:
 		log.Printf("[DEBUG] Received PPPoE Session Packet")
+		ptp.handlePPPoESessionPacket(contents)
 	default:
 		log.Printf("[DEBUG] Received Undefined Packet")
 	}
@@ -173,30 +198,99 @@ func (ptp *PTPCloud) ListenInterface() {
 	}
 }
 
+// This method will generate device name if none were specified at startup
+func (ptp *PTPCloud) GenerateDeviceName(i int) string {
+	var devName string = "vptp" + fmt.Sprintf("%d", i)
+	inf, err := net.Interfaces()
+	if err != nil {
+		log.Printf("[ERROR] Failed to retrieve list of network interfaces")
+		return ""
+	}
+	var exist bool = false
+	for _, i := range inf {
+		if i.Name == devName {
+			exist = true
+		}
+	}
+	if exist {
+		return ptp.GenerateDeviceName(i + 1)
+	} else {
+		return devName
+	}
+}
+
+// This method lists interfaces available in the system and retrieves their
+// IP addresses
+func (ptp *PTPCloud) FindNetworkAddresses() {
+	log.Printf("[INFO] Looking for available network interfaces")
+	inf, err := net.Interfaces()
+	if err != nil {
+		log.Printf("[ERROR] Failed to retrieve list of network interfaces")
+		return
+	}
+	for _, i := range inf {
+		addresses, err := i.Addrs()
+
+		if err != nil {
+			log.Printf("[ERROR] Failed to retrieve address for interface %v", err)
+			continue
+		}
+		for _, addr := range addresses {
+			var decision string = "Ignoring"
+			var ipType string = "Unknown"
+			ip, _, err := net.ParseCIDR(addr.String())
+			if err != nil {
+				log.Printf("[ERROR] Failed to parse CIDR notation: %v", err)
+			}
+			if ip.IsLoopback() {
+				ipType = "Loopback"
+			} else if ip.IsMulticast() {
+				ipType = "Multicast"
+			} else if ip.IsGlobalUnicast() {
+				decision = "Saving"
+				ipType = "Global Unicast"
+			} else if ip.IsLinkLocalUnicast() {
+				ipType = "Link Local Unicast"
+			} else if ip.IsLinkLocalMulticast() {
+				ipType = "Link Local Multicast"
+			} else if ip.IsInterfaceLocalMulticast() {
+				ipType = "Interface Local Multicast"
+			}
+			log.Printf("[INFO] Interface %s: %s. Type: %s. %s", i.Name, addr.String(), ipType, decision)
+			if decision == "Saving" {
+				ptp.LocalIPs = append(ptp.LocalIPs, ip)
+			}
+		}
+	}
+	log.Printf("[INFO] %d interfaces were saved", len(ptp.LocalIPs))
+}
+
 func main() {
 	// TODO: Move this to init() function
 	var (
-		argIp     string
-		argMask   string
-		argMac    string
-		argDev    string
-		argDirect string
-		argHash   string
+		argIp      string
+		argMask    string
+		argMac     string
+		argDev     string
+		argDirect  string
+		argHash    string
+		argDht     string
+		argKeyfile string
 	)
 
-	// TODO: Improve this
 	flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
 	// TODO: Parse this properly
-	flag.StringVar(&argMask, "mask", "none", "Network mask")
-	// TODO: Implement this
+	flag.StringVar(&argMask, "mask", "255.255.255.0", "Network mask")
 	flag.StringVar(&argMac, "mac", "none", "MAC Address for a TUN/TAP interface")
-	flag.StringVar(&argDev, "dev", "none", "TUN/TAP interface name")
+	flag.StringVar(&argDev, "dev", "", "TUN/TAP interface name")
 	// TODO: Direct connection is not implemented yet
 	flag.StringVar(&argDirect, "direct", "none", "IP to connect to directly")
 	flag.StringVar(&argHash, "hash", "none", "Infohash for environment")
+	flag.StringVar(&argDht, "dht", "", "Specify DHT bootstrap node address")
+	flag.StringVar(&argKeyfile, "key", "", "Path to yaml file containing crypto key")
 
 	flag.Parse()
-	if argIp == "none" || argMask == "none" || argDev == "none" {
+	if argIp == "none" {
 		fmt.Println("USAGE: p2p [OPTIONS]")
 		fmt.Printf("\nOPTIONS:\n")
 		flag.PrintDefaults()
@@ -217,6 +311,11 @@ func main() {
 		log.Printf("[INFO] Generate MAC for TAP device: %s", argMac)
 	}
 
+	if argKeyfile == "" {
+		var crypter Crypto
+		crypter.ReadKeysFromFile(argKeyfile)
+	}
+
 	// Create new DHT Client, configured it and initialize
 	// During initialization procedure, DHT Client will send
 	// a introduction packet along with a hash to a DHT bootstrap
@@ -226,14 +325,23 @@ func main() {
 	config.NetworkHash = argHash
 
 	ptp := new(PTPCloud)
+	ptp.FindNetworkAddresses()
 	ptp.HardwareAddr = hw
+
+	if argDev == "" {
+		argDev = ptp.GenerateDeviceName(1)
+	}
+
 	ptp.CreateDevice(argIp, argMac, argMask, argDev)
 	ptp.UDPSocket = new(udpcs.UDPClient)
 	ptp.UDPSocket.Init("", 0)
 	port := ptp.UDPSocket.GetPort()
 	log.Printf("[INFO] Started UDP Listener at port %d", port)
 	config.P2PPort = port
-	dhtClient = dhtClient.Initialize(config)
+	if argDht != "" {
+		config.Routers = argDht
+	}
+	ptp.dht = dhtClient.Initialize(config, ptp.LocalIPs)
 
 	go ptp.UDPSocket.Listen(ptp.HandleP2PMessage)
 
@@ -253,7 +361,7 @@ func main() {
 	go ptp.ListenInterface()
 	for {
 		time.Sleep(3 * time.Second)
-		dhtClient.UpdatePeers()
+		ptp.dht.UpdatePeers()
 		// Wait two seconds before synchronizing with catched peers
 		time.Sleep(2 * time.Second)
 		ptp.PurgePeers(dhtClient.LastCatch)
@@ -269,27 +377,34 @@ func main() {
 // about his device
 func (ptp *PTPCloud) IntroducePeers() {
 	for i, peer := range ptp.NetworkPeers {
+		// Skip if know this peer
 		if !peer.Unknown {
 			continue
 		}
-		log.Printf("[DEBUG] Introducing to %s", peer.CleanAddr)
-		addr, err := net.ResolveUDPAddr("udp", peer.CleanAddr)
+		// Skip if we don't have an endpoint address for this peer
+		if peer.Endpoint == "" {
+			continue
+		}
+		log.Printf("[DEBUG] Introducing to %s", peer.Endpoint)
+		addr, err := net.ResolveUDPAddr("udp", peer.Endpoint)
 		if err != nil {
 			log.Printf("[ERROR] Failed to resolve UDP address during Introduction: %v", err)
 			continue
 		}
 		ptp.NetworkPeers[i].PeerAddr = addr
 		// Send introduction packet
-		msg := ptp.PrepareIntroductionMessage(ptp.IP, ptp.Mac)
+		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID, ptp.Mac)
 		_, err = ptp.UDPSocket.SendMessage(msg, addr)
 		if err != nil {
 			log.Printf("[ERROR] Failed to send introduction to %s", addr.String())
+		} else {
+			log.Printf("[DEBUG] Introduction sent to %s", peer.Endpoint)
 		}
 	}
 }
 
-func (ptp *PTPCloud) PrepareIntroductionMessage(ip, mac string) *udpcs.P2PMessage {
-	var intro string = ip + "," + mac
+func (ptp *PTPCloud) PrepareIntroductionMessage(id, mac string) *udpcs.P2PMessage {
+	var intro string = id + "," + mac
 	msg := udpcs.CreateIntroP2PMessage(intro, 0)
 	return msg
 }
@@ -297,6 +412,24 @@ func (ptp *PTPCloud) PrepareIntroductionMessage(ip, mac string) *udpcs.P2PMessag
 // This method goes over peers and removes obsolete ones
 // Peer becomes obsolete when it goes out of DHT
 func (ptp *PTPCloud) PurgePeers(catched []string) {
+	var rem []int
+	for i, peer := range ptp.NetworkPeers {
+		var f bool = false
+		for _, newPeer := range ptp.dht.Peers {
+			if newPeer.ID == peer.ID {
+				f = true
+			}
+		}
+		if !f {
+			rem = append(rem, i)
+		}
+	}
+	for i := range rem {
+		ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
+	}
+	return
+
+	// TODO: Old Scheme. Remove it before release
 	var remove []int
 	for i, peer := range ptp.NetworkPeers {
 		var found bool = false
@@ -319,37 +452,82 @@ func (ptp *PTPCloud) PurgePeers(catched []string) {
 // adds every new peer into list of peers
 // Returns amount of peers that has been added
 func (ptp *PTPCloud) SyncPeers(catched []string) int {
+	var count int
+
+	for _, id := range ptp.dht.Peers {
+		if id.ID == "" {
+			continue
+		}
+		var found bool = false
+		for i, peer := range ptp.NetworkPeers {
+			if peer.ID == id.ID {
+				found = true
+				// Check if know something new about this peer, e.g. new addresses were
+				// assigned to it
+				for _, ip := range id.Ips {
+					if ip == "" || ip == "0" {
+						continue
+					}
+					var ipFound bool = false
+					for _, kip := range peer.KnownIPs {
+						if kip.String() == ip {
+							ipFound = true
+						}
+					}
+					if !ipFound {
+						log.Printf("[INFO] Adding new IP (%s) address to %s", ip, peer.ID)
+						// TODO: Check IP parsing
+						newIp, _ := net.ResolveUDPAddr("udp", ip)
+						ptp.NetworkPeers[i].KnownIPs = append(ptp.NetworkPeers[i].KnownIPs, newIp)
+						log.Printf("!!!!!!!!!!!!!!!!!!!\n%v\n!!!!!!!!!!!!!!!!!!!!!!!!!!", ptp.NetworkPeers[i].KnownIPs)
+					}
+				}
+
+				// Set and Endpoint from peers if no endpoint were set previously
+				if peer.Endpoint == "" {
+					// First we need to go over each network and see if some of addresses are inside LAN
+					// TODO: Implement
+
+					// TODO: Temporary solution
+					if len(ptp.NetworkPeers[i].KnownIPs) > 0 {
+						log.Printf("[DEBUG] Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
+						ptp.NetworkPeers[i].Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
+						// Increase counter so p2p package will send introduction
+						count = count + 1
+					}
+				}
+			}
+		}
+		if !found {
+			log.Printf("[INFO] Adding new peer. Requesting peer address")
+			var newPeer NetworkPeer
+			newPeer.ID = id.ID
+			newPeer.Unknown = true
+			ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+			ptp.dht.RequestPeerIPs(id.ID)
+		}
+	}
+	return count
+
+	// TODO: Old Scheme. Remove it before release
 	var c int
-	for _, addr := range catched {
+	for _, id := range catched {
 		var found bool = false
 		for _, peer := range ptp.NetworkPeers {
-			if peer.CleanAddr == addr {
+			if peer.ID == id {
 				found = true
 			}
 		}
 		if !found {
 			var newPeer NetworkPeer
-			newPeer.CleanAddr = addr
+			newPeer.ID = id
 			newPeer.Unknown = true
 			ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+			ptp.dht.RequestPeerIPs(id)
 			c = c + 1
 		}
 	}
 	return c
-}
-
-func (ptp *PTPCloud) UpdatePeersTable(dht *dht.DHTClient) {
-	//timestamp := time.Now().Local()
-	for _ = range time.Tick(15 * time.Second) {
-		if len(ptp.NetworkPeers) != len(dht.NetworkPeers) {
-			//for _, peer := range dht.NetworkPeers {
-			//			p := strings.Split(peer, ":")
-			/*for _, lp := range ptp.NetworkPeers {
-			}
-			*/
-			//}
-		}
-	}
 }
 
 // WriteToDevice writes data to created TUN/TAP device
@@ -387,26 +565,34 @@ func GenerateMAC() (string, net.HardwareAddr) {
 
 // AddPeer adds new peer into list of network participants. If peer was added previously
 // information about him will be updated. If not, new entry will be added
-func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, ip net.IP, mac net.HardwareAddr) {
+func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, mac net.HardwareAddr) {
 	var found bool = false
 	for i, peer := range ptp.NetworkPeers {
 		if peer.CleanAddr == addr.String() {
 			found = true
+			ptp.NetworkPeers[i].ID = id
 			ptp.NetworkPeers[i].PeerAddr = addr
-			ptp.NetworkPeers[i].PeerLocalIP = ip
+			//ptp.NetworkPeers[i].PeerLocalIP = ip
 			ptp.NetworkPeers[i].PeerHW = mac
 			ptp.NetworkPeers[i].Unknown = false
+			ptp.NetworkPeers[i].Handshaked = true
 		}
 	}
 	if !found {
 		var newPeer NetworkPeer
+		newPeer.ID = id
 		newPeer.CleanAddr = addr.String()
 		newPeer.PeerAddr = addr
-		newPeer.PeerLocalIP = ip
+		//newPeer.PeerLocalIP = ip
 		newPeer.PeerHW = mac
 		newPeer.Unknown = false
+		newPeer.Handshaked = true
 		ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
 	}
+}
+
+func (p *NetworkPeer) ProbeConnection() bool {
+	return false
 }
 
 func (ptp *PTPCloud) ParseIntroString(intro string) (net.IP, net.HardwareAddr) {
@@ -415,6 +601,7 @@ func (ptp *PTPCloud) ParseIntroString(intro string) (net.IP, net.HardwareAddr) {
 		log.Printf("[ERROR] Failed to parse introduction stirng")
 		return nil, nil
 	}
+	// TODO: Here we have IP now
 	ip := net.ParseIP(parts[0])
 	if ip == nil {
 		log.Printf("[ERROR] Failed to parse IP address from introduction packet")
@@ -460,9 +647,9 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 		if !ptp.IsPeerUnknown(src_addr) {
 			return
 		}
-		ip, mac := ptp.ParseIntroString(string(msg.Data))
-		ptp.AddPeer(src_addr, ip, mac)
-		msg := ptp.PrepareIntroductionMessage(ptp.IP, ptp.Mac)
+		id, mac := ptp.ParseIntroString(string(msg.Data))
+		ptp.AddPeer(src_addr, id.String(), mac)
+		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID, ptp.Mac)
 		_, err := ptp.UDPSocket.SendMessage(msg, src_addr)
 		if err != nil {
 			log.Printf("[ERROR] Failed to respond to introduction message: %v", err)
