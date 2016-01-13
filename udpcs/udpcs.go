@@ -25,7 +25,7 @@ func (v *P2PMessageHeader) Serialize() []byte {
 	binary.BigEndian.PutUint16(res_buf[2:4], v.Type)
 	binary.BigEndian.PutUint16(res_buf[4:6], v.Length)
 	binary.BigEndian.PutUint16(res_buf[6:8], v.NetProto)
-	binary.BigEndian.PutUint16(res_buf[8:10], v.NetProto)
+	binary.BigEndian.PutUint16(res_buf[8:10], v.ProxyId)
 	return res_buf
 }
 
