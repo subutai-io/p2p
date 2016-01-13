@@ -448,8 +448,29 @@ func (ptp *PTPCloud) PurgePeers(catched []string) {
 	}
 }
 
-func (ptp *PTPCloud) TestConnection() {
-
+// This method tests connection with specified endpoint
+func (ptp *PTPCloud) TestConnection(endpoint string) bool {
+	msg := udpcs.CreateTestP2PMessage("TEST", 0)
+	addr, _ := net.ResolveUDPAddr("udp", endpoint)
+	conn, _ := net.DialUDP("udp4", nil, addr)
+	_, err := conn.Write(msg.Serialize())
+	if err != nil {
+		return false
+	}
+	t := time.Now()
+	t.Add(3 * time.Second)
+	conn.SetReadDeadline(t)
+	for {
+		var buf [4096]byte
+		s, _, err := conn.ReadFromUDP(buf[0:])
+		if err != nil {
+			log.Printf("[!!!!!!!!!!!!!!!!] %v", err)
+			return false
+		}
+		if s > 0 {
+			return true
+		}
+	}
 }
 
 // This method takes a list of catched peers from DHT and
@@ -506,9 +527,12 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 							_, network, _ := net.ParseCIDR(addr.String())
 							for _, kip := range ptp.NetworkPeers[i].KnownIPs {
 								log.Printf("[DEBUG] Probing new IP %s against network %s", kip.IP.String(), network.String())
+
 								if network.Contains(kip.IP) {
-									ptp.NetworkPeers[i].Endpoint = kip.IP.String()
-									count = count + 1
+									if ptp.TestConnection(kip.IP.String()) {
+										ptp.NetworkPeers[i].Endpoint = kip.IP.String()
+										count = count + 1
+									}
 									// TODO: Test connection
 								}
 							}
@@ -516,7 +540,7 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 					}
 
 					// If we've failed to find something that is really close to us, skip to global
-					if peer.Endpoint == "" && failback && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
+					if failback || peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
 						log.Printf("[DEBUG] Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
 						ptp.NetworkPeers[i].Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
 						// Increase counter so p2p package will send introduction

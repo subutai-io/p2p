@@ -100,6 +100,16 @@ func CreateNencP2PMessage(data []byte, netProto uint16) *P2PMessage {
 	return msg
 }
 
+func CreateTestP2PMessage(data string, netProto uint16) *P2PMessage {
+	msg := new(P2PMessage)
+	msg.Header = new(P2PMessageHeader)
+	msg.Header.Magic = MAGIC_COOKIE
+	msg.Header.Type = uint16(commons.MT_TEST)
+	msg.Header.NetProto = netProto
+	msg.Data = []byte(data)
+	return msg
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 type UDPClient struct {
