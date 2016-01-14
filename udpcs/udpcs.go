@@ -36,25 +36,27 @@ type Crypto struct {
 }
 
 type P2PMessageHeader struct {
-	Magic    uint16
-	Type     uint16
-	Length   uint16
-	NetProto uint16
-	ProxyId  uint16
+	Magic         uint16
+	Type          uint16
+	Length        uint16
+	NetProto      uint16
+	ProxyId       uint16
+	SerializedLen uint16
 }
 
 func (v *P2PMessageHeader) Serialize() []byte {
-	res_buf := make([]byte, 10)
+	res_buf := make([]byte, 12)
 	binary.BigEndian.PutUint16(res_buf[0:2], v.Magic)
 	binary.BigEndian.PutUint16(res_buf[2:4], v.Type)
 	binary.BigEndian.PutUint16(res_buf[4:6], v.Length)
 	binary.BigEndian.PutUint16(res_buf[6:8], v.NetProto)
 	binary.BigEndian.PutUint16(res_buf[8:10], v.ProxyId)
+	binary.BigEndian.PutUint16(res_buf[10:12], v.SerializedLen)
 	return res_buf
 }
 
 func P2PMessageHeaderFromBytes(bytes []byte) (*P2PMessageHeader, error) {
-	if len(bytes) < 10 {
+	if len(bytes) < 12 {
 		return nil, errors.New("P2PMessageHeaderFromBytes_error : less then 6 bytes")
 	}
 
@@ -64,6 +66,7 @@ func P2PMessageHeaderFromBytes(bytes []byte) (*P2PMessageHeader, error) {
 	result.Length = binary.BigEndian.Uint16(bytes[4:6])
 	result.NetProto = binary.BigEndian.Uint16(bytes[6:8])
 	result.ProxyId = binary.BigEndian.Uint16(bytes[8:10])
+	result.SerializedLen = binary.BigEndian.Uint16(bytes[10:12])
 	return result, nil
 }
 
@@ -73,6 +76,7 @@ type P2PMessage struct {
 }
 
 func (v *P2PMessage) Serialize() []byte {
+	v.Header.SerializedLen = uint16(len(v.Data))
 	res_buf := v.Header.Serialize()
 	res_buf = append(res_buf, v.Data...)
 	return res_buf
@@ -88,7 +92,7 @@ func P2PMessageFromBytes(bytes []byte) (*P2PMessage, error) {
 	if res.Header.Magic != MAGIC_COOKIE {
 		return nil, errors.New("magic cookie not presented")
 	}
-	res.Data = make([]byte, res.Header.Length)
+	res.Data = make([]byte, res.Header.SerializedLen)
 	copy(res.Data[:], bytes[10:len(bytes)])
 	return res, err
 }
