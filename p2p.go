@@ -754,6 +754,7 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 		if dec_err != nil {
 			log.Log(log.ERROR, "Failed to decrypt message")
 		}
+		msg.Data = msg.Data[:msg.Header.Length]
 	}
 	switch msgType {
 	case commons.MT_INTRO:
