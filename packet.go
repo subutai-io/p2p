@@ -38,14 +38,17 @@ func (ptp *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	}
 
 	msg := udpcs.CreateNencP2PMessage(contents, uint16(proto))
-	size, err := ptp.SendTo(f.Destination, msg)
+	_, err := ptp.SendTo(f.Destination, msg)
 	if err != nil {
 		log.Log(log.ERROR, "Failed to send message inside P2P: %v", err)
 		return
 	}
-	if size <= 0 {
-		log.Log(log.ERROR, "Zero bytes were send inside P2P")
-	}
+	// TODO: Do we need this?
+	/*
+		if size <= 0 {
+			log.Log(log.DEBUG, "Zero bytes were send inside P2P")
+		}
+	*/
 }
 
 // TODO: Implement IPv6 Support
