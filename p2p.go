@@ -303,7 +303,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.SetMinLogLevel(log.ERROR)
+	log.SetMinLogLevel(log.DEBUG)
 
 	var hw net.HardwareAddr
 
