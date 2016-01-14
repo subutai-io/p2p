@@ -37,7 +37,7 @@ func (ptp *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 		return
 	}
 
-	msg := udpcs.CreateNencP2PMessage(contents, uint16(proto))
+	msg := udpcs.CreateNencP2PMessage(ptp.Crypter, contents, uint16(proto))
 	_, err := ptp.SendTo(f.Destination, msg)
 	if err != nil {
 		log.Log(log.ERROR, "Failed to send message inside P2P: %v", err)

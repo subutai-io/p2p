@@ -13,7 +13,6 @@ import (
 	"os/signal"
 	"p2p/commons"
 	"p2p/dht"
-	//"p2p/enc"
 	log "p2p/p2p_log"
 	"p2p/udpcs"
 	"strings"
@@ -55,7 +54,7 @@ type PTPCloud struct {
 
 	dht *dht.DHTClient
 
-	Crypter *Crypto
+	Crypter *udpcs.Crypto
 }
 
 type NetworkPeer struct {
@@ -332,15 +331,26 @@ func main() {
 		argDev = ptp.GenerateDeviceName(1)
 	}
 
-	ptp.Crypter = new(Crypto)
+	ptp.Crypter = new(udpcs.Crypto)
 	if argKeyfile != "" {
 		ptp.Crypter.ReadKeysFromFile(argKeyfile)
 	}
-	// Normally this will override keyfile
 	if argKey != "" {
-		if len(ptp.Crypter.Keys) == 0 {
-
+		// Override key from file
+		if argTTL == "" {
+			argTTL = "default"
 		}
+		var newKey udpcs.CryptoKey
+		newKey = ptp.Crypter.EncrichKeyValues(newKey, argKey, argTTL)
+		ptp.Crypter.Keys = append(ptp.Crypter.Keys, newKey)
+		ptp.Crypter.ActiveKey = &ptp.Crypter.Keys[0]
+		ptp.Crypter.Active = true
+	}
+
+	if ptp.Crypter.Active {
+		log.Log(log.INFO, "Traffic encryption is enabled. Key valid until %s", ptp.Crypter.ActiveKey.Until.String())
+	} else {
+		log.Log(log.INFO, "No AES key were provided. Traffic encryption is disabled")
 	}
 
 	ptp.CreateDevice(argIp, argMac, argMask, argDev)
@@ -416,7 +426,7 @@ func (ptp *PTPCloud) IntroducePeers() {
 
 func (ptp *PTPCloud) PrepareIntroductionMessage(id string) *udpcs.P2PMessage {
 	var intro string = id + "," + ptp.Mac + "," + ptp.IP
-	msg := udpcs.CreateIntroP2PMessage(intro, 0)
+	msg := udpcs.CreateIntroP2PMessage(ptp.Crypter, intro, 0)
 	return msg
 }
 
@@ -464,7 +474,7 @@ func (ptp *PTPCloud) PurgePeers(catched []string) {
 
 // This method tests connection with specified endpoint
 func (ptp *PTPCloud) TestConnection(endpoint *net.UDPAddr) bool {
-	msg := udpcs.CreateTestP2PMessage("TEST", 0)
+	msg := udpcs.CreateTestP2PMessage(ptp.Crypter, "TEST", 0)
 	conn, err := net.DialUDP("udp4", nil, endpoint)
 	if err != nil {
 		log.Log(log.ERROR, "%v", err)
@@ -728,6 +738,14 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 		return
 	}
 	var msgType commons.MSG_TYPE = commons.MSG_TYPE(msg.Header.Type)
+	// Decrypt message if crypter is active
+	if ptp.Crypter.Active {
+		var dec_err error
+		msg.Data, dec_err = ptp.Crypter.Decrypt(ptp.Crypter.ActiveKey.Key, msg.Data)
+		if dec_err != nil {
+			log.Log(log.ERROR, "Failed to decrypt message")
+		}
+	}
 	switch msgType {
 	case commons.MT_INTRO:
 		log.Log(log.DEBUG, "Introduction message received: %s", string(msg.Data))
@@ -744,7 +762,7 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 			log.Log(log.ERROR, "Failed to respond to introduction message: %v", err)
 		}
 	case commons.MT_TEST:
-		msg := udpcs.CreateTestP2PMessage("TEST", 0)
+		msg := udpcs.CreateTestP2PMessage(ptp.Crypter, "TEST", 0)
 		_, err := ptp.UDPSocket.SendMessage(msg, src_addr)
 		if err != nil {
 			log.Log(log.ERROR, "Failed to respond to test message: %v", err)

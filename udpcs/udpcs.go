@@ -12,6 +12,7 @@ import (
 	"log"
 	"net"
 	"p2p/commons"
+	"strconv"
 	"time"
 )
 
@@ -29,8 +30,9 @@ type CryptoKey struct {
 }
 
 type Crypto struct {
-	Keys   []CryptoKey
-	Active bool
+	Keys      []CryptoKey
+	ActiveKey *CryptoKey
+	Active    bool
 }
 
 type P2PMessageHeader struct {
@@ -92,33 +94,58 @@ func P2PMessageFromBytes(bytes []byte) (*P2PMessage, error) {
 	return res, err
 }
 
-func CreateStringP2PMessage(data string, netProto uint16) *P2PMessage {
+func CreateStringP2PMessage(c *Crypto, data string, netProto uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
 	msg.Header.Magic = MAGIC_COOKIE
 	msg.Header.Type = uint16(commons.MT_STRING)
 	msg.Header.NetProto = netProto
-	msg.Data = []byte(data)
+	if c.Active {
+		var err error
+		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
+		if err != nil {
+			log.Printf("[ERROR] Failed to encrypt data")
+		}
+	} else {
+		msg.Data = []byte(data)
+	}
+	//"p2p/enc"
 	return msg
 }
 
-func CreateIntroP2PMessage(data string, netProto uint16) *P2PMessage {
+func CreateIntroP2PMessage(c *Crypto, data string, netProto uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
 	msg.Header.Magic = MAGIC_COOKIE
 	msg.Header.Type = uint16(commons.MT_INTRO)
 	msg.Header.NetProto = netProto
-	msg.Data = []byte(data)
+	if c.Active {
+		var err error
+		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
+		if err != nil {
+			log.Printf("[ERROR] Failed to encrypt data")
+		}
+	} else {
+		msg.Data = []byte(data)
+	}
 	return msg
 }
 
-func CreateNencP2PMessage(data []byte, netProto uint16) *P2PMessage {
+func CreateNencP2PMessage(c *Crypto, data []byte, netProto uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
 	msg.Header.Magic = MAGIC_COOKIE
 	msg.Header.Type = uint16(commons.MT_NENC)
 	msg.Header.NetProto = netProto
-	msg.Data = data
+	if c.Active {
+		var err error
+		msg.Data, err = c.Encrypt(c.ActiveKey.Key, data)
+		if err != nil {
+			log.Printf("[ERROR] Failed to encrypt data")
+		}
+	} else {
+		msg.Data = data
+	}
 	return msg
 }
 
@@ -128,7 +155,15 @@ func CreateTestP2PMessage(c *Crypto, data string, netProto uint16) *P2PMessage {
 	msg.Header.Magic = MAGIC_COOKIE
 	msg.Header.Type = uint16(commons.MT_TEST)
 	msg.Header.NetProto = netProto
-	msg.Data = []byte(data)
+	if c.Active {
+		var err error
+		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
+		if err != nil {
+			log.Printf("[ERROR] Failed to encrypt data")
+		}
+	} else {
+		msg.Data = []byte(data)
+	}
 	return msg
 }
 
@@ -196,21 +231,23 @@ func (uc *UDPClient) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, e
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 func UDPCSTest() {
-	var udp_client_0 *UDPClient = new(UDPClient)
-	var udp_client_1 *UDPClient = new(UDPClient)
+	/*
+		var udp_client_0 *UDPClient = new(UDPClient)
+		var udp_client_1 *UDPClient = new(UDPClient)
 
-	udp_client_0.Init("", 5000)
-	udp_client_1.Init("", 5001)
+		udp_client_0.Init("", 5000)
+		udp_client_1.Init("", 5001)
 
-	go udp_client_0.Listen(Process_p2p_msg)
-	go udp_client_1.Listen(Process_p2p_msg)
+		go udp_client_0.Listen(Process_p2p_msg)
+		go udp_client_1.Listen(Process_p2p_msg)
 
-	msg := CreateStringP2PMessage("Hello, world!", 0)
-	udp_client_0.SendMessage(msg, udp_client_1.Addr())
+		msg := CreateStringP2PMessage("Hello, world!", 0)
+		udp_client_0.SendMessage(msg, udp_client_1.Addr())
 
-	for {
-		time.Sleep(100 * time.Millisecond)
-	}
+		for {
+			time.Sleep(100 * time.Millisecond)
+		}
+	*/
 }
 
 func Process_p2p_msg(count int, src_addr *net.UDPAddr, err error, rcv_bytes []byte) {
@@ -238,7 +275,15 @@ func Process_p2p_msg(count int, src_addr *net.UDPAddr, err error, rcv_bytes []by
 
 func (c *Crypto) EncrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKey {
 	var err error
-	ckey.Until, err = time.Parse("2016-01-14 01:18:18.032507415 +0600 KGT", datetime)
+	i, err := strconv.ParseInt(datetime, 10, 64)
+	ckey.Until = time.Now()
+	// Default value is +1 hour
+	ckey.Until = ckey.Until.Add(60 * time.Minute)
+	if err != nil {
+		log.Printf("[ERROR] Failed to parse TTL. Falling back to default value of 1 hour")
+	} else {
+		ckey.Until = time.Unix(i, 0)
+	}
 	ckey.Key = []byte(key)
 	if err != nil {
 		log.Printf("[ERROR] Failed to parse provided TTL value: %v", err)
