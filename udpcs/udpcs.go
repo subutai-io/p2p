@@ -31,7 +31,7 @@ type CryptoKey struct {
 
 type Crypto struct {
 	Keys      []CryptoKey
-	ActiveKey *CryptoKey
+	ActiveKey CryptoKey
 	Active    bool
 }
 
@@ -101,7 +101,7 @@ func P2PMessageFromBytes(bytes []byte) (*P2PMessage, error) {
 	return res, err
 }
 
-func CreateStringP2PMessage(c *Crypto, data string, netProto uint16) *P2PMessage {
+func CreateStringP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
 	msg.Header.Magic = MAGIC_COOKIE
@@ -121,7 +121,7 @@ func CreateStringP2PMessage(c *Crypto, data string, netProto uint16) *P2PMessage
 	return msg
 }
 
-func CreateIntroP2PMessage(c *Crypto, data string, netProto uint16) *P2PMessage {
+func CreateIntroP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
 	msg.Header.Magic = MAGIC_COOKIE
@@ -129,6 +129,7 @@ func CreateIntroP2PMessage(c *Crypto, data string, netProto uint16) *P2PMessage 
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
 	if c.Active {
+		log.Log(log.DEBUG, "ACTIVE SUKA")
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {
@@ -140,7 +141,7 @@ func CreateIntroP2PMessage(c *Crypto, data string, netProto uint16) *P2PMessage 
 	return msg
 }
 
-func CreateNencP2PMessage(c *Crypto, data []byte, netProto uint16) *P2PMessage {
+func CreateNencP2PMessage(c Crypto, data []byte, netProto uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
 	msg.Header.Magic = MAGIC_COOKIE
@@ -159,7 +160,7 @@ func CreateNencP2PMessage(c *Crypto, data []byte, netProto uint16) *P2PMessage {
 	return msg
 }
 
-func CreateTestP2PMessage(c *Crypto, data string, netProto uint16) *P2PMessage {
+func CreateTestP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
 	msg.Header.Magic = MAGIC_COOKIE
@@ -167,6 +168,7 @@ func CreateTestP2PMessage(c *Crypto, data string, netProto uint16) *P2PMessage {
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
 	if c.Active {
+		log.Log(log.DEBUG, "ACTIVE SUKA")
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {
@@ -284,7 +286,7 @@ func Process_p2p_msg(count int, src_addr *net.UDPAddr, err error, rcv_bytes []by
 
 // Cryptography
 
-func (c *Crypto) EncrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKey {
+func (c Crypto) EncrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKey {
 	var err error
 	i, err := strconv.ParseInt(datetime, 10, 64)
 	ckey.Until = time.Now()
@@ -303,7 +305,7 @@ func (c *Crypto) EncrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKe
 	return ckey
 }
 
-func (c *Crypto) ReadKeysFromFile(filepath string) {
+func (c Crypto) ReadKeysFromFile(filepath string) {
 	yamlFile, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		log.Log(log.ERROR, "Failed to read key file yaml: %v", err)
@@ -322,7 +324,7 @@ func (c *Crypto) ReadKeysFromFile(filepath string) {
 	c.Keys = append(c.Keys, ckey)
 }
 
-func (c *Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
+func (c Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
 	log.Log(log.DEBUG, "--- ENCRYPT BEFORE : %s", data)
 	cb, err := aes.NewCipher(key)
 	if err != nil {
@@ -356,7 +358,7 @@ func (c *Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
 
 /////////////////////////////////////////////////////
 
-func (c *Crypto) Decrypt(key []byte, data []byte) ([]byte, error) {
+func (c Crypto) Decrypt(key []byte, data []byte) ([]byte, error) {
 	log.Log(log.DEBUG, "--- DECRYPT BEFORE : %s", data)
 	block, err := aes.NewCipher(key)
 	if err != nil {

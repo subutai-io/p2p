@@ -54,7 +54,7 @@ type PTPCloud struct {
 
 	dht *dht.DHTClient
 
-	Crypter *udpcs.Crypto
+	Crypter udpcs.Crypto
 }
 
 type NetworkPeer struct {
@@ -335,7 +335,6 @@ func main() {
 		argDev = ptp.GenerateDeviceName(1)
 	}
 
-	ptp.Crypter = new(udpcs.Crypto)
 	if argKeyfile != "" {
 		ptp.Crypter.ReadKeysFromFile(argKeyfile)
 	}
@@ -347,7 +346,7 @@ func main() {
 		var newKey udpcs.CryptoKey
 		newKey = ptp.Crypter.EncrichKeyValues(newKey, argKey, argTTL)
 		ptp.Crypter.Keys = append(ptp.Crypter.Keys, newKey)
-		ptp.Crypter.ActiveKey = &ptp.Crypter.Keys[0]
+		ptp.Crypter.ActiveKey = ptp.Crypter.Keys[0]
 		ptp.Crypter.Active = true
 	}
 
@@ -754,7 +753,6 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 	// Decrypt message if crypter is active
 	if ptp.Crypter.Active {
 		var dec_err error
-		log.Log(log.INFO, "MSG DATA LEN : %d, data : %s", len(msg.Data), msg.Data)
 		msg.Data, dec_err = ptp.Crypter.Decrypt(ptp.Crypter.ActiveKey.Key, msg.Data)
 		if dec_err != nil {
 			log.Log(log.ERROR, "Failed to decrypt message")
