@@ -564,7 +564,10 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 						}
 						addrs, _ := inf.Addrs()
 						for _, addr := range addrs {
-							_, network, _ := net.ParseCIDR(addr.String())
+							netip, network, _ := net.ParseCIDR(addr.String())
+							if !netip.IsGlobalUnicast() {
+								continue
+							}
 							for _, kip := range ptp.NetworkPeers[i].KnownIPs {
 								log.Log(log.DEBUG, "Probing new IP %s against network %s", kip.IP.String(), network.String())
 
