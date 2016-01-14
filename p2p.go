@@ -556,7 +556,7 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 					}
 
 					for _, inf := range interfaces {
-						if peer.Endpoint != "" {
+						if ptp.NetworkPeers[i].Endpoint != "" {
 							break
 						}
 						if inf.Name == ptp.DeviceName {
@@ -713,6 +713,7 @@ func (ptp *PTPCloud) ParseIntroString(intro string) (string, net.HardwareAddr, n
 		return "", nil, nil
 	}
 	// Extract IP
+	log.Log(log.INFO, "PARTS-2: %s, LEN: %d", parts[2], len(parts[2]))
 	ip := net.ParseIP(parts[2])
 	if ip == nil {
 		log.Log(log.ERROR, "Failed to parse IP address from introduction packet")
