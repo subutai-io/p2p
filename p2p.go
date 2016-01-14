@@ -265,37 +265,39 @@ func (ptp *PTPCloud) FindNetworkAddresses() {
 	log.Log(log.INFO, "%d interfaces were saved", len(ptp.LocalIPs))
 }
 
-func main() {
+func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string) *PTPCloud {
 	// TODO: Move this to init() function
-	var (
-		argIp      string
-		argMask    string
-		argMac     string
-		argDev     string
-		argDirect  string
-		argHash    string
-		argDht     string
-		argKeyfile string
-		argKey     string
-		argTTL     string
-		argLog     string
-	)
+	/*
+		var (
+			argIp      string
+			argMask    string
+			argMac     string
+			argDev     string
+			argDirect  string
+			argHash    string
+			argDht     string
+			argKeyfile string
+			argKey     string
+			argTTL     string
+			argLog     string
+		)
 
-	flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
-	// TODO: Parse this properly
-	flag.StringVar(&argMask, "mask", "255.255.255.0", "Network mask")
-	flag.StringVar(&argMac, "mac", "none", "MAC Address for a TUN/TAP interface")
-	flag.StringVar(&argDev, "dev", "", "TUN/TAP interface name")
-	// TODO: Direct connection is not implemented yet
-	flag.StringVar(&argDirect, "direct", "none", "IP to connect to directly")
-	flag.StringVar(&argHash, "hash", "none", "Infohash for environment")
-	flag.StringVar(&argDht, "dht", "", "Specify DHT bootstrap node address")
-	flag.StringVar(&argKeyfile, "keyfile", "", "Path to yaml file containing crypto key")
-	flag.StringVar(&argKey, "key", "", "AES crypto key")
-	flag.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
-	flag.StringVar(&argLog, "log", "INFO", "Log level")
+		flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
+		// TODO: Parse this properly
+		flag.StringVar(&argMask, "mask", "255.255.255.0", "Network mask")
+		flag.StringVar(&argMac, "mac", "none", "MAC Address for a TUN/TAP interface")
+		flag.StringVar(&argDev, "dev", "", "TUN/TAP interface name")
+		// TODO: Direct connection is not implemented yet
+		flag.StringVar(&argDirect, "direct", "none", "IP to connect to directly")
+		flag.StringVar(&argHash, "hash", "none", "Infohash for environment")
+		flag.StringVar(&argDht, "dht", "", "Specify DHT bootstrap node address")
+		flag.StringVar(&argKeyfile, "keyfile", "", "Path to yaml file containing crypto key")
+		flag.StringVar(&argKey, "key", "", "AES crypto key")
+		flag.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
+		flag.StringVar(&argLog, "log", "INFO", "Log level")
 
-	flag.Parse()
+		flag.Parse()
+	*/
 	if argIp == "none" {
 		fmt.Println("USAGE: p2p [OPTIONS]")
 		fmt.Printf("\nOPTIONS:\n")
@@ -307,12 +309,12 @@ func main() {
 
 	var hw net.HardwareAddr
 
-	if argMac != "none" {
+	if argMac != "" {
 		var err2 error
 		hw, err2 = net.ParseMAC(argMac)
 		if err2 != nil {
 			log.Log(log.ERROR, "Invalid MAC address provided: %v", err2)
-			return
+			return nil
 		}
 	} else {
 		argMac, hw = GenerateMAC()
@@ -381,19 +383,23 @@ func main() {
 			os.Exit(0)
 		}
 	}()
-
 	go ptp.ListenInterface()
+	return ptp
+}
+
+func (ptp *PTPCloud) Run() {
 	for {
 		time.Sleep(3 * time.Second)
 		ptp.dht.UpdatePeers()
 		// Wait two seconds before synchronizing with catched peers
 		time.Sleep(2 * time.Second)
-		ptp.PurgePeers(dhtClient.LastCatch)
-		newPeersNum := ptp.SyncPeers(dhtClient.LastCatch)
+		ptp.PurgePeers()
+		newPeersNum := ptp.SyncPeers()
 		if newPeersNum > 0 {
 			ptp.IntroducePeers()
 		}
 	}
+
 }
 
 // This method sends information about himself to empty peers
@@ -435,7 +441,7 @@ func (ptp *PTPCloud) PrepareIntroductionMessage(id string) *udpcs.P2PMessage {
 
 // This method goes over peers and removes obsolete ones
 // Peer becomes obsolete when it goes out of DHT
-func (ptp *PTPCloud) PurgePeers(catched []string) {
+func (ptp *PTPCloud) PurgePeers() {
 	var rem []int
 	for i, peer := range ptp.NetworkPeers {
 		var f bool = false
@@ -512,7 +518,7 @@ func (ptp *PTPCloud) TestConnection(endpoint *net.UDPAddr) bool {
 // This method takes a list of catched peers from DHT and
 // adds every new peer into list of peers
 // Returns amount of peers that has been added
-func (ptp *PTPCloud) SyncPeers(catched []string) int {
+func (ptp *PTPCloud) SyncPeers() int {
 	var count int = 0
 
 	for _, id := range ptp.dht.Peers {
@@ -614,24 +620,26 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 	return count
 
 	// TODO: Old Scheme. Remove it before release
-	var c int
-	for _, id := range catched {
-		var found bool = false
-		for _, peer := range ptp.NetworkPeers {
-			if peer.ID == id {
-				found = true
+	/*
+		var c int
+		for _, id := range catched {
+			var found bool = false
+			for _, peer := range ptp.NetworkPeers {
+				if peer.ID == id {
+					found = true
+				}
+			}
+			if !found {
+				var newPeer NetworkPeer
+				newPeer.ID = id
+				newPeer.Unknown = true
+				ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+				ptp.dht.RequestPeerIPs(id)
+				c = c + 1
 			}
 		}
-		if !found {
-			var newPeer NetworkPeer
-			newPeer.ID = id
-			newPeer.Unknown = true
-			ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
-			ptp.dht.RequestPeerIPs(id)
-			c = c + 1
-		}
-	}
-	return c
+		return c
+	*/
 }
 
 // WriteToDevice writes data to created TUN/TAP device
