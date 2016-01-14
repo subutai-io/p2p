@@ -278,6 +278,7 @@ func main() {
 		argKeyfile string
 		argKey     string
 		argTTL     string
+		argLog     string
 	)
 
 	flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
@@ -292,6 +293,7 @@ func main() {
 	flag.StringVar(&argKeyfile, "keyfile", "", "Path to yaml file containing crypto key")
 	flag.StringVar(&argKey, "key", "", "AES crypto key")
 	flag.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
+	flag.StringVar(&argLog, "log", "INFO", "Log level")
 
 	flag.Parse()
 	if argIp == "none" {
@@ -300,6 +302,8 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
+
+	log.SetMinLogLevel(log.DEBUG)
 
 	var hw net.HardwareAddr
 
@@ -552,6 +556,9 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 					}
 
 					for _, inf := range interfaces {
+						if peer.Endpoint != "" {
+							break
+						}
 						if inf.Name == ptp.DeviceName {
 							continue
 						}
@@ -565,7 +572,7 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 									if ptp.TestConnection(kip) {
 										ptp.NetworkPeers[i].Endpoint = kip.String()
 										count = count + 1
-										log.Log(log.DEBUG, "Setting endpoint for %s to %s", peer.ID, kip.String())
+										log.Log(log.INFO, "Setting endpoint for %s to %s", peer.ID, kip.String())
 									}
 									// TODO: Test connection
 								}
@@ -573,16 +580,18 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 						}
 					}
 
-					if ptp.NetworkPeers[i].Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
-						// If endpoint wasn't set let's test connection from outside of the LAN
-						// First one should be the global IP (if DHT works correctly)
-						if !ptp.TestConnection(ptp.NetworkPeers[i].KnownIPs[0]) {
-							// We've failed to
+					/*
+						if ptp.NetworkPeers[i].Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
+							// If endpoint wasn't set let's test connection from outside of the LAN
+							// First one should be the global IP (if DHT works correctly)
+							if !ptp.TestConnection(ptp.NetworkPeers[i].KnownIPs[0]) {
+								// We've failed to
+							}
 						}
-					}
+					*/
 
 					// If we've failed to find something that is really close to us, skip to global
-					if failback || peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
+					if failback && peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
 						log.Log(log.DEBUG, "Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
 						ptp.NetworkPeers[i].Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
 						// Increase counter so p2p package will send introduction
