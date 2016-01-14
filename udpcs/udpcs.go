@@ -325,7 +325,6 @@ func (c Crypto) ReadKeysFromFile(filepath string) {
 }
 
 func (c Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
-	log.Log(log.DEBUG, "--- ENCRYPT BEFORE : %s", data)
 	cb, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -352,14 +351,12 @@ func (c Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
 	mode := cipher.NewCBCEncrypter(cb, iv)
 	mode.CryptBlocks(encrypted_data[(count-1)*BLOCK_SIZE+IV_SIZE:], tmp_arr)
 
-	log.Log(log.DEBUG, "--- ENCRYPT AFTER : %s", encrypted_data)
 	return encrypted_data, nil
 }
 
 /////////////////////////////////////////////////////
 
 func (c Crypto) Decrypt(key []byte, data []byte) ([]byte, error) {
-	log.Log(log.DEBUG, "--- DECRYPT BEFORE : %s", data)
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -372,6 +369,5 @@ func (c Crypto) Decrypt(key []byte, data []byte) ([]byte, error) {
 		mode := cipher.NewCBCDecrypter(block, iv)
 		mode.CryptBlocks(decrypted_data[i*BLOCK_SIZE:], data[i*BLOCK_SIZE+IV_SIZE:])
 	}
-	log.Log(log.DEBUG, "--- DECRYPT AFTER : %s", decrypted_data)
 	return decrypted_data, nil
 }
