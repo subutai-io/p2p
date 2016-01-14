@@ -754,6 +754,7 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 	// Decrypt message if crypter is active
 	if ptp.Crypter.Active {
 		var dec_err error
+		log.Log(log.INFO, "MSG DATA LEN : %d, data : %s", len(msg.Data), msg.Data)
 		msg.Data, dec_err = ptp.Crypter.Decrypt(ptp.Crypter.ActiveKey.Key, msg.Data)
 		if dec_err != nil {
 			log.Log(log.ERROR, "Failed to decrypt message")

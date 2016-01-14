@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	"log"
 	"net"
 	"p2p/commons"
+	log "p2p/p2p_log"
 	"strconv"
 	"time"
 )
@@ -77,6 +77,7 @@ type P2PMessage struct {
 
 func (v *P2PMessage) Serialize() []byte {
 	v.Header.SerializedLen = uint16(len(v.Data))
+	log.Log(log.DEBUG, "--- Serialize P2PMessage header.SerializedLen : %d", v.Header.SerializedLen)
 	res_buf := v.Header.Serialize()
 	res_buf = append(res_buf, v.Data...)
 	return res_buf
@@ -89,11 +90,14 @@ func P2PMessageFromBytes(bytes []byte) (*P2PMessage, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Log(log.DEBUG, "--- P2PMessageHeaderFromBytes Length : %d, SerLen : %d", res.Header.Length, res.Header.SerializedLen)
 	if res.Header.Magic != MAGIC_COOKIE {
 		return nil, errors.New("magic cookie not presented")
 	}
 	res.Data = make([]byte, res.Header.SerializedLen)
-	copy(res.Data[:], bytes[10:len(bytes)])
+	log.Log(log.DEBUG, "BYTES : %s", bytes)
+	copy(res.Data[:], bytes[12:len(bytes)])
+	log.Log(log.DEBUG, "res.Data : %s", res.Data)
 	return res, err
 }
 
@@ -108,7 +112,7 @@ func CreateStringP2PMessage(c *Crypto, data string, netProto uint16) *P2PMessage
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {
-			log.Printf("[ERROR] Failed to encrypt data")
+			log.Log(log.ERROR, "Failed to encrypt data")
 		}
 	} else {
 		msg.Data = []byte(data)
@@ -128,7 +132,7 @@ func CreateIntroP2PMessage(c *Crypto, data string, netProto uint16) *P2PMessage 
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {
-			log.Printf("[ERROR] Failed to encrypt data")
+			log.Log(log.ERROR, "Failed to encrypt data")
 		}
 	} else {
 		msg.Data = []byte(data)
@@ -147,7 +151,7 @@ func CreateNencP2PMessage(c *Crypto, data []byte, netProto uint16) *P2PMessage {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, data)
 		if err != nil {
-			log.Printf("[ERROR] Failed to encrypt data")
+			log.Log(log.ERROR, "Failed to encrypt data")
 		}
 	} else {
 		msg.Data = data
@@ -166,7 +170,7 @@ func CreateTestP2PMessage(c *Crypto, data string, netProto uint16) *P2PMessage {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {
-			log.Printf("[ERROR] Failed to encrypt data")
+			log.Log(log.ERROR, "Failed to encrypt data")
 		}
 	} else {
 		msg.Data = []byte(data)
@@ -287,13 +291,13 @@ func (c *Crypto) EncrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKe
 	// Default value is +1 hour
 	ckey.Until = ckey.Until.Add(60 * time.Minute)
 	if err != nil {
-		log.Printf("[ERROR] Failed to parse TTL. Falling back to default value of 1 hour")
+		log.Log(log.ERROR, "Failed to parse TTL. Falling back to default value of 1 hour")
 	} else {
 		ckey.Until = time.Unix(i, 0)
 	}
 	ckey.Key = []byte(key)
 	if err != nil {
-		log.Printf("[ERROR] Failed to parse provided TTL value: %v", err)
+		log.Log(log.ERROR, "Failed to parse provided TTL value: %v", err)
 		return ckey
 	}
 	return ckey
@@ -302,14 +306,14 @@ func (c *Crypto) EncrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKe
 func (c *Crypto) ReadKeysFromFile(filepath string) {
 	yamlFile, err := ioutil.ReadFile(filepath)
 	if err != nil {
-		log.Printf("[ERROR] Failed to read key file yaml: %v", err)
+		log.Log(log.ERROR, "Failed to read key file yaml: %v", err)
 		c.Active = false
 		return
 	}
 	var ckey CryptoKey
 	err = yaml.Unmarshal(yamlFile, ckey)
 	if err != nil {
-		log.Printf("[ERROR] Failed to parse config: %v", err)
+		log.Log(log.ERROR, "Failed to parse config: %v", err)
 		c.Active = false
 		return
 	}
@@ -319,6 +323,7 @@ func (c *Crypto) ReadKeysFromFile(filepath string) {
 }
 
 func (c *Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
+	log.Log(log.DEBUG, "--- ENCRYPT BEFORE : %s", data)
 	cb, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -344,12 +349,15 @@ func (c *Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
 	copy(tmp_arr, data[(count-1)*BLOCK_SIZE:])
 	mode := cipher.NewCBCEncrypter(cb, iv)
 	mode.CryptBlocks(encrypted_data[(count-1)*BLOCK_SIZE+IV_SIZE:], tmp_arr)
+
+	log.Log(log.DEBUG, "--- ENCRYPT AFTER : %s", encrypted_data)
 	return encrypted_data, nil
 }
 
 /////////////////////////////////////////////////////
 
 func (c *Crypto) Decrypt(key []byte, data []byte) ([]byte, error) {
+	log.Log(log.DEBUG, "--- DECRYPT BEFORE : %s", data)
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -362,5 +370,6 @@ func (c *Crypto) Decrypt(key []byte, data []byte) ([]byte, error) {
 		mode := cipher.NewCBCDecrypter(block, iv)
 		mode.CryptBlocks(decrypted_data[i*BLOCK_SIZE:], data[i*BLOCK_SIZE+IV_SIZE:])
 	}
+	log.Log(log.DEBUG, "--- DECRYPT AFTER : %s", decrypted_data)
 	return decrypted_data, nil
 }
