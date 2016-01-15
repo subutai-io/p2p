@@ -11,9 +11,23 @@ import (
 	log "p2p/p2p_log"
 )
 
+type Instance struct {
+	PTP *PTPCloud
+	ID  string
+}
+
+var (
+	Instances map[string]Instance
+)
+
 type Args struct {
 	Command string
 	Args    string
+}
+
+type NameValueArg struct {
+	Name  string
+	Value string
 }
 
 type RunArgs struct {
@@ -39,6 +53,34 @@ type Response struct {
 
 type Procedures int
 
+func (p *Procedures) Set(args *NameValueArg, resp *Response) error {
+	log.Log(log.INFO, "Setting option %s to %s", args.Name, args.Value)
+	resp.ExitCode = 0
+	if args.Name == "log" {
+		resp.Output = "Logging level has switched to " + args.Value + " level"
+		if args.Value == "DEBUG" {
+			log.SetMinLogLevel(log.DEBUG)
+		} else if args.Value == "INFO" {
+			log.SetMinLogLevel(log.INFO)
+		} else if args.Value == "TRACE" {
+			log.SetMinLogLevel(log.TRACE)
+		} else if args.Value == "WARNING" {
+			log.SetMinLogLevel(log.WARNING)
+		} else if args.Value == "ERROR" {
+			log.SetMinLogLevel(log.ERROR)
+		} else {
+			resp.ExitCode = 1
+			resp.Output = "Unknown log level was specified. Supported log levels is:\n"
+			resp.Output = resp.Output + "TRACE\n"
+			resp.Output = resp.Output + "DEBUG\n"
+			resp.Output = resp.Output + "INFO\n"
+			resp.Output = resp.Output + "WARNING\n"
+			resp.Output = resp.Output + "ERROR\n"
+		}
+	}
+	return nil
+}
+
 func (p *Procedures) Execute(args *Args, resp *Response) error {
 	log.Log(log.INFO, "Received %v", args)
 	resp.ExitCode = 0
@@ -47,21 +89,48 @@ func (p *Procedures) Execute(args *Args, resp *Response) error {
 }
 
 func (p *Procedures) Run(args *RunArgs, resp *Response) error {
-	ptp := p2pmain(args.IP, args.Mask, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "")
-	go ptp.Run()
 	resp.ExitCode = 0
-	resp.Output = "Running new P2P instance for " + args.Hash
+	resp.Output = "Running new P2P instance for " + args.Hash + "\n"
+	var exists bool
+	_, exists = Instances[args.Hash]
+	if !exists {
+		resp.Output = resp.Output + "Lookup finished\n"
+		ptp := p2pmain(args.IP, args.Mask, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "")
+		var newInst Instance
+		newInst.ID = args.Hash
+		newInst.PTP = ptp
+		Instances[args.Hash] = newInst
+		go ptp.Run()
+	} else {
+		resp.Output = resp.Output + "Hash already in use\n"
+	}
 	return nil
 }
 
 func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
+	resp.ExitCode = 0
+	var exists bool
+	_, exists = Instances[args.Hash]
+	if !exists {
+		resp.ExitCode = 1
+		resp.Output = "Instance with hash " + args.Hash + " was not found"
+	} else {
+		Instances[args.Hash].PTP.Shutdown = true
+		resp.Output = "Shutting down " + args.Hash
+		delete(Instances, args.Hash)
+	}
 	return nil
-
 }
 
 func (p *Procedures) List(args *Args, resp *Response) error {
 	resp.ExitCode = 0
-	resp.Output = ""
+	if len(Instances) == 0 {
+		resp.Output = "No instances was found"
+	}
+	for key, inst := range Instances {
+		resp.Output = resp.Output + "\t" + inst.PTP.Mac + "\t" + inst.PTP.IP + "\t" + key
+		resp.Output = resp.Output + "\n"
+	}
 	return nil
 }
 
@@ -86,13 +155,14 @@ func main() {
 		argList    bool
 		argRun     bool
 		argStop    bool
+		argSet     bool
 	)
 
 	flag.BoolVar(&argDaemon, "daemon", false, "Starts PTP package in daemon mode")
 	flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
 	// TODO: Parse this properly
 	flag.StringVar(&argMask, "mask", "255.255.255.0", "Network mask")
-	flag.StringVar(&argMac, "mac", "none", "MAC Address for a TUN/TAP interface")
+	flag.StringVar(&argMac, "mac", "", "MAC Address for a TUN/TAP interface")
 	flag.StringVar(&argDev, "dev", "", "TUN/TAP interface name")
 	// TODO: Direct connection is not implemented yet
 	flag.StringVar(&argDirect, "direct", "none", "IP to connect to directly")
@@ -101,16 +171,18 @@ func main() {
 	flag.StringVar(&argKeyfile, "keyfile", "", "Path to yaml file containing crypto key")
 	flag.StringVar(&argKey, "key", "", "AES crypto key")
 	flag.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
-	flag.StringVar(&argLog, "log", "INFO", "Log level")
+	flag.StringVar(&argLog, "log", "", "Log level")
 
 	// RPC
 	flag.StringVar(&argRPCPort, "rpc", "52523", "Port for RPC Communication")
 	flag.BoolVar(&argList, "list", false, "Lists environments running on this machine")
 	flag.BoolVar(&argRun, "start", false, "Starts new P2P instance")
 	flag.BoolVar(&argStop, "stop", false, "Stops P2P instance")
+	flag.BoolVar(&argSet, "set", false, "Modify p2p behaviour by changing it's options")
 
 	flag.Parse()
 	if argDaemon {
+		Instances = make(map[string]Instance)
 		user, err := user.Current()
 		if err != nil {
 			log.Log(log.ERROR, "Failed to retrieve information about user: %v", err)
@@ -144,14 +216,29 @@ func main() {
 		if argList {
 			args := &Args{"List", ""}
 			err = client.Call("Procedures.List", args, &response)
+		} else if argSet {
+			if argLog != "" {
+				args := &NameValueArg{"log", argLog}
+				err = client.Call("Procedures.Set", args, &response)
+			}
 		} else if argRun {
 			args := &RunArgs{}
 			// TODO: Parse ARGS here
 			args.Hash = argHash
 			args.IP = argIp
+			args.Mask = argMask
+			args.Mac = argMac
+			args.Dev = argDev
+			args.Hash = argHash
+			args.Dht = argDht
+			args.Keyfile = argKeyfile
+			args.Key = argKey
+			args.TTL = argTTL
 			err = client.Call("Procedures.Run", args, &response)
 		} else if argStop {
-
+			args := &StopArgs{}
+			args.Hash = argHash
+			err = client.Call("Procedures.Stop", args, &response)
 		} else {
 			args := &Args{"RandomCommand", "someeeeee"}
 			err = client.Call("Procedures.Execute", args, &response)

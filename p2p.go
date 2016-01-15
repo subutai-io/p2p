@@ -55,6 +55,9 @@ type PTPCloud struct {
 	dht *dht.DHTClient
 
 	Crypter udpcs.Crypto
+
+	// If true, instance will shutdown itself on a next iteration
+	Shutdown bool
 }
 
 type NetworkPeer struct {
@@ -389,6 +392,10 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 
 func (ptp *PTPCloud) Run() {
 	for {
+		if ptp.Shutdown {
+			// TODO: Do it more safely
+			break
+		}
 		time.Sleep(3 * time.Second)
 		ptp.dht.UpdatePeers()
 		// Wait two seconds before synchronizing with catched peers
@@ -399,7 +406,6 @@ func (ptp *PTPCloud) Run() {
 			ptp.IntroducePeers()
 		}
 	}
-
 }
 
 // This method sends information about himself to empty peers
