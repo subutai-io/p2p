@@ -223,6 +223,12 @@ func main() {
 				err = client.Call("Procedures.Set", args, &response)
 			}
 		} else if argRun {
+			if argKey != "" {
+				if len(argKey) != 32 {
+					fmt.Println("AES Key should be 32 bytes")
+					os.Exit(1)
+				}
+			}
 			args := &RunArgs{}
 			// TODO: Parse ARGS here
 			args.Hash = argHash
