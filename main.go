@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/user"
 	log "p2p/p2p_log"
+	"time"
 )
 
 type Instance struct {
@@ -204,7 +205,7 @@ func main() {
 		go http.Serve(listen, nil)
 		//p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog)
 		for {
-
+			time.Sleep(5 * time.Second)
 		}
 	} else {
 		client, err := rpc.DialHTTP("tcp", "localhost:"+argRPCPort)
