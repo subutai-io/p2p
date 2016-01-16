@@ -96,6 +96,15 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 	_, exists = Instances[args.Hash]
 	if !exists {
 		resp.Output = resp.Output + "Lookup finished\n"
+		key := []byte(args.Key)
+		if len(key) > 32 {
+			key = key[:32]
+		} else {
+			zeros := make([]byte, 32-len(key))
+			key = append([]byte(key), zeros...)
+		}
+		args.Key = string(key)
+
 		ptp := p2pmain(args.IP, args.Mask, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "")
 		var newInst Instance
 		newInst.ID = args.Hash
