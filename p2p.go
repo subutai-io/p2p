@@ -46,7 +46,8 @@ type PTPCloud struct {
 	// Representation of TUN/TAP Device
 	Device *tuntap.Interface
 
-	NetworkPeers []NetworkPeer
+	//NetworkPeers []NetworkPeer
+	NetworkPeers map[string]NetworkPeer
 
 	UDPSocket *udpcs.UDPClient
 
@@ -335,6 +336,7 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	ptp := new(PTPCloud)
 	ptp.FindNetworkAddresses()
 	ptp.HardwareAddr = hw
+	ptp.NetworkPeers = make(map[string]NetworkPeer)
 
 	if argDev == "" {
 		argDev = ptp.GenerateDeviceName(1)
@@ -427,7 +429,9 @@ func (ptp *PTPCloud) IntroducePeers() {
 			log.Log(log.ERROR, "Failed to resolve UDP address during Introduction: %v", err)
 			continue
 		}
-		ptp.NetworkPeers[i].PeerAddr = addr
+		peer.PeerAddr = addr
+		ptp.NetworkPeers[i] = peer
+		//ptp.NetworkPeers[i].PeerAddr = addr
 		// Send introduction packet
 		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID)
 		_, err = ptp.UDPSocket.SendMessage(msg, addr)
@@ -448,7 +452,7 @@ func (ptp *PTPCloud) PrepareIntroductionMessage(id string) *udpcs.P2PMessage {
 // This method goes over peers and removes obsolete ones
 // Peer becomes obsolete when it goes out of DHT
 func (ptp *PTPCloud) PurgePeers() {
-	var rem []int
+	var rem []string
 	for i, peer := range ptp.NetworkPeers {
 		var f bool = false
 		for _, newPeer := range ptp.dht.Peers {
@@ -462,7 +466,8 @@ func (ptp *PTPCloud) PurgePeers() {
 		}
 	}
 	for _, i := range rem {
-		ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
+		delete(ptp.NetworkPeers, i)
+		//ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
 	}
 	return
 
@@ -551,7 +556,9 @@ func (ptp *PTPCloud) SyncPeers() int {
 						log.Log(log.INFO, "Adding new IP (%s) address to %s", ip, peer.ID)
 						// TODO: Check IP parsing
 						newIp, _ := net.ResolveUDPAddr("udp", ip)
-						ptp.NetworkPeers[i].KnownIPs = append(ptp.NetworkPeers[i].KnownIPs, newIp)
+						//ptp.NetworkPeers[i].KnownIPs = append(ptp.NetworkPeers[i].KnownIPs, newIp)
+						peer.KnownIPs = append(peer.KnownIPs, newIp)
+						ptp.NetworkPeers[i] = peer
 					}
 				}
 
@@ -584,7 +591,9 @@ func (ptp *PTPCloud) SyncPeers() int {
 
 								if network.Contains(kip.IP) {
 									if ptp.TestConnection(kip) {
-										ptp.NetworkPeers[i].Endpoint = kip.String()
+										//ptp.NetworkPeers[i].Endpoint = kip.String()
+										peer.Endpoint = kip.String()
+										ptp.NetworkPeers[i] = peer
 										count = count + 1
 										log.Log(log.INFO, "Setting endpoint for %s to %s", peer.ID, kip.String())
 									}
@@ -607,7 +616,9 @@ func (ptp *PTPCloud) SyncPeers() int {
 					// If we've failed to find something that is really close to us, skip to global
 					if failback && peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
 						log.Log(log.DEBUG, "Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
-						ptp.NetworkPeers[i].Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
+						//ptp.NetworkPeers[i].Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
+						peer.Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
+						ptp.NetworkPeers[i] = peer
 						// Increase counter so p2p package will send introduction
 						count = count + 1
 					}
@@ -619,7 +630,8 @@ func (ptp *PTPCloud) SyncPeers() int {
 			var newPeer NetworkPeer
 			newPeer.ID = id.ID
 			newPeer.Unknown = true
-			ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+			//ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+			ptp.NetworkPeers[newPeer.ID] = newPeer
 			ptp.dht.RequestPeerIPs(id.ID)
 		}
 	}
@@ -688,13 +700,14 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, ip net.IP, mac net.Ha
 	for i, peer := range ptp.NetworkPeers {
 		if peer.ID == id {
 			found = true
-			ptp.NetworkPeers[i].CleanAddr = addr.String()
-			ptp.NetworkPeers[i].ID = id
-			ptp.NetworkPeers[i].PeerAddr = addr
-			ptp.NetworkPeers[i].PeerLocalIP = ip
-			ptp.NetworkPeers[i].PeerHW = mac
-			ptp.NetworkPeers[i].Unknown = false
-			ptp.NetworkPeers[i].Handshaked = true
+			peer.CleanAddr = addr.String()
+			peer.ID = id
+			peer.PeerAddr = addr
+			peer.PeerLocalIP = ip
+			peer.PeerHW = mac
+			peer.Unknown = false
+			peer.Handshaked = true
+			ptp.NetworkPeers[i] = peer
 		}
 	}
 	if !found {
@@ -706,7 +719,8 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, ip net.IP, mac net.Ha
 		newPeer.PeerHW = mac
 		newPeer.Unknown = false
 		newPeer.Handshaked = true
-		ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+		//ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+		ptp.NetworkPeers[newPeer.ID] = newPeer
 	}
 }
 
