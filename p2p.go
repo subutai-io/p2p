@@ -46,7 +46,8 @@ type PTPCloud struct {
 	// Representation of TUN/TAP Device
 	Device *tuntap.Interface
 
-	NetworkPeers []NetworkPeer
+	//NetworkPeers []NetworkPeer
+	NetworkPeers map[string]NetworkPeer
 
 	UDPSocket *udpcs.UDPClient
 
@@ -55,6 +56,12 @@ type PTPCloud struct {
 	dht *dht.DHTClient
 
 	Crypter udpcs.Crypto
+
+	// If true, instance will shutdown itself on a next iteration
+	Shutdown bool
+
+	// IP -> ID Table for faster ARP lookup
+	IPIDTable map[string]string
 }
 
 type NetworkPeer struct {
@@ -265,37 +272,39 @@ func (ptp *PTPCloud) FindNetworkAddresses() {
 	log.Log(log.INFO, "%d interfaces were saved", len(ptp.LocalIPs))
 }
 
-func main() {
+func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string) *PTPCloud {
 	// TODO: Move this to init() function
-	var (
-		argIp      string
-		argMask    string
-		argMac     string
-		argDev     string
-		argDirect  string
-		argHash    string
-		argDht     string
-		argKeyfile string
-		argKey     string
-		argTTL     string
-		argLog     string
-	)
+	/*
+		var (
+			argIp      string
+			argMask    string
+			argMac     string
+			argDev     string
+			argDirect  string
+			argHash    string
+			argDht     string
+			argKeyfile string
+			argKey     string
+			argTTL     string
+			argLog     string
+		)
 
-	flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
-	// TODO: Parse this properly
-	flag.StringVar(&argMask, "mask", "255.255.255.0", "Network mask")
-	flag.StringVar(&argMac, "mac", "none", "MAC Address for a TUN/TAP interface")
-	flag.StringVar(&argDev, "dev", "", "TUN/TAP interface name")
-	// TODO: Direct connection is not implemented yet
-	flag.StringVar(&argDirect, "direct", "none", "IP to connect to directly")
-	flag.StringVar(&argHash, "hash", "none", "Infohash for environment")
-	flag.StringVar(&argDht, "dht", "", "Specify DHT bootstrap node address")
-	flag.StringVar(&argKeyfile, "keyfile", "", "Path to yaml file containing crypto key")
-	flag.StringVar(&argKey, "key", "", "AES crypto key")
-	flag.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
-	flag.StringVar(&argLog, "log", "INFO", "Log level")
+		flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
+		// TODO: Parse this properly
+		flag.StringVar(&argMask, "mask", "255.255.255.0", "Network mask")
+		flag.StringVar(&argMac, "mac", "none", "MAC Address for a TUN/TAP interface")
+		flag.StringVar(&argDev, "dev", "", "TUN/TAP interface name")
+		// TODO: Direct connection is not implemented yet
+		flag.StringVar(&argDirect, "direct", "none", "IP to connect to directly")
+		flag.StringVar(&argHash, "hash", "none", "Infohash for environment")
+		flag.StringVar(&argDht, "dht", "", "Specify DHT bootstrap node address")
+		flag.StringVar(&argKeyfile, "keyfile", "", "Path to yaml file containing crypto key")
+		flag.StringVar(&argKey, "key", "", "AES crypto key")
+		flag.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
+		flag.StringVar(&argLog, "log", "INFO", "Log level")
 
-	flag.Parse()
+		flag.Parse()
+	*/
 	if argIp == "none" {
 		fmt.Println("USAGE: p2p [OPTIONS]")
 		fmt.Printf("\nOPTIONS:\n")
@@ -307,12 +316,12 @@ func main() {
 
 	var hw net.HardwareAddr
 
-	if argMac != "none" {
+	if argMac != "" {
 		var err2 error
 		hw, err2 = net.ParseMAC(argMac)
 		if err2 != nil {
 			log.Log(log.ERROR, "Invalid MAC address provided: %v", err2)
-			return
+			return nil
 		}
 	} else {
 		argMac, hw = GenerateMAC()
@@ -330,6 +339,8 @@ func main() {
 	ptp := new(PTPCloud)
 	ptp.FindNetworkAddresses()
 	ptp.HardwareAddr = hw
+	ptp.NetworkPeers = make(map[string]NetworkPeer)
+	ptp.IPIDTable = make(map[string]string)
 
 	if argDev == "" {
 		argDev = ptp.GenerateDeviceName(1)
@@ -381,15 +392,22 @@ func main() {
 			os.Exit(0)
 		}
 	}()
-
 	go ptp.ListenInterface()
+	return ptp
+}
+
+func (ptp *PTPCloud) Run() {
 	for {
+		if ptp.Shutdown {
+			// TODO: Do it more safely
+			break
+		}
 		time.Sleep(3 * time.Second)
 		ptp.dht.UpdatePeers()
 		// Wait two seconds before synchronizing with catched peers
 		time.Sleep(2 * time.Second)
-		ptp.PurgePeers(dhtClient.LastCatch)
-		newPeersNum := ptp.SyncPeers(dhtClient.LastCatch)
+		ptp.PurgePeers()
+		newPeersNum := ptp.SyncPeers()
 		if newPeersNum > 0 {
 			ptp.IntroducePeers()
 		}
@@ -415,7 +433,9 @@ func (ptp *PTPCloud) IntroducePeers() {
 			log.Log(log.ERROR, "Failed to resolve UDP address during Introduction: %v", err)
 			continue
 		}
-		ptp.NetworkPeers[i].PeerAddr = addr
+		peer.PeerAddr = addr
+		ptp.NetworkPeers[i] = peer
+		//ptp.NetworkPeers[i].PeerAddr = addr
 		// Send introduction packet
 		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID)
 		_, err = ptp.UDPSocket.SendMessage(msg, addr)
@@ -435,8 +455,8 @@ func (ptp *PTPCloud) PrepareIntroductionMessage(id string) *udpcs.P2PMessage {
 
 // This method goes over peers and removes obsolete ones
 // Peer becomes obsolete when it goes out of DHT
-func (ptp *PTPCloud) PurgePeers(catched []string) {
-	var rem []int
+func (ptp *PTPCloud) PurgePeers() {
+	//var rem []string
 	for i, peer := range ptp.NetworkPeers {
 		var f bool = false
 		for _, newPeer := range ptp.dht.Peers {
@@ -446,12 +466,16 @@ func (ptp *PTPCloud) PurgePeers(catched []string) {
 		}
 		if !f {
 			log.Log(log.DEBUG, ("Peer not found in DHT peer table. Remove it"))
-			rem = append(rem, i)
+			//rem = append(rem, i)
+			delete(ptp.NetworkPeers, i)
 		}
 	}
-	for _, i := range rem {
-		ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
-	}
+	/*
+		for _, i := range rem {
+			delete(ptp.NetworkPeers, i)
+			//ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
+		}
+	*/
 	return
 
 	// TODO: Old Scheme. Remove it before release
@@ -512,7 +536,7 @@ func (ptp *PTPCloud) TestConnection(endpoint *net.UDPAddr) bool {
 // This method takes a list of catched peers from DHT and
 // adds every new peer into list of peers
 // Returns amount of peers that has been added
-func (ptp *PTPCloud) SyncPeers(catched []string) int {
+func (ptp *PTPCloud) SyncPeers() int {
 	var count int = 0
 
 	for _, id := range ptp.dht.Peers {
@@ -539,7 +563,9 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 						log.Log(log.INFO, "Adding new IP (%s) address to %s", ip, peer.ID)
 						// TODO: Check IP parsing
 						newIp, _ := net.ResolveUDPAddr("udp", ip)
-						ptp.NetworkPeers[i].KnownIPs = append(ptp.NetworkPeers[i].KnownIPs, newIp)
+						//ptp.NetworkPeers[i].KnownIPs = append(ptp.NetworkPeers[i].KnownIPs, newIp)
+						peer.KnownIPs = append(peer.KnownIPs, newIp)
+						ptp.NetworkPeers[i] = peer
 					}
 				}
 
@@ -572,7 +598,9 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 
 								if network.Contains(kip.IP) {
 									if ptp.TestConnection(kip) {
-										ptp.NetworkPeers[i].Endpoint = kip.String()
+										//ptp.NetworkPeers[i].Endpoint = kip.String()
+										peer.Endpoint = kip.String()
+										ptp.NetworkPeers[i] = peer
 										count = count + 1
 										log.Log(log.INFO, "Setting endpoint for %s to %s", peer.ID, kip.String())
 									}
@@ -595,7 +623,9 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 					// If we've failed to find something that is really close to us, skip to global
 					if failback && peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
 						log.Log(log.DEBUG, "Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
-						ptp.NetworkPeers[i].Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
+						//ptp.NetworkPeers[i].Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
+						peer.Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
+						ptp.NetworkPeers[i] = peer
 						// Increase counter so p2p package will send introduction
 						count = count + 1
 					}
@@ -607,31 +637,34 @@ func (ptp *PTPCloud) SyncPeers(catched []string) int {
 			var newPeer NetworkPeer
 			newPeer.ID = id.ID
 			newPeer.Unknown = true
-			ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+			//ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+			ptp.NetworkPeers[newPeer.ID] = newPeer
 			ptp.dht.RequestPeerIPs(id.ID)
 		}
 	}
 	return count
 
 	// TODO: Old Scheme. Remove it before release
-	var c int
-	for _, id := range catched {
-		var found bool = false
-		for _, peer := range ptp.NetworkPeers {
-			if peer.ID == id {
-				found = true
+	/*
+		var c int
+		for _, id := range catched {
+			var found bool = false
+			for _, peer := range ptp.NetworkPeers {
+				if peer.ID == id {
+					found = true
+				}
+			}
+			if !found {
+				var newPeer NetworkPeer
+				newPeer.ID = id
+				newPeer.Unknown = true
+				ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+				ptp.dht.RequestPeerIPs(id)
+				c = c + 1
 			}
 		}
-		if !found {
-			var newPeer NetworkPeer
-			newPeer.ID = id
-			newPeer.Unknown = true
-			ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
-			ptp.dht.RequestPeerIPs(id)
-			c = c + 1
-		}
-	}
-	return c
+		return c
+	*/
 }
 
 // WriteToDevice writes data to created TUN/TAP device
@@ -674,13 +707,15 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, ip net.IP, mac net.Ha
 	for i, peer := range ptp.NetworkPeers {
 		if peer.ID == id {
 			found = true
-			ptp.NetworkPeers[i].CleanAddr = addr.String()
-			ptp.NetworkPeers[i].ID = id
-			ptp.NetworkPeers[i].PeerAddr = addr
-			ptp.NetworkPeers[i].PeerLocalIP = ip
-			ptp.NetworkPeers[i].PeerHW = mac
-			ptp.NetworkPeers[i].Unknown = false
-			ptp.NetworkPeers[i].Handshaked = true
+			peer.CleanAddr = addr.String()
+			peer.ID = id
+			peer.PeerAddr = addr
+			peer.PeerLocalIP = ip
+			peer.PeerHW = mac
+			peer.Unknown = false
+			peer.Handshaked = true
+			ptp.NetworkPeers[i] = peer
+			ptp.IPIDTable[ip.String()] = id
 		}
 	}
 	if !found {
@@ -692,7 +727,9 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, ip net.IP, mac net.Ha
 		newPeer.PeerHW = mac
 		newPeer.Unknown = false
 		newPeer.Handshaked = true
-		ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+		//ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
+		ptp.NetworkPeers[newPeer.ID] = newPeer
+		ptp.IPIDTable[ip.String()] = id
 	}
 }
 

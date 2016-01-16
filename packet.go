@@ -104,11 +104,24 @@ func (ptp *PTPCloud) handlePacketARP(contents []byte) {
 	//}
 	log.Log(log.DEBUG, "Peers: %v, Target IP: %s", ptp.NetworkPeers, p.TargetIP.String())
 	var hwAddr net.HardwareAddr = nil
-	for _, peer := range ptp.NetworkPeers {
-		if peer.PeerLocalIP.String() == p.TargetIP.String() {
-			hwAddr = peer.PeerHW
-		}
+	id, exists := ptp.IPIDTable[p.TargetIP.String()]
+	if !exists {
+		log.Log(log.DEBUG, "Unknown IP requested")
+		return
 	}
+	peer, exists := ptp.NetworkPeers[id]
+	if !exists {
+		log.Log(log.DEBUG, "Specified ID was not found in peer list")
+		return
+	}
+	hwAddr = peer.PeerHW
+	/*
+		for _, peer := range ptp.NetworkPeers {
+			if peer.PeerLocalIP.String() == p.TargetIP.String() {
+				hwAddr = peer.PeerHW
+			}
+		}
+	*/
 	/*
 		hwAddr, err := net.ParseMAC("0c:8b:fd:ab:30:ee")
 		if err != nil {
