@@ -50,6 +50,7 @@ func EncryptTest() {
 /////////////////////////////////////////////////////
 
 func Encrypt(key []byte, data []byte) ([]byte, error) {
+
 	cb, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
