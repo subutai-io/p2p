@@ -28,7 +28,8 @@ func (p *Proxy) Initialize() {
 	p.DHTClient = new(dht.DHTClient)
 	config := p.DHTClient.DHTClientConfig()
 	config.NetworkHash = p.GenerateHash()
-	//p.DHTClient.Initialize(config)
+	var ips []net.IP
+	p.DHTClient.Initialize(config, ips)
 }
 
 func (p *Proxy) GenerateHash() string {
