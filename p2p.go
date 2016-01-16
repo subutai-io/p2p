@@ -59,6 +59,9 @@ type PTPCloud struct {
 
 	// If true, instance will shutdown itself on a next iteration
 	Shutdown bool
+
+	// IP -> ID Table for faster ARP lookup
+	IPIDTable map[string]string
 }
 
 type NetworkPeer struct {
@@ -337,6 +340,7 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	ptp.FindNetworkAddresses()
 	ptp.HardwareAddr = hw
 	ptp.NetworkPeers = make(map[string]NetworkPeer)
+	ptp.IPIDTable = make(map[string]string)
 
 	if argDev == "" {
 		argDev = ptp.GenerateDeviceName(1)
@@ -452,7 +456,7 @@ func (ptp *PTPCloud) PrepareIntroductionMessage(id string) *udpcs.P2PMessage {
 // This method goes over peers and removes obsolete ones
 // Peer becomes obsolete when it goes out of DHT
 func (ptp *PTPCloud) PurgePeers() {
-	var rem []string
+	//var rem []string
 	for i, peer := range ptp.NetworkPeers {
 		var f bool = false
 		for _, newPeer := range ptp.dht.Peers {
@@ -462,13 +466,16 @@ func (ptp *PTPCloud) PurgePeers() {
 		}
 		if !f {
 			log.Log(log.DEBUG, ("Peer not found in DHT peer table. Remove it"))
-			rem = append(rem, i)
+			//rem = append(rem, i)
+			delete(ptp.NetworkPeers, i)
 		}
 	}
-	for _, i := range rem {
-		delete(ptp.NetworkPeers, i)
-		//ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
-	}
+	/*
+		for _, i := range rem {
+			delete(ptp.NetworkPeers, i)
+			//ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
+		}
+	*/
 	return
 
 	// TODO: Old Scheme. Remove it before release
@@ -708,6 +715,7 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, ip net.IP, mac net.Ha
 			peer.Unknown = false
 			peer.Handshaked = true
 			ptp.NetworkPeers[i] = peer
+			ptp.IPIDTable[ip.String()] = id
 		}
 	}
 	if !found {
@@ -721,6 +729,7 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, ip net.IP, mac net.Ha
 		newPeer.Handshaked = true
 		//ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
 		ptp.NetworkPeers[newPeer.ID] = newPeer
+		ptp.IPIDTable[ip.String()] = id
 	}
 }
 
