@@ -51,13 +51,6 @@ func EncryptTest() {
 
 func Encrypt(key []byte, data []byte) ([]byte, error) {
 
-	if len(key) > BLOCK_SIZE {
-		key = key[:BLOCK_SIZE]
-	} else {
-		zeros := make([]byte, BLOCK_SIZE-len(key))
-		key = append(key, zeros...)
-	}
-
 	cb, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -89,12 +82,6 @@ func Encrypt(key []byte, data []byte) ([]byte, error) {
 /////////////////////////////////////////////////////
 
 func Decrypt(key []byte, data []byte) ([]byte, error) {
-	if len(key) > BLOCK_SIZE {
-		key = key[:BLOCK_SIZE]
-	} else {
-		zeros := make([]byte, BLOCK_SIZE-len(key))
-		key = append(key, zeros...)
-	}
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
