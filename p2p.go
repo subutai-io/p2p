@@ -391,7 +391,6 @@ func (ptp *PTPCloud) IntroducePeers() {
 		}
 		peer.PeerAddr = addr
 		ptp.NetworkPeers[i] = peer
-		//ptp.NetworkPeers[i].PeerAddr = addr
 		// Send introduction packet
 		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID)
 		_, err = ptp.UDPSocket.SendMessage(msg, addr)
@@ -412,7 +411,6 @@ func (ptp *PTPCloud) PrepareIntroductionMessage(id string) *udpcs.P2PMessage {
 // This method goes over peers and removes obsolete ones
 // Peer becomes obsolete when it goes out of DHT
 func (ptp *PTPCloud) PurgePeers() {
-	//var rem []string
 	for i, peer := range ptp.NetworkPeers {
 		var f bool = false
 		for _, newPeer := range ptp.dht.Peers {
@@ -422,38 +420,11 @@ func (ptp *PTPCloud) PurgePeers() {
 		}
 		if !f {
 			log.Log(log.DEBUG, ("Peer not found in DHT peer table. Remove it"))
-			//rem = append(rem, i)
 			delete(ptp.IPIDTable, peer.PeerLocalIP.String())
 			delete(ptp.NetworkPeers, i)
 		}
 	}
-	/*
-		for _, i := range rem {
-			delete(ptp.NetworkPeers, i)
-			//ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
-		}
-	*/
 	return
-
-	// TODO: Old Scheme. Remove it before release
-	/*
-		var remove []int
-		for i, peer := range ptp.NetworkPeers {
-			var found bool = false
-			for _, addr := range catched {
-				if addr == peer.CleanAddr {
-					found = true
-				}
-			}
-			if !found {
-				remove = append(remove, i)
-			}
-		}
-		sort.Sort(sort.Reverse(sort.IntSlice(remove)))
-		for i := range remove {
-			ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
-		}
-	*/
 }
 
 // This method tests connection with specified endpoint
@@ -520,7 +491,6 @@ func (ptp *PTPCloud) SyncPeers() int {
 						log.Log(log.INFO, "Adding new IP (%s) address to %s", ip, peer.ID)
 						// TODO: Check IP parsing
 						newIp, _ := net.ResolveUDPAddr("udp", ip)
-						//ptp.NetworkPeers[i].KnownIPs = append(ptp.NetworkPeers[i].KnownIPs, newIp)
 						peer.KnownIPs = append(peer.KnownIPs, newIp)
 						ptp.NetworkPeers[i] = peer
 					}
@@ -567,25 +537,30 @@ func (ptp *PTPCloud) SyncPeers() int {
 						}
 					}
 
+					// If we still don't have an endpoint we will try to reach peer from outside of network
+
+					if ptp.NetworkPeers[i].Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
+						// If endpoint wasn't set let's test connection from outside of the LAN
+						// First one should be the global IP (if DHT works correctly)
+						if !ptp.TestConnection(ptp.NetworkPeers[i].KnownIPs[0]) {
+							// We've failed to establish connection again. Now let's ask for a proxy
+							ptp.DHTClient.RequestControlPeer()
+						} else {
+							peer.Endpoint = peer.KnownIPs[0].String()
+							ptp.NetworkPeers[i] = peer
+						}
+					}
+
 					/*
-						if ptp.NetworkPeers[i].Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
-							// If endpoint wasn't set let's test connection from outside of the LAN
-							// First one should be the global IP (if DHT works correctly)
-							if !ptp.TestConnection(ptp.NetworkPeers[i].KnownIPs[0]) {
-								// We've failed to
-							}
+						// If we've failed to find something that is really close to us, skip to global
+						if failback && peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
+							log.Log(log.DEBUG, "Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
+							peer.Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
+							ptp.NetworkPeers[i] = peer
+							// Increase counter so p2p package will send introduction
+							count = count + 1
 						}
 					*/
-
-					// If we've failed to find something that is really close to us, skip to global
-					if failback && peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
-						log.Log(log.DEBUG, "Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
-						//ptp.NetworkPeers[i].Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
-						peer.Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
-						ptp.NetworkPeers[i] = peer
-						// Increase counter so p2p package will send introduction
-						count = count + 1
-					}
 				}
 			}
 		}
@@ -594,34 +569,11 @@ func (ptp *PTPCloud) SyncPeers() int {
 			var newPeer NetworkPeer
 			newPeer.ID = id.ID
 			newPeer.Unknown = true
-			//ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
 			ptp.NetworkPeers[newPeer.ID] = newPeer
 			ptp.dht.RequestPeerIPs(id.ID)
 		}
 	}
 	return count
-
-	// TODO: Old Scheme. Remove it before release
-	/*
-		var c int
-		for _, id := range catched {
-			var found bool = false
-			for _, peer := range ptp.NetworkPeers {
-				if peer.ID == id {
-					found = true
-				}
-			}
-			if !found {
-				var newPeer NetworkPeer
-				newPeer.ID = id
-				newPeer.Unknown = true
-				ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
-				ptp.dht.RequestPeerIPs(id)
-				c = c + 1
-			}
-		}
-		return c
-	*/
 }
 
 // WriteToDevice writes data to created TUN/TAP device
@@ -684,7 +636,6 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, ip net.IP, mac net.Ha
 		newPeer.PeerHW = mac
 		newPeer.Unknown = false
 		newPeer.Handshaked = true
-		//ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
 		ptp.NetworkPeers[newPeer.ID] = newPeer
 		ptp.IPIDTable[ip.String()] = id
 	}

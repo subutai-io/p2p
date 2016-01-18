@@ -269,6 +269,8 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 							dht.Peers[i].Ips = ips
 						}
 					}
+				} else if data.Command == commons.CMD_CP {
+					// We've received information about proxy
 				}
 			}
 		}
@@ -325,6 +327,29 @@ func (dht *DHTClient) RegisterControlPeer() {
 	}
 	// TODO: Optimize types here
 	msg := b.String()
+	for _, conn := range dht.Connection {
+		_, err = conn.Write([]byte(msg))
+		if err != nil {
+			p2p_log.Log(p2p_log.ERROR, "Failed to send packet: %v", err)
+			conn.Close()
+			return
+		}
+	}
+}
+
+func (dht *DHTClient) RequestControlPeer() {
+	var req commons.DHTRequest
+	var err error
+	req.Id = dht.ID
+	req.Hash = dht.NetworkHash
+	req.Command = commons.CMD_CP
+	var b bytes.Buffer
+	if err := bencode.Marshal(&b, req); err != nil {
+		p2p_log.Log(p2p_log.ERROR, "Failed to Marshal bencode %v", err)
+		return
+	}
+	msg := b.String()
+	// TODO: Move sending to a separate method
 	for _, conn := range dht.Connection {
 		_, err = conn.Write([]byte(msg))
 		if err != nil {
