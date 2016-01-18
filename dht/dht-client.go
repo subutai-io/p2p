@@ -5,6 +5,7 @@ import (
 	"fmt"
 	bencode "github.com/jackpal/bencode-go"
 	"net"
+	"os"
 	"p2p/commons"
 	"p2p/go-stun/stun"
 	"p2p/p2p_log"
@@ -209,6 +210,10 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 						continue
 					}
 					dht.ID = data.Id
+					if dht.ID == "0" {
+						p2p_log.Log(p2p_log.ERROR, "Empty ID were received. Stopping")
+						os.Exit(1)
+					}
 					// Send a hash within FIND command
 					// Afterwards application should wait for response from DHT
 					// with list of clients. This may not happen if this client is the
@@ -305,4 +310,27 @@ func DetectIP() string {
 		return host.IP()
 	}
 	return ""
+}
+
+func (dht *DHTClient) RegisterControlPeer() {
+	var req commons.DHTRequest
+	var err error
+	req.Id = "0"
+	req.Hash = "0"
+	req.Command = commons.CMD_REGCP
+	var b bytes.Buffer
+	if err := bencode.Marshal(&b, req); err != nil {
+		p2p_log.Log(p2p_log.ERROR, "Failed to Marshal bencode %v", err)
+		return
+	}
+	// TODO: Optimize types here
+	msg := b.String()
+	for _, conn := range dht.Connection {
+		_, err = conn.Write([]byte(msg))
+		if err != nil {
+			p2p_log.Log(p2p_log.ERROR, "Failed to send packet: %v", err)
+			conn.Close()
+			return
+		}
+	}
 }
