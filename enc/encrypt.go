@@ -10,7 +10,7 @@ import (
 /////////////////////////////////////////////////////
 
 const (
-	BLOCK_SIZE int = 32
+	BLOCK_SIZE int = 16
 	IV_SIZE    int = aes.BlockSize
 )
 

@@ -7,8 +7,11 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
+	"os/signal"
 	"os/user"
 	log "p2p/p2p_log"
+	"p2p/udpcs"
+	"runtime/pprof"
 	"time"
 )
 
@@ -97,10 +100,10 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 	if !exists {
 		resp.Output = resp.Output + "Lookup finished\n"
 		key := []byte(args.Key)
-		if len(key) > 32 {
-			key = key[:32]
+		if len(key) > udpcs.BLOCK_SIZE {
+			key = key[:udpcs.BLOCK_SIZE]
 		} else {
-			zeros := make([]byte, 32-len(key))
+			zeros := make([]byte, udpcs.BLOCK_SIZE-len(key))
 			key = append([]byte(key), zeros...)
 		}
 		args.Key = string(key)
@@ -144,6 +147,33 @@ func (p *Procedures) List(args *Args, resp *Response) error {
 	return nil
 }
 
+func start_profyle(profyle string) {
+
+	pwd, err := os.Getwd()
+	if err != nil {
+		log.Log(log.ERROR, "Getwd() error : %v", err)
+		return
+	}
+
+	time_str := "cpu"
+	if profyle == "cpu" {
+		file_name := fmt.Sprintf("%s/%s.prof", pwd, time_str)
+		f, err := os.Create(file_name)
+		if err != nil {
+			log.Log(log.ERROR, "Create cpu_prof file failed. %v", err)
+			return
+		}
+		log.Log(log.INFO, "Start cpu profiling to file %s", file_name)
+		pprof.StartCPUProfile(f)
+	} else if profyle == "memory" {
+		_, err := os.Create(fmt.Sprintf("%s/%s.p2p_mem_prof", pwd, time_str))
+		if err != nil {
+			log.Log(log.ERROR, "Create mem_prof file failed. %v", err)
+			return
+		}
+	}
+}
+
 func main() {
 
 	var (
@@ -166,6 +196,7 @@ func main() {
 		argRun     bool
 		argStop    bool
 		argSet     bool
+		argProfyle string
 	)
 
 	flag.BoolVar(&argDaemon, "daemon", false, "Starts PTP package in daemon mode")
@@ -190,8 +221,13 @@ func main() {
 	flag.BoolVar(&argStop, "stop", false, "Stops P2P instance")
 	flag.BoolVar(&argSet, "set", false, "Modify p2p behaviour by changing it's options")
 
+	//profyle
+	flag.StringVar(&argProfyle, "profyle", "", "Starts PTP package with profiling. Possible values : memory, cpu")
+
 	flag.Parse()
+
 	if argDaemon {
+		start_profyle(argProfyle)
 		Instances = make(map[string]Instance)
 		user, err := user.Current()
 		if err != nil {
@@ -213,52 +249,67 @@ func main() {
 		log.Log(log.INFO, "Starting RPC Listener")
 		go http.Serve(listen, nil)
 		//p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog)
+		// Capture SIGINT
+		// This is used for development purposes only, but later we should consider updating
+		// this code to handle signals
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+
+		go func() {
+			for sig := range c {
+				fmt.Println("Received signal: ", sig)
+				pprof.StopCPUProfile()
+				os.Exit(0)
+			}
+		}()
 		for {
 			time.Sleep(5 * time.Second)
 		}
+		return
+	}
+	//if not daemon
+
+	client, err := rpc.DialHTTP("tcp", "localhost:"+argRPCPort)
+	if err != nil {
+		log.Log(log.ERROR, "Failed to connect to RPC %v", err)
+		os.Exit(1)
+	}
+	var response Response
+	if argList {
+		args := &Args{"List", ""}
+		err = client.Call("Procedures.List", args, &response)
+	} else if argSet {
+		if argLog != "" {
+			args := &NameValueArg{"log", argLog}
+			err = client.Call("Procedures.Set", args, &response)
+		}
+	} else if argRun {
+
+		args := &RunArgs{}
+		// TODO: Parse ARGS here
+		args.Hash = argHash
+		args.IP = argIp
+		args.Mask = argMask
+		args.Mac = argMac
+		args.Dev = argDev
+		args.Hash = argHash
+		args.Dht = argDht
+		args.Keyfile = argKeyfile
+		args.Key = argKey
+		args.TTL = argTTL
+		err = client.Call("Procedures.Run", args, &response)
+	} else if argStop {
+		args := &StopArgs{}
+		args.Hash = argHash
+		err = client.Call("Procedures.Stop", args, &response)
 	} else {
-		client, err := rpc.DialHTTP("tcp", "localhost:"+argRPCPort)
+		args := &Args{"RandomCommand", "someeeeee"}
+		err = client.Call("Procedures.Execute", args, &response)
 		if err != nil {
-			log.Log(log.ERROR, "Failed to connect to RPC %v", err)
+			log.Log(log.ERROR, "Failed to execute remote procedure %v", err)
 			os.Exit(1)
 		}
-		var response Response
-		if argList {
-			args := &Args{"List", ""}
-			err = client.Call("Procedures.List", args, &response)
-		} else if argSet {
-			if argLog != "" {
-				args := &NameValueArg{"log", argLog}
-				err = client.Call("Procedures.Set", args, &response)
-			}
-		} else if argRun {
-
-			args := &RunArgs{}
-			// TODO: Parse ARGS here
-			args.Hash = argHash
-			args.IP = argIp
-			args.Mask = argMask
-			args.Mac = argMac
-			args.Dev = argDev
-			args.Hash = argHash
-			args.Dht = argDht
-			args.Keyfile = argKeyfile
-			args.Key = argKey
-			args.TTL = argTTL
-			err = client.Call("Procedures.Run", args, &response)
-		} else if argStop {
-			args := &StopArgs{}
-			args.Hash = argHash
-			err = client.Call("Procedures.Stop", args, &response)
-		} else {
-			args := &Args{"RandomCommand", "someeeeee"}
-			err = client.Call("Procedures.Execute", args, &response)
-			if err != nil {
-				log.Log(log.ERROR, "Failed to execute remote procedure %v", err)
-				os.Exit(1)
-			}
-		}
-		fmt.Printf("%s\n", response.Output)
-		log.Log(log.DEBUG, "%v", response)
 	}
+	fmt.Printf("%s\n", response.Output)
+	log.Log(log.DEBUG, "%v", response)
 }
