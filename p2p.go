@@ -10,7 +10,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"os/signal"
 	"p2p/commons"
 	"p2p/dht"
 	log "p2p/p2p_log"
@@ -273,38 +272,7 @@ func (ptp *PTPCloud) FindNetworkAddresses() {
 }
 
 func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string) *PTPCloud {
-	// TODO: Move this to init() function
-	/*
-		var (
-			argIp      string
-			argMask    string
-			argMac     string
-			argDev     string
-			argDirect  string
-			argHash    string
-			argDht     string
-			argKeyfile string
-			argKey     string
-			argTTL     string
-			argLog     string
-		)
 
-		flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
-		// TODO: Parse this properly
-		flag.StringVar(&argMask, "mask", "255.255.255.0", "Network mask")
-		flag.StringVar(&argMac, "mac", "none", "MAC Address for a TUN/TAP interface")
-		flag.StringVar(&argDev, "dev", "", "TUN/TAP interface name")
-		// TODO: Direct connection is not implemented yet
-		flag.StringVar(&argDirect, "direct", "none", "IP to connect to directly")
-		flag.StringVar(&argHash, "hash", "none", "Infohash for environment")
-		flag.StringVar(&argDht, "dht", "", "Specify DHT bootstrap node address")
-		flag.StringVar(&argKeyfile, "keyfile", "", "Path to yaml file containing crypto key")
-		flag.StringVar(&argKey, "key", "", "AES crypto key")
-		flag.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
-		flag.StringVar(&argLog, "log", "INFO", "Log level")
-
-		flag.Parse()
-	*/
 	if argIp == "none" {
 		fmt.Println("USAGE: p2p [OPTIONS]")
 		fmt.Printf("\nOPTIONS:\n")
@@ -380,18 +348,6 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 
 	go ptp.UDPSocket.Listen(ptp.HandleP2PMessage)
 
-	// Capture SIGINT
-	// This is used for development purposes only, but later we should consider updating
-	// this code to handle signals
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-
-	go func() {
-		for sig := range c {
-			fmt.Println("Received signal: ", sig)
-			os.Exit(0)
-		}
-	}()
 	go ptp.ListenInterface()
 	return ptp
 }
