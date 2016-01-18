@@ -467,6 +467,7 @@ func (ptp *PTPCloud) PurgePeers() {
 		if !f {
 			log.Log(log.DEBUG, ("Peer not found in DHT peer table. Remove it"))
 			//rem = append(rem, i)
+			delete(ptp.IPIDTable, peer.PeerLocalIP.String())
 			delete(ptp.NetworkPeers, i)
 		}
 	}
