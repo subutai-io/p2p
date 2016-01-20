@@ -178,6 +178,19 @@ func CreateTestP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	return msg
 }
 
+func CreateProxyP2PMessage(id int, data string, netProto uint16) *P2PMessage {
+	// We don't need to encrypt this message
+	msg := new(P2PMessage)
+	msg.Header = new(P2PMessageHeader)
+	msg.Header.Magic = MAGIC_COOKIE
+	msg.Header.Type = uint16(commons.MT_PROXY)
+	msg.Header.NetProto = netProto
+	msg.Header.Length = uint16(len(data))
+	msg.Header.ProxyId = uint16(id)
+	msg.Data = []byte(data)
+	return msg
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 type UDPClient struct {

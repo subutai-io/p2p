@@ -439,6 +439,7 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 		log.Log(log.INFO, "DHT operating in CONTROL PEER mode")
 		dht.ResponseHandlers[commons.CMD_CONN] = dht.HandleConn
 		dht.ResponseHandlers[commons.CMD_REGCP] = dht.HandleRegCp
+		dht.ResponseHandlers[commons.CMD_PING] = dht.HandlePing
 	}
 	for _, router := range routers {
 		conn, err := dht.ConnectAndHandshake(router, ips)
@@ -476,9 +477,10 @@ func DetectIP() string {
 func (dht *DHTClient) RegisterControlPeer() {
 	var req commons.DHTRequest
 	var err error
-	req.Id = "0"
+	req.Id = dht.ID
 	req.Hash = "0"
 	req.Command = commons.CMD_REGCP
+	req.Port = fmt.Sprintf("%d", dht.P2PPort)
 	var b bytes.Buffer
 	if err := bencode.Marshal(&b, req); err != nil {
 		log.Log(log.ERROR, "Failed to Marshal bencode %v", err)

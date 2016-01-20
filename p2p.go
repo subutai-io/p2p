@@ -390,9 +390,6 @@ func (ptp *PTPCloud) IntroducePeers() {
 		if peer.Endpoint == "" {
 			continue
 		}
-		if peer.Forwarder != nil && peer.ProxyID == 0 {
-			// We need to retrieve a proxy
-		}
 		log.Log(log.DEBUG, "Intoducing to %s", peer.Endpoint)
 		addr, err := net.ResolveUDPAddr("udp", peer.Endpoint)
 		if err != nil {
@@ -478,7 +475,6 @@ func (ptp *PTPCloud) SyncForwarders() int {
 			if peer.Endpoint == "" && fwd.DestinationID == peer.ID {
 				log.Log(log.INFO, "Saving control peer as a proxy destination for %s", peer.ID)
 				peer.Endpoint = fwd.Addr.String()
-				peer.PeerAddr = fwd.Addr
 				peer.Forwarder = fwd.Addr
 				ptp.NetworkPeers[key] = peer
 				count = count + 1
@@ -579,6 +575,8 @@ func (ptp *PTPCloud) SyncPeers() int {
 							// We've failed to establish connection again. Now let's ask for a proxy
 							log.Log(log.INFO, "Failed to establish connection. Requesting Control Peer from Service Discovery Peer")
 							ptp.dht.RequestControlPeer(peer.ID)
+							peer.PeerAddr = peer.KnownIPs[0]
+							ptp.NetworkPeers[i] = peer
 						} else {
 							log.Log(log.INFO, "Successfully connected to a host over Internet")
 							peer.Endpoint = peer.KnownIPs[0].String()
@@ -596,6 +594,14 @@ func (ptp *PTPCloud) SyncPeers() int {
 							count = count + 1
 						}
 					*/
+				} else if peer.Endpoint != "" && peer.Forwarder != nil && peer.ProxyID == 0 {
+					// This peer received a forwarder but it doesn't have a proxy yet
+					log.Log(log.INFO, "Sending proxy request to a forwarder %s", peer.Forwarder.String())
+					msg := udpcs.CreateProxyP2PMessage(-1, peer.PeerAddr.String(), 0)
+					_, err := ptp.UDPSocket.SendMessage(msg, peer.Forwarder)
+					if err != nil {
+						log.Log(log.ERROR, "Failed to send a message to a proxy %v", err)
+					}
 				}
 			}
 		}
@@ -765,7 +771,15 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 		ptp.WriteToDevice(msg.Data)
 	case commons.MT_PROXY:
 		// Proxy registration data
-
+		log.Log(log.DEBUG, "Proxy confirmation received")
+		rcvAddr, _ := net.ResolveUDPAddr("udp", string(msg.Data))
+		for key, peer := range ptp.NetworkPeers {
+			if peer.PeerAddr == rcvAddr {
+				peer.ProxyID = int(msg.Header.ProxyId)
+				ptp.NetworkPeers[key] = peer
+				ptp.IntroducePeers()
+			}
+		}
 	default:
 		log.Log(log.ERROR, "Unknown message received")
 	}

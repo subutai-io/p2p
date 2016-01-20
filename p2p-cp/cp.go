@@ -57,6 +57,7 @@ type Node struct {
 // Control Peer represents a connected control peer that can be used by
 // normal peers to forward their traffic
 type ControlPeer struct {
+	ID   string
 	Addr *net.UDPAddr
 }
 
@@ -357,7 +358,7 @@ func (dht *DHTRouter) ResponseRegCP(req commons.DHTRequest, addr string) commons
 	} else {
 		var isNew bool = true
 		for _, cp := range dht.ControlPeers {
-			if cp.Addr.IP.String() == laddr.IP.String() {
+			if cp.ID == req.Id {
 				isNew = false
 			}
 		}
@@ -369,7 +370,8 @@ func (dht *DHTRouter) ResponseRegCP(req commons.DHTRequest, addr string) commons
 			resp.Command = ""
 		} else {
 			var newCP ControlPeer
-			newCP.Addr = laddr
+			addrStr := laddr.IP.String() + ":" + req.Port
+			newCP.Addr, _ = net.ResolveUDPAddr("udp", addrStr)
 			if !newCP.ValidateConnection() {
 				log.Log(log.ERROR, "Failed to connect to Control Peer. Ignoring")
 				resp.Command = ""
@@ -414,6 +416,8 @@ func (dht *DHTRouter) ResponseCP(req commons.DHTRequest, addr string) commons.DH
 		resp.Id = req.Port
 		//}
 	}
+	// At the same moment we should send this message to a requested address too
+
 	return resp
 }
 
