@@ -370,7 +370,7 @@ func (ptp *PTPCloud) Run() {
 		time.Sleep(2 * time.Second)
 		ptp.PurgePeers()
 		newPeersNum := ptp.SyncPeers()
-		ptp.SyncForwarders()
+		newPeersNum = newPeersNum + ptp.SyncForwarders()
 		if newPeersNum > 0 {
 			ptp.IntroducePeers()
 		}
@@ -389,6 +389,9 @@ func (ptp *PTPCloud) IntroducePeers() {
 		// Skip if we don't have an endpoint address for this peer
 		if peer.Endpoint == "" {
 			continue
+		}
+		if peer.Forwarder != nil && peer.ProxyID == 0 {
+			// We need to retrieve a proxy
 		}
 		log.Log(log.DEBUG, "Intoducing to %s", peer.Endpoint)
 		addr, err := net.ResolveUDPAddr("udp", peer.Endpoint)
@@ -468,7 +471,8 @@ func (ptp *PTPCloud) TestConnection(endpoint *net.UDPAddr) bool {
 	return false
 }
 
-func (ptp *PTPCloud) SyncForwarders() {
+func (ptp *PTPCloud) SyncForwarders() int {
+	var count int = 0
 	for _, fwd := range ptp.dht.Forwarders {
 		for key, peer := range ptp.NetworkPeers {
 			if peer.Endpoint == "" && fwd.DestinationID == peer.ID {
@@ -477,10 +481,12 @@ func (ptp *PTPCloud) SyncForwarders() {
 				peer.PeerAddr = fwd.Addr
 				peer.Forwarder = fwd.Addr
 				ptp.NetworkPeers[key] = peer
+				count = count + 1
 			}
 		}
 	}
 	ptp.dht.Forwarders = ptp.dht.Forwarders[:0]
+	return count
 }
 
 // This method takes a list of catched peers from DHT and

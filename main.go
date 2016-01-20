@@ -160,6 +160,21 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 	return nil
 }
 
+func (p *Procedures) Show(args *Args, resp *Response) error {
+	swarm, exists := Instances[args.Command]
+	if exists {
+		resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\n"
+		for _, peer := range swarm.PTP.NetworkPeers {
+			resp.Output = resp.Output + peer.ID + "\t"
+			resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
+			resp.Output = resp.Output + peer.Endpoint + "\n"
+		}
+	} else {
+		resp.Output = "Specified environment was not found"
+	}
+	return nil
+}
+
 func (p *Procedures) List(args *Args, resp *Response) error {
 	resp.ExitCode = 0
 	if len(Instances) == 0 {
@@ -219,6 +234,7 @@ func main() {
 		argDaemon     bool
 		argRPCPort    string
 		CommandList   bool
+		CommandShow   string
 		CommandRun    bool
 		CommandStop   bool
 		CommandSet    bool
@@ -249,6 +265,7 @@ func main() {
 	flag.BoolVar(&CommandStop, "stop", false, "Stops P2P instance")
 	flag.BoolVar(&CommandSet, "set", false, "Modify p2p behaviour by changing it's options")
 	flag.BoolVar(&CommandAddKey, "add-key", false, "Add new key to the list of keys for a specified hash")
+	flag.StringVar(&CommandShow, "show", "", "Show known participants of a swarm")
 
 	//profyle
 	flag.StringVar(&argProfyle, "profyle", "", "Starts PTP package with profiling. Possible values : memory, cpu")
@@ -338,6 +355,10 @@ func main() {
 		args.TTL = argTTL
 		args.Hash = argHash
 		err = client.Call("Procedure.AddKey", args, &response)
+	} else if CommandShow != "" {
+		args := &Args{}
+		args.Command = CommandShow
+		err = client.Call("Procedure.Show", args, &response)
 	} else {
 		args := &Args{"RandomCommand", "someeeeee"}
 		err = client.Call("Procedures.Execute", args, &response)
