@@ -414,6 +414,7 @@ func (dht *DHTClient) HandleCp(data commons.DHTResponse, conn *net.UDPConn) {
 			fwd.Addr = a
 			fwd.DestinationID = data.Dest
 			dht.Forwarders = append(dht.Forwarders, fwd)
+			log.Log(log.DEBUG, "Control peer has been added to the list of forwarders")
 		}
 	}
 }
@@ -496,13 +497,13 @@ func (dht *DHTClient) RegisterControlPeer() {
 }
 
 // This method request a new control peer for particular host
-func (dht *DHTClient) RequestControlPeer(host string) {
+func (dht *DHTClient) RequestControlPeer(id string) {
 	var req commons.DHTRequest
 	var err error
 	req.Id = dht.ID
 	req.Hash = dht.NetworkHash
 	req.Command = commons.CMD_CP
-	req.Port = host
+	req.Port = id
 	var b bytes.Buffer
 	if err := bencode.Marshal(&b, req); err != nil {
 		log.Log(log.ERROR, "Failed to Marshal bencode %v", err)

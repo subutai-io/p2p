@@ -474,6 +474,7 @@ func (ptp *PTPCloud) SyncForwarders() {
 	for _, fwd := range ptp.dht.Forwarders {
 		for key, peer := range ptp.NetworkPeers {
 			if peer.Endpoint == "" && fwd.DestinationID == peer.ID {
+				log.Log(log.INFO, "Saving control peer as a proxy destination for %s", peer.ID)
 				peer.Endpoint = fwd.Addr.String()
 				peer.PeerAddr = fwd.Addr
 				peer.Forwarder = fwd.Addr
@@ -573,7 +574,7 @@ func (ptp *PTPCloud) SyncPeers() int {
 						if !ptp.TestConnection(ptp.NetworkPeers[i].KnownIPs[0]) {
 							// We've failed to establish connection again. Now let's ask for a proxy
 							log.Log(log.INFO, "Failed to establish connection. Requesting Control Peer from Service Discovery Peer")
-							ptp.dht.RequestControlPeer(peer.KnownIPs[0].String())
+							ptp.dht.RequestControlPeer(peer.ID)
 						} else {
 							log.Log(log.INFO, "Successfully connected to a host over Internet")
 							peer.Endpoint = peer.KnownIPs[0].String()

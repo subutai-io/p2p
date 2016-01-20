@@ -406,11 +406,12 @@ func (dht *DHTRouter) ResponseNode(req commons.DHTRequest, addr string) commons.
 func (dht *DHTRouter) ResponseCP(req commons.DHTRequest, addr string) commons.DHTResponse {
 	var resp commons.DHTResponse
 	resp.Command = req.Command
-	resp.Id = "0"
+	//resp.Id = "0"
 	resp.Dest = "0"
 	for _, cp := range dht.ControlPeers {
 		//if cp.ValidateConnection() {
 		resp.Dest = cp.Addr.String()
+		resp.Id = req.Port
 		//}
 	}
 	return resp
