@@ -412,7 +412,7 @@ func (dht *DHTClient) HandleCp(data commons.DHTResponse, conn *net.UDPConn) {
 			log.Log(log.ERROR, "Failed to resolve UDP Address for proxy %s", data.Dest)
 		} else {
 			fwd.Addr = a
-			fwd.DestinationID = data.Dest
+			fwd.DestinationID = data.Id
 			dht.Forwarders = append(dht.Forwarders, fwd)
 			log.Log(log.DEBUG, "Control peer has been added to the list of forwarders")
 		}

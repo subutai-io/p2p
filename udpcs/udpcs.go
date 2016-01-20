@@ -77,7 +77,7 @@ type P2PMessage struct {
 
 func (v *P2PMessage) Serialize() []byte {
 	v.Header.SerializedLen = uint16(len(v.Data))
-	log.Log(log.DEBUG, "--- Serialize P2PMessage header.SerializedLen : %d", v.Header.SerializedLen)
+	log.Log(log.TRACE, "--- Serialize P2PMessage header.SerializedLen : %d", v.Header.SerializedLen)
 	res_buf := v.Header.Serialize()
 	res_buf = append(res_buf, v.Data...)
 	return res_buf
@@ -90,7 +90,7 @@ func P2PMessageFromBytes(bytes []byte) (*P2PMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Log(log.DEBUG, "--- P2PMessageHeaderFromBytes Length : %d, SerLen : %d", res.Header.Length, res.Header.SerializedLen)
+	log.Log(log.TRACE, "--- P2PMessageHeaderFromBytes Length : %d, SerLen : %d", res.Header.Length, res.Header.SerializedLen)
 	if res.Header.Magic != MAGIC_COOKIE {
 		return nil, errors.New("magic cookie not presented")
 	}

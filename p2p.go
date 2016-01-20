@@ -283,8 +283,6 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		os.Exit(1)
 	}
 
-	log.SetMinLogLevel(log.INFO)
-
 	var hw net.HardwareAddr
 
 	if argMac != "" {
@@ -549,7 +547,7 @@ func (ptp *PTPCloud) SyncPeers() int {
 								continue
 							}
 							for _, kip := range ptp.NetworkPeers[i].KnownIPs {
-								log.Log(log.DEBUG, "Probing new IP %s against network %s", kip.IP.String(), network.String())
+								log.Log(log.TRACE, "Probing new IP %s against network %s", kip.IP.String(), network.String())
 
 								if network.Contains(kip.IP) {
 									if ptp.TestConnection(kip) {
