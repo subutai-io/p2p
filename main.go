@@ -103,6 +103,9 @@ func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
 	}
 	if resp.ExitCode == 0 {
 		resp.Output = "New key added"
+		var newKey udpcs.CryptoKey
+		newKey = Instances[args.Hash].PTP.Crypter.EncrichKeyValues(newKey, args.Key, args.TTL)
+		Instances[args.Hash].PTP.Crypter.Keys = append(Instances[args.Hash].PTP.Crypter.Keys, newKey)
 	}
 	return nil
 }
