@@ -225,7 +225,7 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 				if exists {
 					callback(data, conn)
 				} else {
-					log.Log(log.ERROR, "Unknown packet received from DHT")
+					log.Log(log.ERROR, "Unknown packet received from DHT: %s", data.Command)
 				}
 				/*
 					if data.Command == commons.CMD_CONN {
@@ -428,14 +428,16 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 		dht.Mode = MODE_CLIENT
 	}
 	if dht.Mode == MODE_CLIENT {
+		log.Log(log.INFO, "DHT operating in CLIENT mode")
 		dht.ResponseHandlers[commons.CMD_CONN] = dht.HandleConn
 		dht.ResponseHandlers[commons.CMD_PING] = dht.HandlePing
 		dht.ResponseHandlers[commons.CMD_FIND] = dht.HandleFind
 		dht.ResponseHandlers[commons.CMD_NODE] = dht.HandleNode
+		dht.ResponseHandlers[commons.CMD_CP] = dht.HandleCp
 	} else {
+		log.Log(log.INFO, "DHT operating in CONTROL PEER mode")
 		dht.ResponseHandlers[commons.CMD_CONN] = dht.HandleConn
 		dht.ResponseHandlers[commons.CMD_REGCP] = dht.HandleRegCp
-		dht.ResponseHandlers[commons.CMD_CP] = dht.HandleCp
 	}
 	for _, router := range routers {
 		conn, err := dht.ConnectAndHandshake(router, ips)
