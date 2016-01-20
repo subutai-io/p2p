@@ -30,16 +30,21 @@ type Tunnel struct {
 	UniqueHash string
 }
 
-func (p *Proxy) Initialize() {
+func (p *Proxy) Initialize(target string) {
 	p.UDPServer = new(udpcs.UDPClient)
 	p.UDPServer.Init("", 0)
 	p.DHTClient = new(dht.DHTClient)
 	config := p.DHTClient.DHTClientConfig()
+	if target != "" {
+		config.Routers = target
+	}
+	config.Mode = dht.MODE_CP
 	config.NetworkHash = p.GenerateHash()
 	config.P2PPort = p.UDPServer.GetPort()
 	var ips []net.IP
 	ips = append(ips, net.ParseIP("127.0.0.1"))
 	p.DHTClient = p.DHTClient.Initialize(config, ips)
+	p.DHTClient.RegisterControlPeer()
 	p.UDPServer.Listen(p.HandleMessage)
 }
 
@@ -67,8 +72,8 @@ func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_b
 	var msgType commons.MSG_TYPE = commons.MSG_TYPE(msg.Header.Type)
 	if msgType == commons.MT_PROXY {
 		// Register forwarding
-		data = string(msg.Data)
-		for key, tunnel := range p.Tunnels {
+		data := string(msg.Data)
+		for _, tunnel := range p.Tunnels {
 			if data == tunnel.UniqueHash {
 			}
 		}

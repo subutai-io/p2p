@@ -44,6 +44,7 @@ type RunArgs struct {
 	Keyfile string
 	Key     string
 	TTL     string
+	Fwd     bool
 }
 
 type StopArgs struct {
@@ -85,6 +86,27 @@ func (p *Procedures) Set(args *NameValueArg, resp *Response) error {
 	return nil
 }
 
+func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
+	resp.ExitCode = 0
+	if args.Hash == "" {
+		resp.ExitCode = 1
+		resp.Output = "You have not specified hash"
+	}
+	if args.Key == "" {
+		resp.ExitCode = 1
+		resp.Output = "You have not specified key"
+	}
+	_, exists := Instances[args.Hash]
+	if !exists {
+		resp.ExitCode = 1
+		resp.Output = "No instances with specified hash were found"
+	}
+	if resp.ExitCode == 0 {
+		resp.Output = "New key added"
+	}
+	return nil
+}
+
 func (p *Procedures) Execute(args *Args, resp *Response) error {
 	log.Log(log.INFO, "Received %v", args)
 	resp.ExitCode = 0
@@ -108,7 +130,7 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 		}
 		args.Key = string(key)
 
-		ptp := p2pmain(args.IP, args.Mask, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "")
+		ptp := p2pmain(args.IP, args.Mask, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd)
 		var newInst Instance
 		newInst.ID = args.Hash
 		newInst.PTP = ptp
@@ -177,7 +199,6 @@ func start_profyle(profyle string) {
 func main() {
 
 	var (
-		argDaemon  bool
 		argIp      string
 		argMask    string
 		argMac     string
@@ -189,14 +210,17 @@ func main() {
 		argKey     string
 		argTTL     string
 		argLog     string
+		argFwd     bool
 
-		// RPC
-		argRPCPort string
-		argList    bool
-		argRun     bool
-		argStop    bool
-		argSet     bool
-		argProfyle string
+		// Daemon configuration and commands
+		argDaemon     bool
+		argRPCPort    string
+		CommandList   bool
+		CommandRun    bool
+		CommandStop   bool
+		CommandSet    bool
+		CommandAddKey bool
+		argProfyle    string
 	)
 
 	flag.BoolVar(&argDaemon, "daemon", false, "Starts PTP package in daemon mode")
@@ -213,13 +237,15 @@ func main() {
 	flag.StringVar(&argKey, "key", "", "AES crypto key")
 	flag.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
 	flag.StringVar(&argLog, "log", "", "Log level")
+	flag.BoolVar(&argFwd, "fwd", false, "Force traffic forwarding through proxy")
 
 	// RPC
 	flag.StringVar(&argRPCPort, "rpc", "52523", "Port for RPC Communication")
-	flag.BoolVar(&argList, "list", false, "Lists environments running on this machine")
-	flag.BoolVar(&argRun, "start", false, "Starts new P2P instance")
-	flag.BoolVar(&argStop, "stop", false, "Stops P2P instance")
-	flag.BoolVar(&argSet, "set", false, "Modify p2p behaviour by changing it's options")
+	flag.BoolVar(&CommandList, "list", false, "Lists environments running on this machine")
+	flag.BoolVar(&CommandRun, "start", false, "Starts new P2P instance")
+	flag.BoolVar(&CommandStop, "stop", false, "Stops P2P instance")
+	flag.BoolVar(&CommandSet, "set", false, "Modify p2p behaviour by changing it's options")
+	flag.BoolVar(&CommandAddKey, "add-key", false, "Add new key to the list of keys for a specified hash")
 
 	//profyle
 	flag.StringVar(&argProfyle, "profyle", "", "Starts PTP package with profiling. Possible values : memory, cpu")
@@ -275,15 +301,15 @@ func main() {
 		os.Exit(1)
 	}
 	var response Response
-	if argList {
+	if CommandList {
 		args := &Args{"List", ""}
 		err = client.Call("Procedures.List", args, &response)
-	} else if argSet {
+	} else if CommandSet {
 		if argLog != "" {
 			args := &NameValueArg{"log", argLog}
 			err = client.Call("Procedures.Set", args, &response)
 		}
-	} else if argRun {
+	} else if CommandRun {
 
 		args := &RunArgs{}
 		// TODO: Parse ARGS here
@@ -297,11 +323,18 @@ func main() {
 		args.Keyfile = argKeyfile
 		args.Key = argKey
 		args.TTL = argTTL
+		args.Fwd = argFwd
 		err = client.Call("Procedures.Run", args, &response)
-	} else if argStop {
+	} else if CommandStop {
 		args := &StopArgs{}
 		args.Hash = argHash
 		err = client.Call("Procedures.Stop", args, &response)
+	} else if CommandAddKey {
+		args := &RunArgs{}
+		args.Key = argKey
+		args.TTL = argTTL
+		args.Hash = argHash
+		err = client.Call("Procedure.AddKey", args, &response)
 	} else {
 		args := &Args{"RandomCommand", "someeeeee"}
 		err = client.Call("Procedures.Execute", args, &response)

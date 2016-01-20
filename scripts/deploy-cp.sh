@@ -26,8 +26,8 @@ if [ ! -f $KEY ]; then
     exit
 fi
 
-for host in 1; do
+for host in 1 2 3 4 5; do
     ssh -i $KEY $SSH_USER@dht$host.subut.ai "killall -9 $APP_NAME"
-    scp -i $KEY $BINARY $SSH_USER@dht$host.subut.ai:~
-    ssh -n -f -i $KEY $SSH_USER@dht$host.subut.ai "~/$APP_NAME -dht 6881 1>/home/ubuntu/p2p-cp.log 2> /home/ubuntu/p2p-cp.log &" &
+    scp -i $KEY $BINARY $SSH_USER@cp$host.subut.ai:~
+    ssh -n -f -i $KEY $SSH_USER@cp$host.subut.ai "~/$APP_NAME 1>/home/ubuntu/p2p-cp.log 2> /home/ubuntu/p2p-cp.log &" &
 done

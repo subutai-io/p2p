@@ -129,7 +129,6 @@ func CreateIntroP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
 	if c.Active {
-		log.Log(log.DEBUG, "ACTIVE SUKA")
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {
@@ -168,7 +167,6 @@ func CreateTestP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
 	if c.Active {
-		log.Log(log.DEBUG, "ACTIVE SUKA")
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {

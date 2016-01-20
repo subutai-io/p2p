@@ -61,6 +61,9 @@ type PTPCloud struct {
 
 	// IP -> ID Table for faster ARP lookup
 	IPIDTable map[string]string
+
+	// If yes, client will not try to establish direct connection over LAN and will always switch to proxy
+	ForwardMode bool
 }
 
 type NetworkPeer struct {
@@ -271,7 +274,7 @@ func (ptp *PTPCloud) FindNetworkAddresses() {
 	log.Log(log.INFO, "%d interfaces were saved", len(ptp.LocalIPs))
 }
 
-func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string) *PTPCloud {
+func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool) *PTPCloud {
 
 	if argIp == "none" {
 		fmt.Println("USAGE: p2p [OPTIONS]")
@@ -303,12 +306,17 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	dhtClient := new(dht.DHTClient)
 	config := dhtClient.DHTClientConfig()
 	config.NetworkHash = argHash
+	config.Mode = dht.MODE_CLIENT
 
 	ptp := new(PTPCloud)
 	ptp.FindNetworkAddresses()
 	ptp.HardwareAddr = hw
 	ptp.NetworkPeers = make(map[string]NetworkPeer)
 	ptp.IPIDTable = make(map[string]string)
+
+	if fwd {
+		ptp.ForwardMode = true
+	}
 
 	if argDev == "" {
 		argDev = ptp.GenerateDeviceName(1)
@@ -364,6 +372,7 @@ func (ptp *PTPCloud) Run() {
 		time.Sleep(2 * time.Second)
 		ptp.PurgePeers()
 		newPeersNum := ptp.SyncPeers()
+		ptp.SyncForwarders()
 		if newPeersNum > 0 {
 			ptp.IntroducePeers()
 		}
@@ -461,6 +470,20 @@ func (ptp *PTPCloud) TestConnection(endpoint *net.UDPAddr) bool {
 	return false
 }
 
+func (ptp *PTPCloud) SyncForwarders() {
+	for _, fwd := range ptp.dht.Forwarders {
+		for key, peer := range ptp.NetworkPeers {
+			if peer.Endpoint == "" && fwd.DestinationID == peer.ID {
+				peer.Endpoint = fwd.Addr.String()
+				peer.PeerAddr = fwd.Addr
+				peer.Forwarder = fwd.Addr
+				ptp.NetworkPeers[key] = peer
+			}
+		}
+	}
+	ptp.dht.Forwarders = ptp.dht.Forwarders[:0]
+}
+
 // This method takes a list of catched peers from DHT and
 // adds every new peer into list of peers
 // Returns amount of peers that has been added
@@ -500,14 +523,18 @@ func (ptp *PTPCloud) SyncPeers() int {
 				if peer.Endpoint == "" {
 					// First we need to go over each network and see if some of addresses are inside LAN
 					// TODO: Implement
-					var failback bool = false
+					//var failback bool = false
 					interfaces, err := net.Interfaces()
 					if err != nil {
 						log.Log(log.ERROR, "Failed to retrieve list of network interfaces")
-						failback = true
+						//failback = true
 					}
 
 					for _, inf := range interfaces {
+						if ptp.ForwardMode {
+							// Don't try to connect over local network
+							break
+						}
 						if ptp.NetworkPeers[i].Endpoint != "" {
 							break
 						}
@@ -540,12 +567,15 @@ func (ptp *PTPCloud) SyncPeers() int {
 					// If we still don't have an endpoint we will try to reach peer from outside of network
 
 					if ptp.NetworkPeers[i].Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
+						log.Log(log.INFO, "No peers are available in local network. Switching to global IP if any")
 						// If endpoint wasn't set let's test connection from outside of the LAN
 						// First one should be the global IP (if DHT works correctly)
 						if !ptp.TestConnection(ptp.NetworkPeers[i].KnownIPs[0]) {
 							// We've failed to establish connection again. Now let's ask for a proxy
-							ptp.DHTClient.RequestControlPeer()
+							log.Log(log.INFO, "Failed to establish connection. Requesting Control Peer from Service Discovery Peer")
+							ptp.dht.RequestControlPeer(peer.KnownIPs[0].String())
 						} else {
+							log.Log(log.INFO, "Successfully connected to a host over Internet")
 							peer.Endpoint = peer.KnownIPs[0].String()
 							ptp.NetworkPeers[i] = peer
 						}
@@ -728,6 +758,9 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 	case commons.MT_NENC:
 		log.Log(log.DEBUG, "Received P2P Message")
 		ptp.WriteToDevice(msg.Data)
+	case commons.MT_PROXY:
+		// Proxy registration data
+
 	default:
 		log.Log(log.ERROR, "Unknown message received")
 	}

@@ -94,6 +94,7 @@ type DHTRouter struct {
 func (cp *ControlPeer) ValidateConnection() bool {
 	conn, err := net.DialUDP("udp", nil, cp.Addr)
 	if err != nil {
+		log.Log(log.ERROR, "Validation failed")
 		return false
 	}
 	// TODO: Send something to CP
@@ -316,7 +317,7 @@ func (dht *DHTRouter) ResponseFind(req commons.DHTRequest, addr string) commons.
 				// Skip if we are the node who requested hash
 				continue
 			}
-			log.Log(log.DEBUG, "Found match in hash '%s' with peer %s", req.Hash, node.AssociatedHash)
+			log.Log(log.TRACE, "Found match in hash '%s' with peer %s", req.Hash, node.AssociatedHash)
 			foundDest += node.ID + ","
 		}
 	}
@@ -375,6 +376,7 @@ func (dht *DHTRouter) ResponseRegCP(req commons.DHTRequest, addr string) commons
 			} else {
 				// TODO: Consider assigning ID to Control Peers, but currently we
 				// don't need such functionality
+				log.Log(log.INFO, "Control peer has been validated. Saving")
 				dht.ControlPeers = append(dht.ControlPeers, newCP)
 			}
 		}
@@ -407,9 +409,9 @@ func (dht *DHTRouter) ResponseCP(req commons.DHTRequest, addr string) commons.DH
 	resp.Id = "0"
 	resp.Dest = "0"
 	for _, cp := range dht.ControlPeers {
-		if cp.ValidateConnection() {
-			resp.Dest = cp.Addr.String()
-		}
+		//if cp.ValidateConnection() {
+		resp.Dest = cp.Addr.String()
+		//}
 	}
 	return resp
 }
@@ -443,7 +445,7 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 		n.AssociatedHash = ""
 		NodeList = append(NodeList, n)
 	}
-	log.Log(log.DEBUG, "%s: %s", addr, string(buf[:512]))
+	log.Log(log.TRACE, "%s: %s", addr, string(buf[:512]))
 
 	// Try to bencode
 	req, err := dht.Extract(buf[:512])
@@ -521,9 +523,14 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 }
 
 func main() {
-	var argDht int
+	var (
+		argDht    int
+		argTarget string
+	)
 	flag.IntVar(&argDht, "dht", -1, "Port that DHT Bootstrap will listening to")
+	flag.StringVar(&argTarget, "t", "", "Host:Port of DHT Bootstrap node")
 	flag.Parse()
+	log.SetMinLogLevel(log.DEBUG)
 	log.Log(log.INFO, "Initialization complete")
 	log.Log(log.INFO, "Starting bootstrap node")
 	if argDht > 0 {
@@ -539,7 +546,7 @@ func main() {
 	} else {
 		// Act as a normal (proxy) control peer
 		var proxy Proxy
-		proxy.Initialize()
+		proxy.Initialize(argTarget)
 		for {
 		}
 	}
