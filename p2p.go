@@ -20,6 +20,8 @@ import (
 
 type MSG_TYPE uint16
 
+type MessageHandler func(message *udpcs.P2PMessage, src_addr *net.UDPAddr)
+
 // Main structure
 type PTPCloud struct {
 	// IP Address assigned to device at startup
@@ -61,6 +63,11 @@ type PTPCloud struct {
 
 	// IP -> ID Table for faster ARP lookup
 	IPIDTable map[string]string
+
+	// If yes, client will not try to establish direct connection over LAN and will always switch to proxy
+	ForwardMode bool
+
+	MessageHandlers map[uint16]MessageHandler
 }
 
 type NetworkPeer struct {
@@ -85,6 +92,8 @@ type NetworkPeer struct {
 	Endpoint string
 	// List of peer IP addresses
 	KnownIPs []*net.UDPAddr
+	// Number of retries of introduce
+	Retries int
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -149,42 +158,40 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) error {
 // packet within a subnet in which our application works.
 // This method calls appropriate gorouting for extracted packet protocol
 func handlePacket(ptp *PTPCloud, contents []byte, proto int) {
-	/*
-		512   (PUP)
-		2048  (IP)
-		2054  (ARP)
-		32821 (RARP)
-		33024 (802.1q)
-		34525 (IPv6)
-		34915 (PPPOE discovery)
-		34916 (PPPOE session)
-	*/
-	switch proto {
-	case 512:
-		log.Log(log.DEBUG, "Received PARC Universal Packet")
-		ptp.handlePARCUniversalPacket(contents)
-	case 2048:
-		ptp.handlePacketIPv4(contents, proto)
-	case 2054:
-		log.Log(log.DEBUG, "Received ARP Packet")
-		ptp.handlePacketARP(contents)
-	case 32821:
-		log.Log(log.DEBUG, "Received RARP Packet")
-		ptp.handleRARPPacket(contents)
-	case 33024:
-		log.Log(log.DEBUG, "Received 802.1q Packet")
-		ptp.handle8021qPacket(contents)
-	case 34525:
-		ptp.handlePacketIPv6(contents)
-	case 34915:
-		log.Log(log.DEBUG, "Received PPPoE Discovery Packet")
-		ptp.handlePPPoEDiscoveryPacket(contents)
-	case 34916:
-		log.Log(log.DEBUG, "Received PPPoE Session Packet")
-		ptp.handlePPPoESessionPacket(contents)
-	default:
-		log.Log(log.DEBUG, "Received Undefined Packet")
+	callback, exists := PacketHandlers[PacketType(proto)]
+	if exists {
+		callback(contents, proto)
+	} else {
+		log.Log(log.WARNING, "Captured undefined packet")
 	}
+	/*
+		switch proto {
+		case 512:
+			log.Log(log.DEBUG, "Received PARC Universal Packet")
+			ptp.handlePARCUniversalPacket(contents)
+		case 2048:
+			ptp.handlePacketIPv4(contents, proto)
+		case 2054:
+			log.Log(log.DEBUG, "Received ARP Packet")
+			ptp.handlePacketARP(contents)
+		case 32821:
+			log.Log(log.DEBUG, "Received RARP Packet")
+			ptp.handleRARPPacket(contents)
+		case 33024:
+			log.Log(log.DEBUG, "Received 802.1q Packet")
+			ptp.handle8021qPacket(contents)
+		case 34525:
+			ptp.handlePacketIPv6(contents)
+		case 34915:
+			log.Log(log.DEBUG, "Received PPPoE Discovery Packet")
+			ptp.handlePPPoEDiscoveryPacket(contents)
+		case 34916:
+			log.Log(log.DEBUG, "Received PPPoE Session Packet")
+			ptp.handlePPPoESessionPacket(contents)
+		default:
+			log.Log(log.DEBUG, "Received Undefined Packet")
+		}
+	*/
 }
 
 // Listen TAP interface for incoming packets
@@ -271,7 +278,7 @@ func (ptp *PTPCloud) FindNetworkAddresses() {
 	log.Log(log.INFO, "%d interfaces were saved", len(ptp.LocalIPs))
 }
 
-func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string) *PTPCloud {
+func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool) *PTPCloud {
 
 	if argIp == "none" {
 		fmt.Println("USAGE: p2p [OPTIONS]")
@@ -279,8 +286,6 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
-
-	log.SetMinLogLevel(log.INFO)
 
 	var hw net.HardwareAddr
 
@@ -303,12 +308,17 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	dhtClient := new(dht.DHTClient)
 	config := dhtClient.DHTClientConfig()
 	config.NetworkHash = argHash
+	config.Mode = dht.MODE_CLIENT
 
 	ptp := new(PTPCloud)
 	ptp.FindNetworkAddresses()
 	ptp.HardwareAddr = hw
 	ptp.NetworkPeers = make(map[string]NetworkPeer)
 	ptp.IPIDTable = make(map[string]string)
+
+	if fwd {
+		ptp.ForwardMode = true
+	}
 
 	if argDev == "" {
 		argDev = ptp.GenerateDeviceName(1)
@@ -334,6 +344,26 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	} else {
 		log.Log(log.INFO, "No AES key were provided. Traffic encryption is disabled")
 	}
+
+	// Register network message handlers
+	ptp.MessageHandlers = make(map[uint16]MessageHandler)
+	ptp.MessageHandlers[commons.MT_NENC] = ptp.HandleNotEncryptedMessage
+	ptp.MessageHandlers[commons.MT_PING] = ptp.HandlePingMessage
+	ptp.MessageHandlers[commons.MT_ENC] = ptp.HandleMessage
+	ptp.MessageHandlers[commons.MT_INTRO] = ptp.HandleIntroMessage
+	ptp.MessageHandlers[commons.MT_PROXY] = ptp.HandleProxyMessage
+	ptp.MessageHandlers[commons.MT_TEST] = ptp.HandleTestMessage
+
+	// Register packet handlers
+	PacketHandlers = make(map[PacketType]PacketHandlerCallback)
+	PacketHandlers[PT_PARC_UNIVERSAL] = ptp.handlePARCUniversalPacket
+	PacketHandlers[PT_IPV4] = ptp.handlePacketIPv4
+	PacketHandlers[PT_ARP] = ptp.handlePacketARP
+	PacketHandlers[PT_RARP] = ptp.handleRARPPacket
+	PacketHandlers[PT_8021Q] = ptp.handle8021qPacket
+	PacketHandlers[PT_IPV6] = ptp.handlePacketIPv6
+	PacketHandlers[PT_PPPOE_DISCOVERY] = ptp.handlePPPoEDiscoveryPacket
+	PacketHandlers[PT_PPPOE_SESSION] = ptp.handlePPPoESessionPacket
 
 	ptp.CreateDevice(argIp, argMac, argMask, argDev)
 	ptp.UDPSocket = new(udpcs.UDPClient)
@@ -364,9 +394,10 @@ func (ptp *PTPCloud) Run() {
 		time.Sleep(2 * time.Second)
 		ptp.PurgePeers()
 		newPeersNum := ptp.SyncPeers()
-		if newPeersNum > 0 {
-			ptp.IntroducePeers()
-		}
+		newPeersNum = newPeersNum + ptp.SyncForwarders()
+		//if newPeersNum > 0 {
+		ptp.IntroducePeers()
+		//}
 	}
 }
 
@@ -383,17 +414,22 @@ func (ptp *PTPCloud) IntroducePeers() {
 		if peer.Endpoint == "" {
 			continue
 		}
+		if peer.Retries >= 10 {
+			log.Log(log.WARNING, "Failed to introduce to %s", peer.ID)
+			// TODO: Perform necessary action
+		}
+		peer.Retries = peer.Retries + 1
 		log.Log(log.DEBUG, "Intoducing to %s", peer.Endpoint)
 		addr, err := net.ResolveUDPAddr("udp", peer.Endpoint)
 		if err != nil {
 			log.Log(log.ERROR, "Failed to resolve UDP address during Introduction: %v", err)
 			continue
 		}
-		peer.PeerAddr = addr
+		//peer.PeerAddr = addr
 		ptp.NetworkPeers[i] = peer
-		//ptp.NetworkPeers[i].PeerAddr = addr
 		// Send introduction packet
 		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID)
+		msg.Header.ProxyId = uint16(peer.ProxyID)
 		_, err = ptp.UDPSocket.SendMessage(msg, addr)
 		if err != nil {
 			log.Log(log.ERROR, "Failed to send introduction to %s", addr.String())
@@ -412,7 +448,6 @@ func (ptp *PTPCloud) PrepareIntroductionMessage(id string) *udpcs.P2PMessage {
 // This method goes over peers and removes obsolete ones
 // Peer becomes obsolete when it goes out of DHT
 func (ptp *PTPCloud) PurgePeers() {
-	//var rem []string
 	for i, peer := range ptp.NetworkPeers {
 		var f bool = false
 		for _, newPeer := range ptp.dht.Peers {
@@ -422,37 +457,11 @@ func (ptp *PTPCloud) PurgePeers() {
 		}
 		if !f {
 			log.Log(log.DEBUG, ("Peer not found in DHT peer table. Remove it"))
-			//rem = append(rem, i)
+			delete(ptp.IPIDTable, peer.PeerLocalIP.String())
 			delete(ptp.NetworkPeers, i)
 		}
 	}
-	/*
-		for _, i := range rem {
-			delete(ptp.NetworkPeers, i)
-			//ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
-		}
-	*/
 	return
-
-	// TODO: Old Scheme. Remove it before release
-	/*
-		var remove []int
-		for i, peer := range ptp.NetworkPeers {
-			var found bool = false
-			for _, addr := range catched {
-				if addr == peer.CleanAddr {
-					found = true
-				}
-			}
-			if !found {
-				remove = append(remove, i)
-			}
-		}
-		sort.Sort(sort.Reverse(sort.IntSlice(remove)))
-		for i := range remove {
-			ptp.NetworkPeers = append(ptp.NetworkPeers[:i], ptp.NetworkPeers[i+1:]...)
-		}
-	*/
 }
 
 // This method tests connection with specified endpoint
@@ -489,6 +498,23 @@ func (ptp *PTPCloud) TestConnection(endpoint *net.UDPAddr) bool {
 	return false
 }
 
+func (ptp *PTPCloud) SyncForwarders() int {
+	var count int = 0
+	for _, fwd := range ptp.dht.Forwarders {
+		for key, peer := range ptp.NetworkPeers {
+			if peer.Endpoint == "" && fwd.DestinationID == peer.ID {
+				log.Log(log.INFO, "Saving control peer as a proxy destination for %s", peer.ID)
+				peer.Endpoint = fwd.Addr.String()
+				peer.Forwarder = fwd.Addr
+				ptp.NetworkPeers[key] = peer
+				count = count + 1
+			}
+		}
+	}
+	ptp.dht.Forwarders = ptp.dht.Forwarders[:0]
+	return count
+}
+
 // This method takes a list of catched peers from DHT and
 // adds every new peer into list of peers
 // Returns amount of peers that has been added
@@ -519,7 +545,6 @@ func (ptp *PTPCloud) SyncPeers() int {
 						log.Log(log.INFO, "Adding new IP (%s) address to %s", ip, peer.ID)
 						// TODO: Check IP parsing
 						newIp, _ := net.ResolveUDPAddr("udp", ip)
-						//ptp.NetworkPeers[i].KnownIPs = append(ptp.NetworkPeers[i].KnownIPs, newIp)
 						peer.KnownIPs = append(peer.KnownIPs, newIp)
 						ptp.NetworkPeers[i] = peer
 					}
@@ -529,14 +554,18 @@ func (ptp *PTPCloud) SyncPeers() int {
 				if peer.Endpoint == "" {
 					// First we need to go over each network and see if some of addresses are inside LAN
 					// TODO: Implement
-					var failback bool = false
+					//var failback bool = false
 					interfaces, err := net.Interfaces()
 					if err != nil {
 						log.Log(log.ERROR, "Failed to retrieve list of network interfaces")
-						failback = true
+						//failback = true
 					}
 
 					for _, inf := range interfaces {
+						if ptp.ForwardMode {
+							// Don't try to connect over local network
+							break
+						}
 						if ptp.NetworkPeers[i].Endpoint != "" {
 							break
 						}
@@ -550,7 +579,7 @@ func (ptp *PTPCloud) SyncPeers() int {
 								continue
 							}
 							for _, kip := range ptp.NetworkPeers[i].KnownIPs {
-								log.Log(log.DEBUG, "Probing new IP %s against network %s", kip.IP.String(), network.String())
+								log.Log(log.TRACE, "Probing new IP %s against network %s", kip.IP.String(), network.String())
 
 								if network.Contains(kip.IP) {
 									if ptp.TestConnection(kip) {
@@ -566,24 +595,42 @@ func (ptp *PTPCloud) SyncPeers() int {
 						}
 					}
 
+					// If we still don't have an endpoint we will try to reach peer from outside of network
+
+					if ptp.NetworkPeers[i].Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
+						log.Log(log.INFO, "No peers are available in local network. Switching to global IP if any")
+						// If endpoint wasn't set let's test connection from outside of the LAN
+						// First one should be the global IP (if DHT works correctly)
+						if !ptp.TestConnection(ptp.NetworkPeers[i].KnownIPs[0]) {
+							// We've failed to establish connection again. Now let's ask for a proxy
+							log.Log(log.INFO, "Failed to establish connection. Requesting Control Peer from Service Discovery Peer")
+							ptp.dht.RequestControlPeer(peer.ID)
+							peer.PeerAddr = peer.KnownIPs[0]
+							ptp.NetworkPeers[i] = peer
+						} else {
+							log.Log(log.INFO, "Successfully connected to a host over Internet")
+							peer.Endpoint = peer.KnownIPs[0].String()
+							ptp.NetworkPeers[i] = peer
+						}
+					}
+
 					/*
-						if ptp.NetworkPeers[i].Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
-							// If endpoint wasn't set let's test connection from outside of the LAN
-							// First one should be the global IP (if DHT works correctly)
-							if !ptp.TestConnection(ptp.NetworkPeers[i].KnownIPs[0]) {
-								// We've failed to
-							}
+						// If we've failed to find something that is really close to us, skip to global
+						if failback && peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
+							log.Log(log.DEBUG, "Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
+							peer.Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
+							ptp.NetworkPeers[i] = peer
+							// Increase counter so p2p package will send introduction
+							count = count + 1
 						}
 					*/
-
-					// If we've failed to find something that is really close to us, skip to global
-					if failback && peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
-						log.Log(log.DEBUG, "Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
-						//ptp.NetworkPeers[i].Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
-						peer.Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
-						ptp.NetworkPeers[i] = peer
-						// Increase counter so p2p package will send introduction
-						count = count + 1
+				} else if peer.Endpoint != "" && peer.Forwarder != nil && peer.ProxyID == 0 {
+					// This peer received a forwarder but it doesn't have a proxy yet
+					log.Log(log.INFO, "Sending proxy request to a forwarder %s", peer.Forwarder.String())
+					msg := udpcs.CreateProxyP2PMessage(-1, peer.PeerAddr.String(), 0)
+					_, err := ptp.UDPSocket.SendMessage(msg, peer.Forwarder)
+					if err != nil {
+						log.Log(log.ERROR, "Failed to send a message to a proxy %v", err)
 					}
 				}
 			}
@@ -593,34 +640,11 @@ func (ptp *PTPCloud) SyncPeers() int {
 			var newPeer NetworkPeer
 			newPeer.ID = id.ID
 			newPeer.Unknown = true
-			//ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
 			ptp.NetworkPeers[newPeer.ID] = newPeer
 			ptp.dht.RequestPeerIPs(id.ID)
 		}
 	}
 	return count
-
-	// TODO: Old Scheme. Remove it before release
-	/*
-		var c int
-		for _, id := range catched {
-			var found bool = false
-			for _, peer := range ptp.NetworkPeers {
-				if peer.ID == id {
-					found = true
-				}
-			}
-			if !found {
-				var newPeer NetworkPeer
-				newPeer.ID = id
-				newPeer.Unknown = true
-				ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
-				ptp.dht.RequestPeerIPs(id)
-				c = c + 1
-			}
-		}
-		return c
-	*/
 }
 
 // WriteToDevice writes data to created TUN/TAP device
@@ -683,7 +707,6 @@ func (ptp *PTPCloud) AddPeer(addr *net.UDPAddr, id string, ip net.IP, mac net.Ha
 		newPeer.PeerHW = mac
 		newPeer.Unknown = false
 		newPeer.Handshaked = true
-		//ptp.NetworkPeers = append(ptp.NetworkPeers, newPeer)
 		ptp.NetworkPeers[newPeer.ID] = newPeer
 		ptp.IPIDTable[ip.String()] = id
 	}
@@ -742,7 +765,8 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 		log.Log(log.ERROR, "P2PMessageFromBytes error: %v", des_err)
 		return
 	}
-	var msgType commons.MSG_TYPE = commons.MSG_TYPE(msg.Header.Type)
+	log.Log(log.INFO, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1")
+	//var msgType commons.MSG_TYPE = commons.MSG_TYPE(msg.Header.Type)
 	// Decrypt message if crypter is active
 	if ptp.Crypter.Active {
 		var dec_err error
@@ -752,38 +776,74 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 		}
 		msg.Data = msg.Data[:msg.Header.Length]
 	}
-	switch msgType {
-	case commons.MT_INTRO:
-		log.Log(log.DEBUG, "Introduction message received: %s", string(msg.Data))
-		// Don't do anything if we already know everything about this peer
-		if !ptp.IsPeerUnknown(src_addr) {
-			log.Log(log.DEBUG, "We already know this peer. Skip")
-			return
-		}
-		id, mac, ip := ptp.ParseIntroString(string(msg.Data))
-		ptp.AddPeer(src_addr, id, ip, mac)
-		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID)
-		_, err := ptp.UDPSocket.SendMessage(msg, src_addr)
-		if err != nil {
-			log.Log(log.ERROR, "Failed to respond to introduction message: %v", err)
-		}
-	case commons.MT_TEST:
-		msg := udpcs.CreateTestP2PMessage(ptp.Crypter, "TEST", 0)
-		_, err := ptp.UDPSocket.SendMessage(msg, src_addr)
-		if err != nil {
-			log.Log(log.ERROR, "Failed to respond to test message: %v", err)
-		}
-	case commons.MT_NENC:
-		log.Log(log.DEBUG, "Received P2P Message")
-		ptp.WriteToDevice(msg.Data)
-	default:
-		log.Log(log.ERROR, "Unknown message received")
+	log.Log(log.INFO, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!2")
+	callback, exists := ptp.MessageHandlers[msg.Header.Type]
+	if exists {
+		log.Log(log.INFO, "EXECUTING CALLBACK !!!")
+		callback(msg, src_addr)
+	} else {
+		log.Log(log.WARNING, "Unknown message received")
 	}
+}
+
+func (ptp *PTPCloud) HandleMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
+
+}
+
+func (ptp *PTPCloud) HandleNotEncryptedMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
+	log.Log(log.DEBUG, "Received P2P Message")
+	ptp.WriteToDevice(msg.Data)
+
+}
+func (ptp *PTPCloud) HandlePingMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
+
+}
+func (ptp *PTPCloud) HandleIntroMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
+	log.Log(log.DEBUG, "Introduction message received: %s", string(msg.Data))
+	// Don't do anything if we already know everything about this peer
+	if !ptp.IsPeerUnknown(src_addr) {
+		log.Log(log.DEBUG, "We already know this peer. Skip")
+		return
+	}
+	id, mac, ip := ptp.ParseIntroString(string(msg.Data))
+	ptp.AddPeer(src_addr, id, ip, mac)
+	response := ptp.PrepareIntroductionMessage(ptp.dht.ID)
+	response.Header.ProxyId = msg.Header.ProxyId
+	_, err := ptp.UDPSocket.SendMessage(response, src_addr)
+	if err != nil {
+		log.Log(log.ERROR, "Failed to respond to introduction message: %v", err)
+	}
+
+}
+func (ptp *PTPCloud) HandleProxyMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
+	// Proxy registration data
+	log.Log(log.DEBUG, "Proxy confirmation received")
+	if msg.Header.ProxyId < 1 {
+		return
+	}
+	id := string(msg.Data)
+	for key, peer := range ptp.NetworkPeers {
+		if peer.PeerAddr.String() == id {
+			peer.ProxyID = int(msg.Header.ProxyId)
+			log.Log(log.DEBUG, "Settings proxy ID %d", msg.Header.ProxyId)
+			ptp.NetworkPeers[key] = peer
+		}
+	}
+
+}
+func (ptp *PTPCloud) HandleTestMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
+	response := udpcs.CreateTestP2PMessage(ptp.Crypter, "TEST", 0)
+	_, err := ptp.UDPSocket.SendMessage(response, src_addr)
+	if err != nil {
+		log.Log(log.ERROR, "Failed to respond to test message: %v", err)
+	}
+
 }
 
 func (ptp *PTPCloud) SendTo(dst net.HardwareAddr, msg *udpcs.P2PMessage) (int, error) {
 	for _, peer := range ptp.NetworkPeers {
 		if peer.PeerHW.String() == dst.String() {
+			msg.Header.ProxyId = uint16(peer.ProxyID)
 			size, err := ptp.UDPSocket.SendMessage(msg, peer.PeerAddr)
 			return size, err
 		}

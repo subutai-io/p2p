@@ -77,7 +77,7 @@ type P2PMessage struct {
 
 func (v *P2PMessage) Serialize() []byte {
 	v.Header.SerializedLen = uint16(len(v.Data))
-	log.Log(log.DEBUG, "--- Serialize P2PMessage header.SerializedLen : %d", v.Header.SerializedLen)
+	log.Log(log.TRACE, "--- Serialize P2PMessage header.SerializedLen : %d", v.Header.SerializedLen)
 	res_buf := v.Header.Serialize()
 	res_buf = append(res_buf, v.Data...)
 	return res_buf
@@ -90,7 +90,7 @@ func P2PMessageFromBytes(bytes []byte) (*P2PMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Log(log.DEBUG, "--- P2PMessageHeaderFromBytes Length : %d, SerLen : %d", res.Header.Length, res.Header.SerializedLen)
+	log.Log(log.TRACE, "--- P2PMessageHeaderFromBytes Length : %d, SerLen : %d", res.Header.Length, res.Header.SerializedLen)
 	if res.Header.Magic != MAGIC_COOKIE {
 		return nil, errors.New("magic cookie not presented")
 	}
@@ -129,7 +129,6 @@ func CreateIntroP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
 	if c.Active {
-		log.Log(log.DEBUG, "ACTIVE SUKA")
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {
@@ -168,7 +167,6 @@ func CreateTestP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
 	if c.Active {
-		log.Log(log.DEBUG, "ACTIVE SUKA")
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {
@@ -177,6 +175,19 @@ func CreateTestP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	} else {
 		msg.Data = []byte(data)
 	}
+	return msg
+}
+
+func CreateProxyP2PMessage(id int, data string, netProto uint16) *P2PMessage {
+	// We don't need to encrypt this message
+	msg := new(P2PMessage)
+	msg.Header = new(P2PMessageHeader)
+	msg.Header.Magic = MAGIC_COOKIE
+	msg.Header.Type = uint16(commons.MT_PROXY)
+	msg.Header.NetProto = netProto
+	msg.Header.Length = uint16(len(data))
+	msg.Header.ProxyId = uint16(id)
+	msg.Data = []byte(data)
 	return msg
 }
 

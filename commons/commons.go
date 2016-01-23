@@ -24,6 +24,7 @@ const (
 	MT_ENC             = 3        // Encrypted message
 	MT_PING            = 4        // Internal ping message
 	MT_TEST            = 5
+	MT_PROXY           = 6
 	//todo add types
 )
 
@@ -43,4 +44,6 @@ const (
 	CMD_BADCP string = "badcp"
 	// Find Control Peer
 	CMD_CP string = "cp"
+
+	CMD_NOTIFY string = "notify"
 )
