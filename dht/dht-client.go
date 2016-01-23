@@ -450,3 +450,25 @@ func (dht *DHTClient) RequestControlPeer(id string) {
 		}
 	}
 }
+
+func (dht *DHTClient) ReportControlPeerLoad(amount int) {
+	var req commons.DHTRequest
+	req.Id = dht.ID
+	req.Command = commons.CMD_LOAD
+	req.Port = fmt.Sprintf("%d", amount)
+	var b bytes.Buffer
+	if err := bencode.Marshal(&b, req); err != nil {
+		log.Log(log.ERROR, "Failed to Marshal bencode %v", err)
+		return
+	}
+	msg := b.String()
+	// TODO: Move sending to a separate method
+	for _, conn := range dht.Connection {
+		_, err := conn.Write([]byte(msg))
+		if err != nil {
+			log.Log(log.ERROR, "Failed to send packet: %v", err)
+			conn.Close()
+			return
+		}
+	}
+}

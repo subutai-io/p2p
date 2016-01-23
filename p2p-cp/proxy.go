@@ -108,6 +108,8 @@ func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_b
 		}
 		msg := udpcs.CreateProxyP2PMessage(responseId, data, 0)
 		p.UDPServer.SendMessage(msg, src_addr)
+		// Notify about new tunnel
+		p.DHTClient.ReportControlPeerLoad(len(p.Tunnels))
 	} else {
 		log.Log(log.DEBUG, "PROXY: %v", p.Tunnels)
 		// Forward message

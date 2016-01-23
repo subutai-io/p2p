@@ -75,8 +75,9 @@ type Peer struct {
 // Control Peer represents a connected control peer that can be used by
 // normal peers to forward their traffic
 type ControlPeer struct {
-	ID   string
-	Addr *net.UDPAddr
+	ID        string
+	Addr      *net.UDPAddr
+	TunelsNum int
 }
 
 // Infohash is a 20-bytes string and associated IP Address
@@ -545,6 +546,8 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 		resp = dht.ResponseCP(req, addr.String())
 	case commons.CMD_NODE:
 		resp = dht.ResponseNode(req, addr.String())
+	case commons.CMD_LOAD:
+		dht.UpdateControlPeerLoad(req.Id, req.Port)
 	default:
 		log.Log(log.ERROR, "Unknown command received: %s", req.Command)
 		resp.Command = ""
@@ -552,6 +555,17 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 
 	if resp.Command != "" {
 		dht.Send(conn, addr, dht.EncodeResponse(resp))
+	}
+}
+
+func (dht *DHTRouter) UpdateControlPeerLoad(id, amount string) {
+	for key, peer := range dht.ControlPeers {
+		if peer.ID == id {
+			newVal, err := strconv.Atoi(amount)
+			if err == nil {
+				dht.ControlPeers[key].TunelsNum = newVal
+			}
+		}
 	}
 }
 
