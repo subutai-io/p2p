@@ -164,6 +164,7 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 
 func (p *Procedures) Show(args *Args, resp *Response) error {
 	swarm, exists := Instances[args.Command]
+	resp.ExitCode = 0
 	if exists {
 		resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\n"
 		for _, peer := range swarm.PTP.NetworkPeers {
@@ -356,11 +357,12 @@ func main() {
 		args.Key = argKey
 		args.TTL = argTTL
 		args.Hash = argHash
-		err = client.Call("Procedure.AddKey", args, &response)
+		err = client.Call("Procedures.AddKey", args, &response)
 	} else if CommandShow != "" {
 		args := &Args{}
 		args.Command = CommandShow
-		err = client.Call("Procedure.Show", args, &response)
+		args.Args = "0"
+		err = client.Call("Procedures.Show", args, &response)
 	} else {
 		args := &Args{"RandomCommand", "someeeeee"}
 		err = client.Call("Procedures.Execute", args, &response)

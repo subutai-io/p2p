@@ -765,7 +765,6 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 		log.Log(log.ERROR, "P2PMessageFromBytes error: %v", des_err)
 		return
 	}
-	log.Log(log.INFO, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1")
 	//var msgType commons.MSG_TYPE = commons.MSG_TYPE(msg.Header.Type)
 	// Decrypt message if crypter is active
 	if ptp.Crypter.Active {
@@ -776,10 +775,8 @@ func (ptp *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err erro
 		}
 		msg.Data = msg.Data[:msg.Header.Length]
 	}
-	log.Log(log.INFO, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!2")
 	callback, exists := ptp.MessageHandlers[msg.Header.Type]
 	if exists {
-		log.Log(log.INFO, "EXECUTING CALLBACK !!!")
 		callback(msg, src_addr)
 	} else {
 		log.Log(log.WARNING, "Unknown message received")
