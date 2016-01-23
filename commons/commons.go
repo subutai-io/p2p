@@ -44,4 +44,6 @@ const (
 	CMD_BADCP string = "badcp"
 	// Find Control Peer
 	CMD_CP string = "cp"
+
+	CMD_NOTIFY string = "notify"
 )

@@ -124,14 +124,16 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 	_, exists = Instances[args.Hash]
 	if !exists {
 		resp.Output = resp.Output + "Lookup finished\n"
-		key := []byte(args.Key)
-		if len(key) > udpcs.BLOCK_SIZE {
-			key = key[:udpcs.BLOCK_SIZE]
-		} else {
-			zeros := make([]byte, udpcs.BLOCK_SIZE-len(key))
-			key = append([]byte(key), zeros...)
+		if args.Key != "" {
+			key := []byte(args.Key)
+			if len(key) > udpcs.BLOCK_SIZE {
+				key = key[:udpcs.BLOCK_SIZE]
+			} else {
+				zeros := make([]byte, udpcs.BLOCK_SIZE-len(key))
+				key = append([]byte(key), zeros...)
+			}
+			args.Key = string(key)
 		}
-		args.Key = string(key)
 
 		ptp := p2pmain(args.IP, args.Mask, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd)
 		var newInst Instance

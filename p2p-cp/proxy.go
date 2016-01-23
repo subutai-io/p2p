@@ -17,7 +17,7 @@ import (
 
 type Proxy struct {
 	DHTClient *dht.DHTClient
-	Tunnels   map[int]Tunnel
+	Tunnels   map[uint16]Tunnel
 	UDPServer *udpcs.UDPClient
 	Shutdown  bool
 }
@@ -34,6 +34,7 @@ func (p *Proxy) Initialize(target string) {
 	p.UDPServer = new(udpcs.UDPClient)
 	p.UDPServer.Init("", 0)
 	p.DHTClient = new(dht.DHTClient)
+	p.Tunnels = make(map[uint16]Tunnel)
 	config := p.DHTClient.DHTClientConfig()
 	if target != "" {
 		config.Routers = target
@@ -57,7 +58,6 @@ func (p *Proxy) GenerateHash() string {
 }
 
 func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_bytes []byte) {
-	log.Log(log.DEBUG, "MSG RECEIVED")
 	if err != nil {
 		log.Log(log.ERROR, "P2P Message Handle: %v", err)
 		return
@@ -79,16 +79,15 @@ func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_b
 		// If it's found - return Proxy ID. Create new entry otherwise
 		data := string(msg.Data)
 		var responseId int = -1
-		var respAddr string = data
 		targetIp, _ := net.ResolveUDPAddr("udp", data)
 		for id, tunnel := range p.Tunnels {
 			if tunnel.Peer1 == src_addr {
 				if tunnel.Peer2 == targetIp {
-					responseId = id
+					responseId = int(id)
 				}
 			} else if tunnel.Peer2 == src_addr {
 				if tunnel.Peer1 == targetIp {
-					responseId = id
+					responseId = int(id)
 				}
 			}
 		}
@@ -97,20 +96,22 @@ func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_b
 			var t Tunnel
 			t.Peer1 = src_addr
 			t.Peer2, _ = net.ResolveUDPAddr("udp", data)
-			for i := 0; i < len(p.Tunnels)+1; i++ {
-				_, exists := p.Tunnels[i]
+			for i := 1; i < len(p.Tunnels)+2; i++ {
+				_, exists := p.Tunnels[uint16(i)]
 				if !exists {
-					log.Log(log.DEBUG, "New tunnel has been created")
-					p.Tunnels[i] = t
+					log.Log(log.DEBUG, "New tunnel has been created with ID %d", i)
+					p.Tunnels[uint16(i)] = t
+					responseId = i
 					break
 				}
 			}
 		}
-		msg := udpcs.CreateProxyP2PMessage(responseId, respAddr, 0)
+		msg := udpcs.CreateProxyP2PMessage(responseId, data, 0)
 		p.UDPServer.SendMessage(msg, src_addr)
 	} else {
+		log.Log(log.DEBUG, "PROXY: %v", p.Tunnels)
 		// Forward message
-		tunnel, exists := p.Tunnels[int(msg.Header.ProxyId)]
+		tunnel, exists := p.Tunnels[msg.Header.ProxyId]
 		if !exists {
 			log.Log(log.WARNING, "Proxy %d is not registered", msg.Header.ProxyId)
 			return
