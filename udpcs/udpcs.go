@@ -202,6 +202,10 @@ type UDPClient struct {
 	disposed     bool
 }
 
+func (uc *UDPClient) Stop() {
+	uc.disposed = true
+}
+
 func (uc *UDPClient) Disposed() bool {
 	return uc.disposed
 }

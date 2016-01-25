@@ -155,8 +155,8 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 		resp.ExitCode = 1
 		resp.Output = "Instance with hash " + args.Hash + " was not found"
 	} else {
-		Instances[args.Hash].PTP.Shutdown = true
 		resp.Output = "Shutting down " + args.Hash
+		Instances[args.Hash].PTP.StopInstance()
 		delete(Instances, args.Hash)
 	}
 	return nil

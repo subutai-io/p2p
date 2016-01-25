@@ -847,3 +847,10 @@ func (ptp *PTPCloud) SendTo(dst net.HardwareAddr, msg *udpcs.P2PMessage) (int, e
 	}
 	return 0, nil
 }
+
+func (ptp *PTPCloud) StopInstance() {
+	// Close interface
+	ptp.UDPSocket.Stop()
+	ptp.Interface.Close()
+	ptp.Shutdown = true
+}
