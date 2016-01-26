@@ -396,6 +396,7 @@ func (ptp *PTPCloud) Run() {
 			if ptp.ReadyToStop {
 				break
 			}
+			time.Sleep(1 * time.Second)
 			continue
 		}
 		time.Sleep(3 * time.Second)
