@@ -456,6 +456,14 @@ func (dht *DHTRouter) ResponseNotify(req commons.DHTRequest, addr string) common
 	return resp
 }
 
+func (dht *DHTRouter) ResponseStop(req commons.DHTRequest) commons.DHTResponse {
+	var resp commons.DHTREsponse
+	resp.Command = req.Command
+	resp.Dest = req.Id
+	resp.Id = "0"
+	return resp
+}
+
 // ResponseCP responses to a CP request
 func (dht *DHTRouter) ResponseCP(req commons.DHTRequest, addr string) commons.DHTResponse {
 	var resp commons.DHTResponse
@@ -548,6 +556,8 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 		resp = dht.ResponseNode(req, addr.String())
 	case commons.CMD_LOAD:
 		dht.UpdateControlPeerLoad(req.Id, req.Port)
+	case commons.CMD_STOP:
+		resp = dht.ResponseStop(req)
 	default:
 		log.Log(log.ERROR, "Unknown command received: %s", req.Command)
 		resp.Command = ""

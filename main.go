@@ -11,6 +11,7 @@ import (
 	"os/user"
 	log "p2p/p2p_log"
 	"p2p/udpcs"
+	"runtime"
 	"runtime/pprof"
 	"time"
 )
@@ -190,6 +191,12 @@ func (p *Procedures) List(args *Args, resp *Response) error {
 	return nil
 }
 
+func (p *Procedures) Debug(args *Args, resp *Response) error {
+	resp.Output = "DEBUG INFO:\n"
+	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())
+	return nil
+}
+
 func start_profyle(profyle string) {
 
 	pwd, err := os.Getwd()
@@ -242,6 +249,7 @@ func main() {
 		CommandStop   bool
 		CommandSet    bool
 		CommandAddKey bool
+		CommandDebug  bool
 		argProfyle    string
 	)
 
@@ -268,6 +276,7 @@ func main() {
 	flag.BoolVar(&CommandStop, "stop", false, "Stops P2P instance")
 	flag.BoolVar(&CommandSet, "set", false, "Modify p2p behaviour by changing it's options")
 	flag.BoolVar(&CommandAddKey, "add-key", false, "Add new key to the list of keys for a specified hash")
+	flag.BoolVar(&CommandDebug, "debug", false, "Shows debug info")
 	flag.StringVar(&CommandShow, "show", "", "Show known participants of a swarm")
 
 	//profyle
@@ -363,6 +372,9 @@ func main() {
 		args.Command = CommandShow
 		args.Args = "0"
 		err = client.Call("Procedures.Show", args, &response)
+	} else if CommandDebug {
+		args := &Args{}
+		err = client.Call("Procedures.Debug", args, &response)
 	} else {
 		args := &Args{"RandomCommand", "someeeeee"}
 		err = client.Call("Procedures.Execute", args, &response)

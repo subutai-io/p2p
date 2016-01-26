@@ -245,6 +245,7 @@ func (uc *UDPClient) Listen(fn_received_callback UDPReceivedCallback) {
 		n, src, err := uc.conn.ReadFromUDP(uc.input_buffer[:])
 		fn_received_callback(n, src, err, uc.input_buffer[:])
 	}
+	log.Log(log.INFO, "Stopping UDP Listener")
 }
 
 func (uc *UDPClient) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, error) {

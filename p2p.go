@@ -68,6 +68,8 @@ type PTPCloud struct {
 	ForwardMode bool
 
 	MessageHandlers map[uint16]MessageHandler
+
+	ReadyToStop bool
 }
 
 type NetworkPeer struct {
@@ -199,6 +201,9 @@ func (ptp *PTPCloud) ListenInterface() {
 	// Read packets received by TUN/TAP device and send them to a handlePacket goroutine
 	// This goroutine will decide what to do with this packet
 	for {
+		if ptp.Shutdown {
+			break
+		}
 		packet, err := ptp.Device.ReadPacket()
 		if err != nil {
 			log.Log(log.ERROR, "Reading packet %s", err)
@@ -209,6 +214,8 @@ func (ptp *PTPCloud) ListenInterface() {
 		// TODO: Make handlePacket as a part of PTPCloud
 		go handlePacket(ptp, packet.Packet, packet.Protocol)
 	}
+	ptp.Device.Close()
+	log.Log(log.INFO, "Shutting down interface listener")
 }
 
 // This method will generate device name if none were specified at startup
@@ -386,7 +393,10 @@ func (ptp *PTPCloud) Run() {
 	for {
 		if ptp.Shutdown {
 			// TODO: Do it more safely
-			break
+			if ptp.ReadyToStop {
+				break
+			}
+			continue
 		}
 		time.Sleep(3 * time.Second)
 		ptp.dht.UpdatePeers()
@@ -399,6 +409,7 @@ func (ptp *PTPCloud) Run() {
 		ptp.IntroducePeers()
 		//}
 	}
+	log.Log(log.INFO, "Shutting down instance %s completed", ptp.dht.NetworkHash)
 }
 
 // This method sends information about himself to empty peers
@@ -648,10 +659,10 @@ func (ptp *PTPCloud) SyncPeers() int {
 }
 
 // WriteToDevice writes data to created TUN/TAP device
-func (ptp *PTPCloud) WriteToDevice(b []byte) {
+func (ptp *PTPCloud) WriteToDevice(b []byte, proto uint16, truncated bool) {
 	var p tuntap.Packet
-	p.Protocol = 2054
-	p.Truncated = false
+	p.Protocol = int(proto)
+	p.Truncated = truncated
 	p.Packet = b
 	if ptp.Device == nil {
 		log.Log(log.ERROR, "TUN/TAP Device not initialized")
@@ -659,7 +670,7 @@ func (ptp *PTPCloud) WriteToDevice(b []byte) {
 	}
 	err := ptp.Device.WritePacket(&p)
 	if err != nil {
-		log.Log(log.ERROR, "Failed to write to TUN/TAP device")
+		log.Log(log.ERROR, "Failed to write to TUN/TAP device: %v", err)
 	}
 }
 
@@ -789,7 +800,7 @@ func (ptp *PTPCloud) HandleMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr)
 
 func (ptp *PTPCloud) HandleNotEncryptedMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
 	log.Log(log.DEBUG, "Received P2P Message")
-	ptp.WriteToDevice(msg.Data)
+	ptp.WriteToDevice(msg.Data, msg.Header.NetProto, false)
 
 }
 func (ptp *PTPCloud) HandlePingMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
@@ -849,8 +860,39 @@ func (ptp *PTPCloud) SendTo(dst net.HardwareAddr, msg *udpcs.P2PMessage) (int, e
 }
 
 func (ptp *PTPCloud) StopInstance() {
-	// Close interface
+	// Send a packet
+	ptp.dht.Stop()
 	ptp.UDPSocket.Stop()
-	ptp.Interface.Close()
 	ptp.Shutdown = true
+	msg := udpcs.CreateTestP2PMessage(ptp.Crypter, "STOP", 1)
+	addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", ptp.dht.P2PPort))
+	ptp.UDPSocket.SendMessage(msg, addr)
+	// Close interface
+
+	//ptp.SendFinalPacket()
+	//ptp.RemoveInterface()
+	// Now we need to send some random bytes into interface to shut it down
+	time.Sleep(3 * time.Second)
+	/*err := ptp.Interface.Close()
+	if err != nil {
+		log.Log(log.ERROR, "Failed to close interface: %v", err)
+	}*/
+	ptp.ReadyToStop = true
+}
+
+func (ptp *PTPCloud) SendFinalPacket() {
+	var p tuntap.Packet
+	p.Protocol = int(PT_ARP)
+	p.Truncated = false
+	p.Packet = []byte("1")
+	ptp.WriteToDevice([]byte("SHUTDOWN"), 2054, false)
+}
+
+func (ptp *PTPCloud) RemoveInterface() {
+	linkup := exec.Command(ptp.IPTool, "link", "delete", ptp.DeviceName)
+	err := linkup.Run()
+	if err != nil {
+		log.Log(log.ERROR, "Failed to delete interface: %v", err)
+		return
+	}
 }
