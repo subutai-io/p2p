@@ -184,7 +184,7 @@ func (ptp *PTPCloud) ListenInterface() {
 			log.Log(log.DEBUG, "Truncated packet")
 		}
 		// TODO: Make handlePacket as a part of PTPCloud
-		go ptp.handlePacket(ptp, packet.Packet, packet.Protocol)
+		go ptp.handlePacket(packet.Packet, packet.Protocol)
 	}
 	ptp.Device.Close()
 	log.Log(log.INFO, "Shutting down interface listener")
