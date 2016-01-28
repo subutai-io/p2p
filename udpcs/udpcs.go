@@ -95,9 +95,9 @@ func P2PMessageFromBytes(bytes []byte) (*P2PMessage, error) {
 		return nil, errors.New("magic cookie not presented")
 	}
 	res.Data = make([]byte, res.Header.SerializedLen)
-	log.Log(log.DEBUG, "BYTES : %s", bytes)
+	log.Log(log.TRACE, "BYTES : %s", bytes)
 	copy(res.Data[:], bytes[12:len(bytes)])
-	log.Log(log.DEBUG, "res.Data : %s", res.Data)
+	log.Log(log.TRACE, "res.Data : %s", res.Data)
 	return res, err
 }
 
