@@ -70,6 +70,8 @@ type PTPCloud struct {
 	MessageHandlers map[uint16]MessageHandler
 
 	ReadyToStop bool
+
+	PacketHandlers map[PacketType]PacketHandlerCallback
 }
 
 type NetworkPeer struct {
@@ -160,7 +162,7 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) error {
 // packet within a subnet in which our application works.
 // This method calls appropriate gorouting for extracted packet protocol
 func (ptp *PTPCloud) handlePacket(contents []byte, proto int) {
-	callback, exists := PacketHandlers[PacketType(proto)]
+	callback, exists := ptp.PacketHandlers[PacketType(proto)]
 	if exists {
 		callback(contents, proto)
 	} else {
@@ -334,15 +336,15 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	ptp.MessageHandlers[commons.MT_TEST] = ptp.HandleTestMessage
 
 	// Register packet handlers
-	PacketHandlers = make(map[PacketType]PacketHandlerCallback)
-	PacketHandlers[PT_PARC_UNIVERSAL] = ptp.handlePARCUniversalPacket
-	PacketHandlers[PT_IPV4] = ptp.handlePacketIPv4
-	PacketHandlers[PT_ARP] = ptp.handlePacketARP
-	PacketHandlers[PT_RARP] = ptp.handleRARPPacket
-	PacketHandlers[PT_8021Q] = ptp.handle8021qPacket
-	PacketHandlers[PT_IPV6] = ptp.handlePacketIPv6
-	PacketHandlers[PT_PPPOE_DISCOVERY] = ptp.handlePPPoEDiscoveryPacket
-	PacketHandlers[PT_PPPOE_SESSION] = ptp.handlePPPoESessionPacket
+	ptp.PacketHandlers = make(map[PacketType]PacketHandlerCallback)
+	ptp.PacketHandlers[PT_PARC_UNIVERSAL] = ptp.handlePARCUniversalPacket
+	ptp.PacketHandlers[PT_IPV4] = ptp.handlePacketIPv4
+	ptp.PacketHandlers[PT_ARP] = ptp.handlePacketARP
+	ptp.PacketHandlers[PT_RARP] = ptp.handleRARPPacket
+	ptp.PacketHandlers[PT_8021Q] = ptp.handle8021qPacket
+	ptp.PacketHandlers[PT_IPV6] = ptp.handlePacketIPv6
+	ptp.PacketHandlers[PT_PPPOE_DISCOVERY] = ptp.handlePPPoEDiscoveryPacket
+	ptp.PacketHandlers[PT_PPPOE_SESSION] = ptp.handlePPPoESessionPacket
 
 	ptp.CreateDevice(argIp, argMac, argMask, argDev)
 	ptp.UDPSocket = new(udpcs.UDPClient)

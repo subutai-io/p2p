@@ -51,7 +51,7 @@ var (
 	// indicate that an ARP packet is contained in its payload.
 	errInvalidARPPacket = errors.New("invalid ARP packet")
 
-	PacketHandlers map[PacketType]PacketHandlerCallback
+	//PacketHandlers map[PacketType]PacketHandlerCallback
 )
 
 type Operation uint16
