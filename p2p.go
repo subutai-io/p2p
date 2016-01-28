@@ -159,41 +159,13 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) error {
 // Receiving a packet by device means that some application sent a network
 // packet within a subnet in which our application works.
 // This method calls appropriate gorouting for extracted packet protocol
-func handlePacket(ptp *PTPCloud, contents []byte, proto int) {
+func (ptp *PTPCloud) handlePacket(contents []byte, proto int) {
 	callback, exists := PacketHandlers[PacketType(proto)]
 	if exists {
 		callback(contents, proto)
 	} else {
 		log.Log(log.WARNING, "Captured undefined packet")
 	}
-	/*
-		switch proto {
-		case 512:
-			log.Log(log.DEBUG, "Received PARC Universal Packet")
-			ptp.handlePARCUniversalPacket(contents)
-		case 2048:
-			ptp.handlePacketIPv4(contents, proto)
-		case 2054:
-			log.Log(log.DEBUG, "Received ARP Packet")
-			ptp.handlePacketARP(contents)
-		case 32821:
-			log.Log(log.DEBUG, "Received RARP Packet")
-			ptp.handleRARPPacket(contents)
-		case 33024:
-			log.Log(log.DEBUG, "Received 802.1q Packet")
-			ptp.handle8021qPacket(contents)
-		case 34525:
-			ptp.handlePacketIPv6(contents)
-		case 34915:
-			log.Log(log.DEBUG, "Received PPPoE Discovery Packet")
-			ptp.handlePPPoEDiscoveryPacket(contents)
-		case 34916:
-			log.Log(log.DEBUG, "Received PPPoE Session Packet")
-			ptp.handlePPPoESessionPacket(contents)
-		default:
-			log.Log(log.DEBUG, "Received Undefined Packet")
-		}
-	*/
 }
 
 // Listen TAP interface for incoming packets
@@ -212,7 +184,7 @@ func (ptp *PTPCloud) ListenInterface() {
 			log.Log(log.DEBUG, "Truncated packet")
 		}
 		// TODO: Make handlePacket as a part of PTPCloud
-		go handlePacket(ptp, packet.Packet, packet.Protocol)
+		go ptp.handlePacket(ptp, packet.Packet, packet.Protocol)
 	}
 	ptp.Device.Close()
 	log.Log(log.INFO, "Shutting down interface listener")
@@ -625,17 +597,6 @@ func (ptp *PTPCloud) SyncPeers() int {
 							ptp.NetworkPeers[i] = peer
 						}
 					}
-
-					/*
-						// If we've failed to find something that is really close to us, skip to global
-						if failback && peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
-							log.Log(log.DEBUG, "Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
-							peer.Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
-							ptp.NetworkPeers[i] = peer
-							// Increase counter so p2p package will send introduction
-							count = count + 1
-						}
-					*/
 				} else if peer.Endpoint != "" && peer.Forwarder != nil && peer.ProxyID == 0 {
 					// This peer received a forwarder but it doesn't have a proxy yet
 					log.Log(log.INFO, "Sending proxy request to a forwarder %s", peer.Forwarder.String())
@@ -865,35 +826,10 @@ func (ptp *PTPCloud) StopInstance() {
 	ptp.dht.Stop()
 	ptp.UDPSocket.Stop()
 	ptp.Shutdown = true
+	// Tricky part: we need to send a message to ourselves to quit blocking operation
 	msg := udpcs.CreateTestP2PMessage(ptp.Crypter, "STOP", 1)
 	addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", ptp.dht.P2PPort))
 	ptp.UDPSocket.SendMessage(msg, addr)
-	// Close interface
-
-	//ptp.SendFinalPacket()
-	//ptp.RemoveInterface()
-	// Now we need to send some random bytes into interface to shut it down
 	time.Sleep(3 * time.Second)
-	/*err := ptp.Interface.Close()
-	if err != nil {
-		log.Log(log.ERROR, "Failed to close interface: %v", err)
-	}*/
 	ptp.ReadyToStop = true
-}
-
-func (ptp *PTPCloud) SendFinalPacket() {
-	var p tuntap.Packet
-	p.Protocol = int(PT_ARP)
-	p.Truncated = false
-	p.Packet = []byte("1")
-	ptp.WriteToDevice([]byte("SHUTDOWN"), 2054, false)
-}
-
-func (ptp *PTPCloud) RemoveInterface() {
-	linkup := exec.Command(ptp.IPTool, "link", "delete", ptp.DeviceName)
-	err := linkup.Run()
-	if err != nil {
-		log.Log(log.ERROR, "Failed to delete interface: %v", err)
-		return
-	}
 }

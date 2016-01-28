@@ -257,28 +257,6 @@ func (uc *UDPClient) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, e
 	return n, nil
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////
-
-func UDPCSTest() {
-	/*
-		var udp_client_0 *UDPClient = new(UDPClient)
-		var udp_client_1 *UDPClient = new(UDPClient)
-
-		udp_client_0.Init("", 5000)
-		udp_client_1.Init("", 5001)
-
-		go udp_client_0.Listen(Process_p2p_msg)
-		go udp_client_1.Listen(Process_p2p_msg)
-
-		msg := CreateStringP2PMessage("Hello, world!", 0)
-		udp_client_0.SendMessage(msg, udp_client_1.Addr())
-
-		for {
-			time.Sleep(100 * time.Millisecond)
-		}
-	*/
-}
-
 func Process_p2p_msg(count int, src_addr *net.UDPAddr, err error, rcv_bytes []byte) {
 	if err != nil {
 		fmt.Printf("process_p2p_msg error : %v\n", err)

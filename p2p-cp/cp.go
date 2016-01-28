@@ -10,6 +10,7 @@ import (
 	"github.com/wayn3h0/go-uuid"
 	"net"
 	"p2p/commons"
+	"p2p/dht"
 	log "p2p/p2p_log"
 	"sort"
 	"strconv"

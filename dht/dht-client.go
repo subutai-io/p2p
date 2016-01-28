@@ -49,9 +49,7 @@ type DHTResponseCallback func(data commons.DHTResponse, conn *net.UDPConn)
 
 func (dht *DHTClient) DHTClientConfig() *DHTClient {
 	return &DHTClient{
-		//Routers: "localhost:6881",
 		Routers: "dht1.subut.ai:6881",
-		//Routers: "172.16.192.5:6881",
 		//Routers:     "dht1.subut.ai:6881,dht2.subut.ai:6881,dht3.subut.ai:6881,dht4.subut.ai:6881,dht5.subut.ai:6881",
 		NetworkHash: "",
 	}
