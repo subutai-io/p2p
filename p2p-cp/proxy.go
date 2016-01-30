@@ -28,6 +28,7 @@ type Tunnel struct {
 	Peer1      *net.UDPAddr
 	Peer2      *net.UDPAddr
 	UniqueHash string
+	PingFails  int
 }
 
 func (p *Proxy) Initialize(target string) {
@@ -110,6 +111,13 @@ func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_b
 		p.UDPServer.SendMessage(msg, src_addr)
 		// Notify about new tunnel
 		p.DHTClient.ReportControlPeerLoad(len(p.Tunnels))
+	} else if msgType == commons.MT_PING {
+		for key, tun := range p.Tunnels {
+			if tun.Peer1.String() == src_addr.String() || tun.Peer2.String() == src_addr.String() {
+				tun.PingFails = 0
+				p.Tunnels[key] = tun
+			}
+		}
 	} else {
 		log.Log(log.DEBUG, "PROXY: %v", p.Tunnels)
 		// Forward message
@@ -125,5 +133,27 @@ func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_b
 		} else {
 			log.Log(log.WARNING, "Connected peer doesn't belong to requested proxy")
 		}
+	}
+}
+
+func (p *Proxy) SendPing() {
+	for key, tunnel := range p.Tunnels {
+		tunnel.PingFails += 1
+		msg := udpcs.CreatePingP2PMessage()
+		p.UDPServer.SendMessage(msg, tunnel.Peer1)
+		p.UDPServer.SendMessage(msg, tunnel.Peer2)
+		p.Tunnels[key] = tunnel
+	}
+}
+
+func (p *Proxy) CleanTunnels() {
+	var rem []uint16
+	for key, tunnel := range p.Tunnels {
+		if tunnel.PingFails > 3 {
+			rem = append(rem, key)
+		}
+	}
+	for _, k := range rem {
+		delete(p.Tunnels, k)
 	}
 }

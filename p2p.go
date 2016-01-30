@@ -767,14 +767,16 @@ func (ptp *PTPCloud) HandleNotEncryptedMessage(msg *udpcs.P2PMessage, src_addr *
 	ptp.WriteToDevice(msg.Data, msg.Header.NetProto, false)
 
 }
-func (ptp *PTPCloud) HandlePingMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
 
+func (ptp *PTPCloud) HandlePingMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
+	ptp.UDPSocket.SendMessage(msg, src_addr)
 }
+
 func (ptp *PTPCloud) HandleIntroMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
 	log.Log(log.DEBUG, "Introduction message received: %s", string(msg.Data))
 	// Don't do anything if we already know everything about this peer
 	if !ptp.IsPeerUnknown(src_addr) {
-		log.Log(log.DEBUG, "We already know this peer. Skip")
+		log.Log(log.DEBUG, "Skipping known peer")
 		return
 	}
 	id, mac, ip := ptp.ParseIntroString(string(msg.Data))
@@ -785,8 +787,8 @@ func (ptp *PTPCloud) HandleIntroMessage(msg *udpcs.P2PMessage, src_addr *net.UDP
 	if err != nil {
 		log.Log(log.ERROR, "Failed to respond to introduction message: %v", err)
 	}
-
 }
+
 func (ptp *PTPCloud) HandleProxyMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
 	// Proxy registration data
 	log.Log(log.DEBUG, "Proxy confirmation received")
@@ -803,6 +805,7 @@ func (ptp *PTPCloud) HandleProxyMessage(msg *udpcs.P2PMessage, src_addr *net.UDP
 	}
 
 }
+
 func (ptp *PTPCloud) HandleTestMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
 	response := udpcs.CreateTestP2PMessage(ptp.Crypter, "TEST", 0)
 	_, err := ptp.UDPSocket.SendMessage(response, src_addr)

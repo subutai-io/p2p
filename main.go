@@ -306,7 +306,6 @@ func main() {
 		}
 		log.Log(log.INFO, "Starting RPC Listener")
 		go http.Serve(listen, nil)
-		//p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog)
 		// Capture SIGINT
 		// This is used for development purposes only, but later we should consider updating
 		// this code to handle signals

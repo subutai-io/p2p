@@ -10,7 +10,6 @@ import (
 	"github.com/wayn3h0/go-uuid"
 	"net"
 	"p2p/commons"
-	"p2p/dht"
 	log "p2p/p2p_log"
 	"sort"
 	"strconv"
@@ -458,7 +457,7 @@ func (dht *DHTRouter) ResponseNotify(req commons.DHTRequest, addr string) common
 }
 
 func (dht *DHTRouter) ResponseStop(req commons.DHTRequest) commons.DHTResponse {
-	var resp commons.DHTREsponse
+	var resp commons.DHTResponse
 	resp.Command = req.Command
 	resp.Dest = req.Id
 	resp.Id = "0"
@@ -633,6 +632,9 @@ func main() {
 		var proxy Proxy
 		proxy.Initialize(argTarget)
 		for {
+			go proxy.SendPing()
+			time.Sleep(3 * time.Second)
+			go proxy.CleanTunnels()
 		}
 	}
 }
