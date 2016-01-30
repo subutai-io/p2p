@@ -706,7 +706,6 @@ func (ptp *PTPCloud) ParseIntroString(intro string) (string, net.HardwareAddr, n
 		return "", nil, nil
 	}
 	// Extract IP
-	log.Log(log.INFO, "PARTS-2: %s, LEN: %d", parts[2], len(parts[2]))
 	ip := net.ParseIP(parts[2])
 	if ip == nil {
 		log.Log(log.ERROR, "Failed to parse IP address from introduction packet")
@@ -716,9 +715,10 @@ func (ptp *PTPCloud) ParseIntroString(intro string) (string, net.HardwareAddr, n
 	return id, mac, ip
 }
 
-func (ptp *PTPCloud) IsPeerUnknown(addr *net.UDPAddr) bool {
+func (ptp *PTPCloud) IsPeerUnknown(id string) bool {
 	for _, peer := range ptp.NetworkPeers {
-		if peer.CleanAddr == addr.String() {
+		// CleanAddr?
+		if peer.ID == id {
 			return peer.Unknown
 		}
 	}
@@ -774,12 +774,12 @@ func (ptp *PTPCloud) HandlePingMessage(msg *udpcs.P2PMessage, src_addr *net.UDPA
 
 func (ptp *PTPCloud) HandleIntroMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
 	log.Log(log.DEBUG, "Introduction message received: %s", string(msg.Data))
+	id, mac, ip := ptp.ParseIntroString(string(msg.Data))
 	// Don't do anything if we already know everything about this peer
-	if !ptp.IsPeerUnknown(src_addr) {
+	if !ptp.IsPeerUnknown(id) {
 		log.Log(log.DEBUG, "Skipping known peer")
 		return
 	}
-	id, mac, ip := ptp.ParseIntroString(string(msg.Data))
 	ptp.AddPeer(src_addr, id, ip, mac)
 	response := ptp.PrepareIntroductionMessage(ptp.dht.ID)
 	response.Header.ProxyId = msg.Header.ProxyId
