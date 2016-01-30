@@ -51,7 +51,7 @@ var (
 	// indicate that an ARP packet is contained in its payload.
 	errInvalidARPPacket = errors.New("invalid ARP packet")
 
-	PacketHandlers map[PacketType]PacketHandlerCallback
+	//PacketHandlers map[PacketType]PacketHandlerCallback
 )
 
 type Operation uint16
@@ -110,6 +110,7 @@ func (ptp *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	}
 
 	msg := udpcs.CreateNencP2PMessage(ptp.Crypter, contents, uint16(proto))
+	msg.Header.NetProto = uint16(proto)
 	_, err := ptp.SendTo(f.Destination, msg)
 	if err != nil {
 		log.Log(log.ERROR, "Failed to send message inside P2P: %v", err)
@@ -208,7 +209,7 @@ func (ptp *PTPCloud) handlePacketARP(contents []byte, proto int) {
 	if err != nil {
 		log.Log(log.ERROR, "Failed to marshal ARP Ethernet Frame")
 	}
-	ptp.WriteToDevice(fb)
+	ptp.WriteToDevice(fb, uint16(proto), false)
 	log.Log(log.DEBUG, "%v", p.String())
 }
 

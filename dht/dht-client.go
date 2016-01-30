@@ -32,6 +32,7 @@ type DHTClient struct {
 	Forwarders       []Forwarder
 	ResponseHandlers map[string]DHTResponseCallback
 	Mode             OperatingMode
+	Shutdown         bool
 }
 
 type Forwarder struct {
@@ -48,9 +49,7 @@ type DHTResponseCallback func(data commons.DHTResponse, conn *net.UDPConn)
 
 func (dht *DHTClient) DHTClientConfig() *DHTClient {
 	return &DHTClient{
-		//Routers: "localhost:6881",
 		Routers: "dht1.subut.ai:6881",
-		//Routers: "172.16.192.5:6881",
 		//Routers:     "dht1.subut.ai:6881,dht2.subut.ai:6881,dht3.subut.ai:6881,dht4.subut.ai:6881,dht5.subut.ai:6881",
 		NetworkHash: "",
 	}
@@ -104,6 +103,9 @@ func (dht *DHTClient) ConnectAndHandshake(router string, ips []net.IP) (*net.UDP
 	}
 	// TODO: Optimize types here
 	msg := b.String()
+	if dht.Shutdown {
+		return nil, nil
+	}
 	_, err = conn.Write([]byte(msg))
 	if err != nil {
 		log.Log(log.ERROR, "Failed to send packet: %v", err)
@@ -185,6 +187,9 @@ func (dht *DHTClient) UpdateLastCatch(catch string) {
 func (dht *DHTClient) RequestPeerIPs(id string) {
 	msg := dht.Compose(commons.CMD_NODE, id, "", "")
 	for _, conn := range dht.Connection {
+		if dht.Shutdown {
+			continue
+		}
 		_, err := conn.Write([]byte(msg))
 		if err != nil {
 			log.Log(log.ERROR, "Failed to send 'node' request to %s: %v", conn.RemoteAddr().String(), err)
@@ -198,6 +203,9 @@ func (dht *DHTClient) RequestPeerIPs(id string) {
 func (dht *DHTClient) UpdatePeers() {
 	msg := dht.Compose(commons.CMD_FIND, "", dht.NetworkHash, "")
 	for _, conn := range dht.Connection {
+		if dht.Shutdown {
+			continue
+		}
 		log.Log(log.TRACE, "Updating peer %s", conn.RemoteAddr().String())
 		_, err := conn.Write([]byte(msg))
 		if err != nil {
@@ -212,8 +220,17 @@ func (dht *DHTClient) UpdatePeers() {
 func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 	log.Log(log.INFO, "Bootstraping via %s", conn.RemoteAddr().String())
 	for {
+		if dht.Shutdown {
+			log.Log(log.INFO, "Closing DHT Connection to %s", conn.RemoteAddr().String())
+			conn.Close()
+			for i, c := range dht.Connection {
+				if c.RemoteAddr().String() == conn.RemoteAddr().String() {
+					dht.Connection = append(dht.Connection[:i], dht.Connection[i+1:]...)
+				}
+			}
+			break
+		}
 		var buf [512]byte
-		//_, addr, err := conn.ReadFromUDP(buf[0:])
 		_, _, err := conn.ReadFromUDP(buf[0:])
 		if err != nil {
 			log.Log(log.ERROR, "Failed to read from Discovery Service: %v", err)
@@ -231,6 +248,7 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 			}
 		}
 	}
+	return ""
 }
 
 func (dht *DHTClient) HandleConn(data commons.DHTResponse, conn *net.UDPConn) {
@@ -247,6 +265,9 @@ func (dht *DHTClient) HandleConn(data commons.DHTResponse, conn *net.UDPConn) {
 	// with list of clients. This may not happen if this client is the
 	// first connected node.
 	msg := dht.Compose(commons.CMD_FIND, "", dht.NetworkHash, "")
+	if dht.Shutdown {
+		return
+	}
 	_, err := conn.Write([]byte(msg))
 	if err != nil {
 		log.Log(log.ERROR, "Failed to send 'find' request: %v", err)
@@ -331,6 +352,9 @@ func (dht *DHTClient) HandleCp(data commons.DHTResponse, conn *net.UDPConn) {
 			log.Log(log.DEBUG, "Sending notify request back to the DHT")
 			msg := dht.Compose(commons.CMD_NOTIFY, "", dht.ID, data.Id)
 			for _, conn := range dht.Connection {
+				if dht.Shutdown {
+					continue
+				}
 				_, err := conn.Write([]byte(msg))
 				if err != nil {
 					log.Log(log.ERROR, "Failed to send 'node' request to %s: %v", conn.RemoteAddr().String(), err)
@@ -346,6 +370,10 @@ func (dht *DHTClient) HandleNotify(data commons.DHTResponse, conn *net.UDPConn) 
 	dht.RequestControlPeer(data.Id)
 }
 
+func (dht *DHTClient) HandleStop(data commons.DHTResponse, conn *net.UDPConn) {
+	conn.Close()
+}
+
 // This method initializes DHT by splitting list of routers and connect to each one
 func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 	dht = config
@@ -357,18 +385,17 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 	}
 	if dht.Mode == MODE_CLIENT {
 		log.Log(log.INFO, "DHT operating in CLIENT mode")
-		dht.ResponseHandlers[commons.CMD_CONN] = dht.HandleConn
-		dht.ResponseHandlers[commons.CMD_PING] = dht.HandlePing
 		dht.ResponseHandlers[commons.CMD_FIND] = dht.HandleFind
 		dht.ResponseHandlers[commons.CMD_NODE] = dht.HandleNode
 		dht.ResponseHandlers[commons.CMD_CP] = dht.HandleCp
 		dht.ResponseHandlers[commons.CMD_NOTIFY] = dht.HandleNotify
 	} else {
 		log.Log(log.INFO, "DHT operating in CONTROL PEER mode")
-		dht.ResponseHandlers[commons.CMD_CONN] = dht.HandleConn
 		dht.ResponseHandlers[commons.CMD_REGCP] = dht.HandleRegCp
-		dht.ResponseHandlers[commons.CMD_PING] = dht.HandlePing
 	}
+	dht.ResponseHandlers[commons.CMD_CONN] = dht.HandleConn
+	dht.ResponseHandlers[commons.CMD_PING] = dht.HandlePing
+	dht.ResponseHandlers[commons.CMD_STOP] = dht.HandleStop
 	for _, router := range routers {
 		conn, err := dht.ConnectAndHandshake(router, ips)
 		if err != nil || conn == nil {
@@ -417,6 +444,9 @@ func (dht *DHTClient) RegisterControlPeer() {
 	// TODO: Optimize types here
 	msg := b.String()
 	for _, conn := range dht.Connection {
+		if dht.Shutdown {
+			continue
+		}
 		_, err = conn.Write([]byte(msg))
 		if err != nil {
 			log.Log(log.ERROR, "Failed to send packet: %v", err)
@@ -442,6 +472,9 @@ func (dht *DHTClient) RequestControlPeer(id string) {
 	msg := b.String()
 	// TODO: Move sending to a separate method
 	for _, conn := range dht.Connection {
+		if dht.Shutdown {
+			continue
+		}
 		_, err = conn.Write([]byte(msg))
 		if err != nil {
 			log.Log(log.ERROR, "Failed to send packet: %v", err)
@@ -464,11 +497,31 @@ func (dht *DHTClient) ReportControlPeerLoad(amount int) {
 	msg := b.String()
 	// TODO: Move sending to a separate method
 	for _, conn := range dht.Connection {
+		if dht.Shutdown {
+			continue
+		}
 		_, err := conn.Write([]byte(msg))
 		if err != nil {
 			log.Log(log.ERROR, "Failed to send packet: %v", err)
 			conn.Close()
 			return
 		}
+	}
+}
+
+func (dht *DHTClient) Stop() {
+	dht.Shutdown = true
+	var req commons.DHTRequest
+	req.Id = dht.ID
+	req.Command = commons.CMD_STOP
+	req.Port = "0"
+	var b bytes.Buffer
+	if err := bencode.Marshal(&b, req); err != nil {
+		log.Log(log.ERROR, "Failed to Marshal bencode %v", err)
+		return
+	}
+	msg := b.String()
+	for _, conn := range dht.Connection {
+		conn.Write([]byte(msg))
 	}
 }

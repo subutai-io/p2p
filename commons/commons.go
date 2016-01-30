@@ -38,4 +38,5 @@ const (
 	CMD_CP     string = "cp"
 	CMD_NOTIFY string = "notify"
 	CMD_LOAD   string = "load"
+	CMD_STOP   string = "stop"
 )

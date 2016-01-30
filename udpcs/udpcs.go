@@ -95,9 +95,9 @@ func P2PMessageFromBytes(bytes []byte) (*P2PMessage, error) {
 		return nil, errors.New("magic cookie not presented")
 	}
 	res.Data = make([]byte, res.Header.SerializedLen)
-	log.Log(log.DEBUG, "BYTES : %s", bytes)
+	log.Log(log.TRACE, "BYTES : %s", bytes)
 	copy(res.Data[:], bytes[12:len(bytes)])
-	log.Log(log.DEBUG, "res.Data : %s", res.Data)
+	log.Log(log.TRACE, "res.Data : %s", res.Data)
 	return res, err
 }
 
@@ -118,6 +118,17 @@ func CreateStringP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage 
 		msg.Data = []byte(data)
 	}
 	//"p2p/enc"
+	return msg
+}
+
+func CreatePingP2PMessage() *P2PMessage {
+	msg := new(P2PMessage)
+	msg.Header = new(P2PMessageHeader)
+	msg.Header.Magic = MAGIC_COOKIE
+	msg.Header.Type = uint16(commons.MT_PING)
+	msg.Header.NetProto = 0
+	msg.Header.Length = uint16(len("1"))
+	msg.Data = []byte("1")
 	return msg
 }
 
@@ -202,6 +213,10 @@ type UDPClient struct {
 	disposed     bool
 }
 
+func (uc *UDPClient) Stop() {
+	uc.disposed = true
+}
+
 func (uc *UDPClient) Disposed() bool {
 	return uc.disposed
 }
@@ -241,6 +256,7 @@ func (uc *UDPClient) Listen(fn_received_callback UDPReceivedCallback) {
 		n, src, err := uc.conn.ReadFromUDP(uc.input_buffer[:])
 		fn_received_callback(n, src, err, uc.input_buffer[:])
 	}
+	log.Log(log.INFO, "Stopping UDP Listener")
 }
 
 func (uc *UDPClient) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, error) {
@@ -250,28 +266,6 @@ func (uc *UDPClient) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, e
 		return 0, err
 	}
 	return n, nil
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////
-
-func UDPCSTest() {
-	/*
-		var udp_client_0 *UDPClient = new(UDPClient)
-		var udp_client_1 *UDPClient = new(UDPClient)
-
-		udp_client_0.Init("", 5000)
-		udp_client_1.Init("", 5001)
-
-		go udp_client_0.Listen(Process_p2p_msg)
-		go udp_client_1.Listen(Process_p2p_msg)
-
-		msg := CreateStringP2PMessage("Hello, world!", 0)
-		udp_client_0.SendMessage(msg, udp_client_1.Addr())
-
-		for {
-			time.Sleep(100 * time.Millisecond)
-		}
-	*/
 }
 
 func Process_p2p_msg(count int, src_addr *net.UDPAddr, err error, rcv_bytes []byte) {

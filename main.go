@@ -11,6 +11,7 @@ import (
 	"os/user"
 	log "p2p/p2p_log"
 	"p2p/udpcs"
+	"runtime"
 	"runtime/pprof"
 	"time"
 )
@@ -155,8 +156,8 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 		resp.ExitCode = 1
 		resp.Output = "Instance with hash " + args.Hash + " was not found"
 	} else {
-		Instances[args.Hash].PTP.Shutdown = true
 		resp.Output = "Shutting down " + args.Hash
+		Instances[args.Hash].PTP.StopInstance()
 		delete(Instances, args.Hash)
 	}
 	return nil
@@ -187,6 +188,12 @@ func (p *Procedures) List(args *Args, resp *Response) error {
 		resp.Output = resp.Output + "\t" + inst.PTP.Mac + "\t" + inst.PTP.IP + "\t" + key
 		resp.Output = resp.Output + "\n"
 	}
+	return nil
+}
+
+func (p *Procedures) Debug(args *Args, resp *Response) error {
+	resp.Output = "DEBUG INFO:\n"
+	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())
 	return nil
 }
 
@@ -242,6 +249,7 @@ func main() {
 		CommandStop   bool
 		CommandSet    bool
 		CommandAddKey bool
+		CommandDebug  bool
 		argProfyle    string
 	)
 
@@ -268,6 +276,7 @@ func main() {
 	flag.BoolVar(&CommandStop, "stop", false, "Stops P2P instance")
 	flag.BoolVar(&CommandSet, "set", false, "Modify p2p behaviour by changing it's options")
 	flag.BoolVar(&CommandAddKey, "add-key", false, "Add new key to the list of keys for a specified hash")
+	flag.BoolVar(&CommandDebug, "debug", false, "Shows debug info")
 	flag.StringVar(&CommandShow, "show", "", "Show known participants of a swarm")
 
 	//profyle
@@ -297,7 +306,6 @@ func main() {
 		}
 		log.Log(log.INFO, "Starting RPC Listener")
 		go http.Serve(listen, nil)
-		//p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog)
 		// Capture SIGINT
 		// This is used for development purposes only, but later we should consider updating
 		// this code to handle signals
@@ -363,6 +371,9 @@ func main() {
 		args.Command = CommandShow
 		args.Args = "0"
 		err = client.Call("Procedures.Show", args, &response)
+	} else if CommandDebug {
+		args := &Args{}
+		err = client.Call("Procedures.Debug", args, &response)
 	} else {
 		args := &Args{"RandomCommand", "someeeeee"}
 		err = client.Call("Procedures.Execute", args, &response)

@@ -68,6 +68,10 @@ type PTPCloud struct {
 	ForwardMode bool
 
 	MessageHandlers map[uint16]MessageHandler
+
+	ReadyToStop bool
+
+	PacketHandlers map[PacketType]PacketHandlerCallback
 }
 
 type NetworkPeer struct {
@@ -157,41 +161,13 @@ func (ptp *PTPCloud) CreateDevice(ip, mac, mask, device string) error {
 // Receiving a packet by device means that some application sent a network
 // packet within a subnet in which our application works.
 // This method calls appropriate gorouting for extracted packet protocol
-func handlePacket(ptp *PTPCloud, contents []byte, proto int) {
-	callback, exists := PacketHandlers[PacketType(proto)]
+func (ptp *PTPCloud) handlePacket(contents []byte, proto int) {
+	callback, exists := ptp.PacketHandlers[PacketType(proto)]
 	if exists {
 		callback(contents, proto)
 	} else {
 		log.Log(log.WARNING, "Captured undefined packet")
 	}
-	/*
-		switch proto {
-		case 512:
-			log.Log(log.DEBUG, "Received PARC Universal Packet")
-			ptp.handlePARCUniversalPacket(contents)
-		case 2048:
-			ptp.handlePacketIPv4(contents, proto)
-		case 2054:
-			log.Log(log.DEBUG, "Received ARP Packet")
-			ptp.handlePacketARP(contents)
-		case 32821:
-			log.Log(log.DEBUG, "Received RARP Packet")
-			ptp.handleRARPPacket(contents)
-		case 33024:
-			log.Log(log.DEBUG, "Received 802.1q Packet")
-			ptp.handle8021qPacket(contents)
-		case 34525:
-			ptp.handlePacketIPv6(contents)
-		case 34915:
-			log.Log(log.DEBUG, "Received PPPoE Discovery Packet")
-			ptp.handlePPPoEDiscoveryPacket(contents)
-		case 34916:
-			log.Log(log.DEBUG, "Received PPPoE Session Packet")
-			ptp.handlePPPoESessionPacket(contents)
-		default:
-			log.Log(log.DEBUG, "Received Undefined Packet")
-		}
-	*/
 }
 
 // Listen TAP interface for incoming packets
@@ -199,6 +175,9 @@ func (ptp *PTPCloud) ListenInterface() {
 	// Read packets received by TUN/TAP device and send them to a handlePacket goroutine
 	// This goroutine will decide what to do with this packet
 	for {
+		if ptp.Shutdown {
+			break
+		}
 		packet, err := ptp.Device.ReadPacket()
 		if err != nil {
 			log.Log(log.ERROR, "Reading packet %s", err)
@@ -207,8 +186,10 @@ func (ptp *PTPCloud) ListenInterface() {
 			log.Log(log.DEBUG, "Truncated packet")
 		}
 		// TODO: Make handlePacket as a part of PTPCloud
-		go handlePacket(ptp, packet.Packet, packet.Protocol)
+		go ptp.handlePacket(packet.Packet, packet.Protocol)
 	}
+	ptp.Device.Close()
+	log.Log(log.INFO, "Shutting down interface listener")
 }
 
 // This method will generate device name if none were specified at startup
@@ -355,15 +336,15 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	ptp.MessageHandlers[commons.MT_TEST] = ptp.HandleTestMessage
 
 	// Register packet handlers
-	PacketHandlers = make(map[PacketType]PacketHandlerCallback)
-	PacketHandlers[PT_PARC_UNIVERSAL] = ptp.handlePARCUniversalPacket
-	PacketHandlers[PT_IPV4] = ptp.handlePacketIPv4
-	PacketHandlers[PT_ARP] = ptp.handlePacketARP
-	PacketHandlers[PT_RARP] = ptp.handleRARPPacket
-	PacketHandlers[PT_8021Q] = ptp.handle8021qPacket
-	PacketHandlers[PT_IPV6] = ptp.handlePacketIPv6
-	PacketHandlers[PT_PPPOE_DISCOVERY] = ptp.handlePPPoEDiscoveryPacket
-	PacketHandlers[PT_PPPOE_SESSION] = ptp.handlePPPoESessionPacket
+	ptp.PacketHandlers = make(map[PacketType]PacketHandlerCallback)
+	ptp.PacketHandlers[PT_PARC_UNIVERSAL] = ptp.handlePARCUniversalPacket
+	ptp.PacketHandlers[PT_IPV4] = ptp.handlePacketIPv4
+	ptp.PacketHandlers[PT_ARP] = ptp.handlePacketARP
+	ptp.PacketHandlers[PT_RARP] = ptp.handleRARPPacket
+	ptp.PacketHandlers[PT_8021Q] = ptp.handle8021qPacket
+	ptp.PacketHandlers[PT_IPV6] = ptp.handlePacketIPv6
+	ptp.PacketHandlers[PT_PPPOE_DISCOVERY] = ptp.handlePPPoEDiscoveryPacket
+	ptp.PacketHandlers[PT_PPPOE_SESSION] = ptp.handlePPPoESessionPacket
 
 	ptp.CreateDevice(argIp, argMac, argMask, argDev)
 	ptp.UDPSocket = new(udpcs.UDPClient)
@@ -386,7 +367,11 @@ func (ptp *PTPCloud) Run() {
 	for {
 		if ptp.Shutdown {
 			// TODO: Do it more safely
-			break
+			if ptp.ReadyToStop {
+				break
+			}
+			time.Sleep(1 * time.Second)
+			continue
 		}
 		time.Sleep(3 * time.Second)
 		ptp.dht.UpdatePeers()
@@ -399,6 +384,7 @@ func (ptp *PTPCloud) Run() {
 		ptp.IntroducePeers()
 		//}
 	}
+	log.Log(log.INFO, "Shutting down instance %s completed", ptp.dht.NetworkHash)
 }
 
 // This method sends information about himself to empty peers
@@ -613,17 +599,6 @@ func (ptp *PTPCloud) SyncPeers() int {
 							ptp.NetworkPeers[i] = peer
 						}
 					}
-
-					/*
-						// If we've failed to find something that is really close to us, skip to global
-						if failback && peer.Endpoint == "" && len(ptp.NetworkPeers[i].KnownIPs) > 0 {
-							log.Log(log.DEBUG, "Setting endpoint for %s to %s", peer.ID, ptp.NetworkPeers[i].KnownIPs[0].String())
-							peer.Endpoint = ptp.NetworkPeers[i].KnownIPs[0].String()
-							ptp.NetworkPeers[i] = peer
-							// Increase counter so p2p package will send introduction
-							count = count + 1
-						}
-					*/
 				} else if peer.Endpoint != "" && peer.Forwarder != nil && peer.ProxyID == 0 {
 					// This peer received a forwarder but it doesn't have a proxy yet
 					log.Log(log.INFO, "Sending proxy request to a forwarder %s", peer.Forwarder.String())
@@ -648,10 +623,10 @@ func (ptp *PTPCloud) SyncPeers() int {
 }
 
 // WriteToDevice writes data to created TUN/TAP device
-func (ptp *PTPCloud) WriteToDevice(b []byte) {
+func (ptp *PTPCloud) WriteToDevice(b []byte, proto uint16, truncated bool) {
 	var p tuntap.Packet
-	p.Protocol = 2054
-	p.Truncated = false
+	p.Protocol = int(proto)
+	p.Truncated = truncated
 	p.Packet = b
 	if ptp.Device == nil {
 		log.Log(log.ERROR, "TUN/TAP Device not initialized")
@@ -659,7 +634,7 @@ func (ptp *PTPCloud) WriteToDevice(b []byte) {
 	}
 	err := ptp.Device.WritePacket(&p)
 	if err != nil {
-		log.Log(log.ERROR, "Failed to write to TUN/TAP device")
+		log.Log(log.ERROR, "Failed to write to TUN/TAP device: %v", err)
 	}
 }
 
@@ -789,17 +764,19 @@ func (ptp *PTPCloud) HandleMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr)
 
 func (ptp *PTPCloud) HandleNotEncryptedMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
 	log.Log(log.DEBUG, "Received P2P Message")
-	ptp.WriteToDevice(msg.Data)
+	ptp.WriteToDevice(msg.Data, msg.Header.NetProto, false)
 
 }
+
 func (ptp *PTPCloud) HandlePingMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
-
+	ptp.UDPSocket.SendMessage(msg, src_addr)
 }
+
 func (ptp *PTPCloud) HandleIntroMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
 	log.Log(log.DEBUG, "Introduction message received: %s", string(msg.Data))
 	// Don't do anything if we already know everything about this peer
 	if !ptp.IsPeerUnknown(src_addr) {
-		log.Log(log.DEBUG, "We already know this peer. Skip")
+		log.Log(log.DEBUG, "Skipping known peer")
 		return
 	}
 	id, mac, ip := ptp.ParseIntroString(string(msg.Data))
@@ -810,8 +787,8 @@ func (ptp *PTPCloud) HandleIntroMessage(msg *udpcs.P2PMessage, src_addr *net.UDP
 	if err != nil {
 		log.Log(log.ERROR, "Failed to respond to introduction message: %v", err)
 	}
-
 }
+
 func (ptp *PTPCloud) HandleProxyMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
 	// Proxy registration data
 	log.Log(log.DEBUG, "Proxy confirmation received")
@@ -828,6 +805,7 @@ func (ptp *PTPCloud) HandleProxyMessage(msg *udpcs.P2PMessage, src_addr *net.UDP
 	}
 
 }
+
 func (ptp *PTPCloud) HandleTestMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
 	response := udpcs.CreateTestP2PMessage(ptp.Crypter, "TEST", 0)
 	_, err := ptp.UDPSocket.SendMessage(response, src_addr)
@@ -846,4 +824,17 @@ func (ptp *PTPCloud) SendTo(dst net.HardwareAddr, msg *udpcs.P2PMessage) (int, e
 		}
 	}
 	return 0, nil
+}
+
+func (ptp *PTPCloud) StopInstance() {
+	// Send a packet
+	ptp.dht.Stop()
+	ptp.UDPSocket.Stop()
+	ptp.Shutdown = true
+	// Tricky part: we need to send a message to ourselves to quit blocking operation
+	msg := udpcs.CreateTestP2PMessage(ptp.Crypter, "STOP", 1)
+	addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", ptp.dht.P2PPort))
+	ptp.UDPSocket.SendMessage(msg, addr)
+	time.Sleep(3 * time.Second)
+	ptp.ReadyToStop = true
 }
