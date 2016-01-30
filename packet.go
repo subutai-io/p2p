@@ -1,14 +1,41 @@
 package main
 
+/*
+	Know packet types:
+		512   (PUP)
+		2048  (IP)
+		2054  (ARP)
+		32821 (RARP)
+		33024 (802.1q)
+		34525 (IPv6)
+		34915 (PPPOE discovery)
+		34916 (PPPOE session)
+*/
+
 import (
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/mdlayher/ethernet"
 	"io"
-	"log"
 	"net"
+	log "p2p/p2p_log"
 	"p2p/udpcs"
+)
+
+type PacketType int
+
+type PacketHandlerCallback func(data []byte, proto int)
+
+const (
+	PT_PARC_UNIVERSAL  PacketType = 512
+	PT_IPV4            PacketType = 2048
+	PT_ARP             PacketType = 2054
+	PT_RARP            PacketType = 32821
+	PT_8021Q           PacketType = 33024
+	PT_IPV6            PacketType = 34525
+	PT_PPPOE_DISCOVERY PacketType = 34915
+	PT_PPPOE_SESSION   PacketType = 34916
 )
 
 var (
@@ -23,102 +50,9 @@ var (
 	// errInvalidARPPacket is returned when an ethernet frame does not
 	// indicate that an ARP packet is contained in its payload.
 	errInvalidARPPacket = errors.New("invalid ARP packet")
+
+	//PacketHandlers map[PacketType]PacketHandlerCallback
 )
-
-// Handles a IPv4 packet and sends it to it's destination
-func (ptp *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
-	f := new(ethernet.Frame)
-	if err := f.UnmarshalBinary(contents); err != nil {
-		log.Printf("[ERROR] Failed to unmarshal IPv4 packet")
-	}
-
-	if f.EtherType != ethernet.EtherTypeIPv4 {
-		return
-	}
-
-	msg := udpcs.CreateNencP2PMessage(contents, uint16(proto))
-	size, err := ptp.SendTo(f.Destination, msg)
-	if err != nil {
-		log.Printf("[ERROR] Failed to send message inside P2P: %v", err)
-		return
-	}
-	if size <= 0 {
-		log.Printf("[ERROR] Zero bytes were send inside P2P")
-	}
-}
-
-func (ptp *PTPCloud) handlePacketIPv6(contents []byte) {
-
-}
-
-func (ptp *PTPCloud) handlePacketARP(contents []byte) {
-	// Prepare new ethernet frame and fill it with
-	// contents of the packet
-	f := new(ethernet.Frame)
-	if err := f.UnmarshalBinary(contents); err != nil {
-		log.Printf("[ERROR] Failed to Unmarshal ARP Binary")
-		return
-	}
-
-	if f.EtherType != ethernet.EtherTypeARP {
-		return
-	}
-
-	p := new(ARPPacket)
-	if err := p.UnmarshalARP(f.Payload); err != nil {
-		return
-	}
-
-	//for _, peer := ptp.NetworkPeers {
-
-	//}
-	log.Printf("[DEBUG] Peers: %v, Target IP: %s", ptp.NetworkPeers, p.TargetIP.String())
-	var hwAddr net.HardwareAddr = nil
-	for _, peer := range ptp.NetworkPeers {
-		if peer.PeerLocalIP.String() == p.TargetIP.String() {
-			hwAddr = peer.PeerHW
-		}
-	}
-	/*
-		hwAddr, err := net.ParseMAC("0c:8b:fd:ab:30:ee")
-		if err != nil {
-			log.Printf("[ERROR] Failed to parse MAC")
-		}
-	*/
-	// TODO: Put there normal IP from list of ips
-	// Send a reply
-	if hwAddr == nil {
-		log.Printf("[ERROR] Cannot find hardware address for requested IP")
-		return
-	}
-	var reply ARPPacket
-	ip := net.ParseIP(p.TargetIP.String())
-	response, err := reply.NewPacket(OperationReply, hwAddr, ip, p.SenderHardwareAddr, p.SenderIP)
-	if err != nil {
-		log.Printf("[ERROR] Failed to create ARP reply")
-		return
-	}
-	rp, err := response.MarshalBinary()
-	if err != nil {
-		log.Printf("[ERROR] Failed to marshal ARP response packet")
-		return
-	}
-
-	fr := &ethernet.Frame{
-		Destination: response.TargetHardwareAddr,
-		Source:      response.SenderHardwareAddr,
-		EtherType:   ethernet.EtherTypeARP,
-		Payload:     rp,
-	}
-
-	fb, err := fr.MarshalBinary()
-	if err != nil {
-		log.Printf("[ERROR] Failed to marshal ARP Ethernet Frame")
-	}
-	ptp.WriteToDevice(fb)
-
-	log.Printf("[DEBUG] %v", p.String())
-}
 
 type Operation uint16
 
@@ -161,6 +95,122 @@ type ARPPacket struct {
 
 	// TargetIP specifies the IPv4 address of the target of this Packet.
 	TargetIP net.IP
+}
+
+// Handles a IPv4 packet and sends it to it's destination
+func (ptp *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
+	log.Log(log.TRACE, "Handling IPv4 Packet")
+	f := new(ethernet.Frame)
+	if err := f.UnmarshalBinary(contents); err != nil {
+		log.Log(log.ERROR, "Failed to unmarshal IPv4 packet")
+	}
+
+	if f.EtherType != ethernet.EtherTypeIPv4 {
+		return
+	}
+
+	msg := udpcs.CreateNencP2PMessage(ptp.Crypter, contents, uint16(proto))
+	msg.Header.NetProto = uint16(proto)
+	_, err := ptp.SendTo(f.Destination, msg)
+	if err != nil {
+		log.Log(log.ERROR, "Failed to send message inside P2P: %v", err)
+		return
+	}
+}
+
+// TODO: Implement IPv6 Support
+func (ptp *PTPCloud) handlePacketIPv6(contents []byte, proto int) {
+	log.Log(log.TRACE, "Handling IPv6 Packet")
+}
+
+// TODO: Implement PARC Universal Support
+func (ptp *PTPCloud) handlePARCUniversalPacket(contents []byte, proto int) {
+	log.Log(log.TRACE, "Handling PARC Universal Packet")
+}
+
+// TODO: Implement RARP Support
+func (ptp *PTPCloud) handleRARPPacket(contents []byte, proto int) {
+	log.Log(log.TRACE, "Handling RARP Packet")
+}
+
+// TODO: Implement 802.1q Support
+func (ptp *PTPCloud) handle8021qPacket(contents []byte, proto int) {
+	log.Log(log.TRACE, "Handling 802.1q Packet")
+}
+
+// TODO: Implement PPPoE Discovery Support
+func (ptp *PTPCloud) handlePPPoEDiscoveryPacket(contents []byte, proto int) {
+	log.Log(log.TRACE, "Handling PPPoE Discovery Packet")
+}
+
+// TODO: Implement PPPoE Session Support
+func (ptp *PTPCloud) handlePPPoESessionPacket(contents []byte, proto int) {
+	log.Log(log.TRACE, "Handling PPPoE Session Packet")
+}
+
+func (ptp *PTPCloud) handlePacketARP(contents []byte, proto int) {
+	// Prepare new ethernet frame and fill it with
+	// contents of the packet
+	f := new(ethernet.Frame)
+	if err := f.UnmarshalBinary(contents); err != nil {
+		log.Log(log.ERROR, "Failed to Unmarshal ARP Binary")
+		return
+	}
+
+	if f.EtherType != ethernet.EtherTypeARP {
+		return
+	}
+
+	p := new(ARPPacket)
+	if err := p.UnmarshalARP(f.Payload); err != nil {
+		return
+	}
+
+	log.Log(log.TRACE, "Peers: %v, Target IP: %s", ptp.NetworkPeers, p.TargetIP.String())
+	var hwAddr net.HardwareAddr = nil
+	id, exists := ptp.IPIDTable[p.TargetIP.String()]
+	if !exists {
+		log.Log(log.DEBUG, "Unknown IP requested")
+		return
+	}
+	peer, exists := ptp.NetworkPeers[id]
+	if !exists {
+		log.Log(log.DEBUG, "Specified ID was not found in peer list")
+		return
+	}
+	hwAddr = peer.PeerHW
+	// TODO: Put there normal IP from list of ips
+	// Send a reply
+	if hwAddr == nil {
+		log.Log(log.ERROR, "Cannot find hardware address for requested IP")
+		return
+	}
+	var reply ARPPacket
+	ip := net.ParseIP(p.TargetIP.String())
+	response, err := reply.NewPacket(OperationReply, hwAddr, ip, p.SenderHardwareAddr, p.SenderIP)
+	if err != nil {
+		log.Log(log.ERROR, "Failed to create ARP reply")
+		return
+	}
+	rp, err := response.MarshalBinary()
+	if err != nil {
+		log.Log(log.ERROR, "Failed to marshal ARP response packet")
+		return
+	}
+
+	fr := &ethernet.Frame{
+		Destination: response.TargetHardwareAddr,
+		Source:      response.SenderHardwareAddr,
+		EtherType:   ethernet.EtherTypeARP,
+		Payload:     rp,
+	}
+
+	fb, err := fr.MarshalBinary()
+	if err != nil {
+		log.Log(log.ERROR, "Failed to marshal ARP Ethernet Frame")
+	}
+	ptp.WriteToDevice(fb, uint16(proto), false)
+	log.Log(log.DEBUG, "%v", p.String())
 }
 
 func (p *ARPPacket) String() string {
