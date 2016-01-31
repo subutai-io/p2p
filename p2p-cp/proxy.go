@@ -28,7 +28,8 @@ type Tunnel struct {
 	Peer1      *net.UDPAddr
 	Peer2      *net.UDPAddr
 	UniqueHash string
-	PingFails  int
+	PingFails1 int
+	PingFails2 int
 }
 
 func (p *Proxy) Initialize(target string) {
@@ -48,7 +49,7 @@ func (p *Proxy) Initialize(target string) {
 	ips = append(ips, net.ParseIP("127.0.0.1"))
 	p.DHTClient = p.DHTClient.Initialize(config, ips)
 	p.DHTClient.RegisterControlPeer()
-	p.UDPServer.Listen(p.HandleMessage)
+	go p.UDPServer.Listen(p.HandleMessage)
 }
 
 func (p *Proxy) GenerateHash() string {
@@ -93,10 +94,13 @@ func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_b
 			}
 		}
 		if responseId == -1 {
+			log.Log(log.DEBUG, "Making new tunnel")
 			// We didn't found any matches. Let's create new entry
 			var t Tunnel
 			t.Peer1 = src_addr
 			t.Peer2, _ = net.ResolveUDPAddr("udp", data)
+			t.PingFails1 = 0
+			t.PingFails2 = 0
 			for i := 1; i < len(p.Tunnels)+2; i++ {
 				_, exists := p.Tunnels[uint16(i)]
 				if !exists {
@@ -113,13 +117,15 @@ func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_b
 		p.DHTClient.ReportControlPeerLoad(len(p.Tunnels))
 	} else if msgType == commons.MT_PING {
 		for key, tun := range p.Tunnels {
-			if tun.Peer1.String() == src_addr.String() || tun.Peer2.String() == src_addr.String() {
-				tun.PingFails = 0
-				p.Tunnels[key] = tun
+			if tun.Peer1.String() == src_addr.String() {
+				tun.PingFails1 = 0
+			} else if tun.Peer2.String() == src_addr.String() {
+				tun.PingFails2 = 0
 			}
+			p.Tunnels[key] = tun
 		}
 	} else {
-		log.Log(log.DEBUG, "PROXY: %v", p.Tunnels)
+		//log.Log(log.DEBUG, "PROXY: %v", p.Tunnels)
 		// Forward message
 		tunnel, exists := p.Tunnels[msg.Header.ProxyId]
 		if !exists {
@@ -138,7 +144,8 @@ func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_b
 
 func (p *Proxy) SendPing() {
 	for key, tunnel := range p.Tunnels {
-		tunnel.PingFails += 1
+		tunnel.PingFails1 += tunnel.PingFails1 + 1
+		tunnel.PingFails2 += tunnel.PingFails2 + 1
 		msg := udpcs.CreatePingP2PMessage()
 		p.UDPServer.SendMessage(msg, tunnel.Peer1)
 		p.UDPServer.SendMessage(msg, tunnel.Peer2)
@@ -147,13 +154,9 @@ func (p *Proxy) SendPing() {
 }
 
 func (p *Proxy) CleanTunnels() {
-	var rem []uint16
 	for key, tunnel := range p.Tunnels {
-		if tunnel.PingFails > 3 {
-			rem = append(rem, key)
+		if tunnel.PingFails1 > 3 || tunnel.PingFails2 > 3 {
+			delete(p.Tunnels, key)
 		}
-	}
-	for _, k := range rem {
-		delete(p.Tunnels, k)
 	}
 }

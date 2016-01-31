@@ -440,7 +440,7 @@ func (ptp *PTPCloud) PurgePeers() {
 			}
 		}
 		if !f {
-			log.Log(log.DEBUG, ("Peer not found in DHT peer table. Remove it"))
+			log.Log(log.INFO, ("Removing outdated peer"))
 			delete(ptp.IPIDTable, peer.PeerLocalIP.String())
 			delete(ptp.NetworkPeers, i)
 		}
@@ -759,8 +759,8 @@ func (ptp *PTPCloud) HandleMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr)
 
 func (ptp *PTPCloud) HandleNotEncryptedMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
 	log.Log(log.DEBUG, "Received P2P Message")
+	log.Log(log.TRACE, "Data: %s, Proto: %d, From: %s", msg.Data, msg.Header.NetProto, src_addr.String())
 	ptp.WriteToDevice(msg.Data, msg.Header.NetProto, false)
-
 }
 
 func (ptp *PTPCloud) HandlePingMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
@@ -778,6 +778,7 @@ func (ptp *PTPCloud) HandleIntroMessage(msg *udpcs.P2PMessage, src_addr *net.UDP
 	addr := src_addr
 	// TODO: Change PeerAddr with DST addr of real peer
 	ptp.AddPeer(addr, id, ip, mac)
+	log.Log(log.INFO, "Introduced new peer. IP: %s. ID: %s, HW: %s", ip, id, mac)
 	response := ptp.PrepareIntroductionMessage(ptp.dht.ID)
 	response.Header.ProxyId = msg.Header.ProxyId
 	_, err := ptp.UDPSocket.SendMessage(response, src_addr)
@@ -814,6 +815,7 @@ func (ptp *PTPCloud) HandleTestMessage(msg *udpcs.P2PMessage, src_addr *net.UDPA
 
 func (ptp *PTPCloud) SendTo(dst net.HardwareAddr, msg *udpcs.P2PMessage) (int, error) {
 	// TODO: Speed up this by switching to map
+	log.Log(log.TRACE, "Requested Send to %s", dst.String())
 	for _, peer := range ptp.NetworkPeers {
 		if peer.PeerHW.String() == dst.String() {
 			msg.Header.ProxyId = uint16(peer.ProxyID)

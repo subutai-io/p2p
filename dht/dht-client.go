@@ -308,11 +308,24 @@ func (dht *DHTClient) HandleFind(data commons.DHTResponse, conn *net.UDPConn) {
 					dht.Peers = append(dht.Peers, p)
 				}
 			}
-			log.Log(log.INFO, "Received peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
+			for i, peer := range dht.Peers {
+				var found bool = false
+				for _, id := range ids {
+					if peer.ID == id {
+						found = true
+					}
+				}
+				if !found {
+					log.Log(log.INFO, "Removing")
+					dht.Peers = append(dht.Peers[:i], dht.Peers[i+1:]...)
+				}
+			}
+			log.Log(log.DEBUG, "Received peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
 			dht.UpdateLastCatch(data.Dest)
 		}
+	} else {
+		dht.Peers = dht.Peers[:0]
 	}
-
 }
 
 func (dht *DHTClient) HandleRegCp(data commons.DHTResponse, conn *net.UDPConn) {
