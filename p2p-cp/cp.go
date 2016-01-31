@@ -7,10 +7,10 @@ import (
 	"flag"
 	"fmt"
 	bencode "github.com/jackpal/bencode-go"
+	"github.com/subutai-io/p2p/commons"
+	log "github.com/subutai-io/p2p/p2p_log"
 	"github.com/wayn3h0/go-uuid"
 	"net"
-	"p2p/commons"
-	log "p2p/p2p_log"
 	"sort"
 	"strconv"
 	"strings"
@@ -632,9 +632,9 @@ func main() {
 		var proxy Proxy
 		proxy.Initialize(argTarget)
 		for {
-			go proxy.SendPing()
+			proxy.SendPing()
 			time.Sleep(3 * time.Second)
-			go proxy.CleanTunnels()
+			proxy.CleanTunnels()
 		}
 	}
 }

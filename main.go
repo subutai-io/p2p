@@ -3,14 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	log "github.com/subutai-io/p2p/p2p_log"
+	"github.com/subutai-io/p2p/udpcs"
 	"net"
 	"net/http"
 	"net/rpc"
 	"os"
 	"os/signal"
 	"os/user"
-	log "p2p/p2p_log"
-	"p2p/udpcs"
 	"runtime"
 	"runtime/pprof"
 	"time"
@@ -167,11 +167,12 @@ func (p *Procedures) Show(args *Args, resp *Response) error {
 	swarm, exists := Instances[args.Command]
 	resp.ExitCode = 0
 	if exists {
-		resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\n"
+		resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
 		for _, peer := range swarm.PTP.NetworkPeers {
 			resp.Output = resp.Output + peer.ID + "\t"
 			resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
-			resp.Output = resp.Output + peer.Endpoint + "\n"
+			resp.Output = resp.Output + peer.Endpoint + "\t"
+			resp.Output = resp.Output + peer.PeerHW.String() + "\n"
 		}
 	} else {
 		resp.Output = "Specified environment was not found"
@@ -194,6 +195,19 @@ func (p *Procedures) List(args *Args, resp *Response) error {
 func (p *Procedures) Debug(args *Args, resp *Response) error {
 	resp.Output = "DEBUG INFO:\n"
 	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())
+	resp.Output += fmt.Sprintf("EARP Tables:\n")
+	for _, ins := range Instances {
+		resp.Output += fmt.Sprintf("\t--- %s ---\n", ins.ID)
+		for ip, id := range ins.PTP.IPIDTable {
+			peer, exists := ins.PTP.NetworkPeers[id]
+			peerHW := "Empty"
+			if exists {
+				peerHW = peer.PeerHW.String()
+			}
+			resp.Output += fmt.Sprintf("\t\t%s -> %s -> %s\n", ip, id, peerHW)
+		}
+		resp.Output += fmt.Sprintf("\t--- End of %s ---\n", ins.ID)
+	}
 	return nil
 }
 
@@ -341,11 +355,16 @@ func main() {
 			err = client.Call("Procedures.Set", args, &response)
 		}
 	} else if CommandRun {
+		var ok bool = true
 
 		args := &RunArgs{}
 		// TODO: Parse ARGS here
 		args.Hash = argHash
 		args.IP = argIp
+		if net.ParseIP(args.IP) == nil {
+			fmt.Printf("Bad IP Address specified")
+			ok = false
+		}
 		args.Mask = argMask
 		args.Mac = argMac
 		args.Dev = argDev
@@ -355,7 +374,9 @@ func main() {
 		args.Key = argKey
 		args.TTL = argTTL
 		args.Fwd = argFwd
-		err = client.Call("Procedures.Run", args, &response)
+		if ok {
+			err = client.Call("Procedures.Run", args, &response)
+		}
 	} else if CommandStop {
 		args := &StopArgs{}
 		args.Hash = argHash
