@@ -632,9 +632,9 @@ func main() {
 		var proxy Proxy
 		proxy.Initialize(argTarget)
 		for {
-			go proxy.SendPing()
+			proxy.SendPing()
 			time.Sleep(3 * time.Second)
-			go proxy.CleanTunnels()
+			proxy.CleanTunnels()
 		}
 	}
 }
