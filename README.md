@@ -1,6 +1,8 @@
 P2P Cloud
 ===================
 
+[![Build Status](https://api.travis-ci.org/subutai-io/p2p.png?branch=master)(https://travis-ci.org/subutai-io/p2p)
+
 P2P Cloud project allows users to build their private networks. 
 
 Running

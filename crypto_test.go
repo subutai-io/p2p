@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/subutai-io/p2p/udpcs"
 	"math/rand"
-	"p2p/udpcs"
 	"testing"
 	"time"
 )
