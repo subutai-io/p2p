@@ -2,4 +2,6 @@ language: go
 
 go: 1.5
 
+go_import_path: github.com/subutai-io/ss-p2p
+
 script: go test ./...
