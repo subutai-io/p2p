@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	bencode "github.com/jackpal/bencode-go"
+	"github.com/subutai-io/p2p/commons"
+	"github.com/subutai-io/p2p/go-stun/stun"
+	log "github.com/subutai-io/p2p/p2p_log"
 	"net"
 	"os"
-	"p2p/commons"
-	"p2p/go-stun/stun"
-	log "p2p/p2p_log"
 	"strings"
 )
 
