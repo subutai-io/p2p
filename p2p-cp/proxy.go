@@ -7,11 +7,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/subutai-io/p2p/commons"
+	"github.com/subutai-io/p2p/dht"
+	log "github.com/subutai-io/p2p/p2p_log"
+	"github.com/subutai-io/p2p/udpcs"
 	"net"
-	"subutai-io/p2p/commons"
-	"subutai-io/p2p/dht"
-	log "subutai-io/p2p/p2p_log"
-	"subutai-io/p2p/udpcs"
 	"time"
 )
 

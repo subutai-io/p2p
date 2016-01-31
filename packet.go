@@ -17,10 +17,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mdlayher/ethernet"
+	log "github.com/subutai-io/p2p/p2p_log"
+	"github.com/subutai-io/p2p/udpcs"
 	"io"
 	"net"
-	log "subutai-io/p2p/p2p_log"
-	"subutai-io/p2p/udpcs"
 )
 
 type PacketType int

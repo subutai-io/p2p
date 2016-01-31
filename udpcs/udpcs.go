@@ -7,12 +7,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/subutai-io/p2p/commons"
+	log "github.com/subutai-io/p2p/p2p_log"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net"
 	"strconv"
-	"subutai-io/p2p/commons"
-	log "subutai-io/p2p/p2p_log"
 	"time"
 )
 

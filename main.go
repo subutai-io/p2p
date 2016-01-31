@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	log "github.com/subutai-io/p2p/p2p_log"
+	"github.com/subutai-io/p2p/udpcs"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -11,8 +13,6 @@ import (
 	"os/user"
 	"runtime"
 	"runtime/pprof"
-	log "subutai-io/p2p/p2p_log"
-	"subutai-io/p2p/udpcs"
 	"time"
 )
 

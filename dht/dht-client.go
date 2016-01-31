@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	bencode "github.com/jackpal/bencode-go"
+	"github.com/subutai-io/p2p/commons"
+	"github.com/subutai-io/p2p/go-stun/stun"
+	log "github.com/subutai-io/p2p/p2p_log"
 	"net"
 	"os"
 	"strings"
-	"subutai-io/p2p/commons"
-	"subutai-io/p2p/go-stun/stun"
-	log "subutai-io/p2p/p2p_log"
 )
 
 type OperatingMode int
