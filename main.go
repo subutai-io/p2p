@@ -9,10 +9,10 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
-	log "p2p/p2p_log"
-	"p2p/udpcs"
 	"runtime"
 	"runtime/pprof"
+	log "subutai-io/p2p/p2p_log"
+	"subutai-io/p2p/udpcs"
 	"time"
 )
 

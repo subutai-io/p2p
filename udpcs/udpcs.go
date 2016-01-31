@@ -10,9 +10,9 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net"
-	"p2p/commons"
-	log "p2p/p2p_log"
 	"strconv"
+	"subutai-io/p2p/commons"
+	log "subutai-io/p2p/p2p_log"
 	"time"
 )
 

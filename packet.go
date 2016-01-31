@@ -19,8 +19,8 @@ import (
 	"github.com/mdlayher/ethernet"
 	"io"
 	"net"
-	log "p2p/p2p_log"
-	"p2p/udpcs"
+	log "subutai-io/p2p/p2p_log"
+	"subutai-io/p2p/udpcs"
 )
 
 type PacketType int

@@ -10,11 +10,11 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"p2p/commons"
-	"p2p/dht"
-	log "p2p/p2p_log"
-	"p2p/udpcs"
 	"strings"
+	"subutai-io/p2p/commons"
+	"subutai-io/p2p/dht"
+	log "subutai-io/p2p/p2p_log"
+	"subutai-io/p2p/udpcs"
 	"time"
 )
 

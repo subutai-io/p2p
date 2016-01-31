@@ -8,10 +8,10 @@ package main
 import (
 	"fmt"
 	"net"
-	"p2p/commons"
-	"p2p/dht"
-	log "p2p/p2p_log"
-	"p2p/udpcs"
+	"subutai-io/p2p/commons"
+	"subutai-io/p2p/dht"
+	log "subutai-io/p2p/p2p_log"
+	"subutai-io/p2p/udpcs"
 	"time"
 )
 

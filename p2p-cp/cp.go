@@ -9,11 +9,11 @@ import (
 	bencode "github.com/jackpal/bencode-go"
 	"github.com/wayn3h0/go-uuid"
 	"net"
-	"p2p/commons"
-	log "p2p/p2p_log"
 	"sort"
 	"strconv"
 	"strings"
+	"subutai-io/p2p/commons"
+	log "subutai-io/p2p/p2p_log"
 	"time"
 )
 

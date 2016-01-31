@@ -6,10 +6,10 @@ import (
 	bencode "github.com/jackpal/bencode-go"
 	"net"
 	"os"
-	"p2p/commons"
-	"p2p/go-stun/stun"
-	log "p2p/p2p_log"
 	"strings"
+	"subutai-io/p2p/commons"
+	"subutai-io/p2p/go-stun/stun"
+	log "subutai-io/p2p/p2p_log"
 )
 
 type OperatingMode int
