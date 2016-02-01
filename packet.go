@@ -183,7 +183,14 @@ func (ptp *PTPCloud) handlePacketARP(contents []byte, proto int) {
 	// Send a reply
 	if hwAddr == nil {
 		log.Log(log.ERROR, "Cannot find hardware address for requested IP")
-		return
+		_, hwAddr = GenerateMAC()
+		peer.PeerHW = hwAddr
+		ptp.NetworkPeers[id] = peer
+	}
+	if hwAddr.String() == "00:00:00:00:00:00" {
+		_, hwAddr = GenerateMAC()
+		peer.PeerHW = hwAddr
+		ptp.NetworkPeers[id] = peer
 	}
 	var reply ARPPacket
 	ip := net.ParseIP(p.TargetIP.String())
