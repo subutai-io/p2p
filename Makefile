@@ -4,6 +4,8 @@ CC=go
 PACK=goupx
 VERSION=$(shell git describe)
 
+all: pack
+
 $(APP): p2p.go packet.go main.go
 	$(CC) build -ldflags="-w -s" -o $@ -v $^
 

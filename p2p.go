@@ -797,11 +797,10 @@ func (ptp *PTPCloud) HandleProxyMessage(msg *udpcs.P2PMessage, src_addr *net.UDP
 	for key, peer := range ptp.NetworkPeers {
 		if peer.PeerAddr.String() == id {
 			peer.ProxyID = int(msg.Header.ProxyId)
-			log.Log(log.DEBUG, "Settings proxy ID %d", msg.Header.ProxyId)
+			log.Log(log.DEBUG, "Setting proxy ID %d for %s", msg.Header.ProxyId, peer.ID)
 			ptp.NetworkPeers[key] = peer
 		}
 	}
-
 }
 
 func (ptp *PTPCloud) HandleTestMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
@@ -819,7 +818,7 @@ func (ptp *PTPCloud) SendTo(dst net.HardwareAddr, msg *udpcs.P2PMessage) (int, e
 	for _, peer := range ptp.NetworkPeers {
 		if peer.PeerHW.String() == dst.String() {
 			msg.Header.ProxyId = uint16(peer.ProxyID)
-			log.Log(log.TRACE, "Sending to %s via proxy id %d", dst.String(), peer.ProxyID)
+			log.Log(log.TRACE, "Sending to %s via proxy id %d", dst.String(), msg.Header.ProxyId)
 			size, err := ptp.UDPSocket.SendMessage(msg, peer.PeerAddr)
 			return size, err
 		}
