@@ -1,4 +1,4 @@
-package p2p_log
+package ptp
 
 import (
 	"log"

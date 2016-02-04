@@ -3,8 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	log "github.com/subutai-io/p2p/p2p_log"
-	"github.com/subutai-io/p2p/udpcs"
+	//log "github.com/subutai-io/p2p/p2p_log"
+	//"github.com/subutai-io/p2p/ptp"
+	ptp "github.com/subutai-io/p2p/lib"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -60,20 +61,20 @@ type Response struct {
 type Procedures int
 
 func (p *Procedures) Set(args *NameValueArg, resp *Response) error {
-	log.Log(log.INFO, "Setting option %s to %s", args.Name, args.Value)
+	ptp.Log(ptp.INFO, "Setting option %s to %s", args.Name, args.Value)
 	resp.ExitCode = 0
 	if args.Name == "log" {
 		resp.Output = "Logging level has switched to " + args.Value + " level"
 		if args.Value == "DEBUG" {
-			log.SetMinLogLevel(log.DEBUG)
+			ptp.SetMinLogLevel(ptp.DEBUG)
 		} else if args.Value == "INFO" {
-			log.SetMinLogLevel(log.INFO)
+			ptp.SetMinLogLevel(ptp.INFO)
 		} else if args.Value == "TRACE" {
-			log.SetMinLogLevel(log.TRACE)
+			ptp.SetMinLogLevel(ptp.TRACE)
 		} else if args.Value == "WARNING" {
-			log.SetMinLogLevel(log.WARNING)
+			ptp.SetMinLogLevel(ptp.WARNING)
 		} else if args.Value == "ERROR" {
-			log.SetMinLogLevel(log.ERROR)
+			ptp.SetMinLogLevel(ptp.ERROR)
 		} else {
 			resp.ExitCode = 1
 			resp.Output = "Unknown log level was specified. Supported log levels is:\n"
@@ -104,7 +105,7 @@ func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
 	}
 	if resp.ExitCode == 0 {
 		resp.Output = "New key added"
-		var newKey udpcs.CryptoKey
+		var newKey ptp.CryptoKey
 		newKey = Instances[args.Hash].PTP.Crypter.EncrichKeyValues(newKey, args.Key, args.TTL)
 		Instances[args.Hash].PTP.Crypter.Keys = append(Instances[args.Hash].PTP.Crypter.Keys, newKey)
 	}
@@ -112,7 +113,7 @@ func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
 }
 
 func (p *Procedures) Execute(args *Args, resp *Response) error {
-	log.Log(log.INFO, "Received %v", args)
+	ptp.Log(ptp.INFO, "Received %v", args)
 	resp.ExitCode = 0
 	resp.Output = "Command executed"
 	return nil
@@ -127,21 +128,21 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 		resp.Output = resp.Output + "Lookup finished\n"
 		if args.Key != "" {
 			key := []byte(args.Key)
-			if len(key) > udpcs.BLOCK_SIZE {
-				key = key[:udpcs.BLOCK_SIZE]
+			if len(key) > ptp.BLOCK_SIZE {
+				key = key[:ptp.BLOCK_SIZE]
 			} else {
-				zeros := make([]byte, udpcs.BLOCK_SIZE-len(key))
+				zeros := make([]byte, ptp.BLOCK_SIZE-len(key))
 				key = append([]byte(key), zeros...)
 			}
 			args.Key = string(key)
 		}
 
-		ptp := p2pmain(args.IP, args.Mask, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd)
+		ptpInstance := p2pmain(args.IP, args.Mask, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd)
 		var newInst Instance
 		newInst.ID = args.Hash
-		newInst.PTP = ptp
+		newInst.PTP = ptpInstance
 		Instances[args.Hash] = newInst
-		go ptp.Run()
+		go ptpInstance.Run()
 	} else {
 		resp.Output = resp.Output + "Hash already in use\n"
 	}
@@ -223,7 +224,7 @@ func start_profyle(profyle string) {
 
 	pwd, err := os.Getwd()
 	if err != nil {
-		log.Log(log.ERROR, "Getwd() error : %v", err)
+		ptp.Log(ptp.ERROR, "Getwd() error : %v", err)
 		return
 	}
 
@@ -232,15 +233,15 @@ func start_profyle(profyle string) {
 		file_name := fmt.Sprintf("%s/%s.prof", pwd, time_str)
 		f, err := os.Create(file_name)
 		if err != nil {
-			log.Log(log.ERROR, "Create cpu_prof file failed. %v", err)
+			ptp.Log(ptp.ERROR, "Create cpu_prof file failed. %v", err)
 			return
 		}
-		log.Log(log.INFO, "Start cpu profiling to file %s", file_name)
+		ptp.Log(ptp.INFO, "Start cpu profiling to file %s", file_name)
 		pprof.StartCPUProfile(f)
 	} else if profyle == "memory" {
 		_, err := os.Create(fmt.Sprintf("%s/%s.p2p_mem_prof", pwd, time_str))
 		if err != nil {
-			log.Log(log.ERROR, "Create mem_prof file failed. %v", err)
+			ptp.Log(ptp.ERROR, "Create mem_prof file failed. %v", err)
 			return
 		}
 	}
@@ -311,10 +312,10 @@ func main() {
 		Instances = make(map[string]Instance)
 		user, err := user.Current()
 		if err != nil {
-			log.Log(log.ERROR, "Failed to retrieve information about user: %v", err)
+			ptp.Log(ptp.ERROR, "Failed to retrieve information about user: %v", err)
 		}
 		if user.Uid != "0" {
-			log.Log(log.ERROR, "P2P cannot run in daemon mode without root privileges")
+			ptp.Log(ptp.ERROR, "P2P cannot run in daemon mode without root privileges")
 			os.Exit(1)
 		}
 
@@ -323,10 +324,10 @@ func main() {
 		rpc.HandleHTTP()
 		listen, e := net.Listen("tcp", "localhost:"+argRPCPort)
 		if e != nil {
-			log.Log(log.ERROR, "Cannot start RPC listener %v", err)
+			ptp.Log(ptp.ERROR, "Cannot start RPC listener %v", err)
 			os.Exit(1)
 		}
-		log.Log(log.INFO, "Starting RPC Listener")
+		ptp.Log(ptp.INFO, "Starting RPC Listener")
 		go http.Serve(listen, nil)
 		// Capture SIGINT
 		// This is used for development purposes only, but later we should consider updating
@@ -350,7 +351,7 @@ func main() {
 
 	client, err := rpc.DialHTTP("tcp", "localhost:"+argRPCPort)
 	if err != nil {
-		log.Log(log.ERROR, "Failed to connect to RPC %v", err)
+		ptp.Log(ptp.ERROR, "Failed to connect to RPC %v", err)
 		os.Exit(1)
 	}
 	var response Response
@@ -407,10 +408,10 @@ func main() {
 		args := &Args{"RandomCommand", "someeeeee"}
 		err = client.Call("Procedures.Execute", args, &response)
 		if err != nil {
-			log.Log(log.ERROR, "Failed to execute remote procedure %v", err)
+			ptp.Log(ptp.ERROR, "Failed to execute remote procedure %v", err)
 			os.Exit(1)
 		}
 	}
 	fmt.Printf("%s\n", response.Output)
-	log.Log(log.DEBUG, "%v", response)
+	ptp.Log(ptp.DEBUG, "%v", response)
 }

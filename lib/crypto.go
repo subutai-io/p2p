@@ -1,56 +1,72 @@
-package enc
+package ptp
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"fmt"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
+	"strconv"
+	"time"
 )
-
-/////////////////////////////////////////////////////
 
 const (
 	BLOCK_SIZE int = 16
 	IV_SIZE    int = aes.BlockSize
 )
 
-/////////////////////////////////////////////////////
-
-func MakeEncKey() []byte {
-	key := make([]byte, BLOCK_SIZE)
-
-	_, err := rand.Read(key)
-	if err != nil {
-		return nil
-	}
-	return key
+type CryptoKey struct {
+	TTLConfig string `yaml:"ttl"`
+	KeyConfig string `yaml:"key"`
+	Until     time.Time
+	Key       []byte
 }
 
-func EncryptTest() {
-	plaintext := "123456789012345678901234567890123456789"
-	fmt.Printf("%s\n", plaintext)
-
-	key := make([]byte, BLOCK_SIZE)
-	for i := 0; i < BLOCK_SIZE; i++ {
-		key[i] = byte(i)
-	}
-	enc_data, err := Encrypt(key, []byte(plaintext))
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("encrypted data : %s\n", enc_data)
-
-	dec_data, err := Decrypt(key, enc_data)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("decrypted data : %s\n", dec_data)
+type Crypto struct {
+	Keys      []CryptoKey
+	ActiveKey CryptoKey
+	Active    bool
 }
 
-/////////////////////////////////////////////////////
+func (c Crypto) EncrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKey {
+	var err error
+	i, err := strconv.ParseInt(datetime, 10, 64)
+	ckey.Until = time.Now()
+	// Default value is +1 hour
+	ckey.Until = ckey.Until.Add(60 * time.Minute)
+	if err != nil {
+		Log(ERROR, "Failed to parse TTL. Falling back to default value of 1 hour")
+	} else {
+		ckey.Until = time.Unix(i, 0)
+	}
+	ckey.Key = []byte(key)
+	if err != nil {
+		Log(ERROR, "Failed to parse provided TTL value: %v", err)
+		return ckey
+	}
+	return ckey
+}
 
-func Encrypt(key []byte, data []byte) ([]byte, error) {
+func (c Crypto) ReadKeysFromFile(filepath string) {
+	yamlFile, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		Log(ERROR, "Failed to read key file yaml: %v", err)
+		c.Active = false
+		return
+	}
+	var ckey CryptoKey
+	err = yaml.Unmarshal(yamlFile, ckey)
+	if err != nil {
+		Log(ERROR, "Failed to parse config: %v", err)
+		c.Active = false
+		return
+	}
+	ckey = c.EncrichKeyValues(ckey, ckey.KeyConfig, ckey.TTLConfig)
+	c.Active = true
+	c.Keys = append(c.Keys, ckey)
+}
 
+func (c Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
 	cb, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -76,12 +92,13 @@ func Encrypt(key []byte, data []byte) ([]byte, error) {
 	copy(tmp_arr, data[(count-1)*BLOCK_SIZE:])
 	mode := cipher.NewCBCEncrypter(cb, iv)
 	mode.CryptBlocks(encrypted_data[(count-1)*BLOCK_SIZE+IV_SIZE:], tmp_arr)
+
 	return encrypted_data, nil
 }
 
 /////////////////////////////////////////////////////
 
-func Decrypt(key []byte, data []byte) ([]byte, error) {
+func (c Crypto) Decrypt(key []byte, data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
