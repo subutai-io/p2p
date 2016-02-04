@@ -194,7 +194,7 @@ func (p *PTPCloud) ListenInterface() {
 
 // This method will generate device name if none were specified at startup
 func (p *PTPCloud) GenerateDeviceName(i int) string {
-	var devName string = "vp" + fmt.Sprintf("%d", i)
+	var devName string = "vptp" + fmt.Sprintf("%d", i)
 	inf, err := net.Interfaces()
 	if err != nil {
 		ptp.Log(ptp.ERROR, "Failed to retrieve list of network interfaces")
