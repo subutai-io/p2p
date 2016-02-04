@@ -7,19 +7,16 @@ package main
 
 import (
 	"fmt"
-	"github.com/subutai-io/p2p/commons"
-	"github.com/subutai-io/p2p/dht"
-	log "github.com/subutai-io/p2p/p2p_log"
-	"github.com/subutai-io/p2p/udpcs"
+	ptp "github.com/subutai-io/p2p/lib"
 	"net"
 	"time"
 )
 
 type Proxy struct {
-	DHTClient   *dht.DHTClient
+	DHTClient   *ptp.DHTClient
 	Tunnels     map[int]Tunnel
 	Lock        bool
-	UDPServer   *udpcs.UDPClient
+	UDPServer   *ptp.UDPClient
 	Shutdown    bool
 	TunnelQueue []WaitingTunnel
 }
@@ -38,25 +35,25 @@ type Tunnel struct {
 }
 
 func (p *Proxy) Initialize(target string) {
-	p.UDPServer = new(udpcs.UDPClient)
+	p.UDPServer = new(ptp.UDPClient)
 	p.UDPServer.Init("", 0)
-	p.DHTClient = new(dht.DHTClient)
+	p.DHTClient = new(ptp.DHTClient)
 	p.Tunnels = make(map[int]Tunnel)
 	config := p.DHTClient.DHTClientConfig()
 	if target != "" {
 		config.Routers = target
 	}
-	config.Mode = dht.MODE_CP
+	config.Mode = ptp.MODE_CP
 	config.NetworkHash = p.GenerateHash()
 	config.P2PPort = p.UDPServer.GetPort()
-	log.Log(log.INFO, "Listening on a %d port", config.P2PPort)
+	ptp.Log(ptp.INFO, "Listening on a %d port", config.P2PPort)
 	var ips []net.IP
 	ips = append(ips, net.ParseIP("127.0.0.1"))
 	go p.UDPServer.Listen(p.HandleMessage)
 	go p.RegisterQueue()
 	p.DHTClient = p.DHTClient.Initialize(config, ips)
 	p.DHTClient.RegisterControlPeer()
-	log.Log(log.INFO, "Control peer initialization process is complete")
+	ptp.Log(ptp.INFO, "Control peer initialization process is complete")
 }
 
 func (p *Proxy) GenerateHash() string {
@@ -79,7 +76,7 @@ func (p *Proxy) CreateTunnel(addr string) int {
 			break
 		}
 	}
-	log.Log(log.DEBUG, "Created new tunnel. ID: %d Endpoint: %s", newId, addr)
+	ptp.Log(ptp.DEBUG, "Created new tunnel. ID: %d Endpoint: %s", newId, addr)
 	return newId
 }
 
@@ -90,8 +87,8 @@ func (p *Proxy) RegisterTunnel() {
 	p.Lock = true
 	target := p.TunnelQueue[0].Target
 	source := p.TunnelQueue[0].Source
-	log.Log(log.DEBUG, "Size of map is %d", len(p.Tunnels))
-	log.Log(log.DEBUG, "Requested proxy for %s from %s", target, source)
+	ptp.Log(ptp.DEBUG, "Size of map is %d", len(p.Tunnels))
+	ptp.Log(ptp.DEBUG, "Requested proxy for %s from %s", target, source)
 	// Check if we are in the list
 	available := false
 	for _, tun := range p.Tunnels {
@@ -102,25 +99,25 @@ func (p *Proxy) RegisterTunnel() {
 	if !available {
 		nId := p.CreateTunnel(source)
 		if nId > 0 {
-			log.Log(log.DEBUG, "Requester peer %s was not found in tunnels list. Creating new one with ID %d", source, nId)
+			ptp.Log(ptp.DEBUG, "Requester peer %s was not found in tunnels list. Creating new one with ID %d", source, nId)
 		}
 	}
 	// MT_PROXY indicates that peer (src_addr) can't connect to another peer (msg.data)
 	var responseId int = -1
 	for id, tun := range p.Tunnels {
 		if tun.Endpoint.String() == target {
-			log.Log(log.DEBUG, "Proxy %d found for peer %s", id, target)
+			ptp.Log(ptp.DEBUG, "Proxy %d found for peer %s", id, target)
 			responseId = int(id)
 		}
 	}
 	if responseId == -1 {
-		log.Log(log.DEBUG, "Tunnel for %s was not found", target)
+		ptp.Log(ptp.DEBUG, "Tunnel for %s was not found", target)
 		responseId = p.CreateTunnel(target)
 	}
 	if responseId < 0 {
-		log.Log(log.ERROR, "Failed to create tunnel from %s to %s", source, target)
+		ptp.Log(ptp.ERROR, "Failed to create tunnel from %s to %s", source, target)
 	}
-	response := udpcs.CreateProxyP2PMessage(responseId, target, 0)
+	response := ptp.CreateProxyP2PMessage(responseId, target, 0)
 	src_addr, _ := net.ResolveUDPAddr("udp", source)
 	p.UDPServer.SendMessage(response, src_addr)
 	p.TunnelQueue[0].Registered = true
@@ -131,25 +128,25 @@ func (p *Proxy) RegisterTunnel() {
 
 func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_bytes []byte) {
 	if err != nil {
-		log.Log(log.ERROR, "P2P Message Handle: %v", err)
+		ptp.Log(ptp.ERROR, "P2P Message Handle: %v", err)
 		return
 	}
 
 	buf := make([]byte, count)
 	copy(buf[:], rcv_bytes[:])
 
-	msg, des_err := udpcs.P2PMessageFromBytes(buf)
+	msg, des_err := ptp.P2PMessageFromBytes(buf)
 	if des_err != nil {
-		log.Log(log.ERROR, "P2PMessageFromBytes error: %v", des_err)
+		ptp.Log(ptp.ERROR, "P2PMessageFromBytes error: %v", des_err)
 		return
 	}
-	var msgType commons.MSG_TYPE = commons.MSG_TYPE(msg.Header.Type)
-	if msgType == commons.MT_PROXY {
+	var msgType ptp.MSG_TYPE = ptp.MSG_TYPE(msg.Header.Type)
+	if msgType == ptp.MT_PROXY {
 		var w WaitingTunnel
 		w.Target = string(msg.Data)
 		w.Source = src_addr.String()
 		p.TunnelQueue = append(p.TunnelQueue, w)
-	} else if msgType == commons.MT_PING {
+	} else if msgType == ptp.MT_PING {
 		for key, tun := range p.Tunnels {
 			if tun.Endpoint.String() == src_addr.String() {
 				tun.PingFails = 0
@@ -160,10 +157,10 @@ func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_b
 		if msg.Header.ProxyId > 0 {
 			tunnel, exists := p.Tunnels[int(msg.Header.ProxyId)]
 			if !exists {
-				log.Log(log.DEBUG, "Proxy %d is not registered", msg.Header.ProxyId)
+				ptp.Log(ptp.DEBUG, "Proxy %d is not registered", msg.Header.ProxyId)
 				return
 			}
-			log.Log(log.DEBUG, "Forwarding from %s to %s. Proxy ID: %d", src_addr.String(), tunnel.Endpoint.String(), msg.Header.ProxyId)
+			ptp.Log(ptp.DEBUG, "Forwarding from %s to %s. Proxy ID: %d", src_addr.String(), tunnel.Endpoint.String(), msg.Header.ProxyId)
 			p.UDPServer.SendMessage(msg, tunnel.Endpoint)
 		}
 	}
@@ -172,7 +169,7 @@ func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_b
 func (p *Proxy) SendPing() {
 	for key, tunnel := range p.Tunnels {
 		tunnel.PingFails += tunnel.PingFails + 1
-		msg := udpcs.CreatePingP2PMessage()
+		msg := ptp.CreatePingP2PMessage()
 		p.UDPServer.SendMessage(msg, tunnel.Endpoint)
 		p.Tunnels[key] = tunnel
 	}

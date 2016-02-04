@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/subutai-io/p2p/udpcs"
+	ptp "github.com/subutai-io/p2p/lib"
 	"math/rand"
 	"testing"
 	"time"
@@ -14,8 +14,8 @@ func TestEncrypt(t *testing.T) {
 		key3 := []byte("keythatismuchlongerthannormal32longkey")
 	*/
 
-	crypto := new(udpcs.Crypto)
-	var key udpcs.CryptoKey
+	crypto := new(ptp.Crypto)
+	var key ptp.CryptoKey
 	crypto.EncrichKeyValues(key, "keylessthan32", "1")
 }
 
@@ -34,8 +34,8 @@ func BenchmarkEncrypt(b *testing.B) {
 	for i := 1; i < 10; i++ {
 		data = append(data, RandomString(i*10))
 	}
-	crypto := new(udpcs.Crypto)
-	var key udpcs.CryptoKey
+	crypto := new(ptp.Crypto)
+	var key ptp.CryptoKey
 	crypto.EncrichKeyValues(key, "keylessthan32", "1")
 	for i := 0; i < b.N; i++ {
 		for _, str := range data {
