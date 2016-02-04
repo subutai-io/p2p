@@ -51,7 +51,7 @@ type PTPCloud struct {
 	//NetworkPeers []NetworkPeer
 	NetworkPeers map[string]NetworkPeer
 
-	UDPSocket *ptp.UDPClient
+	UDPSocket *ptp.PTPNet
 
 	LocalIPs []net.IP
 
@@ -348,7 +348,7 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.PacketHandlers[PT_PPPOE_SESSION] = p.handlePPPoESessionPacket
 
 	p.CreateDevice(argIp, argMac, argMask, argDev)
-	p.UDPSocket = new(ptp.UDPClient)
+	p.UDPSocket = new(ptp.PTPNet)
 	p.UDPSocket.Init("", 0)
 	port := p.UDPSocket.GetPort()
 	ptp.Log(ptp.INFO, "Started UDP Listener at port %d", port)

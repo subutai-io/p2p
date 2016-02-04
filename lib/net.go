@@ -20,6 +20,11 @@ type P2PMessageHeader struct {
 	SerializedLen uint16
 }
 
+type P2PMessage struct {
+	Header *P2PMessageHeader
+	Data   []byte
+}
+
 func (v *P2PMessageHeader) Serialize() []byte {
 	res_buf := make([]byte, 12)
 	binary.BigEndian.PutUint16(res_buf[0:2], v.Magic)
@@ -44,11 +49,6 @@ func P2PMessageHeaderFromBytes(bytes []byte) (*P2PMessageHeader, error) {
 	result.ProxyId = binary.BigEndian.Uint16(bytes[8:10])
 	result.SerializedLen = binary.BigEndian.Uint16(bytes[10:12])
 	return result, nil
-}
-
-type P2PMessage struct {
-	Header *P2PMessageHeader
-	Data   []byte
 }
 
 func (v *P2PMessage) Serialize() []byte {
@@ -199,7 +199,7 @@ func CreateProxyP2PMessage(id int, data string, netProto uint16) *P2PMessage {
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-type UDPClient struct {
+type PTPNet struct {
 	host         string
 	port         int16
 	addr         *net.UDPAddr
@@ -208,19 +208,19 @@ type UDPClient struct {
 	disposed     bool
 }
 
-func (uc *UDPClient) Stop() {
+func (uc *PTPNet) Stop() {
 	uc.disposed = true
 }
 
-func (uc *UDPClient) Disposed() bool {
+func (uc *PTPNet) Disposed() bool {
 	return uc.disposed
 }
 
-func (uc *UDPClient) Addr() *net.UDPAddr {
+func (uc *PTPNet) Addr() *net.UDPAddr {
 	return uc.addr
 }
 
-func (uc *UDPClient) Init(host string, port int16) error {
+func (uc *PTPNet) Init(host string, port int16) error {
 	var err error = nil
 	uc.host = host
 	uc.port = port
@@ -239,14 +239,14 @@ func (uc *UDPClient) Init(host string, port int16) error {
 	return nil
 }
 
-func (uc *UDPClient) GetPort() int {
+func (uc *PTPNet) GetPort() int {
 	addr, _ := net.ResolveUDPAddr("udp", uc.conn.LocalAddr().String())
 	return addr.Port
 }
 
 type UDPReceivedCallback func(count int, src_addr *net.UDPAddr, err error, buff []byte)
 
-func (uc *UDPClient) Listen(fn_received_callback UDPReceivedCallback) {
+func (uc *PTPNet) Listen(fn_received_callback UDPReceivedCallback) {
 	for !uc.Disposed() {
 		n, src, err := uc.conn.ReadFromUDP(uc.input_buffer[:])
 		fn_received_callback(n, src, err, uc.input_buffer[:])
@@ -254,7 +254,7 @@ func (uc *UDPClient) Listen(fn_received_callback UDPReceivedCallback) {
 	Log(INFO, "Stopping UDP Listener")
 }
 
-func (uc *UDPClient) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, error) {
+func (uc *PTPNet) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, error) {
 	ser_data := msg.Serialize()
 	n, err := uc.conn.WriteToUDP(ser_data, dst_addr)
 	if err != nil {

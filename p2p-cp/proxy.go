@@ -16,7 +16,7 @@ type Proxy struct {
 	DHTClient   *ptp.DHTClient
 	Tunnels     map[int]Tunnel
 	Lock        bool
-	UDPServer   *ptp.UDPClient
+	UDPServer   *ptp.PTPNet
 	Shutdown    bool
 	TunnelQueue []WaitingTunnel
 }
@@ -35,7 +35,7 @@ type Tunnel struct {
 }
 
 func (p *Proxy) Initialize(target string) {
-	p.UDPServer = new(ptp.UDPClient)
+	p.UDPServer = new(ptp.PTPNet)
 	p.UDPServer.Init("", 0)
 	p.DHTClient = new(ptp.DHTClient)
 	p.Tunnels = make(map[int]Tunnel)
