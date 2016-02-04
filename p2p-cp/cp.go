@@ -23,7 +23,7 @@ var (
 	PeerList []Peer
 
 	// Ping timeout for variables
-	PingTimeout time.Duration = 25
+	PingTimeout time.Duration = 3
 )
 
 type DHTState int
@@ -615,7 +615,6 @@ func main() {
 	flag.Parse()
 	log.SetMinLogLevel(log.DEBUG)
 	log.Log(log.INFO, "Initialization complete")
-	log.Log(log.INFO, "Starting bootstrap node")
 	if argDht > 0 {
 		var dht DHTRouter
 		dht.Port = argDht

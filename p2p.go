@@ -96,6 +96,7 @@ type NetworkPeer struct {
 	KnownIPs []*net.UDPAddr
 	// Number of retries of introduce
 	Retries int
+	Ready   bool
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -330,6 +331,7 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	ptp.MessageHandlers[commons.MT_PING] = ptp.HandlePingMessage
 	ptp.MessageHandlers[commons.MT_ENC] = ptp.HandleMessage
 	ptp.MessageHandlers[commons.MT_INTRO] = ptp.HandleIntroMessage
+	ptp.MessageHandlers[commons.MT_INTRO_REQ] = ptp.HandleIntroRequestMessage
 	ptp.MessageHandlers[commons.MT_PROXY] = ptp.HandleProxyMessage
 	ptp.MessageHandlers[commons.MT_TEST] = ptp.HandleTestMessage
 
@@ -398,6 +400,11 @@ func (ptp *PTPCloud) IntroducePeers() {
 		if peer.Endpoint == "" {
 			continue
 		}
+
+		if !peer.Ready {
+			continue
+		}
+
 		if peer.Retries >= 10 {
 			log.Log(log.WARNING, "Failed to introduce to %s", peer.ID)
 			// TODO: Perform necessary action
@@ -412,7 +419,8 @@ func (ptp *PTPCloud) IntroducePeers() {
 		//peer.PeerAddr = addr
 		ptp.NetworkPeers[i] = peer
 		// Send introduction packet
-		msg := ptp.PrepareIntroductionMessage(ptp.dht.ID)
+		//msg := ptp.PrepareIntroductionMessage(ptp.dht.ID)
+		msg := udpcs.CreateIntroRequest(ptp.Crypter, ptp.dht.ID)
 		msg.Header.ProxyId = uint16(peer.ProxyID)
 		_, err = ptp.UDPSocket.SendMessage(msg, addr)
 		if err != nil {
@@ -613,6 +621,10 @@ func (ptp *PTPCloud) SyncPeers() int {
 			var newPeer NetworkPeer
 			newPeer.ID = id.ID
 			newPeer.Unknown = true
+			newPeer.Ready = true
+			if ptp.ForwardMode {
+				newPeer.Ready = false
+			}
 			ptp.NetworkPeers[newPeer.ID] = newPeer
 			ptp.dht.RequestPeerIPs(id.ID)
 		}
@@ -767,10 +779,23 @@ func (ptp *PTPCloud) HandlePingMessage(msg *udpcs.P2PMessage, src_addr *net.UDPA
 	ptp.UDPSocket.SendMessage(msg, src_addr)
 }
 
+func (ptp *PTPCloud) IsPeerReady(id string) bool {
+	for _, peer := range ptp.NetworkPeers {
+		if peer.ID == id {
+			return peer.Ready
+		}
+	}
+	return false
+}
+
 func (ptp *PTPCloud) HandleIntroMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
 	log.Log(log.DEBUG, "Introduction message received: %s", string(msg.Data))
 	id, mac, ip := ptp.ParseIntroString(string(msg.Data))
 	// Don't do anything if we already know everything about this peer
+	if !ptp.IsPeerReady(id) {
+		log.Log(log.DEBUG, "Introduction will be skipped - peer is not ready")
+		return
+	}
 	if !ptp.IsPeerUnknown(id) {
 		log.Log(log.DEBUG, "Skipping known peer")
 		return
@@ -779,11 +804,28 @@ func (ptp *PTPCloud) HandleIntroMessage(msg *udpcs.P2PMessage, src_addr *net.UDP
 	// TODO: Change PeerAddr with DST addr of real peer
 	ptp.AddPeer(addr, id, ip, mac)
 	log.Log(log.INFO, "Introduced new peer. IP: %s. ID: %s, HW: %s", ip, id, mac)
+	/*
+		response := ptp.PrepareIntroductionMessage(ptp.dht.ID)
+		response.Header.ProxyId = msg.Header.ProxyId
+		_, err := ptp.UDPSocket.SendMessage(response, src_addr)
+		if err != nil {
+			log.Log(log.ERROR, "Failed to respond to introduction message: %v", err)
+		}
+	*/
+}
+
+func (ptp *PTPCloud) HandleIntroRequestMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
+	id := string(msg.Data)
+	peer, exists := ptp.NetworkPeers[id]
+	if !exists {
+		log.Log(log.DEBUG, "Introduction request came from unknown peer")
+		return
+	}
 	response := ptp.PrepareIntroductionMessage(ptp.dht.ID)
-	response.Header.ProxyId = msg.Header.ProxyId
+	response.Header.ProxyId = uint16(peer.ProxyID)
 	_, err := ptp.UDPSocket.SendMessage(response, src_addr)
 	if err != nil {
-		log.Log(log.ERROR, "Failed to respond to introduction message: %v", err)
+		log.Log(log.ERROR, "Failed to respond to introduction request: %v", err)
 	}
 }
 
@@ -797,11 +839,11 @@ func (ptp *PTPCloud) HandleProxyMessage(msg *udpcs.P2PMessage, src_addr *net.UDP
 	for key, peer := range ptp.NetworkPeers {
 		if peer.PeerAddr.String() == id {
 			peer.ProxyID = int(msg.Header.ProxyId)
-			log.Log(log.DEBUG, "Settings proxy ID %d", msg.Header.ProxyId)
+			log.Log(log.DEBUG, "Setting proxy ID %d for %s", msg.Header.ProxyId, peer.ID)
+			peer.Ready = true
 			ptp.NetworkPeers[key] = peer
 		}
 	}
-
 }
 
 func (ptp *PTPCloud) HandleTestMessage(msg *udpcs.P2PMessage, src_addr *net.UDPAddr) {
@@ -819,6 +861,7 @@ func (ptp *PTPCloud) SendTo(dst net.HardwareAddr, msg *udpcs.P2PMessage) (int, e
 	for _, peer := range ptp.NetworkPeers {
 		if peer.PeerHW.String() == dst.String() {
 			msg.Header.ProxyId = uint16(peer.ProxyID)
+			log.Log(log.TRACE, "Sending to %s via proxy id %d", dst.String(), msg.Header.ProxyId)
 			size, err := ptp.UDPSocket.SendMessage(msg, peer.PeerAddr)
 			return size, err
 		}
