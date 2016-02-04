@@ -1,4 +1,4 @@
-package commons
+package ptp
 
 // TODO: Modify these structures
 type DHTRequest struct {
