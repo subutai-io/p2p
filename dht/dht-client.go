@@ -252,7 +252,9 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 }
 
 func (dht *DHTClient) HandleConn(data commons.DHTResponse, conn *net.UDPConn) {
+	log.Log(log.DEBUG, "CONN packet receied")
 	if dht.ID != "" {
+		log.Log(log.ERROR, "Empty ID was received")
 		return
 	}
 	dht.ID = data.Id
@@ -398,7 +400,6 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 	}
 	if dht.Mode == MODE_CLIENT {
 		log.Log(log.INFO, "DHT operating in CLIENT mode")
-		dht.ResponseHandlers[commons.CMD_FIND] = dht.HandleFind
 		dht.ResponseHandlers[commons.CMD_NODE] = dht.HandleNode
 		dht.ResponseHandlers[commons.CMD_CP] = dht.HandleCp
 		dht.ResponseHandlers[commons.CMD_NOTIFY] = dht.HandleNotify
@@ -406,14 +407,17 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 		log.Log(log.INFO, "DHT operating in CONTROL PEER mode")
 		dht.ResponseHandlers[commons.CMD_REGCP] = dht.HandleRegCp
 	}
+	dht.ResponseHandlers[commons.CMD_FIND] = dht.HandleFind
 	dht.ResponseHandlers[commons.CMD_CONN] = dht.HandleConn
 	dht.ResponseHandlers[commons.CMD_PING] = dht.HandlePing
 	dht.ResponseHandlers[commons.CMD_STOP] = dht.HandleStop
 	for _, router := range routers {
 		conn, err := dht.ConnectAndHandshake(router, ips)
 		if err != nil || conn == nil {
+			log.Log(log.ERROR, "Failed to handshake with a DHT Server: %v", err)
 			dht.FailedRouters[0] = router
 		} else {
+			log.Log(log.INFO, "Handshaked. Starting listener")
 			dht.Connection = append(dht.Connection, conn)
 			go dht.ListenDHT(conn)
 		}

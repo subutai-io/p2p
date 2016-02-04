@@ -18,13 +18,14 @@ type MSG_TYPE uint16
 
 // Internal network packet type
 const (
-	MT_STRING MSG_TYPE = 0 + iota // String
-	MT_INTRO           = 1        // Introduction packet
-	MT_NENC            = 2        // Not encrypted message
-	MT_ENC             = 3        // Encrypted message
-	MT_PING            = 4        // Internal ping message
-	MT_TEST            = 5
-	MT_PROXY           = 6
+	MT_STRING    MSG_TYPE = 0 + iota // String
+	MT_INTRO              = 1        // Introduction packet
+	MT_INTRO_REQ          = 2
+	MT_NENC               = 3 // Not encrypted message
+	MT_ENC                = 4 // Encrypted message
+	MT_PING               = 5 // Internal ping message
+	MT_TEST               = 6
+	MT_PROXY              = 7
 )
 
 // List of commands used in DHT
