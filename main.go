@@ -200,6 +200,7 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 		resp.Output += fmt.Sprintf("ID: %s\n", ins.ID)
 		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", ins.PTP.DeviceName, ins.PTP.Mac, ins.PTP.IP)
 		resp.Output += fmt.Sprintf("Peers:\n")
+		// TODO: Rewrite this part
 		for _, id := range ins.PTP.IPIDTable {
 			resp.Output += fmt.Sprintf("\t--- %s ---\n", id)
 			peer, exists := ins.PTP.NetworkPeers[id]

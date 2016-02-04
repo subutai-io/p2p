@@ -52,10 +52,10 @@ func (p *Proxy) Initialize(target string) {
 	log.Log(log.INFO, "Listening on a %d port", config.P2PPort)
 	var ips []net.IP
 	ips = append(ips, net.ParseIP("127.0.0.1"))
-	p.DHTClient = p.DHTClient.Initialize(config, ips)
-	p.DHTClient.RegisterControlPeer()
 	go p.UDPServer.Listen(p.HandleMessage)
 	go p.RegisterQueue()
+	p.DHTClient = p.DHTClient.Initialize(config, ips)
+	p.DHTClient.RegisterControlPeer()
 	log.Log(log.INFO, "Control peer initialization process is complete")
 }
 
@@ -123,7 +123,9 @@ func (p *Proxy) RegisterTunnel() {
 	response := udpcs.CreateProxyP2PMessage(responseId, target, 0)
 	src_addr, _ := net.ResolveUDPAddr("udp", source)
 	p.UDPServer.SendMessage(response, src_addr)
+	p.TunnelQueue[0].Registered = true
 	p.Lock = false
+
 	p.DHTClient.ReportControlPeerLoad(len(p.Tunnels))
 }
 
@@ -186,13 +188,13 @@ func (p *Proxy) CleanTunnels() {
 
 func (p *Proxy) RegisterQueue() {
 	for {
+		time.Sleep(1 * time.Second)
 		if len(p.TunnelQueue) == 0 {
 			continue
 		}
 		if p.Lock {
 			continue
 		}
-		time.Sleep(10 * time.Microsecond)
 		p.RegisterTunnel()
 		for i, t := range p.TunnelQueue {
 			if t.Registered {

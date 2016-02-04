@@ -615,7 +615,6 @@ func main() {
 	flag.Parse()
 	log.SetMinLogLevel(log.DEBUG)
 	log.Log(log.INFO, "Initialization complete")
-	log.Log(log.INFO, "Starting bootstrap node")
 	if argDht > 0 {
 		var dht DHTRouter
 		dht.Port = argDht
