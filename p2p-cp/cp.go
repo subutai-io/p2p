@@ -23,7 +23,7 @@ var (
 	PeerList []Peer
 
 	// Ping timeout for variables
-	PingTimeout time.Duration = 25
+	PingTimeout time.Duration = 3
 )
 
 type DHTState int
