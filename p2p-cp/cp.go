@@ -608,9 +608,11 @@ func main() {
 	var (
 		argDht    int
 		argTarget string
+		argListen int
 	)
 	flag.IntVar(&argDht, "dht", -1, "Port that DHT Bootstrap will listening to")
 	flag.StringVar(&argTarget, "t", "", "Host:Port of DHT Bootstrap node")
+	flag.IntVar(&argListen, "listen", 0, "Port for traffic forwarder")
 	flag.Parse()
 	ptp.SetMinLogLevel(ptp.DEBUG)
 	ptp.Log(ptp.INFO, "Initialization complete")
@@ -628,7 +630,7 @@ func main() {
 	} else {
 		// Act as a normal (proxy) control peer
 		var proxy Proxy
-		proxy.Initialize(argTarget)
+		proxy.Initialize(argTarget, argListen)
 		for {
 			proxy.SendPing()
 			time.Sleep(3 * time.Second)
