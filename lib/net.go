@@ -201,7 +201,7 @@ func CreateProxyP2PMessage(id int, data string, netProto uint16) *P2PMessage {
 
 type PTPNet struct {
 	host         string
-	port         int16
+	port         int
 	addr         *net.UDPAddr
 	conn         *net.UDPConn
 	input_buffer [4096]byte
@@ -220,7 +220,7 @@ func (uc *PTPNet) Addr() *net.UDPAddr {
 	return uc.addr
 }
 
-func (uc *PTPNet) Init(host string, port int16) error {
+func (uc *PTPNet) Init(host string, port int) error {
 	var err error = nil
 	uc.host = host
 	uc.port = port
