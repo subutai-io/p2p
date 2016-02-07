@@ -36,9 +36,3 @@ Development & Branching Model
 
 * 'master' is always stable. 
 * 'dev' contains latest development snapshot that is under heavy testing
-
-Dependencies
--------------------
-
-* github.com/danderson/tuntap
-
