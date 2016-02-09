@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"flag"
 	"fmt"
-	"github.com/danderson/tuntap"
+	"github.com/crioto/tuntap"
 	ptp "github.com/subutai-io/p2p/lib"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"

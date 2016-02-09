@@ -34,9 +34,9 @@ type Tunnel struct {
 	Endpoint  *net.UDPAddr
 }
 
-func (p *Proxy) Initialize(target string) {
+func (p *Proxy) Initialize(target string, port int) {
 	p.UDPServer = new(ptp.PTPNet)
-	p.UDPServer.Init("", 0)
+	p.UDPServer.Init("", port)
 	p.DHTClient = new(ptp.DHTClient)
 	p.Tunnels = make(map[int]Tunnel)
 	config := p.DHTClient.DHTClientConfig()
