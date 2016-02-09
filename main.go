@@ -198,7 +198,8 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())
 	resp.Output += fmt.Sprintf("Instances information:\n")
 	for _, ins := range Instances {
-		resp.Output += fmt.Sprintf("ID: %s\n", ins.ID)
+		resp.Output += fmt.Sprintf("Hash: %s\n", ins.ID)
+		resp.Output += fmt.Sprintf("ID: %s\n", ins.PTP.dht.ID)
 		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", ins.PTP.DeviceName, ins.PTP.Mac, ins.PTP.IP)
 		resp.Output += fmt.Sprintf("Peers:\n")
 		// TODO: Rewrite this part
