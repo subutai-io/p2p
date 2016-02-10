@@ -30,6 +30,7 @@ type DHTClient struct {
 	ResponseHandlers map[string]DHTResponseCallback
 	Mode             OperatingMode
 	Shutdown         bool
+	IPList           []net.IP
 }
 
 type Forwarder struct {
@@ -65,6 +66,37 @@ func (dht *DHTClient) AddConnection(connections []*net.UDPConn, conn *net.UDPCon
 	return connections
 }
 
+func (dht *DHTClient) Handshake(conn *net.UDPConn) error {
+	// Handshake
+	var req DHTRequest
+	req.Id = "0"
+	req.Hash = "0"
+	req.Command = CMD_CONN
+	// TODO: rename Port to something more clear
+	req.Port = fmt.Sprintf("%d", dht.P2PPort)
+	for _, ip := range dht.IPList {
+		req.Port = req.Port + "|" + ip.String()
+	}
+	var b bytes.Buffer
+	if err := bencode.Marshal(&b, req); err != nil {
+		Log(ERROR, "Failed to Marshal bencode %v", err)
+		conn.Close()
+		return err
+	}
+	// TODO: Optimize types here
+	msg := b.String()
+	if dht.Shutdown {
+		return nil
+	}
+	_, err := conn.Write([]byte(msg))
+	if err != nil {
+		Log(ERROR, "Failed to send packet: %v", err)
+		conn.Close()
+		return err
+	}
+	return nil
+}
+
 // ConnectAndHandshake sends an initial packet to a DHT bootstrap node
 func (dht *DHTClient) ConnectAndHandshake(router string, ips []net.IP) (*net.UDPConn, error) {
 	Log(INFO, "Connecting to a router %s", router)
@@ -82,35 +114,9 @@ func (dht *DHTClient) ConnectAndHandshake(router string, ips []net.IP) (*net.UDP
 
 	Log(INFO, "Ready to peer discovery via %s [%s]", router, conn.RemoteAddr().String())
 
-	// Handshake
-	var req DHTRequest
-	req.Id = "0"
-	req.Hash = "0"
-	req.Command = CMD_CONN
-	// TODO: rename Port to something more clear
-	req.Port = fmt.Sprintf("%d", dht.P2PPort)
-	for _, ip := range ips {
-		req.Port = req.Port + "|" + ip.String()
-	}
-	var b bytes.Buffer
-	if err := bencode.Marshal(&b, req); err != nil {
-		Log(ERROR, "Failed to Marshal bencode %v", err)
-		conn.Close()
-		return nil, err
-	}
-	// TODO: Optimize types here
-	msg := b.String()
-	if dht.Shutdown {
-		return nil, nil
-	}
-	_, err = conn.Write([]byte(msg))
-	if err != nil {
-		Log(ERROR, "Failed to send packet: %v", err)
-		conn.Close()
-		return nil, err
-	}
+	err = dht.Handshake(conn)
 
-	return conn, nil
+	return conn, err
 }
 
 // Extracts DHTRequest from received packet
@@ -198,7 +204,7 @@ func (dht *DHTClient) RequestPeerIPs(id string) {
 // with a list of peers that we can connect to
 // This method should be called periodically in case any new peers was discovered
 func (dht *DHTClient) UpdatePeers() {
-	msg := dht.Compose(CMD_FIND, "", dht.NetworkHash, "")
+	msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
 	for _, conn := range dht.Connection {
 		if dht.Shutdown {
 			continue
@@ -263,7 +269,7 @@ func (dht *DHTClient) HandleConn(data DHTResponse, conn *net.UDPConn) {
 	// Afterwards application should wait for response from DHT
 	// with list of clients. This may not happen if this client is the
 	// first connected node.
-	msg := dht.Compose(CMD_FIND, "", dht.NetworkHash, "")
+	msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
 	if dht.Shutdown {
 		return
 	}
@@ -386,6 +392,13 @@ func (dht *DHTClient) HandleStop(data DHTResponse, conn *net.UDPConn) {
 	conn.Close()
 }
 
+func (dht *DHTClient) HandleUnknown(data DHTResponse, conn *net.UDPConn) {
+	err := dht.Handshake(conn)
+	if err != nil {
+		Log(ERROR, "Failed to send new handshake packet")
+	}
+}
+
 // This method initializes DHT by splitting list of routers and connect to each one
 func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 	dht = config
@@ -408,8 +421,10 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 	dht.ResponseHandlers[CMD_CONN] = dht.HandleConn
 	dht.ResponseHandlers[CMD_PING] = dht.HandlePing
 	dht.ResponseHandlers[CMD_STOP] = dht.HandleStop
+	dht.ResponseHandlers[CMD_UNKNOWN] = dht.HandleUnknown
+	dht.IPList = ips
 	for _, router := range routers {
-		conn, err := dht.ConnectAndHandshake(router, ips)
+		conn, err := dht.ConnectAndHandshake(router, dht.IPList)
 		if err != nil || conn == nil {
 			Log(ERROR, "Failed to handshake with a DHT Server: %v", err)
 			dht.FailedRouters[0] = router
