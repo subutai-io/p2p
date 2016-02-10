@@ -30,14 +30,15 @@ const (
 
 // List of commands used in DHT
 const (
-	CMD_CONN   string = "conn"
-	CMD_FIND   string = "find"
-	CMD_NODE   string = "node"
-	CMD_PING   string = "ping"
-	CMD_REGCP  string = "regcp"
-	CMD_BADCP  string = "badcp"
-	CMD_CP     string = "cp"
-	CMD_NOTIFY string = "notify"
-	CMD_LOAD   string = "load"
-	CMD_STOP   string = "stop"
+	CMD_CONN    string = "conn"
+	CMD_FIND    string = "find"
+	CMD_NODE    string = "node"
+	CMD_PING    string = "ping"
+	CMD_REGCP   string = "regcp"
+	CMD_BADCP   string = "badcp"
+	CMD_CP      string = "cp"
+	CMD_NOTIFY  string = "notify"
+	CMD_LOAD    string = "load"
+	CMD_STOP    string = "stop"
+	CMD_UNKNOWN string = "unk"
 )
