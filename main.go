@@ -409,7 +409,7 @@ func main() {
 			// Try to restore from provided file
 			instances, err := LoadInstances(argSaveFile)
 			if err != nil {
-				ptp.Log(ptp.ERROR, "%v")
+				ptp.Log(ptp.ERROR, "%v", err)
 			} else {
 				ptp.Log(ptp.INFO, "%d instances were loaded from file", len(instances))
 				for _, inst := range instances {
