@@ -15,12 +15,12 @@ const (
 	ERROR
 )
 
-var log_prefixes = [...]string{"[TRACE :]", "[DEBUG :] ", "[INFO :] ", "[WARNING :] ", "[ERROR :] "}
+var log_prefixes = [...]string{"[TRACE]", "[DEBUG] ", "[INFO] ", "[WARNING] ", "[ERROR] "}
 var log_flags = [...]int{log.Ldate | log.Ltime,
-	log.Ldate | log.Ltime | log.Llongfile,
 	log.Ldate | log.Ltime,
-	log.Ldate | log.Ltime | log.Lshortfile,
-	log.Ldate | log.Ltime | log.Llongfile}
+	log.Ldate | log.Ltime,
+	log.Ldate | log.Ltime,
+	log.Ldate | log.Ltime}
 
 var log_level_min LOG_LEVEL = INFO
 var std_loggers = [...]*log.Logger{log.New(os.Stdout, log_prefixes[TRACE], log_flags[TRACE]),
@@ -40,11 +40,3 @@ func Log(level LOG_LEVEL, format string, v ...interface{}) {
 	}
 	std_loggers[level].Printf(format, v...)
 }
-
-/*func main() {
-	SetMinLogLevel(DEBUG)
-	Log(DEBUG, "Hello, DEBUG")
-	Log(INFO, "Hello, INFO")
-	Log(WARNING, "Hello, WARNING")
-	Log(ERROR, "Hello, ERROR")
-}*/
