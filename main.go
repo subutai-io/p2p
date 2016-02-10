@@ -1,10 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"flag"
 	"fmt"
-	//log "github.com/subutai-io/p2p/p2p_log"
-	//"github.com/subutai-io/p2p/ptp"
 	ptp "github.com/subutai-io/p2p/lib"
 	"net"
 	"net/http"
@@ -17,25 +17,6 @@ import (
 	"time"
 )
 
-type Instance struct {
-	PTP *PTPCloud
-	ID  string
-}
-
-var (
-	Instances map[string]Instance
-)
-
-type Args struct {
-	Command string
-	Args    string
-}
-
-type NameValueArg struct {
-	Name  string
-	Value string
-}
-
 type RunArgs struct {
 	IP      string
 	Mask    string
@@ -47,6 +28,93 @@ type RunArgs struct {
 	Key     string
 	TTL     string
 	Fwd     bool
+}
+
+type Instance struct {
+	PTP  *PTPCloud
+	ID   string
+	Args RunArgs
+}
+
+var (
+	Instances map[string]Instance
+	SaveFile  string
+)
+
+func EncodeInstances() ([]byte, error) {
+	var savedInstances []RunArgs
+
+	for _, inst := range Instances {
+		savedInstances = append(savedInstances, inst.Args)
+	}
+	b := bytes.Buffer{}
+	e := gob.NewEncoder(&b)
+	err := e.Encode(savedInstances)
+	if err != nil {
+		ptp.Log(ptp.ERROR, "Failed to encode instances: %v", err)
+		return []byte(""), err
+	}
+	return b.Bytes(), nil
+}
+
+func DecodeInstances(data []byte) ([]RunArgs, error) {
+	var args []RunArgs
+	b := bytes.Buffer{}
+	b.Write(data)
+	d := gob.NewDecoder(&b)
+	err := d.Decode(&args)
+	if err != nil {
+		return args, err
+	}
+	return args, nil
+}
+
+// Calls EncodeInstances() and saves results into specified file
+// Return number of bytes written and error if any
+func SaveInstances(filename string) (int, error) {
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0700)
+	if err != nil {
+		return 0, err
+	}
+
+	data, err := EncodeInstances()
+	if err != nil {
+		return 0, err
+	}
+
+	s, err := file.Write(data)
+	if err != nil {
+		return s, err
+	}
+	file.Close()
+	return s, nil
+}
+
+func LoadInstances(filename string) ([]RunArgs, error) {
+	var loadedInstances []RunArgs
+	file, err := os.Open(filename)
+	data := make([]byte, 100000)
+	_, err = file.Read(data)
+	if err != nil {
+		return loadedInstances, err
+	}
+
+	loadedInstances, err = DecodeInstances(data)
+	if err != nil {
+		return loadedInstances, err
+	}
+
+	return loadedInstances, nil
+}
+
+type Args struct {
+	Command string
+	Args    string
+}
+
+type NameValueArg struct {
+	Name  string
+	Value string
 }
 
 type StopArgs struct {
@@ -141,8 +209,12 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 		var newInst Instance
 		newInst.ID = args.Hash
 		newInst.PTP = ptpInstance
+		newInst.Args = *args
 		Instances[args.Hash] = newInst
 		go ptpInstance.Run()
+		if SaveFile != "" {
+			SaveInstances(SaveFile)
+		}
 	} else {
 		resp.Output = resp.Output + "Hash already in use\n"
 	}
@@ -198,7 +270,8 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())
 	resp.Output += fmt.Sprintf("Instances information:\n")
 	for _, ins := range Instances {
-		resp.Output += fmt.Sprintf("ID: %s\n", ins.ID)
+		resp.Output += fmt.Sprintf("Hash: %s\n", ins.ID)
+		resp.Output += fmt.Sprintf("ID: %s\n", ins.PTP.dht.ID)
 		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", ins.PTP.DeviceName, ins.PTP.Mac, ins.PTP.IP)
 		resp.Output += fmt.Sprintf("Peers:\n")
 		// TODO: Rewrite this part
@@ -250,18 +323,19 @@ func start_profyle(profyle string) {
 func main() {
 
 	var (
-		argIp      string
-		argMask    string
-		argMac     string
-		argDev     string
-		argDirect  string
-		argHash    string
-		argDht     string
-		argKeyfile string
-		argKey     string
-		argTTL     string
-		argLog     string
-		argFwd     bool
+		argIp       string
+		argMask     string
+		argMac      string
+		argDev      string
+		argDirect   string
+		argHash     string
+		argDht      string
+		argKeyfile  string
+		argKey      string
+		argTTL      string
+		argLog      string
+		argSaveFile string
+		argFwd      bool
 
 		// Daemon configuration and commands
 		argDaemon     bool
@@ -290,6 +364,7 @@ func main() {
 	flag.StringVar(&argKey, "key", "", "AES crypto key")
 	flag.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
 	flag.StringVar(&argLog, "log", "", "Log level")
+	flag.StringVar(&argSaveFile, "save", "", "Path to restore file")
 	flag.BoolVar(&argFwd, "fwd", false, "Force traffic forwarding through proxy")
 
 	// RPC
@@ -327,8 +402,26 @@ func main() {
 			ptp.Log(ptp.ERROR, "Cannot start RPC listener %v", err)
 			os.Exit(1)
 		}
+
+		if argSaveFile != "" {
+			SaveFile = argSaveFile
+			ptp.Log(ptp.INFO, "Restore file provided")
+			// Try to restore from provided file
+			instances, err := LoadInstances(argSaveFile)
+			if err != nil {
+				ptp.Log(ptp.ERROR, "%v", err)
+			} else {
+				ptp.Log(ptp.INFO, "%d instances were loaded from file", len(instances))
+				for _, inst := range instances {
+					resp := new(Response)
+					proc.Run(&inst, resp)
+				}
+			}
+		}
+
 		ptp.Log(ptp.INFO, "Starting RPC Listener")
 		go http.Serve(listen, nil)
+
 		// Capture SIGINT
 		// This is used for development purposes only, but later we should consider updating
 		// this code to handle signals

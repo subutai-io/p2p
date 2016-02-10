@@ -297,18 +297,6 @@ func (dht *DHTRouter) ResponseConn(req ptp.DHTRequest, addr string, n Peer) ptp.
 		}
 	}
 
-	/*
-		a1, _ := net.ResolveUDPAddr("udp", addr)
-		a, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%s", a1.IP.String(), req.Port))
-		if err != nil {
-			ptp.Printf("[DHT-ERROR] Failed to resolve UDP Address: %v", err)
-		}
-		for i, node := range PeerList {
-			if node.ConnectionAddress == addr {
-				PeerList[i].Endpoint = a.String()
-			}
-		}
-	*/
 	resp.Id = n.ID
 	return resp
 }
@@ -346,11 +334,27 @@ func (dht *DHTRouter) RegisterHash(addr string, hash string) {
 	}
 }
 
+func (dht *DHTRouter) PeerExists(id string) bool {
+	for _, node := range PeerList {
+		if node.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
 // ResponseFind method generates a response to a "find" network message which sent by DHT client
 // when they want to build a p2p network based on infohash string.
 // This method goes over list of hashes and collects information about all nodes with the
 // same hash separated by comma
 func (dht *DHTRouter) ResponseFind(req ptp.DHTRequest, addr string) ptp.DHTResponse {
+	var resp ptp.DHTResponse
+	if !dht.PeerExists(req.Id) {
+		resp.Command = ptp.CMD_UNKNOWN
+		resp.Id = req.Id
+		resp.Dest = ""
+		return resp
+	}
 	var foundDest string
 	var hashExists bool = false
 	for _, node := range PeerList {
@@ -368,7 +372,6 @@ func (dht *DHTRouter) ResponseFind(req ptp.DHTRequest, addr string) ptp.DHTRespo
 		// Hash was not found for current node. Add it
 		dht.RegisterHash(addr, req.Hash)
 	}
-	var resp ptp.DHTResponse
 	resp.Command = req.Command
 	resp.Id = "0"
 	resp.Dest = foundDest
@@ -608,9 +611,11 @@ func main() {
 	var (
 		argDht    int
 		argTarget string
+		argListen int
 	)
 	flag.IntVar(&argDht, "dht", -1, "Port that DHT Bootstrap will listening to")
 	flag.StringVar(&argTarget, "t", "", "Host:Port of DHT Bootstrap node")
+	flag.IntVar(&argListen, "listen", 0, "Port for traffic forwarder")
 	flag.Parse()
 	ptp.SetMinLogLevel(ptp.DEBUG)
 	ptp.Log(ptp.INFO, "Initialization complete")
@@ -628,7 +633,7 @@ func main() {
 	} else {
 		// Act as a normal (proxy) control peer
 		var proxy Proxy
-		proxy.Initialize(argTarget)
+		proxy.Initialize(argTarget, argListen)
 		for {
 			proxy.SendPing()
 			time.Sleep(3 * time.Second)

@@ -404,6 +404,8 @@ func (p *PTPCloud) IntroducePeers() {
 
 		if peer.Retries >= 10 {
 			ptp.Log(ptp.WARNING, "Failed to introduce to %s", peer.ID)
+			delete(p.NetworkPeers, i)
+			continue
 			// TODO: Perform necessary action
 		}
 		peer.Retries = peer.Retries + 1
