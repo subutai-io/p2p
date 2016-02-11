@@ -68,6 +68,8 @@ type Peer struct {
 	// When disabled - node will not be interracted.
 	Disabled bool
 
+	Disconnect bool
+
 	IPList []*net.UDPAddr
 }
 
@@ -240,7 +242,25 @@ func (dht *DHTRouter) ResponseConn(req ptp.DHTRequest, addr string, n Peer) ptp.
 	resp.Command = req.Command
 	resp.Id = "0"
 	resp.Dest = "0"
-	// First we want to update Endpoint for this node
+	var supported bool = false
+
+	// Check that current version is supported
+	for _, ver := range ptp.SUPPORTED_VERSIONS {
+		if ver == req.Hash {
+			supported = true
+		}
+	}
+	if !supported {
+		ptp.Log(ptp.TRACE, "Unsupported packet version received during connection")
+		for i, p := range PeerList {
+			if p.Addr.String() == addr {
+				PeerList[i].Disconnect = true
+			}
+		}
+		return resp
+	}
+
+	// We want to update Endpoint for this node
 	// Let's resolve new address from original IP and by port received from client
 
 	// First element should always be a port number
@@ -607,6 +627,10 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 				removeKeys = append(removeKeys, i)
 				PeerList[i].Disabled = true
 			}
+			if PeerList[i].Disconnect {
+				ptp.Log(ptp.WARNING, "Closing connection to %s", PeerList[i].ConnectionAddress)
+				PeerList[i].MissedPing = 99
+			}
 		}
 		sort.Sort(sort.Reverse(sort.IntSlice(removeKeys)))
 	}
@@ -622,8 +646,8 @@ func main() {
 	flag.StringVar(&argTarget, "t", "", "Host:Port of DHT Bootstrap node")
 	flag.IntVar(&argListen, "listen", 0, "Port for traffic forwarder")
 	flag.Parse()
-	ptp.SetMinLogLevel(ptp.TRACE)
-	ptp.Log(ptp.INFO, "Initialization complete")
+	ptp.SetMinLogLevel(ptp.INFO)
+	ptp.Log(ptp.DEBUG, "Initialization complete")
 	if argDht > 0 {
 		var dht DHTRouter
 		dht.Port = argDht
