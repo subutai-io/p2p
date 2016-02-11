@@ -70,7 +70,7 @@ func (dht *DHTClient) Handshake(conn *net.UDPConn) error {
 	// Handshake
 	var req DHTRequest
 	req.Id = "0"
-	req.Hash = "0"
+	req.Hash = PACKET_VERSION
 	req.Command = CMD_CONN
 	// TODO: rename Port to something more clear
 	req.Port = fmt.Sprintf("%d", dht.P2PPort)
@@ -255,16 +255,16 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 }
 
 func (dht *DHTClient) HandleConn(data DHTResponse, conn *net.UDPConn) {
-	Log(DEBUG, "CONN packet receied")
-	if dht.ID != "" {
+	Log(DEBUG, "CONN packet received")
+	if data.Id == "" {
 		Log(ERROR, "Empty ID was received")
 		return
 	}
-	dht.ID = data.Id
-	if dht.ID == "0" {
+	if data.Id == "0" {
 		Log(ERROR, "Empty ID were received. Stopping")
 		os.Exit(1)
 	}
+	dht.ID = data.Id
 	// Send a hash within FIND command
 	// Afterwards application should wait for response from DHT
 	// with list of clients. This may not happen if this client is the
@@ -393,6 +393,7 @@ func (dht *DHTClient) HandleStop(data DHTResponse, conn *net.UDPConn) {
 }
 
 func (dht *DHTClient) HandleUnknown(data DHTResponse, conn *net.UDPConn) {
+	Log(INFO, "Restoring connection to a DHT bootstrap node")
 	err := dht.Handshake(conn)
 	if err != nil {
 		Log(ERROR, "Failed to send new handshake packet")

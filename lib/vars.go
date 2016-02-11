@@ -1,5 +1,9 @@
 package ptp
 
+const PACKET_VERSION string = "1"
+
+var SUPPORTED_VERSIONS = [...]string{"1", "2"}
+
 // TODO: Modify these structures
 type DHTRequest struct {
 	Id      string "i"
