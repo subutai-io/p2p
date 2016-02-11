@@ -6,10 +6,10 @@ var SUPPORTED_VERSIONS = [...]string{"1", "2"}
 
 // TODO: Modify these structures
 type DHTRequest struct {
-	Id      string "i"
-	Hash    string "h"
-	Command string "c"
-	Port    string "p"
+	Id        string "i"
+	Query     string "q"
+	Command   string "c"
+	Arguments string "a"
 }
 
 type DHTResponse struct {
