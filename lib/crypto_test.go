@@ -10,7 +10,7 @@ import (
 func TestEncrypt(t *testing.T) {
 	crypto := new(Crypto)
 	var key CryptoKey
-	crypto.EncrichKeyValues(key, "keylessthan32", "1")
+	crypto.EnrichKeyValues(key, "keylessthan32", "1")
 }
 
 func RandomString(size int) string {
@@ -30,7 +30,7 @@ func BenchmarkEncrypt(b *testing.B) {
 	}
 	crypto := new(Crypto)
 	var key CryptoKey
-	crypto.EncrichKeyValues(key, "keylessthan32", "1")
+	crypto.EnrichKeyValues(key, "keylessthan32", "1")
 	for i := 0; i < b.N; i++ {
 		for _, str := range data {
 			crypto.Encrypt(crypto.ActiveKey.Key, []byte(str))

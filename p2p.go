@@ -310,7 +310,7 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 			argTTL = "default"
 		}
 		var newKey ptp.CryptoKey
-		newKey = p.Crypter.EncrichKeyValues(newKey, argKey, argTTL)
+		newKey = p.Crypter.EnrichKeyValues(newKey, argKey, argTTL)
 		p.Crypter.Keys = append(p.Crypter.Keys, newKey)
 		p.Crypter.ActiveKey = p.Crypter.Keys[0]
 		p.Crypter.Active = true
