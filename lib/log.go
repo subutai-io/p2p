@@ -15,7 +15,7 @@ const (
 	ERROR
 )
 
-var log_prefixes = [...]string{"[TRACE]", "[DEBUG] ", "[INFO] ", "[WARNING] ", "[ERROR] "}
+var log_prefixes = [...]string{"[TRACE] ", "[DEBUG] ", "[INFO] ", "[WARNING] ", "[ERROR] "}
 var log_flags = [...]int{log.Ldate | log.Ltime,
 	log.Ldate | log.Ltime,
 	log.Ldate | log.Ltime,

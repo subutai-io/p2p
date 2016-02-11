@@ -22,7 +22,7 @@ var (
 	PeerList []Peer
 
 	// Ping timeout for variables
-	PingTimeout time.Duration = 3
+	PingTimeout time.Duration = 3 * time.Second
 )
 
 type DHTState int
@@ -349,6 +349,10 @@ func (dht *DHTRouter) PeerExists(id string) bool {
 // same hash separated by comma
 func (dht *DHTRouter) ResponseFind(req ptp.DHTRequest, addr string) ptp.DHTResponse {
 	var resp ptp.DHTResponse
+	if len(req.Id) != 36 {
+		ptp.Log(ptp.DEBUG, "Malformed ID received. Ignoring")
+		return resp
+	}
 	if !dht.PeerExists(req.Id) {
 		resp.Command = ptp.CMD_UNKNOWN
 		resp.Id = req.Id
@@ -527,6 +531,7 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 	case ptp.CMD_PING:
 		for i, node := range PeerList {
 			if node.Addr.String() == addr.String() {
+				ptp.Log(ptp.TRACE, "CMD_PING from %s", addr.String())
 				PeerList[i].MissedPing = 0
 			}
 		}
@@ -593,7 +598,7 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 			PeerList = append(PeerList[:i], PeerList[i+1:]...)
 		}
 		removeKeys = removeKeys[:0]
-		time.Sleep(PingTimeout * time.Second)
+		time.Sleep(PingTimeout)
 		for i, node := range PeerList {
 			PeerList[i].MissedPing = PeerList[i].MissedPing + 1
 			resp := dht.ResponsePing(*req, node.ConnectionAddress)
@@ -617,7 +622,7 @@ func main() {
 	flag.StringVar(&argTarget, "t", "", "Host:Port of DHT Bootstrap node")
 	flag.IntVar(&argListen, "listen", 0, "Port for traffic forwarder")
 	flag.Parse()
-	ptp.SetMinLogLevel(ptp.DEBUG)
+	ptp.SetMinLogLevel(ptp.TRACE)
 	ptp.Log(ptp.INFO, "Initialization complete")
 	if argDht > 0 {
 		var dht DHTRouter
