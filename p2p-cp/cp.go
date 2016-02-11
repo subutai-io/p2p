@@ -22,7 +22,7 @@ var (
 	PeerList []Peer
 
 	// Ping timeout for variables
-	PingTimeout time.Duration = 3
+	PingTimeout time.Duration = 3 * time.Second
 )
 
 type DHTState int
@@ -240,7 +240,25 @@ func (dht *DHTRouter) ResponseConn(req ptp.DHTRequest, addr string, n Peer) ptp.
 	resp.Command = req.Command
 	resp.Id = "0"
 	resp.Dest = "0"
-	// First we want to update Endpoint for this node
+	var supported bool = false
+
+	// Check that current version is supported
+	for _, ver := range ptp.SUPPORTED_VERSIONS {
+		if ver == req.Hash {
+			supported = true
+		}
+	}
+	if !supported {
+		ptp.Log(ptp.DEBUG, "Unsupported packet version received during connection")
+		for i, p := range PeerList {
+			if p.Addr.String() == addr {
+				PeerList[i].Disabled = true
+			}
+		}
+		return resp
+	}
+
+	// We want to update Endpoint for this node
 	// Let's resolve new address from original IP and by port received from client
 
 	// First element should always be a port number
@@ -298,6 +316,7 @@ func (dht *DHTRouter) ResponseConn(req ptp.DHTRequest, addr string, n Peer) ptp.
 	}
 
 	resp.Id = n.ID
+	ptp.Log(ptp.DEBUG, "Sending greeting with ID to %s", addr)
 	return resp
 }
 
@@ -349,6 +368,10 @@ func (dht *DHTRouter) PeerExists(id string) bool {
 // same hash separated by comma
 func (dht *DHTRouter) ResponseFind(req ptp.DHTRequest, addr string) ptp.DHTResponse {
 	var resp ptp.DHTResponse
+	if len(req.Id) != 36 {
+		ptp.Log(ptp.DEBUG, "Malformed ID received. Ignoring")
+		return resp
+	}
 	if !dht.PeerExists(req.Id) {
 		resp.Command = ptp.CMD_UNKNOWN
 		resp.Id = req.Id
@@ -514,6 +537,12 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 	}
 	ptp.Log(ptp.TRACE, "%s: %s", addr, string(buf[:512]))
 
+	for _, peer := range PeerList {
+		if peer.Disabled && peer.ConnectionAddress == addr.String() {
+			return
+		}
+	}
+
 	// Try to bencode
 	req, err := dht.Extract(buf[:512])
 	var resp ptp.DHTResponse
@@ -527,6 +556,7 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 	case ptp.CMD_PING:
 		for i, node := range PeerList {
 			if node.Addr.String() == addr.String() {
+				ptp.Log(ptp.TRACE, "CMD_PING from %s", addr.String())
 				PeerList[i].MissedPing = 0
 			}
 		}
@@ -593,7 +623,7 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 			PeerList = append(PeerList[:i], PeerList[i+1:]...)
 		}
 		removeKeys = removeKeys[:0]
-		time.Sleep(PingTimeout * time.Second)
+		time.Sleep(PingTimeout)
 		for i, node := range PeerList {
 			PeerList[i].MissedPing = PeerList[i].MissedPing + 1
 			resp := dht.ResponsePing(*req, node.ConnectionAddress)
@@ -617,8 +647,8 @@ func main() {
 	flag.StringVar(&argTarget, "t", "", "Host:Port of DHT Bootstrap node")
 	flag.IntVar(&argListen, "listen", 0, "Port for traffic forwarder")
 	flag.Parse()
-	ptp.SetMinLogLevel(ptp.DEBUG)
-	ptp.Log(ptp.INFO, "Initialization complete")
+	ptp.SetMinLogLevel(ptp.INFO)
+	ptp.Log(ptp.DEBUG, "Initialization complete")
 	if argDht > 0 {
 		var dht DHTRouter
 		dht.Port = argDht

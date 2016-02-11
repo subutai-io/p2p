@@ -17,6 +17,8 @@ import (
 	"time"
 )
 
+var VERSION string = "Unknown"
+
 type RunArgs struct {
 	IP      string
 	Mask    string
@@ -174,7 +176,7 @@ func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
 	if resp.ExitCode == 0 {
 		resp.Output = "New key added"
 		var newKey ptp.CryptoKey
-		newKey = Instances[args.Hash].PTP.Crypter.EncrichKeyValues(newKey, args.Key, args.TTL)
+		newKey = Instances[args.Hash].PTP.Crypter.EnrichKeyValues(newKey, args.Key, args.TTL)
 		Instances[args.Hash].PTP.Crypter.Keys = append(Instances[args.Hash].PTP.Crypter.Keys, newKey)
 	}
 	return nil
@@ -336,6 +338,7 @@ func main() {
 		argLog      string
 		argSaveFile string
 		argFwd      bool
+		argVersion  bool
 
 		// Daemon configuration and commands
 		argDaemon     bool
@@ -366,6 +369,7 @@ func main() {
 	flag.StringVar(&argLog, "log", "", "Log level")
 	flag.StringVar(&argSaveFile, "save", "", "Path to restore file")
 	flag.BoolVar(&argFwd, "fwd", false, "Force traffic forwarding through proxy")
+	flag.BoolVar(&argVersion, "version", false, "Show current version")
 
 	// RPC
 	flag.StringVar(&argRPCPort, "rpc", "52523", "Port for RPC Communication")
@@ -381,6 +385,11 @@ func main() {
 	flag.StringVar(&argProfyle, "profyle", "", "Starts PTP package with profiling. Possible values : memory, cpu")
 
 	flag.Parse()
+
+	if argVersion {
+		fmt.Printf("p2p Cloud project %s\n", VERSION)
+		os.Exit(0)
+	}
 
 	if argDaemon {
 		start_profyle(argProfyle)
