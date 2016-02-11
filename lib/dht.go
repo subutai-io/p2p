@@ -256,15 +256,15 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 
 func (dht *DHTClient) HandleConn(data DHTResponse, conn *net.UDPConn) {
 	Log(DEBUG, "CONN packet received")
-	dht.ID = data.Id
-	if dht.ID != "" {
+	if data.Id == "" {
 		Log(ERROR, "Empty ID was received")
 		return
 	}
-	if dht.ID == "0" {
+	if data.Id == "0" {
 		Log(ERROR, "Empty ID were received. Stopping")
 		os.Exit(1)
 	}
+	dht.ID = data.Id
 	// Send a hash within FIND command
 	// Afterwards application should wait for response from DHT
 	// with list of clients. This may not happen if this client is the

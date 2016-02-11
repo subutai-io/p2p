@@ -68,8 +68,6 @@ type Peer struct {
 	// When disabled - node will not be interracted.
 	Disabled bool
 
-	Disconnect bool
-
 	IPList []*net.UDPAddr
 }
 
@@ -251,10 +249,10 @@ func (dht *DHTRouter) ResponseConn(req ptp.DHTRequest, addr string, n Peer) ptp.
 		}
 	}
 	if !supported {
-		ptp.Log(ptp.TRACE, "Unsupported packet version received during connection")
+		ptp.Log(ptp.DEBUG, "Unsupported packet version received during connection")
 		for i, p := range PeerList {
 			if p.Addr.String() == addr {
-				PeerList[i].Disconnect = true
+				PeerList[i].Disabled = true
 			}
 		}
 		return resp
@@ -318,6 +316,7 @@ func (dht *DHTRouter) ResponseConn(req ptp.DHTRequest, addr string, n Peer) ptp.
 	}
 
 	resp.Id = n.ID
+	ptp.Log(ptp.DEBUG, "Sending greeting with ID to %s", addr)
 	return resp
 }
 
@@ -538,6 +537,12 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 	}
 	ptp.Log(ptp.TRACE, "%s: %s", addr, string(buf[:512]))
 
+	for _, peer := range PeerList {
+		if peer.Disabled && peer.ConnectionAddress == addr.String() {
+			return
+		}
+	}
+
 	// Try to bencode
 	req, err := dht.Extract(buf[:512])
 	var resp ptp.DHTResponse
@@ -626,10 +631,6 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 			if PeerList[i].MissedPing >= 4 {
 				removeKeys = append(removeKeys, i)
 				PeerList[i].Disabled = true
-			}
-			if PeerList[i].Disconnect {
-				ptp.Log(ptp.WARNING, "Closing connection to %s", PeerList[i].ConnectionAddress)
-				PeerList[i].MissedPing = 99
 			}
 		}
 		sort.Sort(sort.Reverse(sort.IntSlice(removeKeys)))
