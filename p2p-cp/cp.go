@@ -823,7 +823,7 @@ func main() {
 	flag.StringVar(&argTarget, "t", "", "Host:Port of DHT Bootstrap node")
 	flag.IntVar(&argListen, "listen", 0, "Port for traffic forwarder")
 	flag.Parse()
-	ptp.SetMinLogLevel(ptp.DEBUG)
+	ptp.SetMinLogLevel(ptp.ERROR)
 	ptp.Log(ptp.DEBUG, "Initialization complete")
 	if argDht > 0 {
 		var dht DHTRouter
