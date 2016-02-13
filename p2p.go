@@ -4,13 +4,12 @@ import (
 	"crypto/rand"
 	"flag"
 	"fmt"
-	"github.com/danderson/tuntap"
+	//"github.com/crioto/tuntap"
 	ptp "github.com/subutai-io/p2p/lib"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -42,7 +41,7 @@ type PTPCloud struct {
 	Interface *os.File
 
 	// Representation of TUN/TAP Device
-	Device *tuntap.Interface
+	Device *ptp.Interface
 
 	//NetworkPeers []NetworkPeer
 	NetworkPeers map[string]NetworkPeer
@@ -119,7 +118,7 @@ func (p *PTPCloud) CreateDevice(ip, mac, mask, device string) error {
 		return err
 	}
 
-	p.Device, err = tuntap.Open(p.DeviceName, tuntap.DevTap)
+	p.Device, err = ptp.Open(p.DeviceName, ptp.DevTap, true)
 	if p.Device == nil {
 		ptp.Log(ptp.ERROR, "Failed to open TAP device: %v", err)
 		return err
@@ -127,28 +126,8 @@ func (p *PTPCloud) CreateDevice(ip, mac, mask, device string) error {
 		ptp.Log(ptp.INFO, "%v TAP Device created", p.DeviceName)
 	}
 
-	linkup := exec.Command(p.IPTool, "link", "set", "dev", p.DeviceName, "up")
-	err = linkup.Run()
+	err = ptp.ConfigureInterface(p.IP, mac, p.DeviceName, p.IPTool)
 	if err != nil {
-		ptp.Log(ptp.ERROR, "Failed to up link: %v", err)
-		return err
-	}
-
-	// Configure new device
-	ptp.Log(ptp.INFO, "Setting %s IP on device %s", p.IP, p.DeviceName)
-	setip := exec.Command(p.IPTool, "addr", "add", p.IP+"/24", "dev", p.DeviceName)
-	err = setip.Run()
-	if err != nil {
-		ptp.Log(ptp.ERROR, "Failed to set IP: %v", err)
-		return err
-	}
-
-	// Set MAC to device
-	ptp.Log(ptp.INFO, "Setting %s MAC on device %s", mac, p.DeviceName)
-	setmac := exec.Command(p.IPTool, "link", "set", "dev", p.DeviceName, "address", mac)
-	err = setmac.Run()
-	if err != nil {
-		ptp.Log(ptp.ERROR, "Failed to set MAC: %v", err)
 		return err
 	}
 	return nil
@@ -634,7 +613,7 @@ func (p *PTPCloud) SyncPeers() int {
 
 // WriteToDevice writes data to created TUN/TAP device
 func (p *PTPCloud) WriteToDevice(b []byte, proto uint16, truncated bool) {
-	var packet tuntap.Packet
+	var packet ptp.Packet
 	packet.Protocol = int(proto)
 	packet.Truncated = truncated
 	packet.Packet = b
