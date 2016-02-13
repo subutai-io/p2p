@@ -3,7 +3,8 @@ CP_APP=cp
 CC=go
 PACK=goupx
 VERSION=$(shell git describe)
-OS=`uname`
+OS=$(shell uname -s)
+ARCH=$(shell uname -m)
 
 all: pack
 
@@ -29,5 +30,5 @@ test:  $(APP) $(CP_APP)
 release: $(APP) $(CP_APP)
 release: pack
 release:
-	-cp $(APP) $(APP)-$(OS)-$(VERSION)
-	-cp $(CP_APP) $(CP_APP)-$(OS)-$(VERSION)
+	-cp $(APP) $(APP)-$(OS)-$(ARCH)-$(VERSION)
+	-cp $(CP_APP) $(CP_APP)-$(OS)-$(ARCH)-$(VERSION)
