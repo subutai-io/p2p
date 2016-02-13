@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"flag"
 	"fmt"
-	"github.com/crioto/tuntap"
+	//"github.com/crioto/tuntap"
 	ptp "github.com/subutai-io/p2p/lib"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -42,7 +42,7 @@ type PTPCloud struct {
 	Interface *os.File
 
 	// Representation of TUN/TAP Device
-	Device *tuntap.Interface
+	Device *ptp.Interface
 
 	//NetworkPeers []NetworkPeer
 	NetworkPeers map[string]NetworkPeer
@@ -118,7 +118,7 @@ func (p *PTPCloud) CreateDevice(ip, mac, mask, device string) error {
 		return err
 	}
 
-	p.Device, err = tuntap.Open(p.DeviceName, tuntap.DevTap)
+	p.Device, err = ptp.Open(p.DeviceName, ptp.DevTap, false)
 	if p.Device == nil {
 		ptp.Log(ptp.ERROR, "Failed to open TAP device: %v", err)
 		return err
@@ -633,7 +633,7 @@ func (p *PTPCloud) SyncPeers() int {
 
 // WriteToDevice writes data to created TUN/TAP device
 func (p *PTPCloud) WriteToDevice(b []byte, proto uint16, truncated bool) {
-	var packet tuntap.Packet
+	var packet ptp.Packet
 	packet.Protocol = int(proto)
 	packet.Truncated = truncated
 	packet.Packet = b
