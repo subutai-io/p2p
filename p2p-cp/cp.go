@@ -630,13 +630,16 @@ func (dht *DHTRouter) HandleStop(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 }
 
 // ResponseCP responses to a CP request
-// Packet contents:
+// Request Packet contents:
 // req.Query - list of CPs that should be excluded
+// req.Arguments - ID of target peer
+// Response Packet contents:
+// resp.Dest - control peer endpoint
+//
 func (dht *DHTRouter) HandleCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
 	ptp.Log(ptp.DEBUG, "Received request of control peer from %s", addr.String())
 	var resp ptp.DHTResponse
 	resp.Command = req.Command
-	//resp.Id = "0"
 	resp.Dest = "0"
 	for _, cp := range dht.ControlPeers {
 		if cp.ValidateConnection() {
