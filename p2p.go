@@ -31,6 +31,7 @@ type PTPCloud struct {
 	Crypter         ptp.Crypto                           // Instance of crypto
 	Shutdown        bool                                 // Set to true when instance in shutdown mode
 	IPIDTable       map[string]string                    // Mapping for IP->ID
+	MACIDTable      map[string]string                    // Mapping for MAC->ID
 	ForwardMode     bool                                 // Skip local peer discovery
 	MessageHandlers map[uint16]MessageHandler            // Callbacks
 	ReadyToStop     bool                                 // Set to true when instance is ready to stop
@@ -224,6 +225,7 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.HardwareAddr = hw
 	p.NetworkPeers = make(map[string]NetworkPeer)
 	p.IPIDTable = make(map[string]string)
+	p.MACIDTable = make(map[string]string)
 
 	if fwd {
 		p.ForwardMode = true
@@ -390,6 +392,7 @@ func (p *PTPCloud) PurgePeers() {
 		if !f {
 			ptp.Log(ptp.INFO, ("Removing outdated peer"))
 			delete(p.IPIDTable, peer.PeerLocalIP.String())
+			delete(p.MACIDTable, peer.PeerHW.String())
 			delete(p.NetworkPeers, i)
 		}
 	}
@@ -646,6 +649,7 @@ func (p *PTPCloud) AddPeer(addr *net.UDPAddr, id string, ip net.IP, mac net.Hard
 			peer.Handshaked = true
 			p.NetworkPeers[i] = peer
 			p.IPIDTable[ip.String()] = id
+			p.MACIDTable[mac.String()] = id
 		}
 	}
 	if !found {
@@ -658,6 +662,7 @@ func (p *PTPCloud) AddPeer(addr *net.UDPAddr, id string, ip net.IP, mac net.Hard
 		newPeer.Handshaked = true
 		p.NetworkPeers[newPeer.ID] = newPeer
 		p.IPIDTable[ip.String()] = id
+		p.MACIDTable[mac.String()] = id
 	}
 }
 
@@ -817,14 +822,17 @@ func (p *PTPCloud) HandleTestMessage(msg *ptp.P2PMessage, src_addr *net.UDPAddr)
 func (p *PTPCloud) SendTo(dst net.HardwareAddr, msg *ptp.P2PMessage) (int, error) {
 	// TODO: Speed up this by switching to map
 	ptp.Log(ptp.TRACE, "Requested Send to %s", dst.String())
-	for _, peer := range p.NetworkPeers {
-		if peer.PeerHW.String() == dst.String() {
+	id, exists := p.MACIDTable[dst.String()]
+	if exists {
+		peer, exists := p.NetworkPeers[id]
+		if exists {
 			msg.Header.ProxyId = uint16(peer.ProxyID)
 			ptp.Log(ptp.TRACE, "Sending to %s via proxy id %d", dst.String(), msg.Header.ProxyId)
 			size, err := p.UDPSocket.SendMessage(msg, peer.PeerAddr)
 			return size, err
 		}
 	}
+	ptp.Log(ptp.DEBUG, "Failed to send packet: Peer not found")
 	return 0, nil
 }
 
