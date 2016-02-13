@@ -2,6 +2,7 @@ package ptp
 
 import (
 	"os"
+	"os/exec"
 )
 
 func openDevice(ifPattern string) (*os.File, error) {
