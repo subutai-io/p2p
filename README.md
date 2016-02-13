@@ -37,7 +37,7 @@ Running on Mac OS
 
 Running p2p on Mac OS requires you to perform two additional steps:
 
-* First you should install [TUN/TAP driver](http://tuntaposx.sourceforget.net) first.
+* First you should install [TUN/TAP driver](http://tuntaposx.sourceforge.net) first.
 * Create new file named **config.yaml** and write the following line inside it:
 ```
 iptool: /sbin/ifconfig
