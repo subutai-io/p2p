@@ -7,7 +7,7 @@ Dev: [![Build Status - dev](https://api.travis-ci.org/subutai-io/p2p.png?branch=
 
 P2P Cloud project allows users to build their private networks. 
 
-Running
+Running on Linux
 -------------------
 
 p2p is managed by a daemon that controls every instance of your private networks (if you're participating in a different networks at the same time). To start a daemon simply run p2p with -daemon flag. Note, that application will run in a foreground mode. 
@@ -30,6 +30,17 @@ Instance of P2P network can be stopped with use of -stop flag
 
 ```
 p2p -stop -hash UNIQUE_STRING_IDENTIFIER
+```
+
+Running on Mac OS
+-------------------
+
+Running p2p on Mac OS requires you to perform two additional steps:
+
+* First you should install [TUN/TAP driver](http://tuntaposx.sourceforget.net) first.
+* Create new file named **config.yaml** and write the following line inside it:
+```
+iptool: /sbin/ifconfig
 ```
 
 Development & Branching Model
