@@ -607,7 +607,6 @@ func (dht *DHTRouter) HandleNode(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 		}
 	}
 
-	ptp.Log(ptp.DEBUG, "!@#!@#!@#!@#!@# %s", resp.Dest)
 	return resp
 }
 
@@ -696,7 +695,6 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 		peer, exists = dht.PeerList[req.Id]
 		if !exists {
 			// Send CMD_UNKNOWN for unknown peer
-			ptp.Log(ptp.INFO, "!!!!!!!!!!!!!!!!%s", string(buf[:512]))
 			var resp ptp.DHTResponse
 			resp.Command = ptp.CMD_UNKNOWN
 			resp.Id = req.Id
@@ -823,7 +821,7 @@ func main() {
 	flag.StringVar(&argTarget, "t", "", "Host:Port of DHT Bootstrap node")
 	flag.IntVar(&argListen, "listen", 0, "Port for traffic forwarder")
 	flag.Parse()
-	ptp.SetMinLogLevel(ptp.DEBUG)
+	ptp.SetMinLogLevel(ptp.INFO)
 	ptp.Log(ptp.DEBUG, "Initialization complete")
 	if argDht > 0 {
 		var dht DHTRouter
