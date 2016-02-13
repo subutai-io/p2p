@@ -19,8 +19,8 @@ pack: $(APP) $(CP_APP)
 clean:
 	-rm -f $(APP)
 	-rm -f $(CP_APP)
-	-rm -f $(APP)-v*
-	-rm -f $(CP_APP)-v*
+	-rm -f $(APP)-*-v*
+	-rm -f $(CP_APP)-*-v*
 
 test:  $(APP) $(CP_APP)
 	go test ./...

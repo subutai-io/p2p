@@ -641,7 +641,18 @@ func (dht *DHTRouter) HandleCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer
 	var resp ptp.DHTResponse
 	resp.Command = req.Command
 	resp.Dest = "0"
+
+	omitList := strings.Split(req.Query, "|")
 	for _, cp := range dht.ControlPeers {
+		var omit bool = false
+		for _, skip := range omitList {
+			if skip == cp.Addr.String() {
+				omit = true
+			}
+		}
+		if omit {
+			continue
+		}
 		if cp.ValidateConnection() {
 			resp.Dest = cp.Addr.String()
 			resp.Id = req.Arguments
