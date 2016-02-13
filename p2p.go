@@ -80,9 +80,10 @@ type NetworkPeer struct {
 	// This variables indicates whether handshake mechanism was started or not
 	Handshaked bool
 	// ID of the proxy used to communicate with the node
-	ProxyID   int
-	Forwarder *net.UDPAddr
-	PeerAddr  *net.UDPAddr
+	ProxyID      int
+	ProxyRetries int
+	Forwarder    *net.UDPAddr
+	PeerAddr     *net.UDPAddr
 	// IP of the peer we are connected to.
 	PeerLocalIP net.IP
 	// Hardware address of node's TUN/TAP device
@@ -803,14 +804,6 @@ func (p *PTPCloud) HandleIntroMessage(msg *ptp.P2PMessage, src_addr *net.UDPAddr
 	// TODO: Change PeerAddr with DST addr of real peer
 	p.AddPeer(addr, id, ip, mac)
 	ptp.Log(ptp.INFO, "Introduced new peer. IP: %s. ID: %s, HW: %s", ip, id, mac)
-	/*
-		response := p.PrepareIntroductionMessage(p.dht.ID)
-		response.Header.ProxyId = msg.Header.ProxyId
-		_, err := p.UDPSocket.SendMessage(response, src_addr)
-		if err != nil {
-			ptp.Log(ptp.ERROR, "Failed to respond to introduction message: %v", err)
-		}
-	*/
 }
 
 func (p *PTPCloud) HandleIntroRequestMessage(msg *ptp.P2PMessage, src_addr *net.UDPAddr) {

@@ -607,7 +607,6 @@ func (dht *DHTRouter) HandleNode(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 		}
 	}
 
-	ptp.Log(ptp.DEBUG, "!@#!@#!@#!@#!@# %s", resp.Dest)
 	return resp
 }
 
@@ -631,7 +630,8 @@ func (dht *DHTRouter) HandleStop(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 }
 
 // ResponseCP responses to a CP request
-//func (dht *DHTRouter) ResponseCP(req ptp.DHTRequest, addr string) ptp.DHTResponse {
+// Packet contents:
+// req.Query - list of CPs that should be excluded
 func (dht *DHTRouter) HandleCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
 	ptp.Log(ptp.DEBUG, "Received request of control peer from %s", addr.String())
 	var resp ptp.DHTResponse
@@ -696,7 +696,6 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 		peer, exists = dht.PeerList[req.Id]
 		if !exists {
 			// Send CMD_UNKNOWN for unknown peer
-			ptp.Log(ptp.INFO, "!!!!!!!!!!!!!!!!%s", string(buf[:512]))
 			var resp ptp.DHTResponse
 			resp.Command = ptp.CMD_UNKNOWN
 			resp.Id = req.Id
@@ -721,58 +720,6 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 	} else {
 		ptp.Log(ptp.ERROR, "Unknown command received: %s", req.Command)
 	}
-	/*
-		switch req.Command {
-		case ptp.CMD_CONN:
-			// Connection handshake
-			resp = dht.ResponseConn(req, addr.String(), n)
-		case ptp.CMD_FIND:
-			// Find by infohash request
-			resp = dht.ResponseFind(req, addr.String())
-		case ptp.CMD_PING:
-			for i, peer := range dht.PeerList {
-				if peer.Addr.String() == addr.String() {
-					ptp.Log(ptp.TRACE, "CMD_PING from %s", addr.String())
-					peer.MissedPing = 0
-					dht.PeerList[i] = peer
-				}
-			}
-			resp.Command = ""
-		case ptp.CMD_REGCP:
-			// Register new control peer
-			resp = dht.ResponseRegCP(req, addr.String())
-		case ptp.CMD_CP:
-			// Find control peer
-			resp = dht.ResponseCP(req, addr.String())
-		case ptp.CMD_NOTIFY:
-			resp = dht.ResponseNotify(req, addr.String())
-			addr, _ = net.ResolveUDPAddr("udp", req.Arguments)
-		case ptp.CMD_BADCP:
-			// Given Control Peer cannot be communicated
-			// TODO: Move this to a separate method
-			for i, cp := range dht.ControlPeers {
-				if cp.Addr.String() == req.Query {
-					if !cp.ValidateConnection() {
-						// Remove bad control peer
-						dht.ControlPeers = append(dht.ControlPeers[:i], dht.ControlPeers[i+1:]...)
-						break
-					}
-				}
-			}
-			// TODO: Exclude this Control peer from list for this particular peer
-			resp = dht.ResponseCP(req, addr.String())
-		case ptp.CMD_NODE:
-			resp = dht.ResponseNode(req, addr.String())
-		case ptp.CMD_LOAD:
-			dht.UpdateControlPeerLoad(req.Id, req.Arguments)
-		case ptp.CMD_STOP:
-			resp = dht.ResponseStop(req)
-		default:
-			ptp.Log(ptp.ERROR, "Unknown command received: %s", req.Command)
-			resp.Command = ""
-		}
-	*/
-
 }
 
 func (dht *DHTRouter) UpdateControlPeerLoad(id, amount string) {
