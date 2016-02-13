@@ -12,3 +12,46 @@ func openDevice(ifPattern string) (*os.File, error) {
 func createInterface(file *os.File, ifPattern string, kind DevKind, meta bool) (string, error) {
 	return "1", nil
 }
+
+func ConfigureInterface(ip, mac, device, tool string) error {
+	linkup := exec.Command(tool, device, ip, "up")
+	err := linkup.Run()
+	if err != nil {
+		Log(ERROR, "Failed to up link: %v", err)
+		return err
+	}
+	return nil
+}
+
+func LinkUp(device, tool string) error {
+	linkup := exec.Command(tool, "link", "set", "dev", device, "up")
+	err := linkup.Run()
+	if err != nil {
+		Log(ERROR, "Failed to up link: %v", err)
+		return err
+	}
+	return nil
+}
+
+func SetIp(ip, device, tool string) error {
+	Log(INFO, "Setting %s IP on device %s", ip, device)
+	setip := exec.Command(tool, "addr", "add", ip+"/24", "dev", device)
+	err := setip.Run()
+	if err != nil {
+		Log(ERROR, "Failed to set IP: %v", err)
+		return err
+	}
+	return err
+}
+
+func SetMac(mac, device, tool string) error {
+	// Set MAC to device
+	Log(INFO, "Setting %s MAC on device %s", mac, device)
+	setmac := exec.Command(tool, "link", "set", "dev", device, "address", mac)
+	err := setmac.Run()
+	if err != nil {
+		Log(ERROR, "Failed to set MAC: %v", err)
+		return err
+	}
+	return err
+}
