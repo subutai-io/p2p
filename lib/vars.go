@@ -1,11 +1,15 @@
 package ptp
 
+const PACKET_VERSION string = "1"
+
+var SUPPORTED_VERSIONS = [...]string{"1", "2"}
+
 // TODO: Modify these structures
 type DHTRequest struct {
-	Id      string "i"
-	Hash    string "h"
-	Command string "c"
-	Port    string "p"
+	Id        string "i"
+	Query     string "q"
+	Command   string "c"
+	Arguments string "a"
 }
 
 type DHTResponse struct {
@@ -30,14 +34,15 @@ const (
 
 // List of commands used in DHT
 const (
-	CMD_CONN   string = "conn"
-	CMD_FIND   string = "find"
-	CMD_NODE   string = "node"
-	CMD_PING   string = "ping"
-	CMD_REGCP  string = "regcp"
-	CMD_BADCP  string = "badcp"
-	CMD_CP     string = "cp"
-	CMD_NOTIFY string = "notify"
-	CMD_LOAD   string = "load"
-	CMD_STOP   string = "stop"
+	CMD_CONN    string = "conn"
+	CMD_FIND    string = "find"
+	CMD_NODE    string = "node"
+	CMD_PING    string = "ping"
+	CMD_REGCP   string = "regcp"
+	CMD_BADCP   string = "badcp"
+	CMD_CP      string = "cp"
+	CMD_NOTIFY  string = "notify"
+	CMD_LOAD    string = "load"
+	CMD_STOP    string = "stop"
+	CMD_UNKNOWN string = "unk"
 )
