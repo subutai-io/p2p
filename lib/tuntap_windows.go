@@ -11,7 +11,6 @@ import (
 const (
 	NETWORK_CONNECTIONS_KEY string = "SYSTEM\\CurrentControlSet\\Control\\Network\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
 	ADAPTER_KEY             string = "SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
-	DSIZE                   int    = 72
 )
 
 func InitTuntap() int {
@@ -22,13 +21,13 @@ func InitTuntap() int {
 		return ret
 	}
 	var (
-		name_length  uint32 = DSIZE
+		name_length  uint32 = 72
 		key_type     uint32
-		lpDataLength uint32 = DSIZE
+		lpDataLength uint32 = 72
 		zero_unit    uint32 = 0
 	)
-	name := make([]uint16, DSIZE)
-	lpData := make([]byte, DSIZE)
+	name := make([]uint16, 72)
+	lpData := make([]byte, 72)
 
 	ret = win.RegEnumValue(root, zero_unit, &name[0], &name_length, nil, &key_type, &lpData[0], &lpDataLength)
 	fmt.Printf("Execution result is: %d", ret)
