@@ -87,7 +87,6 @@ func (p *Proxy) RegisterTunnel() {
 	p.Lock = true
 	target := p.TunnelQueue[0].Target
 	source := p.TunnelQueue[0].Source
-	ptp.Log(ptp.DEBUG, "Size of map is %d", len(p.Tunnels))
 	ptp.Log(ptp.DEBUG, "Requested proxy for %s from %s", target, source)
 	// Check if we are in the list
 	available := false
@@ -178,6 +177,7 @@ func (p *Proxy) SendPing() {
 func (p *Proxy) CleanTunnels() {
 	for key, tunnel := range p.Tunnels {
 		if tunnel.PingFails > 3 {
+			ptp.Log(ptp.DEBUG, "Removing outdated proxy: %d", key)
 			delete(p.Tunnels, key)
 		}
 	}

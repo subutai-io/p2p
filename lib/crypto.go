@@ -28,7 +28,7 @@ type Crypto struct {
 	Active    bool
 }
 
-func (c Crypto) EncrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKey {
+func (c Crypto) EnrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKey {
 	var err error
 	i, err := strconv.ParseInt(datetime, 10, 64)
 	ckey.Until = time.Now()
@@ -61,7 +61,7 @@ func (c Crypto) ReadKeysFromFile(filepath string) {
 		c.Active = false
 		return
 	}
-	ckey = c.EncrichKeyValues(ckey, ckey.KeyConfig, ckey.TTLConfig)
+	ckey = c.EnrichKeyValues(ckey, ckey.KeyConfig, ckey.TTLConfig)
 	c.Active = true
 	c.Keys = append(c.Keys, ckey)
 }
