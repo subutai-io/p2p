@@ -46,3 +46,16 @@ const (
 	CMD_STOP    string = "stop"
 	CMD_UNKNOWN string = "unk"
 )
+
+type PeerState int
+
+// Peer state
+const (
+	P_INIT                  PeerState = 0 + iota
+	P_CONNECTED                       = 1
+	P_HANDSHAKING                     = 2
+	P_HANDSHAKING_FAILED              = 3
+	P_WAITING_FORWARDER               = 4
+	P_HANDSHAKING_FORWARDER           = 5
+	P_DISCONNECT                      = 6
+)
