@@ -353,6 +353,9 @@ func (dht *DHTClient) HandleCp(data DHTResponse, conn *net.UDPConn) {
 	// We've received information about proxy
 	Log(INFO, "Received control peer %s. Saving", data.Dest)
 	var found bool = false
+	if data.Dest == "0" {
+		return
+	}
 	for _, fwd := range dht.Forwarders {
 		if fwd.Addr.String() == data.Dest && fwd.DestinationID == data.Id {
 			found = true
