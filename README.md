@@ -7,7 +7,7 @@ Dev: [![Build Status - dev](https://api.travis-ci.org/subutai-io/p2p.png?branch=
 
 P2P Cloud project allows users to build their private networks. 
 
-Running on Linux
+Running
 -------------------
 
 > **MacOS** users should install [TUN/TAP driver](http://tuntaposx.sourceforge.net) and create a config.yaml file with the following line: ``` iptool: /sbin/ifconfig ```
