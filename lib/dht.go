@@ -32,6 +32,7 @@ type DHTClient struct {
 	Mode             OperatingMode
 	Shutdown         bool
 	IPList           []net.IP
+	FailedProxyList  []*net.UDPAddr
 }
 
 type Forwarder struct {
@@ -352,6 +353,9 @@ func (dht *DHTClient) HandleCp(data DHTResponse, conn *net.UDPConn) {
 	// We've received information about proxy
 	Log(INFO, "Received control peer %s. Saving", data.Dest)
 	var found bool = false
+	if data.Dest == "0" {
+		return
+	}
 	for _, fwd := range dht.Forwarders {
 		if fwd.Addr.String() == data.Dest && fwd.DestinationID == data.Id {
 			found = true
@@ -474,7 +478,11 @@ func (dht *DHTClient) RequestControlPeer(id string) {
 	var req DHTRequest
 	var err error
 	req.Id = dht.ID
-	req.Query = dht.NetworkHash
+	req.Query = ""
+	// Collect list of failed forwarders
+	for _, fwd := range dht.FailedProxyList {
+		req.Query += fwd.String() + "|"
+	}
 	req.Command = CMD_CP
 	req.Arguments = id
 	var b bytes.Buffer
@@ -537,4 +545,14 @@ func (dht *DHTClient) Stop() {
 	for _, conn := range dht.Connection {
 		conn.Write([]byte(msg))
 	}
+}
+
+func (dht *DHTClient) MakeForwarderFailed(addr *net.UDPAddr) {
+	for _, fwd := range dht.FailedProxyList {
+		if fwd.String() == addr.String() {
+			Log(DEBUG, "Can't mark proxy as failed: Already in list")
+			return
+		}
+	}
+	dht.FailedProxyList = append(dht.FailedProxyList, addr)
 }
