@@ -3,19 +3,22 @@ package ptp
 
 import (
 	"fmt"
-	"github.com/lxn/win"
 	"os"
 	"syscall"
+	"unicode/utf16"
+	"os/exec"
 )
 
 type TAPDevice struct {
 	Handle    syscall.Handle
 	Name      string
 	Interface string
+	IP string
+	Mask string
 }
 
 const (
-	NETWORK_CONNECTIONS_KEY string        = "SYSTEM\\CurrentControlSet\\Control\\Network\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
+	NETWORK_KEY string        = "SYSTEM\\CurrentControlSet\\Control\\Network\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
 	ADAPTER_KEY             string        = "SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
 	NO_MORE_ITEMS           syscall.Errno = 259
 	USERMODE_DEVICE_DIR     string        = "\\\\.\\Global\\"
@@ -70,7 +73,7 @@ func queryNetworkKey() (syscall.Handle, error) {
 	var handle syscall.Handle
 	err := syscall.RegOpenKeyEx(syscall.HKEY_LOCAL_MACHINE, syscall.StringToUTF16Ptr(NETWORK_KEY), 0, syscall.KEY_READ, &handle)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	return handle, nil
 }
@@ -95,16 +98,16 @@ func queryAdapters(handle syscall.Handle) (TAPDevice, error) {
 			continue
 		}
 		length = 1024
-		adapterName := make([]byte, length)
-		err = syscall.RegQueryValueEx(iHandle, syscall.StringToUTF16Ptr("Name"), nil, nil, &adapterName[0], &length)
+		aName := make([]byte, length)
+		err = syscall.RegQueryValueEx(iHandle, syscall.StringToUTF16Ptr("Name"), nil, nil, &aName[0], &length)
 		if err != nil {
 			continue
 		}
 		syscall.RegCloseKey(iHandle)
-		adapterName = removeZeroes(adapterName)
+		adapterName := removeZeroes(string(aName))
 		tapname := fmt.Sprintf("%s%s%s", USERMODE_DEVICE_DIR, adapterId, TAP_SUFFIX)
 		dev.Handle, err = syscall.CreateFile(syscall.StringToUTF16Ptr(tapname),
-			syscall.GENERIC_WRITE|syscall.GENERID_READ,
+			syscall.GENERIC_WRITE|syscall.GENERIC_READ,
 			0,
 			nil,
 			syscall.OPEN_EXISTING,
@@ -118,7 +121,7 @@ func queryAdapters(handle syscall.Handle) (TAPDevice, error) {
 		dev.Interface = adapterName
 		return dev, nil
 	}
-	return nil, nil
+	return dev, nil
 }
 
 func openDevice(ifPattern string) (*os.File, error) {
@@ -132,14 +135,14 @@ func openDevice(ifPattern string) (*os.File, error) {
 		Log(ERROR, "Failed to query network adapters: %v", err)
 		return nil, err
 	}
-	if dev == nil {
+	if dev.Name == "" {
 		Log(ERROR, "Failed to query network adapters: %v", err)
 		return nil, nil
 	}
 	setip := exec.Command("netsh")
 	setip.SysProcAttr = &syscall.SysProcAttr{}
 	setip.SysProcAttr.CmdLine = fmt.Sprintf(`netsh interface ip set address "%s" static %s %s`, dev.Interface, dev.IP, dev.Mask)
-	err := setip.Run()
+	err = setip.Run()
 	if err != nil {
 		Log(ERROR, "Failed to properly configure TAP device with netsh: %v", err)
 		return nil, err
@@ -147,12 +150,12 @@ func openDevice(ifPattern string) (*os.File, error) {
 
 	in := []byte("\x01\x00\x00\x00")
 	var length uint32
-	err = syscall.DeviceIoControl(dev.DeviceHandle, TAP_IOCTL_SET_MEDIA_STATUS,
+	err = syscall.DeviceIoControl(dev.Handle, TAP_IOCTL_SET_MEDIA_STATUS,
 		&in[0],
 		uint32(len(in)),
 		&in[0],
 		uint32(len(in)),
-		&lenRet,
+		&length,
 		nil)
 	if err != nil {
 		Log(ERROR, "Failed to change device status to 'connected': %v", err)
