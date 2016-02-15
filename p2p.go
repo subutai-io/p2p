@@ -342,6 +342,7 @@ func (p *PTPCloud) IntroducePeers() {
 				p.dht.MakeForwarderFailed(peer.Forwarder)
 				peer.Endpoint = ""
 				peer.Forwarder = nil
+				peer.ProxyID = 0
 				peer.State = ptp.P_INIT
 				p.NetworkPeers[i] = peer
 			} else {
@@ -806,6 +807,7 @@ func (p *PTPCloud) HandleProxyMessage(msg *ptp.P2PMessage, src_addr *net.UDPAddr
 			ptp.Log(ptp.DEBUG, "Setting proxy ID %d for %s", msg.Header.ProxyId, peer.ID)
 			peer.Ready = true
 			peer.ProxyRetries = 0
+			peer.State = ptp.P_HANDSHAKING
 			p.NetworkPeers[key] = peer
 		}
 	}
