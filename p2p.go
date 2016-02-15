@@ -572,6 +572,7 @@ func (p *PTPCloud) SyncPeers() int {
 						peer.Endpoint = ""
 						peer.ProxyID = 0
 						peer.State = ptp.P_INIT
+						continue
 					}
 					peer.ProxyRetries = peer.ProxyRetries + 1
 					p.NetworkPeers[i] = peer
@@ -832,7 +833,6 @@ func (p *PTPCloud) SendTo(dst net.HardwareAddr, msg *ptp.P2PMessage) (int, error
 			return size, err
 		}
 	}
-	ptp.Log(ptp.DEBUG, "Failed to send packet: Peer not found")
 	return 0, nil
 }
 
