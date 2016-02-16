@@ -428,6 +428,7 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 	dht.ResponseHandlers[CMD_STOP] = dht.HandleStop
 	dht.ResponseHandlers[CMD_UNKNOWN] = dht.HandleUnknown
 	dht.IPList = ips
+	var connected int = 0
 	for _, router := range routers {
 		conn, err := dht.ConnectAndHandshake(router, dht.IPList)
 		if err != nil || conn == nil {
@@ -436,10 +437,17 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 		} else {
 			Log(INFO, "Handshaked. Starting listener")
 			dht.Connection = append(dht.Connection, conn)
+			connected += 1
 			go dht.ListenDHT(conn)
 		}
 	}
-	return dht
+	if connected == 0 {
+		Log(WARNING, "Failed to connect to DHT. Retrying in 5 seconds")
+		time.Sleep(5 * time.Second)
+		return dht.Initialize(config, ips)
+	} else {
+		return dht
+	}
 }
 
 // This method register control peer on a Bootstrap node
