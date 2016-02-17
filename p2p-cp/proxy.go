@@ -181,10 +181,6 @@ func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_b
 
 func (p *Proxy) SendPing() {
 	for key, tunnel := range p.Tunnels {
-		if !tunnel.Ready {
-			// Skip if it doesn't connected yet
-			continue
-		}
 		tunnel.PingFails += tunnel.PingFails + 1
 		msg := ptp.CreatePingP2PMessage()
 		p.UDPServer.SendMessage(msg, tunnel.Endpoint)
@@ -194,7 +190,7 @@ func (p *Proxy) SendPing() {
 
 func (p *Proxy) CleanTunnels() {
 	for key, tunnel := range p.Tunnels {
-		if tunnel.PingFails > 3 {
+		if (tunnel.Ready && tunnel.PingFails > 3) || (!tunnel.Ready && tunnel.PingFails > 20) {
 			ptp.Log(ptp.DEBUG, "Removing outdated proxy: %d", key)
 			delete(p.Tunnels, key)
 		}
