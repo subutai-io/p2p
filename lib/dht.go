@@ -11,10 +11,17 @@ import (
 )
 
 type OperatingMode int
+type DHTState int
 
 const (
 	MODE_CLIENT OperatingMode = 1
 	MODE_CP     OperatingMode = 2
+)
+
+const (
+	D_CONNECTING   DHTState = 0 + iota
+	D_RECONNECTING DHTState = 1
+	D_OPERATING    DHTState = 2
 )
 
 type DHTClient struct {
@@ -33,6 +40,7 @@ type DHTClient struct {
 	Shutdown         bool
 	IPList           []net.IP
 	FailedProxyList  []*net.UDPAddr
+	State            DHTState
 }
 
 type Forwarder struct {
@@ -101,6 +109,7 @@ func (dht *DHTClient) Handshake(conn *net.UDPConn) error {
 
 // ConnectAndHandshake sends an initial packet to a DHT bootstrap node
 func (dht *DHTClient) ConnectAndHandshake(router string, ips []net.IP) (*net.UDPConn, error) {
+	dht.State = D_CONNECTING
 	Log(INFO, "Connecting to a router %s", router)
 	addr, err := net.ResolveUDPAddr("udp", router)
 	if err != nil {
@@ -257,6 +266,9 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 }
 
 func (dht *DHTClient) HandleConn(data DHTResponse, conn *net.UDPConn) {
+	if dht.State != D_CONNECTING && dht.State != D_RECONNECTING {
+		return
+	}
 	if data.Id == "" {
 		Log(ERROR, "Empty ID was received")
 		return
@@ -265,6 +277,7 @@ func (dht *DHTClient) HandleConn(data DHTResponse, conn *net.UDPConn) {
 		Log(ERROR, "Empty ID were received. Stopping")
 		os.Exit(1)
 	}
+	dht.State = D_OPERATING
 	dht.ID = data.Id
 	// Send a hash within FIND command
 	// Afterwards application should wait for response from DHT
@@ -351,11 +364,11 @@ func (dht *DHTClient) HandleNode(data DHTResponse, conn *net.UDPConn) {
 
 func (dht *DHTClient) HandleCp(data DHTResponse, conn *net.UDPConn) {
 	// We've received information about proxy
-	Log(INFO, "Received control peer %s. Saving", data.Dest)
-	var found bool = false
 	if data.Dest == "0" {
 		return
 	}
+	Log(INFO, "Received control peer %s. Saving", data.Dest)
+	var found bool = false
 	for _, fwd := range dht.Forwarders {
 		if fwd.Addr.String() == data.Dest && fwd.DestinationID == data.Id {
 			found = true
@@ -397,6 +410,10 @@ func (dht *DHTClient) HandleStop(data DHTResponse, conn *net.UDPConn) {
 }
 
 func (dht *DHTClient) HandleUnknown(data DHTResponse, conn *net.UDPConn) {
+	if dht.State == D_CONNECTING || dht.State == D_RECONNECTING {
+		time.Sleep(3 * time.Second)
+	}
+	dht.State = D_RECONNECTING
 	Log(INFO, "Restoring connection to a DHT bootstrap node")
 	err := dht.Handshake(conn)
 	if err != nil {
@@ -428,6 +445,7 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 	dht.ResponseHandlers[CMD_STOP] = dht.HandleStop
 	dht.ResponseHandlers[CMD_UNKNOWN] = dht.HandleUnknown
 	dht.IPList = ips
+	var connected int = 0
 	for _, router := range routers {
 		conn, err := dht.ConnectAndHandshake(router, dht.IPList)
 		if err != nil || conn == nil {
@@ -436,10 +454,17 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 		} else {
 			Log(INFO, "Handshaked. Starting listener")
 			dht.Connection = append(dht.Connection, conn)
+			connected += 1
 			go dht.ListenDHT(conn)
 		}
 	}
-	return dht
+	if connected == 0 {
+		Log(WARNING, "Failed to connect to DHT. Retrying in 5 seconds")
+		time.Sleep(5 * time.Second)
+		return dht.Initialize(config, ips)
+	} else {
+		return dht
+	}
 }
 
 // This method register control peer on a Bootstrap node
