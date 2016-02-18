@@ -120,7 +120,7 @@ type Response struct {
 
 type Procedures int
 
-func (p *Procedures) Set(args *NameValueArg, resp *Response) error {
+func (p *Procedures) SetLog(args *NameValueArg, resp *Response) error {
 	ptp.Log(ptp.INFO, "Setting option %s to %s", args.Name, args.Value)
 	resp.ExitCode = 0
 	if args.Name == "log" {
@@ -229,30 +229,29 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 }
 
 func (p *Procedures) Show(args *Args, resp *Response) error {
-	swarm, exists := Instances[args.Command]
-	resp.ExitCode = 0
-	if exists {
-		resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
-		for _, peer := range swarm.PTP.NetworkPeers {
-			resp.Output = resp.Output + peer.ID + "\t"
-			resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
-			resp.Output = resp.Output + peer.Endpoint + "\t"
-			resp.Output = resp.Output + peer.PeerHW.String() + "\n"
+	if args.Args != "" {
+		swarm, exists := Instances[args.Command]
+		resp.ExitCode = 0
+		if exists {
+			resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
+			for _, peer := range swarm.PTP.NetworkPeers {
+				resp.Output = resp.Output + peer.ID + "\t"
+				resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
+				resp.Output = resp.Output + peer.Endpoint + "\t"
+				resp.Output = resp.Output + peer.PeerHW.String() + "\n"
+			}
+		} else {
+			resp.Output = "Specified environment was not found: " + args.Args
 		}
 	} else {
-		resp.Output = "Specified environment was not found"
-	}
-	return nil
-}
-
-func (p *Procedures) List(args *Args, resp *Response) error {
-	resp.ExitCode = 0
-	if len(Instances) == 0 {
-		resp.Output = "No instances was found"
-	}
-	for key, inst := range Instances {
-		resp.Output = resp.Output + "\t" + inst.PTP.Mac + "\t" + inst.PTP.IP + "\t" + key
-		resp.Output = resp.Output + "\n"
+		resp.ExitCode = 0
+		if len(Instances) == 0 {
+			resp.Output = "No instances was found"
+		}
+		for key, inst := range Instances {
+			resp.Output = resp.Output + "\t" + inst.PTP.Mac + "\t" + inst.PTP.IP + "\t" + key
+			resp.Output = resp.Output + "\n"
+		}
 	}
 	return nil
 }

@@ -50,7 +50,6 @@ func main() {
 		argMask     string
 		argMac      string
 		argDev      string
-		argDirect   string
 		argHash     string
 		argDht      string
 		argKeyfile  string
@@ -59,182 +58,286 @@ func main() {
 		argLog      string
 		argSaveFile string
 		argFwd      bool
-		argVersion  bool
-
-		// Daemon configuration and commands
-		argDaemon     bool
-		argRPCPort    string
-		CommandList   bool
-		CommandShow   string
-		CommandRun    bool
-		CommandStop   bool
-		CommandSet    bool
-		CommandAddKey bool
-		CommandDebug  bool
-		argProfyle    string
+		argRPCPort  string
+		argProfile  string
 	)
 
-	flag.BoolVar(&argDaemon, "daemon", false, "Starts PTP package in daemon mode")
-	flag.StringVar(&argIp, "ip", "none", "IP Address to be used")
-	// TODO: Parse this properly
-	flag.StringVar(&argMask, "mask", "255.255.255.0", "Network mask")
-	flag.StringVar(&argMac, "mac", "", "MAC Address for a TUN/TAP interface")
-	flag.StringVar(&argDev, "dev", "", "TUN/TAP interface name")
-	// TODO: Direct connection is not implemented yet
-	flag.StringVar(&argDirect, "direct", "none", "IP to connect to directly")
-	flag.StringVar(&argHash, "hash", "none", "Infohash for environment")
-	flag.StringVar(&argDht, "dht", "", "Specify DHT bootstrap node address")
-	flag.StringVar(&argKeyfile, "keyfile", "", "Path to yaml file containing crypto key")
-	flag.StringVar(&argKey, "key", "", "AES crypto key")
-	flag.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
-	flag.StringVar(&argLog, "log", "", "Log level")
-	flag.StringVar(&argSaveFile, "save", "", "Path to restore file")
-	flag.BoolVar(&argFwd, "fwd", false, "Force traffic forwarding through proxy")
-	flag.BoolVar(&argVersion, "version", false, "Show current version")
+	var Usage = func() {
+		fmt.Printf("Usage: p2p <command> [OPTIONS]:\n")
+		fmt.Printf("Commands available:\n")
+		fmt.Printf("  daemon    Run p2p in daemon mode\n")
+		fmt.Printf("  start     Start new p2p instance\n")
+		fmt.Printf("  stop      Stop particular p2p instance\n")
+		fmt.Printf("  set       Modify p2p options during runtime\n")
+		fmt.Printf("  show      Display various information about p2p instances\n")
+		fmt.Printf("  debug     Control debugging and profiling options\n")
+		fmt.Printf("  version   Display version information\n")
+		fmt.Printf("  help      Show this message or detailed information about commands listed above\n")
+		fmt.Printf("\n")
+		fmt.Printf("Use 'p2p help <command>' to see detailed help information for specified command\n")
+	}
 
-	// RPC
-	flag.StringVar(&argRPCPort, "rpc", "52523", "Port for RPC Communication")
-	flag.BoolVar(&CommandList, "list", false, "Lists environments running on this machine")
-	flag.BoolVar(&CommandRun, "start", false, "Starts new P2P instance")
-	flag.BoolVar(&CommandStop, "stop", false, "Stops P2P instance")
-	flag.BoolVar(&CommandSet, "set", false, "Modify p2p behaviour by changing it's options")
-	flag.BoolVar(&CommandAddKey, "add-key", false, "Add new key to the list of keys for a specified hash")
-	flag.BoolVar(&CommandDebug, "debug", false, "Shows debug info")
-	flag.StringVar(&CommandShow, "show", "", "Show known participants of a swarm")
+	daemon := flag.NewFlagSet("p2p in daemon mode", flag.ContinueOnError)
+	daemon.StringVar(&argSaveFile, "save", "", "Path to restore file")
+	daemon.StringVar(&argRPCPort, "rpc", "52523", "Port for RPC communication")
+	daemon.StringVar(&argProfile, "profyle", "", "Starts PTP package with profiling. Possible values : memory, cpu")
 
-	//profyle
-	flag.StringVar(&argProfyle, "profyle", "", "Starts PTP package with profiling. Possible values : memory, cpu")
+	start := flag.NewFlagSet("Startup options", flag.ContinueOnError)
+	start.StringVar(&argIp, "ip", "none", "`IP` address to be used")
+	start.StringVar(&argMask, "mask", "255.255.255.0", "Network mask a.k.a. `subnet`")
+	start.StringVar(&argMac, "mac", "", "MAC or `Hardware Address` for a TUN/TAP interface")
+	start.StringVar(&argDev, "dev", "", "TUN/TAP `interface name`")
+	start.StringVar(&argHash, "hash", "", "`Infohash` for environment")
+	start.StringVar(&argDht, "dht", "", "Specify DHT bootstrap node address in a form of `HOST:PORT`")
+	start.StringVar(&argKeyfile, "keyfile", "", "Path to yaml file containing crypto key")
+	start.StringVar(&argKey, "key", "", "AES crypto key")
+	start.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
 
-	flag.Parse()
+	stop := flag.NewFlagSet("Shutdown options", flag.ContinueOnError)
+	stop.StringVar(&argHash, "hash", "", "Infohash for environment")
 
-	if argVersion {
+	show := flag.NewFlagSet("Show flagset", flag.ContinueOnError)
+	show.StringVar(&argHash, "hash", "", "Infohash for environment")
+
+	set := flag.NewFlagSet("Option Setting", flag.ContinueOnError)
+	set.StringVar(&argLog, "log", "", "Log level")
+	set.StringVar(&argKey, "key", "", "AES crypto key")
+	set.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
+
+	debug := flag.NewFlagSet("Debug and Profiling mode", flag.ContinueOnError)
+
+	if len(os.Args) < 2 {
+		os.Args = append(os.Args, "help")
+	}
+
+	switch os.Args[1] {
+	case "daemon":
+		daemon.Parse(os.Args[2:])
+		Daemon(argRPCPort, argSaveFile, argProfile)
+	case "start":
+		start.Parse(os.Args[2:])
+		Start(argRPCPort, argIp, argHash, argMask, argMac, argDev, argDht, argKeyfile, argKey, argTTL, argFwd)
+	case "stop":
+		stop.Parse(os.Args[2:])
+		Stop(argRPCPort, argHash)
+	case "show":
+		show.Parse(os.Args[2:])
+		Show(argRPCPort, argHash)
+	case "set":
+		set.Parse(os.Args[2:])
+		Set(argRPCPort, argLog, argHash, argKeyfile, argKey, argTTL)
+	case "debug":
+		debug.Parse(os.Args[2:])
+		Debug(argRPCPort)
+	case "version":
 		fmt.Printf("p2p Cloud project %s\n", VERSION)
 		os.Exit(0)
-	}
-
-	if argDaemon {
-		start_profyle(argProfyle)
-		Instances = make(map[string]Instance)
-		user, err := user.Current()
-		if err != nil {
-			ptp.Log(ptp.ERROR, "Failed to retrieve information about user: %v", err)
-		}
-		if user.Uid != "0" {
-			ptp.Log(ptp.ERROR, "P2P cannot run in daemon mode without root privileges")
-			os.Exit(1)
-		}
-
-		proc := new(Procedures)
-		rpc.Register(proc)
-		rpc.HandleHTTP()
-		listen, e := net.Listen("tcp", "localhost:"+argRPCPort)
-		if e != nil {
-			ptp.Log(ptp.ERROR, "Cannot start RPC listener %v", err)
-			os.Exit(1)
-		}
-
-		if argSaveFile != "" {
-			SaveFile = argSaveFile
-			ptp.Log(ptp.INFO, "Restore file provided")
-			// Try to restore from provided file
-			instances, err := LoadInstances(argSaveFile)
-			if err != nil {
-				ptp.Log(ptp.ERROR, "%v", err)
-			} else {
-				ptp.Log(ptp.INFO, "%d instances were loaded from file", len(instances))
-				for _, inst := range instances {
-					resp := new(Response)
-					proc.Run(&inst, resp)
-				}
+	case "help":
+		if len(os.Args) > 2 {
+			switch os.Args[2] {
+			case "daemon":
+				UsageDaemon()
+				daemon.PrintDefaults()
+			case "start":
+				UsageStart()
+				start.PrintDefaults()
+			case "show":
+				UsageShow()
+				show.PrintDefaults()
+			case "stop":
+				UsageStop()
+				stop.PrintDefaults()
+			case "set":
+				UsageSet()
+				set.PrintDefaults()
 			}
+
+		} else {
+			Usage()
 		}
-
-		ptp.Log(ptp.INFO, "Starting RPC Listener")
-		go http.Serve(listen, nil)
-
-		// Capture SIGINT
-		// This is used for development purposes only, but later we should consider updating
-		// this code to handle signals
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-
-		go func() {
-			for sig := range c {
-				fmt.Println("Received signal: ", sig)
-				pprof.StopCPUProfile()
-				os.Exit(0)
-			}
-		}()
-		for {
-			time.Sleep(5 * time.Second)
-		}
-		return
+		os.Exit(1)
+	default:
+		Usage()
+		os.Exit(1)
 	}
-	//if not daemon
+}
 
-	client, err := rpc.DialHTTP("tcp", "localhost:"+argRPCPort)
+func Dial(port string) *rpc.Client {
+	client, err := rpc.DialHTTP("tcp", "localhost:"+port)
 	if err != nil {
 		ptp.Log(ptp.ERROR, "Failed to connect to RPC %v", err)
 		os.Exit(1)
 	}
-	var response Response
-	if CommandList {
-		args := &Args{"List", ""}
-		err = client.Call("Procedures.List", args, &response)
-	} else if CommandSet {
-		if argLog != "" {
-			args := &NameValueArg{"log", argLog}
-			err = client.Call("Procedures.Set", args, &response)
-		}
-	} else if CommandRun {
-		var ok bool = true
+	return client
+}
 
-		args := &RunArgs{}
-		// TODO: Parse ARGS here
-		args.Hash = argHash
-		args.IP = argIp
-		if net.ParseIP(args.IP) == nil {
-			fmt.Printf("Bad IP Address specified")
-			ok = false
-		}
-		args.Mask = argMask
-		args.Mac = argMac
-		args.Dev = argDev
-		args.Hash = argHash
-		args.Dht = argDht
-		args.Keyfile = argKeyfile
-		args.Key = argKey
-		args.TTL = argTTL
-		args.Fwd = argFwd
-		if ok {
-			err = client.Call("Procedures.Run", args, &response)
-		}
-	} else if CommandStop {
-		args := &StopArgs{}
-		args.Hash = argHash
-		err = client.Call("Procedures.Stop", args, &response)
-	} else if CommandAddKey {
-		args := &RunArgs{}
-		args.Key = argKey
-		args.TTL = argTTL
-		args.Hash = argHash
-		err = client.Call("Procedures.AddKey", args, &response)
-	} else if CommandShow != "" {
-		args := &Args{}
-		args.Command = CommandShow
-		args.Args = "0"
-		err = client.Call("Procedures.Show", args, &response)
-	} else if CommandDebug {
-		args := &Args{}
-		err = client.Call("Procedures.Debug", args, &response)
-	} else {
-		args := &Args{"RandomCommand", "someeeeee"}
-		err = client.Call("Procedures.Execute", args, &response)
+func Start(rpcPort, ip, hash, mask, mac, dev, dht, keyfile, key, ttl string, fwd bool) {
+	client := Dial(rpcPort)
+	var response Response
+
+	args := &RunArgs{}
+	if net.ParseIP(ip) == nil {
+		fmt.Printf("Bad IP Address specified\n")
+		return
+	}
+	args.IP = ip
+	if hash == "" {
+		fmt.Printf("Hash cannot be empty. Please start new instances with -hash VALUE argument\n")
+		return
+	}
+	args.Hash = hash
+	args.Mask = mask
+	if mac != "" {
+		_, err := net.ParseMAC(mac)
 		if err != nil {
-			ptp.Log(ptp.ERROR, "Failed to execute remote procedure %v", err)
-			os.Exit(1)
+			fmt.Printf("Invalid MAC address provided\n")
+			return
 		}
 	}
+	args.Mac = mac
+	args.Dev = dev
+	if dht != "" {
+		_, err := net.ResolveUDPAddr("udp", dht)
+		if err != nil {
+			fmt.Printf("Invalid DHT node address provided. Please specify correct DHT address in form HOST:PORT\n")
+			return
+		}
+	}
+	args.Dht = dht
+	args.Keyfile = keyfile
+	args.Key = key
+	args.TTL = ttl
+	args.Fwd = fwd
+	err := client.Call("Procedures.Run", args, &response)
+	if err != nil {
+		fmt.Printf("Failed to run RPC request: %v\n", err)
+		return
+	}
 	fmt.Printf("%s\n", response.Output)
-	ptp.Log(ptp.DEBUG, "%v", response)
+}
+
+func Stop(rpcPort, hash string) {
+	client := Dial(rpcPort)
+	var response Response
+	args := &StopArgs{}
+	if hash == "" {
+		fmt.Printf("Specify a hash of instance with -hash argument\n")
+		return
+	}
+	args.Hash = hash
+	err := client.Call("Procedures.Stop", args, &response)
+	if err != nil {
+		fmt.Printf("Failed to run RPC request: %v\n", err)
+		return
+	}
+	fmt.Printf("%s\n", response.Output)
+}
+
+func Show(rpcPort, hash string) {
+	client := Dial(rpcPort)
+	var response Response
+	args := &Args{}
+	args.Command = ""
+	if hash != "" {
+		args.Args = hash
+	} else {
+		args.Args = ""
+	}
+	err := client.Call("Procedures.Show", args, &response)
+	if err != nil {
+		fmt.Printf("Failed to run RPC request: %v\n", err)
+		return
+	}
+	fmt.Printf("%s\n", response.Output)
+}
+
+func Set(rpcPort, log, hash, keyfile, key, ttl string) {
+	client := Dial(rpcPort)
+	var response Response
+	var err error
+	if log != "" {
+		args := &NameValueArg{"log", log}
+		err = client.Call("Procedures.SetLog", args, &response)
+	} else if key != "" {
+		args := &RunArgs{}
+		args.Key = key
+		args.TTL = ttl
+		args.Hash = hash
+		err = client.Call("Procedures.AddKey", args, &response)
+	}
+	if err != nil {
+		fmt.Printf("Failed to run RPC request: %v\n", err)
+		return
+	}
+	fmt.Printf("%s\n", response.Output)
+}
+
+func Debug(rpcPort string) {
+	client := Dial(rpcPort)
+	var response Response
+	args := &Args{}
+	err := client.Call("Procedures.Debug", args, &response)
+	if err != nil {
+		fmt.Printf("Failed to run RPC request: %v\n", err)
+		return
+	}
+	fmt.Printf("%s\n", response.Output)
+}
+
+func Daemon(port, saveFile, profiling string) {
+	start_profyle(profiling)
+	Instances = make(map[string]Instance)
+	user, err := user.Current()
+	if err != nil {
+		ptp.Log(ptp.ERROR, "Failed to retrieve information about user: %v", err)
+	}
+	if user.Uid != "0" {
+		ptp.Log(ptp.ERROR, "P2P cannot run in daemon mode without root privileges")
+		os.Exit(1)
+	}
+
+	proc := new(Procedures)
+	rpc.Register(proc)
+	rpc.HandleHTTP()
+	listen, e := net.Listen("tcp", "localhost:"+port)
+	if e != nil {
+		ptp.Log(ptp.ERROR, "Cannot start RPC listener %v", err)
+		os.Exit(1)
+	}
+
+	if saveFile != "" {
+		ptp.Log(ptp.INFO, "Restore file provided")
+		// Try to restore from provided file
+		instances, err := LoadInstances(saveFile)
+		if err != nil {
+			ptp.Log(ptp.ERROR, "Failed to load instances: %v", err)
+		} else {
+			ptp.Log(ptp.INFO, "%d instances were loaded from file", len(instances))
+			for _, inst := range instances {
+				resp := new(Response)
+				proc.Run(&inst, resp)
+			}
+		}
+	}
+
+	ptp.Log(ptp.INFO, "Starting RPC Listener on %s port", port)
+	go http.Serve(listen, nil)
+
+	// Capture SIGINT
+	// This is used for development purposes only, but later we should consider updating
+	// this code to handle signals
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	go func() {
+		for sig := range c {
+			fmt.Println("Received signal: ", sig)
+			pprof.StopCPUProfile()
+			os.Exit(0)
+		}
+	}()
+	for {
+		time.Sleep(5 * time.Second)
+	}
+	return
 }
