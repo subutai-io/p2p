@@ -265,6 +265,7 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.MessageHandlers[ptp.MT_INTRO_REQ] = p.HandleIntroRequestMessage
 	p.MessageHandlers[ptp.MT_PROXY] = p.HandleProxyMessage
 	p.MessageHandlers[ptp.MT_TEST] = p.HandleTestMessage
+	p.MessageHandlers[ptp.MT_BAD_TUN] = p.HandleBadTun
 
 	// Register packet handlers
 	p.PacketHandlers = make(map[PacketType]PacketHandlerCallback)
@@ -808,6 +809,19 @@ func (p *PTPCloud) HandleProxyMessage(msg *ptp.P2PMessage, src_addr *net.UDPAddr
 			peer.Ready = true
 			peer.ProxyRetries = 0
 			peer.State = ptp.P_HANDSHAKING
+			p.NetworkPeers[key] = peer
+		}
+	}
+}
+
+func (p *PTPCloud) HandleBadTun(msg *ptp.P2PMessage, src_addr *net.UDPAddr) {
+	ptp.Log(ptp.INFO, "Cleaning bad tunnel with ID: %d", msg.Header.ProxyId)
+	for key, peer := range p.NetworkPeers {
+		if peer.ProxyID == int(msg.Header.ProxyId) {
+			peer.ProxyID = 0
+			peer.Endpoint = ""
+			peer.Forwarder = nil
+			peer.State = ptp.P_INIT
 			p.NetworkPeers[key] = peer
 		}
 	}

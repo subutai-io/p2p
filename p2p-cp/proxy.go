@@ -193,6 +193,8 @@ func (p *Proxy) CleanTunnels() {
 		if (tunnel.Ready && tunnel.PingFails > 3) || (!tunnel.Ready && tunnel.PingFails > 20) {
 			ptp.Log(ptp.DEBUG, "Removing outdated proxy: %d", key)
 			delete(p.Tunnels, key)
+			badId := key
+			p.NotifyBadTunnel(badId)
 		}
 	}
 }
@@ -212,5 +214,15 @@ func (p *Proxy) RegisterQueue() {
 				p.TunnelQueue = append(p.TunnelQueue[:i], p.TunnelQueue[i+1:]...)
 			}
 		}
+	}
+}
+
+func (p *Proxy) NotifyBadTunnel(id int) {
+	msg := ptp.CreateBadTunnelP2PMessage(id, 1)
+	for _, t := range p.Tunnels {
+		if !t.Ready {
+			continue
+		}
+		p.UDPServer.SendMessage(msg, t.Endpoint)
 	}
 }
