@@ -30,6 +30,7 @@ const (
 	MT_PING               = 5 // Internal ping message
 	MT_TEST               = 6
 	MT_PROXY              = 7
+	MT_BAD_TUN            = 8
 )
 
 // List of commands used in DHT
