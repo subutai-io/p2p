@@ -195,7 +195,7 @@ func (p *PTPCloud) FindNetworkAddresses() {
 	ptp.Log(ptp.INFO, "%d interfaces were saved", len(p.LocalIPs))
 }
 
-func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool) *PTPCloud {
+func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int) *PTPCloud {
 
 	var hw net.HardwareAddr
 
@@ -280,8 +280,8 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 
 	p.CreateDevice(argIp, argMac, argMask, argDev)
 	p.UDPSocket = new(ptp.PTPNet)
-	p.UDPSocket.Init("", 0)
-	port := p.UDPSocket.GetPort()
+	p.UDPSocket.Init("", port)
+	port = p.UDPSocket.GetPort()
 	ptp.Log(ptp.INFO, "Started UDP Listener at port %d", port)
 	config.P2PPort = port
 	if argDht != "" {
