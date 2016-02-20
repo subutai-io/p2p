@@ -9,12 +9,18 @@ import (
 	"unicode/utf16"
 )
 
-type TAPDevice struct {
+type Interface struct {
 	Handle    syscall.Handle
 	Name      string
 	Interface string
 	IP        string
 	Mask      string
+	Rx        *syscall.Overlapped
+	RxE       syscall.Handle
+	Tx        *syscall.Overlapped
+	TxE       syscall.Handle
+	Rl        uint32
+	Wl        uint32
 }
 
 const (
@@ -78,8 +84,8 @@ func queryNetworkKey() (syscall.Handle, error) {
 	return handle, nil
 }
 
-func queryAdapters(handle syscall.Handle) (TAPDevice, error) {
-	var dev TAPDevice
+func queryAdapters(handle syscall.Handle) (Interface, error) {
+	var dev Interface
 	var index uint32 = 0
 	for {
 		var length uint32 = 72
@@ -167,11 +173,12 @@ func openDevice(ifPattern string) (*os.File, error) {
 }
 
 func createInterface(file *os.File, ifPattern string, kind DevKind, meta bool) (string, error) {
-	panic("TUN/TAP functionality is not supported on this platform")
+	return "1", nil
 }
 
-func ConfigureInterface(ip, mac, device, tool string) error {
-	panic("TUN/TAP functionality is not supported on this platform")
+func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
+	dev.Rx = syscal.Overlapped{}
+	dev.Tx = syscal.Overlapped{}
 }
 
 func LinkUp(device, tool string) error {
@@ -186,7 +193,41 @@ func SetMac(mac, device, tool string) error {
 	panic("TUN/TAP functionality is not supported on this platform")
 }
 
-func (t *tun) Read(ch chan []byte) (err error) {
+func (t *Interface) ReadPacket() (*Packet, error) {
+	buf := make([]byte, 100000)
+	err := syscall.ReadFile(t.Handle, buf, &t.Rl, &t.Rx)
+	if err != nil {
+		Log(ERROR, "Failed to read from TAP device")
+		return nil, err
+	}
+	t.Rx.Offset += t.Rl
+	len := 0
+	switch buf[0] & 0xf0 {
+	case 0x40:
+		len = 256*int(buf[2]) + int(buf[3])
+	case 0x60:
+		len = 256*int(buf[4]) + int(buf[5]) + IPv6_HEADER_LENGTH
+	}
+	var pkt *Packet
+	pkt = &Packet{Packet: buf[4:len]}
+	pkt.Protocol = int(binary.BigEndian.Uint16(buf[2:4]))
+	flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
+	if flags&flagTruncated != 0 {
+		pkt.Truncated = true
+	}
+	return pkt, nil
+}
+
+func (t *Interface) WritePacket(pkt *Packet) error {
+	buf := make([]byte, len(pkt.Packet)+4)
+	binary.BigEndian.PutUint16(buf[2:4], uint16(pkt.Protocol))
+	copy(buf[4:], pktPacket)
+	var len uint32
+	syscall.WriteFile(t.Handle, buf, &len, t.OverlappedTx)
+	t.overlappedTx.Offset += uint32(len(buf))
+}
+
+func wRead(ch chan []byte) (err error) {
 	overlappedRx := syscall.Overlapped{}
 	var hevent windows.Handle
 	hevent, err = windows.CreateEvent(nil, 0, 0, nil)
@@ -218,7 +259,7 @@ func (t *tun) Read(ch chan []byte) (err error) {
 	}
 }
 
-func (t *tun) Write(ch chan []byte) (err error) {
+func wWrite(ch chan []byte) (err error) {
 	overlappedRx := syscall.Overlapped{}
 	var hevent windows.Handle
 	hevent, err = windows.CreateEvent(nil, 0, 0, nil)
