@@ -5,18 +5,18 @@ package ptp
 import (
 	"fmt"
 	//"os"
+	"encoding/binary"
 	"os/exec"
 	"syscall"
 	"unicode/utf16"
-	"encoding/binary"
 	"unsafe"
 )
 
 type Interface struct {
-	Name      string
+	Name string
 	//file *os.File
-	file syscall.Handle
-	meta bool
+	file      syscall.Handle
+	meta      bool
 	Handle    syscall.Handle
 	Interface string
 	IP        string
@@ -30,14 +30,14 @@ type Interface struct {
 }
 
 const (
-	NETWORK_KEY         string        = "SYSTEM\\CurrentControlSet\\Control\\Network\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
-	ADAPTER_KEY         string        = "SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
-	NO_MORE_ITEMS       syscall.Errno = 259
-	USERMODE_DEVICE_DIR string        = "\\\\.\\Global\\"
-	SYS_DEVICE_DIR      string        = "\\Device\\"
-	USER_DEVICE_DIR     string        = "\\DosDevices\\Global\\"
-	TAP_SUFFIX          string        = ".tap"
-	INVALID_HANDLE syscall.Handle = 0
+	NETWORK_KEY         string         = "SYSTEM\\CurrentControlSet\\Control\\Network\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
+	ADAPTER_KEY         string         = "SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
+	NO_MORE_ITEMS       syscall.Errno  = 259
+	USERMODE_DEVICE_DIR string         = "\\\\.\\Global\\"
+	SYS_DEVICE_DIR      string         = "\\Device\\"
+	USER_DEVICE_DIR     string         = "\\DosDevices\\Global\\"
+	TAP_SUFFIX          string         = ".tap"
+	INVALID_HANDLE      syscall.Handle = 0
 )
 
 var (
@@ -139,7 +139,7 @@ func queryAdapters(handle syscall.Handle) (Interface, error) {
 	return dev, nil
 }
 
-func openDevice(ifPattern string) (syscall.Handle, error) {
+func openDevice(ifPattern string) (Interface, error) {
 	handle, err := queryNetworkKey()
 	if err != nil {
 		Log(ERROR, "Failed to query Windows registry: %v", err)
@@ -154,8 +154,8 @@ func openDevice(ifPattern string) (syscall.Handle, error) {
 		Log(ERROR, "Failed to query network adapters: %v", err)
 		return INVALID_HANDLE, nil
 	}
-	
-	return handle, nil
+
+	return dev, nil
 }
 
 func createInterface(file syscall.Handle, ifPattern string, kind DevKind, meta bool) (string, error) {
@@ -250,55 +250,11 @@ func (t *Interface) Close() error {
 func CheckPermissions() bool {
 	return true
 }
-/*
-func wRead(ch chan []byte) (err error) {
-	overlappedRx := syscall.Overlapped{}
-	var hevent windows.Handle
-	hevent, err = windows.CreateEvent(nil, 0, 0, nil)
-	if err != nil {
-		return
-	}
-	overlappedRx.HEvent = syscall.Handle(hevent)
-	buf := make([]byte, t.mtu)
-	var l uint32
-	for {
-		if err := syscall.ReadFile(t.fd, buf, &l, &overlappedRx); err != nil {
-		}
-		if _, err := syscall.WaitForSingleObject(overlappedRx.HEvent, syscall.INFINITE); err != nil {
-			fmt.Println(err)
-		}
-		overlappedRx.Offset += l
-		totalLen := 0
-		switch buf[0] & 0xf0 {
-		case 0x40:
-			totalLen = 256*int(buf[2]) + int(buf[3])
-		case 0x60:
-			continue
-			totalLen = 256*int(buf[4]) + int(buf[5]) + IPv6_HEADER_LENGTH
-		}
-		fmt.Println("read data", buf[:totalLen])
-		send := make([]byte, totalLen)
-		copy(send, buf)
-		ch <- send
-	}
-}
 
-func wWrite(ch chan []byte) (err error) {
-	overlappedRx := syscall.Overlapped{}
-	var hevent windows.Handle
-	hevent, err = windows.CreateEvent(nil, 0, 0, nil)
+func Open(ifPattern string, kind DevKind, meta bool) (*Interface, error) {
+	inf, err := openDevice(ifPattern)
 	if err != nil {
-		return
+		return nil, err
 	}
-	overlappedRx.HEvent = syscall.Handle(hevent)
-	for {
-		select {
-		case data := <-ch:
-			var l uint32
-			syscall.WriteFile(t.fd, data, &l, &overlappedRx)
-			syscall.WaitForSingleObject(overlappedRx.HEvent, syscall.INFINITE)
-			overlappedRx.Offset += uint32(len(data))
-		}
-	}
+	return &inf, err
 }
-*/

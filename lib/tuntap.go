@@ -31,39 +31,3 @@ type Packet struct {
 func (t *Interface) InterfaceName() string {
 	return t.Name
 }
-
-// Open connects to the specified tun/tap interface.
-//
-// If the specified device has been configured as persistent, this
-// simply looks like a "cable connected" event to observers of the
-// interface. Otherwise, the interface is created out of thin air.
-//
-// ifPattern can be an exact interface name, e.g. "tun42", or a
-// pattern containing one %d format specifier, e.g. "tun%d". In the
-// latter case, the kernel will select an available interface name and
-// create it.
-//
-// meta determines whether the tun/tap header fields in Packet will be
-// used.
-//
-// Returns a TunTap object with channels to send/receive packets, or
-// nil and an error if connecting to the interface failed.
-func Open(ifPattern string, kind DevKind, meta bool) (*Interface, error) {
-	file, err := openDevice(ifPattern)
-	if err != nil {
-		return nil, err
-	}
-
-	ifName, err := createInterface(file, ifPattern, kind, meta)
-	if err != nil {
-		//file.Close()
-		return nil, err
-	}
-
-	inf := new(Interface)
-	inf.Name = ifName
-	inf.file = file
-	inf.meta = meta
-
-	return inf, nil
-}

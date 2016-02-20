@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"io"
 	"os"
-	
+
 	"os/user"
 	"unsafe"
 )
@@ -74,12 +74,31 @@ func (t *Interface) Close() error {
 func CheckPermissions() bool {
 	user, err := user.Current()
 	if err != nil {
-		ptp.Log(ptp.ERROR, "Failed to retrieve information about user: %v", err)
+		Log(ERROR, "Failed to retrieve information about user: %v", err)
 		return false
 	}
 	if user.Uid != "0" {
-		ptp.Log(ptp.ERROR, "P2P cannot run in daemon mode without root privileges")
+		Log(ERROR, "P2P cannot run in daemon mode without root privileges")
 		return false
 	}
 	return true
+}
+
+func Open(ifPattern string, kind DevKind, meta bool) (*Interface, error) {
+	file, err := openDevice(ifPattern)
+	if err != nil {
+		return nil, err
+	}
+
+	ifName, err := createInterface(file, ifPattern, kind, meta)
+	if err != nil {
+		return nil, err
+	}
+
+	inf := new(Interface)
+	inf.Name = ifName
+	inf.file = file
+	inf.meta = meta
+
+	return inf, nil
 }
