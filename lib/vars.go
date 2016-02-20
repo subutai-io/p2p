@@ -24,13 +24,13 @@ type MSG_TYPE uint16
 const (
 	MT_STRING    MSG_TYPE = 0 + iota // String
 	MT_INTRO              = 1        // Introduction packet
-	MT_INTRO_REQ          = 2
-	MT_NENC               = 3 // Not encrypted message
-	MT_ENC                = 4 // Encrypted message
-	MT_PING               = 5 // Internal ping message
-	MT_TEST               = 6
-	MT_PROXY              = 7
-	MT_BAD_TUN            = 8
+	MT_INTRO_REQ          = 2        // Request for introduction packet
+	MT_NENC               = 3        // Not encrypted message
+	MT_ENC                = 4        // Encrypted message
+	MT_PING               = 5        // Internal ping message
+	MT_TEST               = 6        // Packet tests established connection
+	MT_PROXY              = 7        // Information about proxy (forwarder)
+	MT_BAD_TUN            = 8        // Notifies about dead tunnel
 )
 
 // List of commands used in DHT

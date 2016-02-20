@@ -1,30 +1,43 @@
 // +build windows
+
 package ptp
 
 import (
 	"fmt"
-	"os"
+	//"os"
+	"encoding/binary"
+	"os/exec"
 	"syscall"
 	"unicode/utf16"
-	"os/exec"
+	"unsafe"
 )
 
-type TAPDevice struct {
+type Interface struct {
+	Name string
+	//file *os.File
+	file      syscall.Handle
+	meta      bool
 	Handle    syscall.Handle
-	Name      string
 	Interface string
-	IP string
-	Mask string
+	IP        string
+	Mask      string
+	Rx        syscall.Overlapped
+	RxE       syscall.Handle
+	Tx        syscall.Overlapped
+	TxE       syscall.Handle
+	Rl        uint32
+	Wl        uint32
 }
 
 const (
-	NETWORK_KEY string        = "SYSTEM\\CurrentControlSet\\Control\\Network\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
-	ADAPTER_KEY             string        = "SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
-	NO_MORE_ITEMS           syscall.Errno = 259
-	USERMODE_DEVICE_DIR     string        = "\\\\.\\Global\\"
-	SYS_DEVICE_DIR          string        = "\\Device\\"
-	USER_DEVICE_DIR         string        = "\\DosDevices\\Global\\"
-	TAP_SUFFIX              string        = ".tap"
+	NETWORK_KEY         string         = "SYSTEM\\CurrentControlSet\\Control\\Network\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
+	ADAPTER_KEY         string         = "SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
+	NO_MORE_ITEMS       syscall.Errno  = 259
+	USERMODE_DEVICE_DIR string         = "\\\\.\\Global\\"
+	SYS_DEVICE_DIR      string         = "\\Device\\"
+	USER_DEVICE_DIR     string         = "\\DosDevices\\Global\\"
+	TAP_SUFFIX          string         = ".tap"
+	INVALID_HANDLE      syscall.Handle = 0
 )
 
 var (
@@ -78,8 +91,8 @@ func queryNetworkKey() (syscall.Handle, error) {
 	return handle, nil
 }
 
-func queryAdapters(handle syscall.Handle) (TAPDevice, error) {
-	var dev TAPDevice
+func queryAdapters(handle syscall.Handle) (Interface, error) {
+	var dev Interface
 	var index uint32 = 0
 	for {
 		var length uint32 = 72
@@ -106,6 +119,7 @@ func queryAdapters(handle syscall.Handle) (TAPDevice, error) {
 		syscall.RegCloseKey(iHandle)
 		adapterName := removeZeroes(string(aName))
 		tapname := fmt.Sprintf("%s%s%s", USERMODE_DEVICE_DIR, adapterId, TAP_SUFFIX)
+
 		dev.Handle, err = syscall.CreateFile(syscall.StringToUTF16Ptr(tapname),
 			syscall.GENERIC_WRITE|syscall.GENERIC_READ,
 			0,
@@ -117,6 +131,7 @@ func queryAdapters(handle syscall.Handle) (TAPDevice, error) {
 			syscall.CloseHandle(dev.Handle)
 			continue
 		}
+		Log(INFO, "Acquired control over TAP interface: %s", adapterName)
 		dev.Name = adapterId
 		dev.Interface = adapterName
 		return dev, nil
@@ -124,33 +139,45 @@ func queryAdapters(handle syscall.Handle) (TAPDevice, error) {
 	return dev, nil
 }
 
-func openDevice(ifPattern string) (*os.File, error) {
+func openDevice(ifPattern string) (Interface, error) {
 	handle, err := queryNetworkKey()
 	if err != nil {
 		Log(ERROR, "Failed to query Windows registry: %v", err)
-		return nil, err
+		return INVALID_HANDLE, err
 	}
 	dev, err := queryAdapters(handle)
 	if err != nil {
 		Log(ERROR, "Failed to query network adapters: %v", err)
-		return nil, err
+		return INVALID_HANDLE, err
 	}
 	if dev.Name == "" {
 		Log(ERROR, "Failed to query network adapters: %v", err)
-		return nil, nil
+		return INVALID_HANDLE, nil
 	}
+
+	return dev, nil
+}
+
+func createInterface(file syscall.Handle, ifPattern string, kind DevKind, meta bool) (string, error) {
+	return "1", nil
+}
+
+func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
+	Log(INFO, "Configuring %s", dev.Interface)
+	dev.IP = ip
+	dev.Mask = "255.255.255.0"
 	setip := exec.Command("netsh")
 	setip.SysProcAttr = &syscall.SysProcAttr{}
 	setip.SysProcAttr.CmdLine = fmt.Sprintf(`netsh interface ip set address "%s" static %s %s`, dev.Interface, dev.IP, dev.Mask)
-	err = setip.Run()
+	err := setip.Run()
 	if err != nil {
 		Log(ERROR, "Failed to properly configure TAP device with netsh: %v", err)
-		return nil, err
+		return err
 	}
 
 	in := []byte("\x01\x00\x00\x00")
 	var length uint32
-	err = syscall.DeviceIoControl(dev.Handle, TAP_IOCTL_SET_MEDIA_STATUS,
+	err = syscall.DeviceIoControl(dev.file, TAP_IOCTL_SET_MEDIA_STATUS,
 		&in[0],
 		uint32(len(in)),
 		&in[0],
@@ -159,19 +186,12 @@ func openDevice(ifPattern string) (*os.File, error) {
 		nil)
 	if err != nil {
 		Log(ERROR, "Failed to change device status to 'connected': %v", err)
-		return nil, err
+		return err
 	}
-
-	file, err := os.OpenFile("/dev/net/tun", os.O_RDWR, 0)
-	return file, err
-}
-
-func createInterface(file *os.File, ifPattern string, kind DevKind, meta bool) (string, error) {
-	panic("TUN/TAP functionality is not supported on this platform")
-}
-
-func ConfigureInterface(ip, mac, device, tool string) error {
-	panic("TUN/TAP functionality is not supported on this platform")
+	Log(INFO, "Configuring overlapped Rx & Tx for Windows-TAP i/o operations")
+	dev.Rx = syscall.Overlapped{}
+	dev.Tx = syscall.Overlapped{}
+	return nil
 }
 
 func LinkUp(device, tool string) error {
@@ -184,4 +204,57 @@ func SetIp(ip, device, tool string) error {
 
 func SetMac(mac, device, tool string) error {
 	panic("TUN/TAP functionality is not supported on this platform")
+}
+
+func (t *Interface) ReadPacket() (*Packet, error) {
+	buf := make([]byte, 100000)
+	err := syscall.ReadFile(t.file, buf, &t.Rl, &t.Rx)
+	if err != nil {
+		Log(ERROR, "Failed to read from TAP device")
+		return nil, err
+	}
+	t.Rx.Offset += t.Rl
+	l := 0
+	switch buf[0] & 0xf0 {
+	case 0x40:
+		l = 256*int(buf[2]) + int(buf[3])
+	case 0x60:
+		// 40 is ipv6 packet header length
+		l = 256*int(buf[4]) + int(buf[5]) + 40
+	}
+	var pkt *Packet
+	pkt = &Packet{Packet: buf[4:l]}
+	pkt.Protocol = int(binary.BigEndian.Uint16(buf[2:4]))
+	flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
+	if flags&flagTruncated != 0 {
+		pkt.Truncated = true
+	}
+	return pkt, nil
+}
+
+func (t *Interface) WritePacket(pkt *Packet) error {
+	buf := make([]byte, len(pkt.Packet)+4)
+	binary.BigEndian.PutUint16(buf[2:4], uint16(pkt.Protocol))
+	copy(buf[4:], pkt.Packet)
+	var l uint32
+	syscall.WriteFile(t.file, buf, &l, &t.Tx)
+	t.Tx.Offset += uint32(len(buf))
+	return nil
+}
+
+func (t *Interface) Close() error {
+	syscall.Close(t.Handle)
+	return nil
+}
+
+func CheckPermissions() bool {
+	return true
+}
+
+func Open(ifPattern string, kind DevKind, meta bool) (*Interface, error) {
+	inf, err := openDevice(ifPattern)
+	if err != nil {
+		return nil, err
+	}
+	return &inf, err
 }
