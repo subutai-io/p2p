@@ -59,6 +59,7 @@ func main() {
 		argFwd      bool
 		argRPCPort  string
 		argProfile  string
+		argPort     int
 	)
 
 	var Usage = func() {
@@ -91,6 +92,7 @@ func main() {
 	start.StringVar(&argKeyfile, "keyfile", "", "Path to yaml file containing crypto key")
 	start.StringVar(&argKey, "key", "", "AES crypto key")
 	start.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
+	start.IntVar(&argPort, "port", 0, "`Port` that will be used for p2p communication. Random port number will be generated if no port were specified")
 
 	stop := flag.NewFlagSet("Shutdown options", flag.ContinueOnError)
 	stop.StringVar(&argHash, "hash", "", "Infohash for environment")
@@ -115,7 +117,7 @@ func main() {
 		Daemon(argRPCPort, argSaveFile, argProfile)
 	case "start":
 		start.Parse(os.Args[2:])
-		Start(argRPCPort, argIp, argHash, argMask, argMac, argDev, argDht, argKeyfile, argKey, argTTL, argFwd)
+		Start(argRPCPort, argIp, argHash, argMask, argMac, argDev, argDht, argKeyfile, argKey, argTTL, argFwd, argPort)
 	case "stop":
 		stop.Parse(os.Args[2:])
 		Stop(argRPCPort, argHash)
@@ -170,7 +172,7 @@ func Dial(port string) *rpc.Client {
 	return client
 }
 
-func Start(rpcPort, ip, hash, mask, mac, dev, dht, keyfile, key, ttl string, fwd bool) {
+func Start(rpcPort, ip, hash, mask, mac, dev, dht, keyfile, key, ttl string, fwd bool, port int) {
 	client := Dial(rpcPort)
 	var response Response
 
@@ -207,6 +209,7 @@ func Start(rpcPort, ip, hash, mask, mac, dev, dht, keyfile, key, ttl string, fwd
 	args.Key = key
 	args.TTL = ttl
 	args.Fwd = fwd
+	args.Port = port
 	err := client.Call("Procedures.Run", args, &response)
 	if err != nil {
 		fmt.Printf("Failed to run RPC request: %v\n", err)

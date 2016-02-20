@@ -197,6 +197,19 @@ func CreateProxyP2PMessage(id int, data string, netProto uint16) *P2PMessage {
 	return msg
 }
 
+func CreateBadTunnelP2PMessage(id int, netProto uint16) *P2PMessage {
+	data := "rem"
+	msg := new(P2PMessage)
+	msg.Header = new(P2PMessageHeader)
+	msg.Header.Magic = MAGIC_COOKIE
+	msg.Header.Type = uint16(MT_BAD_TUN)
+	msg.Header.NetProto = netProto
+	msg.Header.Length = uint16(len(data))
+	msg.Header.ProxyId = uint16(id)
+	msg.Data = []byte(data)
+	return msg
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 type PTPNet struct {

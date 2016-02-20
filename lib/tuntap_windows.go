@@ -6,11 +6,11 @@ import (
 	"fmt"
 	//"os"
 	"encoding/binary"
+	"golang.org/x/sys/windows"
 	"os/exec"
 	"syscall"
 	"unicode/utf16"
 	"unsafe"
-	"golang.org/x/sys/windows"
 )
 
 type Interface struct {
@@ -144,16 +144,16 @@ func openDevice(ifPattern string) (*Interface, error) {
 	handle, err := queryNetworkKey()
 	if err != nil {
 		Log(ERROR, "Failed to query Windows registry: %v", err)
-		return nil, err
+		return INVALID_HANDLE, err
 	}
 	dev, err := queryAdapters(handle)
 	if err != nil {
 		Log(ERROR, "Failed to query network adapters: %v", err)
-		return nil, err
+		return INVALID_HANDLE, err
 	}
 	if dev.Name == "" {
 		Log(ERROR, "Failed to query network adapters: %v", err)
-		return nil, nil
+		return INVALID_HANDLE, nil
 	}
 
 	return dev, nil
@@ -164,7 +164,6 @@ func createInterface(file syscall.Handle, ifPattern string, kind DevKind, meta b
 }
 
 func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
-	
 	dev.IP = ip
 	dev.Mask = "255.255.255.0"
 	Log(INFO, "Configuring %s. IP: %s Mask: %s", dev.Interface, dev.IP, dev.Mask)
@@ -214,6 +213,59 @@ func SetIp(ip, device, tool string) error {
 
 func SetMac(mac, device, tool string) error {
 	panic("TUN/TAP functionality is not supported on this platform")
+}
+
+func (t *Interface) ReadPacket() (*Packet, error) {
+	buf := make([]byte, 100000)
+	err := syscall.ReadFile(t.file, buf, &t.Rl, &t.Rx)
+	if err != nil {
+		Log(ERROR, "Failed to read from TAP device")
+		return nil, err
+	}
+	t.Rx.Offset += t.Rl
+	l := 0
+	switch buf[0] & 0xf0 {
+	case 0x40:
+		l = 256*int(buf[2]) + int(buf[3])
+	case 0x60:
+		// 40 is ipv6 packet header length
+		l = 256*int(buf[4]) + int(buf[5]) + 40
+	}
+	var pkt *Packet
+	pkt = &Packet{Packet: buf[4:l]}
+	pkt.Protocol = int(binary.BigEndian.Uint16(buf[2:4]))
+	flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
+	if flags&flagTruncated != 0 {
+		pkt.Truncated = true
+	}
+	return pkt, nil
+}
+
+func (t *Interface) WritePacket(pkt *Packet) error {
+	buf := make([]byte, len(pkt.Packet)+4)
+	binary.BigEndian.PutUint16(buf[2:4], uint16(pkt.Protocol))
+	copy(buf[4:], pkt.Packet)
+	var l uint32
+	syscall.WriteFile(t.file, buf, &l, &t.Tx)
+	t.Tx.Offset += uint32(len(buf))
+	return nil
+}
+
+func (t *Interface) Close() error {
+	syscall.Close(t.Handle)
+	return nil
+}
+
+func CheckPermissions() bool {
+	return true
+}
+
+func Open(ifPattern string, kind DevKind, meta bool) (*Interface, error) {
+	inf, err := openDevice(ifPattern)
+	if err != nil {
+		return nil, err
+	}
+	return &inf, err
 }
 
 func (t *Interface) ReadPacket() (*Packet, error) {
