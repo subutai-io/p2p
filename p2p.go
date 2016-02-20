@@ -481,7 +481,6 @@ func (p *PTPCloud) AssignEndpoint(peer NetworkPeer) (string, bool) {
 						return kip.String(), true
 						ptp.Log(ptp.INFO, "Setting endpoint for %s to %s", peer.ID, kip.String())
 					}
-					// TODO: Test connection
 				}
 			}
 		}
