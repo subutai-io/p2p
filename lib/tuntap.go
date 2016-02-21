@@ -1,10 +1,3 @@
-// Package tuntap provides a portable interface to create and use
-// TUN/TAP virtual network interfaces.
-//
-// Note that while this package lets you create the interface and pass
-// packets to/from it, it does not provide an API to configure the
-// interface. Interface configuration is a very large topic and should
-// be dealt with separately.
 package ptp
 
 import ()
@@ -33,18 +26,10 @@ type Packet struct {
 	Packet []byte
 }
 
-// Disconnect from the tun/tap interface.
-//
-// If the interface isn't configured to be persistent, it is
-// immediately destroyed by the kernel.
-func (t *Interface) Close() error {
-	return t.file.Close()
-}
-
 // The name of the interface. May be different from the name given to
 // Open(), if the latter was a pattern.
-func (t *Interface) Name() string {
-	return t.name
+func (t *Interface) InterfaceName() string {
+	return t.Name
 }
 
 // Open connects to the specified tun/tap interface.
@@ -71,9 +56,14 @@ func Open(ifPattern string, kind DevKind, meta bool) (*Interface, error) {
 
 	ifName, err := createInterface(file, ifPattern, kind, meta)
 	if err != nil {
-		file.Close()
+		//file.Close()
 		return nil, err
 	}
 
-	return &Interface{ifName, file, meta}, nil
+	inf := new(Interface)
+	inf.Name = ifName
+	inf.file = file
+	inf.meta = meta
+
+	return inf, nil
 }

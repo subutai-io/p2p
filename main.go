@@ -9,7 +9,6 @@ import (
 	"net/rpc"
 	"os"
 	"os/signal"
-	"os/user"
 	"runtime/pprof"
 	"time"
 )
@@ -287,20 +286,16 @@ func Debug(rpcPort string) {
 func Daemon(port, saveFile, profiling string) {
 	start_profyle(profiling)
 	Instances = make(map[string]Instance)
-	user, err := user.Current()
-	if err != nil {
-		ptp.Log(ptp.ERROR, "Failed to retrieve information about user: %v", err)
-	}
-	if user.Uid != "0" {
-		ptp.Log(ptp.ERROR, "P2P cannot run in daemon mode without root privileges")
+	
+	if !ptp.CheckPermissions() {
 		os.Exit(1)
 	}
 
 	proc := new(Procedures)
 	rpc.Register(proc)
 	rpc.HandleHTTP()
-	listen, e := net.Listen("tcp", "localhost:"+port)
-	if e != nil {
+	listen, err := net.Listen("tcp", "localhost:"+port)
+	if err != nil {
 		ptp.Log(ptp.ERROR, "Cannot start RPC listener %v", err)
 		os.Exit(1)
 	}

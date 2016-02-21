@@ -1,15 +1,18 @@
-// +build linux,darwin
+// +build !windows
+
 package ptp
 
 import (
 	"encoding/binary"
 	"io"
 	"os"
+	
+	"os/user"
 	"unsafe"
 )
 
 type Interface struct {
-	name string
+	Name string
 	file *os.File
 	meta bool
 }
@@ -58,4 +61,25 @@ func (t *Interface) WritePacket(pkt *Packet) error {
 		return io.ErrShortWrite
 	}
 	return nil
+}
+
+// Disconnect from the tun/tap interface.
+//
+// If the interface isn't configured to be persistent, it is
+// immediately destroyed by the kernel.
+func (t *Interface) Close() error {
+	return t.file.Close()
+}
+
+func CheckPermissions() bool {
+	user, err := user.Current()
+	if err != nil {
+		ptp.Log(ptp.ERROR, "Failed to retrieve information about user: %v", err)
+		return false
+	}
+	if user.Uid != "0" {
+		ptp.Log(ptp.ERROR, "P2P cannot run in daemon mode without root privileges")
+		return false
+	}
+	return true
 }
