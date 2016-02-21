@@ -3,8 +3,8 @@
 package ptp
 
 import (
-	"fmt"
 	"encoding/binary"
+	"fmt"
 	"golang.org/x/sys/windows"
 	"os/exec"
 	"syscall"
@@ -22,8 +22,8 @@ type Interface struct {
 	Interface string
 	IP        string
 	Mask      string
-	Rx chan []byte
-	Tx chan []byte
+	Rx        chan []byte
+	Tx        chan []byte
 	/*Rx        syscall.Overlapped
 	RxE       windows.Handle
 	Tx        syscall.Overlapped
@@ -194,19 +194,19 @@ func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 		return err
 	}
 
-/*
-	Log(INFO, "Configuring overlapped Rx & Tx for Windows-TAP i/o operations")
-	dev.Rx = syscall.Overlapped{}
-	dev.RxE, err = windows.CreateEvent(nil, 0, 0, nil)
-	dev.Rx.HEvent = syscall.Handle(dev.RxE)
-	dev.Tx = syscall.Overlapped{}
-	dev.TxE, err = windows.CreateEvent(nil, 0, 0, nil)
-	dev.Tx.HEvent = syscall.Handle(dev.TxE)*/
+	/*
+		Log(INFO, "Configuring overlapped Rx & Tx for Windows-TAP i/o operations")
+		dev.Rx = syscall.Overlapped{}
+		dev.RxE, err = windows.CreateEvent(nil, 0, 0, nil)
+		dev.Rx.HEvent = syscall.Handle(dev.RxE)
+		dev.Tx = syscall.Overlapped{}
+		dev.TxE, err = windows.CreateEvent(nil, 0, 0, nil)
+		dev.Tx.HEvent = syscall.Handle(dev.TxE)*/
 
 	return nil
 }
 
-func (t* Interface) Run() {
+func (t *Interface) Run() {
 	t.Rx = make(chan []byte, 1500)
 	t.Tx = make(chan []byte, 1500)
 	go func() {
@@ -268,7 +268,7 @@ func (t *Interface) WritePacket(pkt *Packet) error {
 
 func (t *Interface) ReadPacket() (*Packet, error) {
 	//b := make(chan []byte, 1024)
-	
+
 	//err := t.Read(b)
 	buf := <-t.Rx
 	/*if err != nil {
@@ -284,7 +284,7 @@ func (t *Interface) ReadPacket() (*Packet, error) {
 	p := 12
 	var pkt *Packet
 	pkt = &Packet{Packet: buf[0:n]}
-	pkt.Protocol = int(binary.BigEndian.Uint16(buf[p:p+2]))
+	pkt.Protocol = int(binary.BigEndian.Uint16(buf[p : p+2]))
 	flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
 	if flags&flagTruncated != 0 {
 		pkt.Truncated = true
@@ -333,7 +333,7 @@ func (t *Interface) ReadPacket() (*Packet, error) {
 }*/
 
 func (t *Interface) WritePacket(pkt *Packet) error {
-	
+
 	buf := make([]byte, len(pkt.Packet)+4)
 	binary.BigEndian.PutUint16(buf[2:4], uint16(pkt.Protocol))
 	copy(buf[4:], pkt.Packet)
@@ -388,7 +388,7 @@ func (t *Interface) Read(ch chan []byte) (err error) {
 			//totalLen = 1024
 		}*/
 		//fmt.Println("read data", buf[:totalLen])
-		//send := make([]byte, totalLen) 
+		//send := make([]byte, totalLen)
 		//copy(send, buf)
 		ch <- buf
 	}

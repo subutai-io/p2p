@@ -102,3 +102,9 @@ func Open(ifPattern string, kind DevKind, meta bool) (*Interface, error) {
 
 	return inf, nil
 }
+
+func (t *Interface) Run() {
+
+	// Dummy, used for windows only
+
+}
