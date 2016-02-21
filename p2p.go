@@ -101,7 +101,7 @@ func (p *PTPCloud) handlePacket(contents []byte, proto int) {
 	if exists {
 		callback(contents, proto)
 	} else {
-		ptp.Log(ptp.WARNING, "Captured undefined packet")
+		ptp.Log(ptp.WARNING, "Captured undefined packet: %d", PacketType(proto))
 	}
 }
 
@@ -109,6 +109,9 @@ func (p *PTPCloud) handlePacket(contents []byte, proto int) {
 func (p *PTPCloud) ListenInterface() {
 	// Read packets received by TUN/TAP device and send them to a handlePacket goroutine
 	// This goroutine will decide what to do with this packet
+
+	// Run is for windows only
+	p.Device.Run()
 	for {
 		if p.Shutdown {
 			break
