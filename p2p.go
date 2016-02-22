@@ -77,7 +77,7 @@ func (p *PTPCloud) AssignInterface(ip, mac, mask, device string) error {
 		return err
 	}
 
-	p.Device, err = ptp.Open(p.DeviceName, ptp.DevTap, false)
+	p.Device, err = ptp.Open(p.DeviceName, ptp.DevTap)
 	if p.Device == nil {
 		ptp.Log(ptp.ERROR, "Failed to open TAP device: %v", err)
 		return err

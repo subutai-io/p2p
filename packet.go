@@ -150,7 +150,6 @@ func (p *PTPCloud) handlePPPoESessionPacket(contents []byte, proto int) {
 func (p *PTPCloud) handlePacketARP(contents []byte, proto int) {
 	// Prepare new ethernet frame and fill it with
 	// contents of the packet
-	ptp.Log(ptp.INFO, "ARP")
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		ptp.Log(ptp.ERROR, "Failed to Unmarshal ARP Binary")
@@ -167,7 +166,6 @@ func (p *PTPCloud) handlePacketARP(contents []byte, proto int) {
 		ptp.Log(ptp.ERROR, "Failed to unmarshal arp")
 		return
 	}
-	ptp.Log(ptp.DEBUG, "ARP Requested: %s", packet.TargetIP.String())
 	ptp.Log(ptp.TRACE, "Peers: %v, Target IP: %s", p.NetworkPeers, packet.TargetIP.String())
 	var hwAddr net.HardwareAddr = nil
 	id, exists := p.IPIDTable[packet.TargetIP.String()]
