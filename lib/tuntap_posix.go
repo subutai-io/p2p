@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"os/user"
-	"unsafe"
 )
 
 type Interface struct {
@@ -26,7 +25,7 @@ func (t *Interface) ReadPacket() (*Packet, error) {
 	var pkt *Packet
 	pkt = &Packet{Packet: buf[0:n]}
 	pkt.Protocol = int(binary.BigEndian.Uint16(buf[12:14]))
-	flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
+	//flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
 	/*if flags&flagTruncated != 0 {
 		pkt.Truncated = true
 	}*/
