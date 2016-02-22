@@ -214,6 +214,11 @@ func (t *Interface) Run() {
 			Log(ERROR, "Failed to read packet: %v", err)
 		}
 	}()
+	go func() {
+		if err := t.Write(t.Tx); err != nil {
+			Log(ERROR, "Failed ro write packet: %v", err)
+		}
+	}()
 }
 
 func LinkUp(device, tool string) error {
@@ -333,11 +338,13 @@ func (t *Interface) ReadPacket() (*Packet, error) {
 }*/
 
 func (t *Interface) WritePacket(pkt *Packet) error {
-
-	buf := make([]byte, len(pkt.Packet)+4)
-	binary.BigEndian.PutUint16(buf[2:4], uint16(pkt.Protocol))
-	copy(buf[4:], pkt.Packet)
-	t.Tx <- buf
+	n := len(pkt.Packet)
+	buf := make([]byte, n)
+	//binary.BigEndian.PutUint16(buf[2:4], uint16(pkt.Protocol))
+	//copy(buf[4:], pkt.Packet)
+	//t.Tx <- buf[:n+4]
+	copy(buf, pkt.Packet)
+	t.Tx <- buf[:n]
 	return nil
 }
 
