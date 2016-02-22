@@ -93,6 +93,7 @@ func main() {
 	start.StringVar(&argKey, "key", "", "AES crypto key")
 	start.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
 	start.IntVar(&argPort, "port", 0, "`Port` that will be used for p2p communication. Random port number will be generated if no port were specified")
+	start.BoolVar(&argFwd, "fwd", false, "If specified, only external routing schemes will be used with use of proxy servers")
 
 	stop := flag.NewFlagSet("Shutdown options", flag.ContinueOnError)
 	stop.StringVar(&argHash, "hash", "", "Infohash for environment")
@@ -289,7 +290,7 @@ func Debug(rpcPort string) {
 func Daemon(port, saveFile, profiling string) {
 	start_profyle(profiling)
 	Instances = make(map[string]Instance)
-	
+
 	if !ptp.CheckPermissions() {
 		os.Exit(1)
 	}
