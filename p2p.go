@@ -36,7 +36,6 @@ type PTPCloud struct {
 	MessageHandlers map[uint16]MessageHandler            // Callbacks
 	ReadyToStop     bool                                 // Set to true when instance is ready to stop
 	PacketHandlers  map[PacketType]PacketHandlerCallback // Callbacks for network packet handlers
-	// Interface       *os.File
 }
 
 type NetworkPeer struct {
@@ -57,7 +56,7 @@ type NetworkPeer struct {
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
-func (p *PTPCloud) CreateDevice(ip, mac, mask, device string) error {
+func (p *PTPCloud) AssignInterface(ip, mac, mask, device string) error {
 	var err error
 
 	p.IP = ip
@@ -86,7 +85,7 @@ func (p *PTPCloud) CreateDevice(ip, mac, mask, device string) error {
 		ptp.Log(ptp.INFO, "%v TAP Device created", p.DeviceName)
 	}
 
-	err = ptp.ConfigureInterface(p.IP, mac, p.DeviceName, p.IPTool)
+	err = ptp.ConfigureInterface(p.Device, p.IP, mac, p.DeviceName, p.IPTool)
 	if err != nil {
 		return err
 	}
@@ -102,7 +101,7 @@ func (p *PTPCloud) handlePacket(contents []byte, proto int) {
 	if exists {
 		callback(contents, proto)
 	} else {
-		ptp.Log(ptp.WARNING, "Captured undefined packet")
+		ptp.Log(ptp.WARNING, "Captured undefined packet: %d", PacketType(proto))
 	}
 }
 
@@ -110,6 +109,9 @@ func (p *PTPCloud) handlePacket(contents []byte, proto int) {
 func (p *PTPCloud) ListenInterface() {
 	// Read packets received by TUN/TAP device and send them to a handlePacket goroutine
 	// This goroutine will decide what to do with this packet
+
+	// Run is for windows only
+	p.Device.Run()
 	for {
 		if p.Shutdown {
 			break
@@ -278,7 +280,7 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.PacketHandlers[PT_PPPOE_DISCOVERY] = p.handlePPPoEDiscoveryPacket
 	p.PacketHandlers[PT_PPPOE_SESSION] = p.handlePPPoESessionPacket
 
-	p.CreateDevice(argIp, argMac, argMask, argDev)
+	p.AssignInterface(argIp, argMac, argMask, argDev)
 	p.UDPSocket = new(ptp.PTPNet)
 	p.UDPSocket.Init("", port)
 	port = p.UDPSocket.GetPort()

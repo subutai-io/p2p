@@ -13,6 +13,8 @@ cp-v*
 p2p-v*
 cp-*-v*
 p2p-*-v*
+*.exe
+*.zip
 
 # Logs
 *.log

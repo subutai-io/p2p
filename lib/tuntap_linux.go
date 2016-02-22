@@ -35,7 +35,7 @@ func createInterface(file *os.File, ifPattern string, kind DevKind, meta bool) (
 	return string(req.Name[:]), nil
 }
 
-func ConfigureInterface(ip, mac, device, tool string) error {
+func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 	err := LinkUp(device, tool)
 	if err != nil {
 		return err

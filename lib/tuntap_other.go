@@ -6,6 +6,12 @@ import (
 	"os"
 )
 
+type Interface struct {
+	name string
+	file *os.File
+	meta bool
+}
+
 var flagTruncated = 0
 
 func createInterface(f *os.File, ifPattern string, kind DevKind) (string, error) {

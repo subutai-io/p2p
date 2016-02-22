@@ -3,13 +3,14 @@
 package ptp
 
 import (
-	"fmt"
-	//"os"
 	"encoding/binary"
+	"fmt"
+	"golang.org/x/sys/windows"
 	"os/exec"
 	"syscall"
 	"unicode/utf16"
 	"unsafe"
+	//"sync"
 )
 
 type Interface struct {
@@ -21,12 +22,14 @@ type Interface struct {
 	Interface string
 	IP        string
 	Mask      string
-	Rx        syscall.Overlapped
-	RxE       syscall.Handle
+	Rx        chan []byte
+	Tx        chan []byte
+	/*Rx        syscall.Overlapped
+	RxE       windows.Handle
 	Tx        syscall.Overlapped
-	TxE       syscall.Handle
+	TxE       windows.Handle
 	Rl        uint32
-	Wl        uint32
+	Wl        uint32*/
 }
 
 const (
@@ -91,7 +94,7 @@ func queryNetworkKey() (syscall.Handle, error) {
 	return handle, nil
 }
 
-func queryAdapters(handle syscall.Handle) (Interface, error) {
+func queryAdapters(handle syscall.Handle) (*Interface, error) {
 	var dev Interface
 	var index uint32 = 0
 	for {
@@ -120,7 +123,7 @@ func queryAdapters(handle syscall.Handle) (Interface, error) {
 		adapterName := removeZeroes(string(aName))
 		tapname := fmt.Sprintf("%s%s%s", USERMODE_DEVICE_DIR, adapterId, TAP_SUFFIX)
 
-		dev.Handle, err = syscall.CreateFile(syscall.StringToUTF16Ptr(tapname),
+		dev.file, err = syscall.CreateFile(syscall.StringToUTF16Ptr(tapname),
 			syscall.GENERIC_WRITE|syscall.GENERIC_READ,
 			0,
 			nil,
@@ -134,25 +137,25 @@ func queryAdapters(handle syscall.Handle) (Interface, error) {
 		Log(INFO, "Acquired control over TAP interface: %s", adapterName)
 		dev.Name = adapterId
 		dev.Interface = adapterName
-		return dev, nil
+		return &dev, nil
 	}
-	return dev, nil
+	return nil, nil
 }
 
-func openDevice(ifPattern string) (Interface, error) {
+func openDevice(ifPattern string) (*Interface, error) {
 	handle, err := queryNetworkKey()
 	if err != nil {
 		Log(ERROR, "Failed to query Windows registry: %v", err)
-		return INVALID_HANDLE, err
+		return nil, err
 	}
 	dev, err := queryAdapters(handle)
 	if err != nil {
 		Log(ERROR, "Failed to query network adapters: %v", err)
-		return INVALID_HANDLE, err
+		return nil, err
 	}
 	if dev.Name == "" {
 		Log(ERROR, "Failed to query network adapters: %v", err)
-		return INVALID_HANDLE, nil
+		return nil, nil
 	}
 
 	return dev, nil
@@ -163,12 +166,14 @@ func createInterface(file syscall.Handle, ifPattern string, kind DevKind, meta b
 }
 
 func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
-	Log(INFO, "Configuring %s", dev.Interface)
 	dev.IP = ip
 	dev.Mask = "255.255.255.0"
+	Log(INFO, "Configuring %s. IP: %s Mask: %s", dev.Interface, dev.IP, dev.Mask)
 	setip := exec.Command("netsh")
 	setip.SysProcAttr = &syscall.SysProcAttr{}
-	setip.SysProcAttr.CmdLine = fmt.Sprintf(`netsh interface ip set address "%s" static %s %s`, dev.Interface, dev.IP, dev.Mask)
+	cmd := fmt.Sprintf(`netsh interface ip set address "%s" static %s %s`, dev.Interface, dev.IP, dev.Mask)
+	Log(INFO, "Executing: %s", cmd)
+	setip.SysProcAttr.CmdLine = cmd
 	err := setip.Run()
 	if err != nil {
 		Log(ERROR, "Failed to properly configure TAP device with netsh: %v", err)
@@ -188,10 +193,27 @@ func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 		Log(ERROR, "Failed to change device status to 'connected': %v", err)
 		return err
 	}
-	Log(INFO, "Configuring overlapped Rx & Tx for Windows-TAP i/o operations")
-	dev.Rx = syscall.Overlapped{}
-	dev.Tx = syscall.Overlapped{}
+
+	/*
+		Log(INFO, "Configuring overlapped Rx & Tx for Windows-TAP i/o operations")
+		dev.Rx = syscall.Overlapped{}
+		dev.RxE, err = windows.CreateEvent(nil, 0, 0, nil)
+		dev.Rx.HEvent = syscall.Handle(dev.RxE)
+		dev.Tx = syscall.Overlapped{}
+		dev.TxE, err = windows.CreateEvent(nil, 0, 0, nil)
+		dev.Tx.HEvent = syscall.Handle(dev.TxE)*/
+
 	return nil
+}
+
+func (t *Interface) Run() {
+	t.Rx = make(chan []byte, 1500)
+	t.Tx = make(chan []byte, 1500)
+	go func() {
+		if err := t.Read(t.Rx); err != nil {
+			Log(ERROR, "Failed to read packet: %v", err)
+		}
+	}()
 }
 
 func LinkUp(device, tool string) error {
@@ -206,6 +228,7 @@ func SetMac(mac, device, tool string) error {
 	panic("TUN/TAP functionality is not supported on this platform")
 }
 
+/*
 func (t *Interface) ReadPacket() (*Packet, error) {
 	buf := make([]byte, 100000)
 	err := syscall.ReadFile(t.file, buf, &t.Rl, &t.Rx)
@@ -241,6 +264,82 @@ func (t *Interface) WritePacket(pkt *Packet) error {
 	t.Tx.Offset += uint32(len(buf))
 	return nil
 }
+*/
+
+func (t *Interface) ReadPacket() (*Packet, error) {
+	//b := make(chan []byte, 1024)
+
+	//err := t.Read(b)
+	buf := <-t.Rx
+	/*if err != nil {
+		Log(ERROR, "Failed to read from TAP device")
+		return nil, err
+	} else {
+		Log(INFO, "Some data")
+	}*/
+	n := len(buf)
+	if n <= 4 {
+		return nil, nil
+	}
+	p := 12
+	var pkt *Packet
+	pkt = &Packet{Packet: buf[0:n]}
+	pkt.Protocol = int(binary.BigEndian.Uint16(buf[p : p+2]))
+	flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
+	if flags&flagTruncated != 0 {
+		pkt.Truncated = true
+	}
+	pkt.Truncated = false
+	//Log(INFO, "Returning packet: %d", pkt.Protocol)
+
+	return pkt, nil
+}
+
+/*func (t *Interface) ReadPacket() (*Packet, error) {
+	buf := make([]byte, 100000)
+	err := syscall.ReadFile(t.file, buf, &t.Rl, &t.Rx)
+	if err != nil {
+		//Log(ERROR, "Failed to read from TAP device: %s", err)
+		//return nil, err
+	}
+	if _, err := syscall.WaitForSingleObject(t.Rx.HEvent, syscall.INFINITE); err != nil {
+		Log(ERROR, "Failed to read from TAP device: %s", err)
+	}
+	t.Rx.Offset += t.Rl
+	Log(INFO, "1")
+	l := 0
+	switch buf[0] & 0xf0 {
+	case 0x40:
+		Log(INFO, "2")
+		l = 256*int(buf[2]) + int(buf[3])
+	case 0x60:
+		Log(INFO, "3")
+		continue
+		// 40 is ipv6 packet header length
+		l = 256*int(buf[4]) + int(buf[5]) + 40
+	}
+	Log(INFO, "4")
+	var pkt *Packet
+	pkt = &Packet{Packet: buf[4:l]}
+	Log(INFO, "5")
+	pkt.Protocol = int(binary.BigEndian.Uint16(buf[2:4]))
+	Log(INFO, "6")
+	flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
+	Log(INFO, "7")
+	if flags&flagTruncated != 0 {
+		pkt.Truncated = true
+	}
+	return pkt, nil
+}*/
+
+func (t *Interface) WritePacket(pkt *Packet) error {
+
+	buf := make([]byte, len(pkt.Packet)+4)
+	binary.BigEndian.PutUint16(buf[2:4], uint16(pkt.Protocol))
+	copy(buf[4:], pkt.Packet)
+	t.Tx <- buf
+	return nil
+}
 
 func (t *Interface) Close() error {
 	syscall.Close(t.Handle)
@@ -256,5 +355,60 @@ func Open(ifPattern string, kind DevKind, meta bool) (*Interface, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &inf, err
+	return inf, err
+}
+
+func (t *Interface) Read(ch chan []byte) (err error) {
+	overlappedRx := syscall.Overlapped{}
+	var hevent windows.Handle
+	hevent, err = windows.CreateEvent(nil, 0, 0, nil)
+	if err != nil {
+		return
+	}
+	overlappedRx.HEvent = syscall.Handle(hevent)
+	buf := make([]byte, 1500)
+	var l uint32
+	for {
+		if err := syscall.ReadFile(t.file, buf, &l, &overlappedRx); err != nil {
+		}
+		if _, err := syscall.WaitForSingleObject(overlappedRx.HEvent, syscall.INFINITE); err != nil {
+			fmt.Println(err)
+		}
+		overlappedRx.Offset += l
+		// totalLen := 0
+		/*switch buf[0] & 0xf0 {
+		case 0x40:
+			Log(INFO, "ipv4")
+			//totalLen = 256*int(buf[2]) + int(buf[3])
+		case 0x60:
+			Log(INFO, "ipv6")
+			//totalLen = 256*int(buf[4]) + int(buf[5]) + 40
+		default:
+			Log(INFO, "unknown: %v", (buf[0] & 0xf0))
+			//totalLen = 1024
+		}*/
+		//fmt.Println("read data", buf[:totalLen])
+		//send := make([]byte, totalLen)
+		//copy(send, buf)
+		ch <- buf
+	}
+}
+
+func (t *Interface) Write(ch chan []byte) (err error) {
+	overlappedRx := syscall.Overlapped{}
+	var hevent windows.Handle
+	hevent, err = windows.CreateEvent(nil, 0, 0, nil)
+	if err != nil {
+		return
+	}
+	overlappedRx.HEvent = syscall.Handle(hevent)
+	for {
+		select {
+		case data := <-ch:
+			var l uint32
+			syscall.WriteFile(t.file, data, &l, &overlappedRx)
+			syscall.WaitForSingleObject(overlappedRx.HEvent, syscall.INFINITE)
+			overlappedRx.Offset += uint32(len(data))
+		}
+	}
 }
