@@ -32,20 +32,23 @@ func (t *Interface) ReadPacket() (*Packet, error) {
 	} else {
 		pkt = &Packet{Packet: buf[0:n]}
 	}
-	pkt.Protocol = int(binary.BigEndian.Uint16(buf[2:4]))
+	pkt.Protocol = int(binary.BigEndian.Uint16(buf[12:14]))
 	flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
 	if flags&flagTruncated != 0 {
 		pkt.Truncated = true
 	}
+	pkt.Truncated = false
 	return pkt, nil
 }
 
 // Send a single packet to the kernel.
 func (t *Interface) WritePacket(pkt *Packet) error {
 	// If only we had writev(), I could do zero-copy here...
-	buf := make([]byte, len(pkt.Packet)+4)
-	binary.BigEndian.PutUint16(buf[2:4], uint16(pkt.Protocol))
-	copy(buf[4:], pkt.Packet)
+	//buf := make([]byte, len(pkt.Packet)+4)
+	buf := make([]byte, len(pkt.Packet))
+	//binary.BigEndian.PutUint16(buf[2:4], uint16(pkt.Protocol))
+	//copy(buf[4:], pkt.Packet)
+	copy(buf, pkt.Packet)
 
 	var n int
 	var err error
