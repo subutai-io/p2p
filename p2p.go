@@ -36,7 +36,6 @@ type PTPCloud struct {
 	MessageHandlers map[uint16]MessageHandler            // Callbacks
 	ReadyToStop     bool                                 // Set to true when instance is ready to stop
 	PacketHandlers  map[PacketType]PacketHandlerCallback // Callbacks for network packet handlers
-	// Interface       *os.File
 }
 
 type NetworkPeer struct {
@@ -57,7 +56,7 @@ type NetworkPeer struct {
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
-func (p *PTPCloud) CreateDevice(ip, mac, mask, device string) error {
+func (p *PTPCloud) AssignInterface(ip, mac, mask, device string) error {
 	var err error
 
 	p.IP = ip
@@ -86,7 +85,7 @@ func (p *PTPCloud) CreateDevice(ip, mac, mask, device string) error {
 		ptp.Log(ptp.INFO, "%v TAP Device created", p.DeviceName)
 	}
 
-	err = ptp.ConfigureInterface(p.IP, mac, p.DeviceName, p.IPTool)
+	err = ptp.ConfigureInterface(p.Device, p.IP, mac, p.DeviceName, p.IPTool)
 	if err != nil {
 		return err
 	}
@@ -102,7 +101,7 @@ func (p *PTPCloud) handlePacket(contents []byte, proto int) {
 	if exists {
 		callback(contents, proto)
 	} else {
-		ptp.Log(ptp.WARNING, "Captured undefined packet")
+		ptp.Log(ptp.WARNING, "Captured undefined packet: %d", PacketType(proto))
 	}
 }
 
@@ -110,6 +109,9 @@ func (p *PTPCloud) handlePacket(contents []byte, proto int) {
 func (p *PTPCloud) ListenInterface() {
 	// Read packets received by TUN/TAP device and send them to a handlePacket goroutine
 	// This goroutine will decide what to do with this packet
+
+	// Run is for windows only
+	p.Device.Run()
 	for {
 		if p.Shutdown {
 			break
@@ -195,7 +197,7 @@ func (p *PTPCloud) FindNetworkAddresses() {
 	ptp.Log(ptp.INFO, "%d interfaces were saved", len(p.LocalIPs))
 }
 
-func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool) *PTPCloud {
+func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int) *PTPCloud {
 
 	var hw net.HardwareAddr
 
@@ -265,6 +267,7 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.MessageHandlers[ptp.MT_INTRO_REQ] = p.HandleIntroRequestMessage
 	p.MessageHandlers[ptp.MT_PROXY] = p.HandleProxyMessage
 	p.MessageHandlers[ptp.MT_TEST] = p.HandleTestMessage
+	p.MessageHandlers[ptp.MT_BAD_TUN] = p.HandleBadTun
 
 	// Register packet handlers
 	p.PacketHandlers = make(map[PacketType]PacketHandlerCallback)
@@ -277,10 +280,10 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.PacketHandlers[PT_PPPOE_DISCOVERY] = p.handlePPPoEDiscoveryPacket
 	p.PacketHandlers[PT_PPPOE_SESSION] = p.handlePPPoESessionPacket
 
-	p.CreateDevice(argIp, argMac, argMask, argDev)
+	p.AssignInterface(argIp, argMac, argMask, argDev)
 	p.UDPSocket = new(ptp.PTPNet)
-	p.UDPSocket.Init("", 0)
-	port := p.UDPSocket.GetPort()
+	p.UDPSocket.Init("", port)
+	port = p.UDPSocket.GetPort()
 	ptp.Log(ptp.INFO, "Started UDP Listener at port %d", port)
 	config.P2PPort = port
 	if argDht != "" {
@@ -480,7 +483,6 @@ func (p *PTPCloud) AssignEndpoint(peer NetworkPeer) (string, bool) {
 						return kip.String(), true
 						ptp.Log(ptp.INFO, "Setting endpoint for %s to %s", peer.ID, kip.String())
 					}
-					// TODO: Test connection
 				}
 			}
 		}
@@ -808,6 +810,19 @@ func (p *PTPCloud) HandleProxyMessage(msg *ptp.P2PMessage, src_addr *net.UDPAddr
 			peer.Ready = true
 			peer.ProxyRetries = 0
 			peer.State = ptp.P_HANDSHAKING
+			p.NetworkPeers[key] = peer
+		}
+	}
+}
+
+func (p *PTPCloud) HandleBadTun(msg *ptp.P2PMessage, src_addr *net.UDPAddr) {
+	ptp.Log(ptp.INFO, "Cleaning bad tunnel with ID: %d", msg.Header.ProxyId)
+	for key, peer := range p.NetworkPeers {
+		if peer.ProxyID == int(msg.Header.ProxyId) {
+			peer.ProxyID = 0
+			peer.Endpoint = ""
+			peer.Forwarder = nil
+			peer.State = ptp.P_INIT
 			p.NetworkPeers[key] = peer
 		}
 	}
