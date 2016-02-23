@@ -10,7 +10,7 @@ func openDevice(ifPattern string) (*os.File, error) {
 	return file, err
 }
 
-func createInterface(file *os.File, ifPattern string, kind DevKind, meta bool) (string, error) {
+func createInterface(file *os.File, ifPattern string, kind DevKind) (string, error) {
 	return "1", nil
 }
 
