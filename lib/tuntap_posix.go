@@ -6,18 +6,14 @@ import (
 	"encoding/binary"
 	"io"
 	"os"
-
 	"os/user"
-	"unsafe"
 )
 
 type Interface struct {
 	Name string
 	file *os.File
-	meta bool
 }
 
-// Read a single packet from the kernel.
 func (t *Interface) ReadPacket() (*Packet, error) {
 	buf := make([]byte, 10000)
 
@@ -27,33 +23,23 @@ func (t *Interface) ReadPacket() (*Packet, error) {
 	}
 
 	var pkt *Packet
-	if t.meta {
-		pkt = &Packet{Packet: buf[4:n]}
-	} else {
-		pkt = &Packet{Packet: buf[0:n]}
-	}
-	pkt.Protocol = int(binary.BigEndian.Uint16(buf[2:4]))
-	flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
-	if flags&flagTruncated != 0 {
+	pkt = &Packet{Packet: buf[0:n]}
+	pkt.Protocol = int(binary.BigEndian.Uint16(buf[12:14]))
+	//flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
+	/*if flags&flagTruncated != 0 {
 		pkt.Truncated = true
-	}
+	}*/
+	pkt.Truncated = false
 	return pkt, nil
 }
 
-// Send a single packet to the kernel.
 func (t *Interface) WritePacket(pkt *Packet) error {
-	// If only we had writev(), I could do zero-copy here...
-	buf := make([]byte, len(pkt.Packet)+4)
-	binary.BigEndian.PutUint16(buf[2:4], uint16(pkt.Protocol))
-	copy(buf[4:], pkt.Packet)
+	buf := make([]byte, len(pkt.Packet))
+	copy(buf, pkt.Packet)
 
 	var n int
 	var err error
-	if t.meta {
-		n, err = t.file.Write(buf)
-	} else {
-		n, err = t.file.Write(pkt.Packet)
-	}
+	n, err = t.file.Write(pkt.Packet)
 	if err != nil {
 		return err
 	}
@@ -63,10 +49,6 @@ func (t *Interface) WritePacket(pkt *Packet) error {
 	return nil
 }
 
-// Disconnect from the tun/tap interface.
-//
-// If the interface isn't configured to be persistent, it is
-// immediately destroyed by the kernel.
 func (t *Interface) Close() error {
 	return t.file.Close()
 }
@@ -84,13 +66,13 @@ func CheckPermissions() bool {
 	return true
 }
 
-func Open(ifPattern string, kind DevKind, meta bool) (*Interface, error) {
+func Open(ifPattern string, kind DevKind) (*Interface, error) {
 	file, err := openDevice(ifPattern)
 	if err != nil {
 		return nil, err
 	}
 
-	ifName, err := createInterface(file, ifPattern, kind, meta)
+	ifName, err := createInterface(file, ifPattern, kind)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +80,6 @@ func Open(ifPattern string, kind DevKind, meta bool) (*Interface, error) {
 	inf := new(Interface)
 	inf.Name = ifName
 	inf.file = file
-	inf.meta = meta
 
 	return inf, nil
 }

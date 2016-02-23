@@ -157,14 +157,15 @@ func (p *PTPCloud) handlePacketARP(contents []byte, proto int) {
 	}
 
 	if f.EtherType != ethernet.EtherTypeARP {
+		ptp.Log(ptp.ERROR, "Not ARP")
 		return
 	}
 
 	packet := new(ARPPacket)
 	if err := packet.UnmarshalARP(f.Payload); err != nil {
+		ptp.Log(ptp.ERROR, "Failed to unmarshal arp")
 		return
 	}
-
 	ptp.Log(ptp.TRACE, "Peers: %v, Target IP: %s", p.NetworkPeers, packet.TargetIP.String())
 	var hwAddr net.HardwareAddr = nil
 	id, exists := p.IPIDTable[packet.TargetIP.String()]
@@ -215,8 +216,8 @@ func (p *PTPCloud) handlePacketARP(contents []byte, proto int) {
 	if err != nil {
 		ptp.Log(ptp.ERROR, "Failed to marshal ARP Ethernet Frame")
 	}
-	p.WriteToDevice(fb, uint16(proto), false)
 	ptp.Log(ptp.DEBUG, "%v", packet.String())
+	p.WriteToDevice(fb, uint16(proto), false)
 }
 
 func (p *ARPPacket) String() string {

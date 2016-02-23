@@ -12,9 +12,8 @@ func openDevice(ifPattern string) (*os.File, error) {
 	return file, err
 }
 
-func createInterface(file *os.File, ifPattern string, kind DevKind, meta bool) (string, error) {
+func createInterface(file *os.File, ifPattern string, kind DevKind) (string, error) {
 	var req ifReq
-	//req.Flags = iffOneQueue
 	req.Flags = 0
 	copy(req.Name[:15], ifPattern)
 	switch kind {
@@ -25,9 +24,8 @@ func createInterface(file *os.File, ifPattern string, kind DevKind, meta bool) (
 	default:
 		panic("Unknown interface type")
 	}
-	if !meta {
-		req.Flags |= iffnopi
-	}
+	req.Flags |= iffnopi
+
 	_, _, err := syscall.Syscall(syscall.SYS_IOCTL, file.Fd(), uintptr(syscall.TUNSETIFF), uintptr(unsafe.Pointer(&req)))
 	if err != 0 {
 		return "", err
