@@ -573,6 +573,7 @@ func (dht *DHTRouter) HandleRegCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *P
 			resp.Command = ""
 		} else {
 			var newCP ControlPeer
+			newCP.ID = req.Id
 			addrStr := laddr.IP.String() + ":" + req.Arguments
 			newCP.Addr, _ = net.ResolveUDPAddr("udp", addrStr)
 			if !newCP.ValidateConnection() {
@@ -640,7 +641,9 @@ func (dht *DHTRouter) HandleCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer
 	ptp.Log(ptp.DEBUG, "Received request of control peer from %s", addr.String())
 	var resp ptp.DHTResponse
 	resp.Command = req.Command
-	resp.Dest = "0"
+
+	var candidate string = ""
+	var minimal int = 99999
 
 	omitList := strings.Split(req.Query, "|")
 	for _, cp := range dht.ControlPeers {
@@ -654,10 +657,14 @@ func (dht *DHTRouter) HandleCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer
 			continue
 		}
 		if cp.ValidateConnection() {
-			resp.Dest = cp.Addr.String()
-			resp.Id = req.Arguments
+			if cp.TunelsNum < minimal {
+				candidate = cp.Addr.String()
+				minimal = cp.TunelsNum
+			}
 		}
 	}
+	resp.Dest = candidate
+	resp.Id = req.Arguments
 	// At the same moment we should send this message to a requested address too
 
 	return resp
@@ -674,6 +681,21 @@ func (dht *DHTRouter) HandleBadCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *P
 		}
 	}
 	return dht.HandleCp(req, addr, peer)
+}
+
+func (dht *DHTRouter) HandleLoad(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
+	for _, cp := range dht.ControlPeers {
+		if cp.ID == req.Id {
+			var err error
+			cp.TunelsNum, err = strconv.Atoi(req.Arguments)
+			if err != nil {
+				cp.TunelsNum = 0
+			}
+		}
+	}
+	var resp ptp.DHTResponse
+	resp.Command = ""
+	return resp
 }
 
 // Send method send a packet to a connected client over network to a specific UDP address
@@ -758,6 +780,7 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 			ptp.Log(ptp.WARNING, "%s timeout reached. Disconnecting", dht.PeerList[key].ConnectionAddress)
 			delete(dht.PeerList, key)
 		}
+		dht.SyncControlPeers()
 		removeKeys = removeKeys[:0]
 		time.Sleep(PingTimeout)
 		var resp ptp.DHTResponse
@@ -770,6 +793,21 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 				peer.Disabled = true
 			}
 			dht.PeerList[i] = peer
+		}
+	}
+}
+
+func (dht *DHTRouter) SyncControlPeers() {
+	for key, cp := range dht.ControlPeers {
+		var found bool = false
+		for _, p := range dht.PeerList {
+			if p.ID == cp.ID {
+				found = true
+			}
+		}
+		if !found {
+			ptp.Log(ptp.WARNING, "Removing outdated control peer: %s %s", cp.ID, cp.Addr)
+			dht.ControlPeers = append(dht.ControlPeers[:key], dht.ControlPeers[key+1:]...)
 		}
 	}
 }
@@ -816,7 +854,7 @@ func main() {
 		dht.Callbacks[ptp.CMD_BADCP] = dht.HandleBadCp
 		dht.Callbacks[ptp.CMD_CP] = dht.HandleCp
 		dht.Callbacks[ptp.CMD_NOTIFY] = dht.HandleNotify
-		//dht.Callbacks[ptp.CMD_LOAD] = dht.HandleLoad
+		dht.Callbacks[ptp.CMD_LOAD] = dht.HandleLoad
 		dht.Callbacks[ptp.CMD_STOP] = dht.HandleStop
 		//dht.Callbacks[ptp.CMD_UNKNOWN] = dht.HandleUnknown
 
