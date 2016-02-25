@@ -296,3 +296,7 @@ func (t *Interface) Write(ch chan []byte) (err error) {
 		}
 	}
 }
+
+func GetDeviceBase() string {
+	return "Local Area Network"
+}
