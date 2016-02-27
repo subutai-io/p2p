@@ -19,8 +19,15 @@ func createInterface(file *os.File, ifPattern string, kind DevKind) (string, err
 }
 
 func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
-	linkup := exec.Command(tool, device, ip, "up")
-	err := linkup.Run()
+	// First we need to set MAC address, because ifconfig requires interface to go down
+	// before changing it
+	setmac := exec.Command(tool, device, "ether", mac)
+	err := setmac.Run()
+	if err != nil {
+		Log(ERROR, "Failed to set MAC: %v", err)
+	}
+	linkup := exec.Command(tool, device, ip, "netmask", "255.255.255.0", "up")
+	err = linkup.Run()
 	if err != nil {
 		Log(ERROR, "Failed to up link: %v", err)
 		return err
