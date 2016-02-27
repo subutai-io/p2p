@@ -22,6 +22,7 @@ func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 	// First we need to set MAC address, because ifconfig requires interface to go down
 	// before changing it
 	setmac := exec.Command(tool, device, "ether", mac)
+	err := setmac.Run()
 	if err != nil {
 		Log(ERROR, "Failed to set MAC: %v", err)
 	}
