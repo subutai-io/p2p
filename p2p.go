@@ -66,7 +66,7 @@ func (p *PTPCloud) AssignInterface(ip, mac, mask, device string) error {
 
 	// Extract necessary information from config file
 	// TODO: Remove hard-coded path
-	yamlFile, err := ioutil.ReadFile("config.yaml")
+	yamlFile, err := ioutil.ReadFile(ptp.CONFIG_DIR + "/p2p/config.yaml")
 	if err != nil {
 		ptp.Log(ptp.ERROR, "Failed to load config: %v", err)
 		p.IPTool = "/sbin/ip"

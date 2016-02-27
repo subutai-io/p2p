@@ -7,6 +7,10 @@ import (
 	"unsafe"
 )
 
+const (
+	CONFIG_DIR string = "/usr/local/etc"
+)
+
 func openDevice(ifPattern string) (*os.File, error) {
 	file, err := os.OpenFile("/dev/net/tun", os.O_RDWR, 0)
 	return file, err
