@@ -84,3 +84,7 @@ func SetMac(mac, device, tool string) error {
 	}
 	return err
 }
+
+func GetDeviceBase() string {
+	return "vptp"
+}
