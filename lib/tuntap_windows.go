@@ -24,6 +24,7 @@ type Interface struct {
 }
 
 const (
+	CONFIG_DIR          string         = "C:\\"
 	NETWORK_KEY         string         = "SYSTEM\\CurrentControlSet\\Control\\Network\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
 	ADAPTER_KEY         string         = "SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
 	NO_MORE_ITEMS       syscall.Errno  = 259
