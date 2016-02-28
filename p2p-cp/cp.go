@@ -691,6 +691,8 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 
 	} else {
 		// This is DHCP registration
+		// We're expecting information in a CIDR format
+
 	}
 	var resp ptp.DHTResponse
 	return resp
