@@ -280,7 +280,6 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.PacketHandlers[PT_PPPOE_DISCOVERY] = p.handlePPPoEDiscoveryPacket
 	p.PacketHandlers[PT_PPPOE_SESSION] = p.handlePPPoESessionPacket
 
-	p.AssignInterface(argIp, argMac, argMask, argDev)
 	p.UDPSocket = new(ptp.PTPNet)
 	p.UDPSocket.Init("", port)
 	port = p.UDPSocket.GetPort()
@@ -290,6 +289,7 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		config.Routers = argDht
 	}
 	p.dht = dhtClient.Initialize(config, p.LocalIPs)
+	p.AssignInterface(argIp, argMac, argMask, argDev)
 
 	go p.UDPSocket.Listen(p.HandleP2PMessage)
 
