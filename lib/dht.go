@@ -41,6 +41,8 @@ type DHTClient struct {
 	IPList           []net.IP
 	FailedProxyList  []*net.UDPAddr
 	State            DHTState
+	IP               string // IP received from DHCP or specified manually
+	Mask             string // Mask received from DHCP or specified manually
 }
 
 type Forwarder struct {
@@ -147,7 +149,7 @@ func (dht *DHTClient) Extract(b []byte) (response DHTResponse, err error) {
 }
 
 // Returns a bencoded representation of a DHTRequest
-func (dht *DHTClient) Compose(command, id, query string, arguments string) string {
+func (dht *DHTClient) Compose(command, id, query, arguments string) string {
 	var req DHTRequest
 	// Command is mandatory
 	req.Command = command
@@ -409,6 +411,11 @@ func (dht *DHTClient) HandleStop(data DHTResponse, conn *net.UDPConn) {
 	conn.Close()
 }
 
+func (dht *DHTClient) HandleDHCP(data DHTResponse, conn *net.UDPConn) {
+	dht.IP = data.Dest
+	dht.Mask = data.Command
+}
+
 func (dht *DHTClient) HandleUnknown(data DHTResponse, conn *net.UDPConn) {
 	if dht.State == D_CONNECTING || dht.State == D_RECONNECTING {
 		time.Sleep(3 * time.Second)
@@ -435,6 +442,7 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 		dht.ResponseHandlers[CMD_NODE] = dht.HandleNode
 		dht.ResponseHandlers[CMD_CP] = dht.HandleCp
 		dht.ResponseHandlers[CMD_NOTIFY] = dht.HandleNotify
+		dht.ResponseHandlers[CMD_DHCP] = dht.HandleDHCP
 	} else {
 		Log(INFO, "DHT operating in CONTROL PEER mode")
 		dht.ResponseHandlers[CMD_REGCP] = dht.HandleRegCp
@@ -540,19 +548,34 @@ func (dht *DHTClient) ReportControlPeerLoad(amount int) {
 		Log(ERROR, "Failed to Marshal bencode %v", err)
 		return
 	}
-	msg := b.String()
-	// TODO: Move sending to a separate method
+	dht.Send(b.String())
+}
+
+func (dht *DHTClient) Send(msg string) bool {
 	for _, conn := range dht.Connection {
 		if dht.Shutdown {
 			continue
 		}
 		_, err := conn.Write([]byte(msg))
 		if err != nil {
-			Log(ERROR, "Failed to send packet: %v", err)
-			conn.Close()
-			return
+			Log(ERROR, "Failed to send DHT packet: %v", err)
+			return false
 		}
 	}
+	return true
+}
+
+// Request an IP from DHT. DHT Server will understand empty query field
+// and send IP in response
+func (dht *DHTClient) RequestIP() {
+	req := dht.Compose(CMD_DHCP, dht.ID, "", "")
+	dht.Send(req)
+}
+
+// Notify DHT about configured IP and netmask
+func (dht *DHTClient) SendIP(ip string, mask string) {
+	req := dht.Compose(CMD_DHCP, dht.ID, ip, mask)
+	dht.Send(req)
 }
 
 func (dht *DHTClient) Stop() {

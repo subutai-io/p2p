@@ -40,6 +40,8 @@ type DHTPeer struct {
 	PeersNum int
 	State    DHTState
 	Type     DHTType
+	IP       net.IP
+	Mask     net.IPMask
 }
 
 type DHTCallback func(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse
@@ -683,6 +685,17 @@ func (dht *DHTRouter) HandleBadCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *P
 	return dht.HandleCp(req, addr, peer)
 }
 
+func (dht *DHTRouter) HandleDHCP(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
+	if req.Query == "" {
+		// This is DHCP request
+
+	} else {
+		// This is DHCP registration
+	}
+	var resp ptp.DHTResponse
+	return resp
+}
+
 func (dht *DHTRouter) HandleLoad(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
 	for _, cp := range dht.ControlPeers {
 		if cp.ID == req.Id {
@@ -855,6 +868,7 @@ func main() {
 		dht.Callbacks[ptp.CMD_CP] = dht.HandleCp
 		dht.Callbacks[ptp.CMD_NOTIFY] = dht.HandleNotify
 		dht.Callbacks[ptp.CMD_LOAD] = dht.HandleLoad
+		dht.Callbacks[ptp.CMD_DHCP] = dht.HandleDHCP
 		dht.Callbacks[ptp.CMD_STOP] = dht.HandleStop
 		//dht.Callbacks[ptp.CMD_UNKNOWN] = dht.HandleUnknown
 

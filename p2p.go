@@ -289,7 +289,20 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		config.Routers = argDht
 	}
 	p.dht = dhtClient.Initialize(config, p.LocalIPs)
-	p.AssignInterface(argIp, argMac, argMask, argDev)
+	if argIp == "dhcp" {
+		p.dht.RequestIP()
+		for p.dht.IP == "" && p.dht.Mask == "" {
+			time.Sleep(10 * time.Microsecond)
+		}
+		argIp = p.dht.IP
+		argMask = p.dht.Mask
+		p.AssignInterface(argIp, argMac, argMask, argDev)
+	} else {
+		p.dht.IP = argIp
+		p.dht.Mask = argMask
+		p.dht.SendIP(argIp, argMask)
+		p.AssignInterface(argIp, argMac, argMask, argDev)
+	}
 
 	go p.UDPSocket.Listen(p.HandleP2PMessage)
 
