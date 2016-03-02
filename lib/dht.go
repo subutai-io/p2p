@@ -41,8 +41,8 @@ type DHTClient struct {
 	IPList           []net.IP
 	FailedProxyList  []*net.UDPAddr
 	State            DHTState
-	IP               string // IP received from DHCP or specified manually
-	Mask             string // Mask received from DHCP or specified manually
+	IP               net.IP
+	Network          *net.IPNet
 }
 
 type Forwarder struct {
@@ -412,8 +412,13 @@ func (dht *DHTClient) HandleStop(data DHTResponse, conn *net.UDPConn) {
 }
 
 func (dht *DHTClient) HandleDHCP(data DHTResponse, conn *net.UDPConn) {
-	dht.IP = data.Dest
-	dht.Mask = data.Command
+	ip, ipnet, err := net.ParseCIDR(data.Dest)
+	if err != nil {
+		Log(ERROR, "Failed to parse received DHCP packet: %v", err)
+		return
+	}
+	dht.IP = ip
+	dht.Network = ipnet
 }
 
 func (dht *DHTClient) HandleUnknown(data DHTResponse, conn *net.UDPConn) {

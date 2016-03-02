@@ -298,6 +298,7 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		argMask = p.dht.Mask
 		p.AssignInterface(argIp, argMac, argMask, argDev)
 	} else {
+
 		p.dht.IP = argIp
 		p.dht.Mask = argMask
 		p.dht.SendIP(argIp, argMask)
