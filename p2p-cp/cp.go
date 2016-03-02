@@ -41,7 +41,7 @@ type DHTPeer struct {
 	State    DHTState
 	Type     DHTType
 	IP       net.IP
-	Mask     net.IPMask
+	Network  *net.IPNet
 }
 
 type DHTCallback func(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse
@@ -71,7 +71,9 @@ type Peer struct {
 	// When disabled - node will not be interracted.
 	Disabled bool
 
-	IPList []*net.UDPAddr
+	IPList  []*net.UDPAddr
+	IP      net.IP
+	Network *net.IPNet
 }
 
 // Control Peer represents a connected control peer that can be used by
@@ -686,15 +688,26 @@ func (dht *DHTRouter) HandleBadCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *P
 }
 
 func (dht *DHTRouter) HandleDHCP(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
+	var resp ptp.DHTResponse
 	if req.Query == "" {
 		// This is DHCP request
 
 	} else {
 		// This is DHCP registration
-		// We're expecting information in a CIDR format
-
+		// We're expecting data in CIDR format
+		for id, peer := range dht.PeerList {
+			if peer.ID == req.Id {
+				ip, ipnet, err := net.ParseCIDR(req.Query)
+				if err != nil {
+					ptp.Log(ptp.ERROR, "Failed to parse received DHCP information: %v", err)
+					return resp
+				}
+				peer.IP = ip
+				peer.Network = ipnet
+				dht.PeerList[id] = peer
+			}
+		}
 	}
-	var resp ptp.DHTResponse
 	return resp
 }
 
