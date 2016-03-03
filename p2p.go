@@ -291,18 +291,34 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.dht = dhtClient.Initialize(config, p.LocalIPs)
 	if argIp == "dhcp" {
 		p.dht.RequestIP()
-		for p.dht.IP == "" && p.dht.Mask == "" {
+		for p.dht.IP == nil && p.dht.Network == nil {
 			time.Sleep(10 * time.Microsecond)
 		}
-		argIp = p.dht.IP
-		argMask = p.dht.Mask
+		argIp = p.dht.IP.String()
+		m := p.dht.Network.Mask
+		argMask = fmt.Sprintf("%d.%d.%d.%d", m[0], m[1], m[2], m[3])
 		p.AssignInterface(argIp, argMac, argMask, argDev)
 	} else {
-
-		p.dht.IP = argIp
-		p.dht.Mask = argMask
-		p.dht.SendIP(argIp, argMask)
-		p.AssignInterface(argIp, argMac, argMask, argDev)
+		ip, ipnet, err := net.ParseCIDR(argIp)
+		if err != nil {
+			nip := net.ParseIP(argIp)
+			if nip == nil {
+				ptp.Log(ptp.ERROR, "Invalid address were provided for network interface. Use -ip \"dhcp\" or specify correct IP address")
+				return nil
+			}
+			argIp += `/24`
+			ptp.Log(ptp.WARNING, "No CIDR mask was provided. Assumming /24")
+			ip, ipnet, err = net.ParseCIDR(argIp)
+			if err != nil {
+				ptp.Log(ptp.ERROR, "Failed to setup provided IP address for local device")
+				return nil
+			}
+		}
+		p.dht.IP = ip
+		p.dht.Network = ipnet
+		mask := fmt.Sprintf("%d.%d.%d.%d", ipnet.Mask[0], ipnet.Mask[1], ipnet.Mask[2], ipnet.Mask[3])
+		p.dht.SendIP(argIp, mask)
+		p.AssignInterface(p.dht.IP.String(), argMac, mask, argDev)
 	}
 
 	go p.UDPSocket.Listen(p.HandleP2PMessage)
