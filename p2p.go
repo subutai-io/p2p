@@ -197,7 +197,7 @@ func (p *PTPCloud) FindNetworkAddresses() {
 	ptp.Log(ptp.INFO, "%d interfaces were saved", len(p.LocalIPs))
 }
 
-func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int) *PTPCloud {
+func p2pmain(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int) *PTPCloud {
 
 	var hw net.HardwareAddr
 
@@ -294,10 +294,9 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		for p.dht.IP == nil && p.dht.Network == nil {
 			time.Sleep(10 * time.Microsecond)
 		}
-		argIp = p.dht.IP.String()
 		m := p.dht.Network.Mask
-		argMask = fmt.Sprintf("%d.%d.%d.%d", m[0], m[1], m[2], m[3])
-		p.AssignInterface(argIp, argMac, argMask, argDev)
+		mask := fmt.Sprintf("%d.%d.%d.%d", m[0], m[1], m[2], m[3])
+		p.AssignInterface(p.dht.IP.String(), argMac, mask, argDev)
 	} else {
 		ip, ipnet, err := net.ParseCIDR(argIp)
 		if err != nil {
