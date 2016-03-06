@@ -114,6 +114,8 @@ type DHTRouter struct {
 	PeerList map[string]Peer
 
 	Callbacks map[string]DHTCallback
+
+	DHCPLock bool
 }
 
 // Method ValidateConnection() tries to establish connection with control
@@ -687,11 +689,63 @@ func (dht *DHTRouter) HandleBadCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *P
 	return dht.HandleCp(req, addr, peer)
 }
 
+func (dht *DHTRouter) FindNetworkForHash(hash string) *net.IPNet {
+	for _, peer := range dht.PeerList {
+		if peer.IP == nil {
+			continue
+		}
+		return peer.Network
+	}
+	return nil
+}
+
+func (dht *DHTRouter) PickFreeIP(ipnet *net.IPNet, used []net.IP) net.IP {
+	ipbase := fmt.Sprintf("%d.%d.%d.", ipnet.IP[0xc], ipnet.IP[0xd], ipnet.IP[0xe])
+	for i := 3; i >= 0; i-- {
+		k := int(ipnet.Mask[i])
+		for j := 1; j < 255-k; j++ {
+			nextIp := net.ParseIP(fmt.Sprintf("%s%d", ipbase, j))
+			var inUse bool = false
+			for _, ip := range used {
+				if nextIp.String() == ip.String() {
+					inUse = true
+				}
+			}
+			if !inUse {
+				return nextIp
+			}
+		}
+	}
+	return nil
+}
+
 func (dht *DHTRouter) HandleDHCP(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
 	var resp ptp.DHTResponse
 	if req.Query == "" {
+		for dht.DHCPLock {
+			time.Sleep(10 * time.Microsecond)
+		}
+		dht.DHCPLock = true
+		// Collect IPs in use
+		var ips []net.IP
+		for _, peer := range dht.PeerList {
+			if peer.ID == req.Id && peer.IP != nil {
+				ips = append(ips, peer.IP)
+			}
+		}
 		// This is DHCP request
-
+		for id, peer := range dht.PeerList {
+			if peer.ID == req.Id {
+				ipnet := dht.FindNetworkForHash(peer.AssociatedHash)
+				if ipnet == nil {
+					break
+				}
+				peer.IP = dht.PickFreeIP(ipnet, ips)
+				peer.Network = ipnet
+				dht.PeerList[id] = peer
+			}
+		}
+		dht.DHCPLock = false
 	} else {
 		// This is DHCP registration
 		// We're expecting data in CIDR format
