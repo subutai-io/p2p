@@ -291,8 +291,10 @@ func p2pmain(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argK
 	p.dht = dhtClient.Initialize(config, p.LocalIPs)
 	if argIp == "dhcp" {
 		p.dht.RequestIP()
+		time.Sleep(1 * time.Second)
 		for p.dht.IP == nil && p.dht.Network == nil {
-			time.Sleep(10 * time.Microsecond)
+			p.dht.RequestIP()
+			time.Sleep(3 * time.Second)
 		}
 		m := p.dht.Network.Mask
 		mask := fmt.Sprintf("%d.%d.%d.%d", m[0], m[1], m[2], m[3])
