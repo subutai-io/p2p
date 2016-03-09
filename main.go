@@ -82,7 +82,7 @@ func main() {
 	daemon.StringVar(&argProfile, "profyle", "", "Starts PTP package with profiling. Possible values : memory, cpu")
 
 	start := flag.NewFlagSet("Startup options", flag.ContinueOnError)
-	start.StringVar(&argIp, "ip", "none", "`IP` address to be used")
+	start.StringVar(&argIp, "ip", "dhcp", "`IP` address to be used in local system. Should be specified in CIDR format or `dhcp` is used by default to receive free unused IP")
 	start.StringVar(&argMac, "mac", "", "MAC or `Hardware Address` for a TUN/TAP interface")
 	start.StringVar(&argDev, "dev", "", "TUN/TAP `interface name`")
 	start.StringVar(&argHash, "hash", "", "`Infohash` for environment")
