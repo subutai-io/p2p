@@ -4,6 +4,14 @@ const PACKET_VERSION string = "1"
 
 var SUPPORTED_VERSIONS = [...]string{"1", "2"}
 
+type DHTMessage struct {
+	Id        string "i"
+	Query     string "q"
+	Command   string "c"
+	Arguments string "a"
+	Payload   string "p"
+}
+
 // TODO: Modify these structures
 type DHTRequest struct {
 	Id        string "i"
@@ -46,6 +54,7 @@ const (
 	CMD_LOAD    string = "load"
 	CMD_STOP    string = "stop"
 	CMD_UNKNOWN string = "unk"
+	CMD_DHCP    string = "dhcp"
 )
 
 type PeerState int

@@ -197,7 +197,7 @@ func (p *PTPCloud) FindNetworkAddresses() {
 	ptp.Log(ptp.INFO, "%d interfaces were saved", len(p.LocalIPs))
 }
 
-func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int) *PTPCloud {
+func p2pmain(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int) *PTPCloud {
 
 	var hw net.HardwareAddr
 
@@ -280,7 +280,6 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.PacketHandlers[PT_PPPOE_DISCOVERY] = p.handlePPPoEDiscoveryPacket
 	p.PacketHandlers[PT_PPPOE_SESSION] = p.handlePPPoESessionPacket
 
-	p.AssignInterface(argIp, argMac, argMask, argDev)
 	p.UDPSocket = new(ptp.PTPNet)
 	p.UDPSocket.Init("", port)
 	port = p.UDPSocket.GetPort()
@@ -290,6 +289,38 @@ func p2pmain(argIp, argMask, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		config.Routers = argDht
 	}
 	p.dht = dhtClient.Initialize(config, p.LocalIPs)
+	if argIp == "dhcp" {
+		p.dht.RequestIP()
+		time.Sleep(1 * time.Second)
+		for p.dht.IP == nil && p.dht.Network == nil {
+			p.dht.RequestIP()
+			time.Sleep(3 * time.Second)
+		}
+		m := p.dht.Network.Mask
+		mask := fmt.Sprintf("%d.%d.%d.%d", m[0], m[1], m[2], m[3])
+		p.AssignInterface(p.dht.IP.String(), argMac, mask, argDev)
+	} else {
+		ip, ipnet, err := net.ParseCIDR(argIp)
+		if err != nil {
+			nip := net.ParseIP(argIp)
+			if nip == nil {
+				ptp.Log(ptp.ERROR, "Invalid address were provided for network interface. Use -ip \"dhcp\" or specify correct IP address")
+				return nil
+			}
+			argIp += `/24`
+			ptp.Log(ptp.WARNING, "No CIDR mask was provided. Assumming /24")
+			ip, ipnet, err = net.ParseCIDR(argIp)
+			if err != nil {
+				ptp.Log(ptp.ERROR, "Failed to setup provided IP address for local device")
+				return nil
+			}
+		}
+		p.dht.IP = ip
+		p.dht.Network = ipnet
+		mask := fmt.Sprintf("%d.%d.%d.%d", ipnet.Mask[0], ipnet.Mask[1], ipnet.Mask[2], ipnet.Mask[3])
+		p.dht.SendIP(argIp, mask)
+		p.AssignInterface(p.dht.IP.String(), argMac, mask, argDev)
+	}
 
 	go p.UDPSocket.Listen(p.HandleP2PMessage)
 
