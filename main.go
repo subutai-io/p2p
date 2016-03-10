@@ -46,7 +46,6 @@ func main() {
 
 	var (
 		argIp       string
-		argMask     string
 		argMac      string
 		argDev      string
 		argHash     string
@@ -83,8 +82,7 @@ func main() {
 	daemon.StringVar(&argProfile, "profyle", "", "Starts PTP package with profiling. Possible values : memory, cpu")
 
 	start := flag.NewFlagSet("Startup options", flag.ContinueOnError)
-	start.StringVar(&argIp, "ip", "none", "`IP` address to be used")
-	start.StringVar(&argMask, "mask", "255.255.255.0", "Network mask a.k.a. `subnet`")
+	start.StringVar(&argIp, "ip", "dhcp", "`IP` address to be used in local system. Should be specified in CIDR format or `dhcp` is used by default to receive free unused IP")
 	start.StringVar(&argMac, "mac", "", "MAC or `Hardware Address` for a TUN/TAP interface")
 	start.StringVar(&argDev, "dev", "", "TUN/TAP `interface name`")
 	start.StringVar(&argHash, "hash", "", "`Infohash` for environment")
@@ -118,7 +116,7 @@ func main() {
 		Daemon(argRPCPort, argSaveFile, argProfile)
 	case "start":
 		start.Parse(os.Args[2:])
-		Start(argRPCPort, argIp, argHash, argMask, argMac, argDev, argDht, argKeyfile, argKey, argTTL, argFwd, argPort)
+		Start(argRPCPort, argIp, argHash, argMac, argDev, argDht, argKeyfile, argKey, argTTL, argFwd, argPort)
 	case "stop":
 		stop.Parse(os.Args[2:])
 		Stop(argRPCPort, argHash)
@@ -173,7 +171,7 @@ func Dial(port string) *rpc.Client {
 	return client
 }
 
-func Start(rpcPort, ip, hash, mask, mac, dev, dht, keyfile, key, ttl string, fwd bool, port int) {
+func Start(rpcPort, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool, port int) {
 	client := Dial(rpcPort)
 	var response Response
 
@@ -188,7 +186,6 @@ func Start(rpcPort, ip, hash, mask, mac, dev, dht, keyfile, key, ttl string, fwd
 		return
 	}
 	args.Hash = hash
-	args.Mask = mask
 	if mac != "" {
 		_, err := net.ParseMAC(mac)
 		if err != nil {

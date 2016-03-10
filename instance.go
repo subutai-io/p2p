@@ -11,7 +11,6 @@ import (
 
 type RunArgs struct {
 	IP      string
-	Mask    string
 	Mac     string
 	Dev     string
 	Hash    string
@@ -198,7 +197,7 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 			args.Key = string(key)
 		}
 
-		ptpInstance := p2pmain(args.IP, args.Mask, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port)
+		ptpInstance := p2pmain(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port)
 		var newInst Instance
 		newInst.ID = args.Hash
 		newInst.PTP = ptpInstance
