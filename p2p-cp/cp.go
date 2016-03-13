@@ -268,9 +268,6 @@ func (dht *DHTRouter) HandleConn(req ptp.DHTRequest, addr *net.UDPAddr, p *Peer)
 		return resp
 	}
 
-	// We want to update Endpoint for this node
-	// Let's resolve new address from original IP and by port received from client
-
 	// First element should always be a port number
 	data := strings.Split(req.Arguments, "|")
 	if len(data) <= 1 {
@@ -720,10 +717,11 @@ func (dht *DHTRouter) PickFreeIP(ipnet *net.IPNet, used []net.IP) net.IP {
 }
 
 func (dht *DHTRouter) HandleDHCP(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
+	ptp.Log(ptp.INFO, "DHCP Request from %s", addr.String())
 	var resp ptp.DHTResponse
-	if req.Query == "" {
+	if req.Query == "0" {
 		for dht.DHCPLock {
-			time.Sleep(10 * time.Microsecond)
+			time.Sleep(100 * time.Microsecond)
 		}
 		dht.DHCPLock = true
 		// Collect IPs in use
@@ -744,7 +742,9 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 				peer.Network = ipnet
 				dht.PeerList[id] = peer
 				resp.Command = "dhcp"
-				resp.Dest = peer.IP + "/" + peer.Network
+				_, bits := peer.Network.Mask.Size()
+				resp.Dest = fmt.Sprintf("%s/%d", peer.IP.String(), bits)
+				ptp.Log(ptp.INFO, "DHCP Response: %s", resp.Dest)
 			}
 		}
 		dht.DHCPLock = false
@@ -840,7 +840,7 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 			dht.Send(conn, addr, dht.EncodeResponse(resp))
 		}
 	} else {
-		ptp.Log(ptp.ERROR, "Unknown command received: %s", req.Command)
+		ptp.Log(ptp.ERROR, "Unknown command received %s from %s", req.Command, addr.String())
 	}
 }
 

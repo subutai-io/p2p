@@ -414,6 +414,7 @@ func (dht *DHTClient) HandleStop(data DHTResponse, conn *net.UDPConn) {
 func (dht *DHTClient) HandleDHCP(data DHTResponse, conn *net.UDPConn) {
 	if data.Dest == "ok" {
 		Log(INFO, "DHCP Registration confirmed")
+		return
 	} else {
 		Log(INFO, "Received DHCP Information")
 	}
@@ -452,11 +453,11 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 		dht.ResponseHandlers[CMD_NODE] = dht.HandleNode
 		dht.ResponseHandlers[CMD_CP] = dht.HandleCp
 		dht.ResponseHandlers[CMD_NOTIFY] = dht.HandleNotify
-		dht.ResponseHandlers[CMD_DHCP] = dht.HandleDHCP
 	} else {
 		Log(INFO, "DHT operating in CONTROL PEER mode")
 		dht.ResponseHandlers[CMD_REGCP] = dht.HandleRegCp
 	}
+	dht.ResponseHandlers[CMD_DHCP] = dht.HandleDHCP
 	dht.ResponseHandlers[CMD_FIND] = dht.HandleFind
 	dht.ResponseHandlers[CMD_CONN] = dht.HandleConn
 	dht.ResponseHandlers[CMD_PING] = dht.HandlePing
