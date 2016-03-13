@@ -412,6 +412,11 @@ func (dht *DHTClient) HandleStop(data DHTResponse, conn *net.UDPConn) {
 }
 
 func (dht *DHTClient) HandleDHCP(data DHTResponse, conn *net.UDPConn) {
+	if data.Dest == "ok" {
+		Log(INFO, "DHCP Registration confirmed")
+	} else {
+		Log(INFO, "Received DHCP Information")
+	}
 	ip, ipnet, err := net.ParseCIDR(data.Dest)
 	if err != nil {
 		Log(ERROR, "Failed to parse received DHCP packet: %v", err)

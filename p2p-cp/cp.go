@@ -743,6 +743,8 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 				peer.IP = dht.PickFreeIP(ipnet, ips)
 				peer.Network = ipnet
 				dht.PeerList[id] = peer
+				resp.Command = "dhcp"
+				resp.Dest = peer.IP + "/" + peer.Network
 			}
 		}
 		dht.DHCPLock = false
@@ -753,11 +755,13 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 			if peer.ID == req.Id {
 				ip, ipnet, err := net.ParseCIDR(req.Query)
 				if err != nil {
-					ptp.Log(ptp.ERROR, "Failed to parse received DHCP information: %v", err)
+					ptp.Log(ptp.ERROR, "Failed to parse received DHCP information (%s): %v", req.Query, err)
 					return resp
 				}
 				peer.IP = ip
 				peer.Network = ipnet
+				resp.Command = "dhcp"
+				resp.Dest = "ok"
 				dht.PeerList[id] = peer
 			}
 		}
