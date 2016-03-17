@@ -152,6 +152,14 @@ func CreateNewTAPDevice() {
 			Log(ERROR, "Failed to remove TUN/TAP Devices: %v", err)
 		}
 	}
+
+	// Now add a new device
+	Log(INFO, "Creating new TUN/TAP Device")
+	addev := exec.Command(ADD_DEV)
+	err := adddev.Run()
+	if err != nil {
+		Log(ERROR, "Failed to add TUN/TAP Device: %v". err)
+	}
 }
 
 func openDevice(ifPattern string) (*Interface, error) {
