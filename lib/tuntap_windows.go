@@ -119,6 +119,18 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 		}
 		syscall.RegCloseKey(iHandle)
 		adapterName := removeZeroes(string(aName))
+
+		var isInUse bool = false
+		for _, i := range UsedInterfaces {
+			if i == adapterName {
+				isInUse = true
+			}
+		}
+		if isInUse {
+			continue
+		}
+		UserInterfaces = append(UsedInterfaces, adapterName)
+
 		tapname := fmt.Sprintf("%s%s%s", USERMODE_DEVICE_DIR, adapterId, TAP_SUFFIX)
 
 		dev.file, err = syscall.CreateFile(syscall.StringToUTF16Ptr(tapname),
@@ -140,7 +152,7 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 	return nil, nil
 }
 
-func CreateNewTAPDevice() {
+func createNewTAPDevice() {
 	// Check if we already have devices
 	if len(UsedInterfaces) == 0 {
 		// If not, remove interfaces from previous instances and/or created by other software
@@ -163,6 +175,7 @@ func CreateNewTAPDevice() {
 }
 
 func openDevice(ifPattern string) (*Interface, error) {
+	createNewTAPDevice
 	handle, err := queryNetworkKey()
 	if err != nil {
 		Log(ERROR, "Failed to query Windows registry: %v", err)
