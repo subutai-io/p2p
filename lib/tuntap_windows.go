@@ -129,7 +129,7 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 		if isInUse {
 			continue
 		}
-		UserInterfaces = append(UsedInterfaces, adapterName)
+		UsedInterfaces = append(UsedInterfaces, adapterName)
 
 		tapname := fmt.Sprintf("%s%s%s", USERMODE_DEVICE_DIR, adapterId, TAP_SUFFIX)
 
@@ -167,15 +167,15 @@ func createNewTAPDevice() {
 
 	// Now add a new device
 	Log(INFO, "Creating new TUN/TAP Device")
-	addev := exec.Command(ADD_DEV)
+	adddev := exec.Command(ADD_DEV)
 	err := adddev.Run()
 	if err != nil {
-		Log(ERROR, "Failed to add TUN/TAP Device: %v". err)
+		Log(ERROR, "Failed to add TUN/TAP Device: %v", err)
 	}
 }
 
 func openDevice(ifPattern string) (*Interface, error) {
-	createNewTAPDevice
+	createNewTAPDevice()
 	handle, err := queryNetworkKey()
 	if err != nil {
 		Log(ERROR, "Failed to query Windows registry: %v", err)
@@ -283,6 +283,11 @@ func (t *Interface) WritePacket(pkt *Packet) error {
 }
 
 func (t *Interface) Close() error {
+	for i, iface := range UsedInterfaces {
+		if iface == t.Interface {
+			UsedInterfaces = append(UsedInterfaces[:i], UsedInterfaces[i+1:]...)
+		}
+	}
 	syscall.Close(t.Handle)
 	return nil
 }
