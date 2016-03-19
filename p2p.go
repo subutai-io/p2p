@@ -289,6 +289,10 @@ func p2pmain(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argK
 		config.Routers = argDht
 	}
 	p.dht = dhtClient.Initialize(config, p.LocalIPs)
+	// Wait for ID
+	for len(p.dht.ID) < 32 {
+		time.Sleep(100 * time.Millisecond)
+	}
 	if argIp == "dhcp" {
 		p.dht.RequestIP()
 		time.Sleep(1 * time.Second)
