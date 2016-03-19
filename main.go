@@ -287,6 +287,7 @@ func Debug(rpcPort string) {
 func Daemon(port, saveFile, profiling string) {
 	start_profyle(profiling)
 	Instances = make(map[string]Instance)
+	ptp.InitErrors()
 
 	if !ptp.CheckPermissions() {
 		os.Exit(1)
