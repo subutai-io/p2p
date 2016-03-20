@@ -2,7 +2,7 @@ package ptp
 
 const PACKET_VERSION string = "3"
 
-var SUPPORTED_VERSIONS = [...]string{"3"}
+var SUPPORTED_VERSIONS = [...]string{"1", "2", "3"}
 
 type DHTMessage struct {
 	Id        string "i"

@@ -555,11 +555,16 @@ func (dht *DHTRouter) FindNetworkForHash(hash string) *net.IPNet {
 }
 
 func (dht *DHTRouter) PickFreeIP(ipnet *net.IPNet, used []net.IP) net.IP {
-	ipbase := fmt.Sprintf("%d.%d.%d.", ipnet.IP[0xc], ipnet.IP[0xd], ipnet.IP[0xe])
+	ptp.Log(ptp.DEBUG, "Picking free IP for network: %s", ipnet.String())
+	ptp.Log(ptp.DEBUG, "Used IPs: %v", used)
+	ptp.Log(ptp.DEBUG, "Mask: %s, len: %d", ipnet.Mask.String(), len(ipnet.Mask))
+	iplen := len(ipnet.IP)
+	ipbase := fmt.Sprintf("%d.%d.%d.", ipnet.IP[iplen-4], ipnet.IP[iplen-3], ipnet.IP[iplen-2])
 	for i := 3; i >= 0; i-- {
 		k := int(ipnet.Mask[i])
 		for j := 1; j < 255-k; j++ {
 			nextIp := net.ParseIP(fmt.Sprintf("%s%d", ipbase, j))
+			ptp.Log(ptp.DEBUG, "Next IP: %s", nextIp.String())
 			var inUse bool = false
 			for _, ip := range used {
 				if nextIp.String() == ip.String() {
@@ -582,19 +587,19 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 			time.Sleep(100 * time.Microsecond)
 		}
 		dht.DHCPLock = true
-		// Collect IPs in use
-		var ips []net.IP
-		for _, peer := range dht.PeerList {
-			if peer.ID == req.Id && peer.IP != nil {
-				ips = append(ips, peer.IP)
-			}
-		}
 		// This is DHCP request
 		for id, peer := range dht.PeerList {
 			if peer.ID == req.Id {
 				ipnet := dht.FindNetworkForHash(peer.AssociatedHash)
 				if ipnet == nil {
 					break
+				}
+				// Collect IPs in use
+				var ips []net.IP
+				for _, tp := range dht.PeerList {
+					if tp.AssociatedHash == peer.AssociatedHash && tp.IP != nil {
+						ips = append(ips, tp.IP)
+					}
 				}
 				peer.IP = dht.PickFreeIP(ipnet, ips)
 				peer.Network = ipnet

@@ -777,7 +777,7 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 	}
 	//var msgType ptp.MSG_TYPE = ptp.MSG_TYPE(msg.Header.Type)
 	// Decrypt message if crypter is active
-	if p.Crypter.Active {
+	if p.Crypter.Active && (msg.Header.Type == ptp.MT_INTRO || msg.Header.Type == ptp.MT_NENC || msg.Header.Type == ptp.MT_INTRO_REQ) {
 		var dec_err error
 		msg.Data, dec_err = p.Crypter.Decrypt(p.Crypter.ActiveKey.Key, msg.Data)
 		if dec_err != nil {
@@ -838,7 +838,7 @@ func (p *PTPCloud) HandleIntroRequestMessage(msg *ptp.P2PMessage, src_addr *net.
 	id := string(msg.Data)
 	peer, exists := p.NetworkPeers[id]
 	if !exists {
-		ptp.Log(ptp.DEBUG, "Introduction request came from unknown peer")
+		ptp.Log(ptp.DEBUG, "Introduction request came from unknown peer: %s", id)
 		return
 	}
 	response := p.PrepareIntroductionMessage(p.dht.ID)
