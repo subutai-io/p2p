@@ -176,10 +176,10 @@ func Start(rpcPort, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool,
 	var response Response
 
 	args := &RunArgs{}
-	if net.ParseIP(ip) == nil {
+	/*if net.ParseIP(ip) == nil {
 		fmt.Printf("Bad IP Address specified\n")
 		return
-	}
+	}*/
 	args.IP = ip
 	if hash == "" {
 		fmt.Printf("Hash cannot be empty. Please start new instances with -hash VALUE argument\n")
@@ -287,6 +287,7 @@ func Debug(rpcPort string) {
 func Daemon(port, saveFile, profiling string) {
 	start_profyle(profiling)
 	Instances = make(map[string]Instance)
+	ptp.InitErrors()
 
 	if !ptp.CheckPermissions() {
 		os.Exit(1)

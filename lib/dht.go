@@ -5,7 +5,7 @@ import (
 	"fmt"
 	bencode "github.com/jackpal/bencode-go"
 	"net"
-	"os"
+	//"os"
 	"strings"
 	"time"
 )
@@ -43,6 +43,8 @@ type DHTClient struct {
 	State            DHTState
 	IP               net.IP
 	Network          *net.IPNet
+	DataChannel      chan []byte
+	CommandChannel   chan []byte
 }
 
 type Forwarder struct {
@@ -277,7 +279,7 @@ func (dht *DHTClient) HandleConn(data DHTResponse, conn *net.UDPConn) {
 	}
 	if data.Id == "0" {
 		Log(ERROR, "Empty ID were received. Stopping")
-		os.Exit(1)
+		return
 	}
 	dht.State = D_OPERATING
 	dht.ID = data.Id
@@ -412,6 +414,12 @@ func (dht *DHTClient) HandleStop(data DHTResponse, conn *net.UDPConn) {
 }
 
 func (dht *DHTClient) HandleDHCP(data DHTResponse, conn *net.UDPConn) {
+	if data.Dest == "ok" {
+		Log(INFO, "DHCP Registration confirmed")
+		return
+	} else {
+		Log(INFO, "Received DHCP Information")
+	}
 	ip, ipnet, err := net.ParseCIDR(data.Dest)
 	if err != nil {
 		Log(ERROR, "Failed to parse received DHCP packet: %v", err)
@@ -422,6 +430,7 @@ func (dht *DHTClient) HandleDHCP(data DHTResponse, conn *net.UDPConn) {
 }
 
 func (dht *DHTClient) HandleUnknown(data DHTResponse, conn *net.UDPConn) {
+	Log(WARNING, "DHT server refuses our identity")
 	if dht.State == D_CONNECTING || dht.State == D_RECONNECTING {
 		time.Sleep(3 * time.Second)
 	}
@@ -430,6 +439,15 @@ func (dht *DHTClient) HandleUnknown(data DHTResponse, conn *net.UDPConn) {
 	err := dht.Handshake(conn)
 	if err != nil {
 		Log(ERROR, "Failed to send new handshake packet")
+	}
+}
+
+func (dht *DHTClient) HandleError(data DHTResponse, conn *net.UDPConn) {
+	e, exists := ErrorList[ErrorType(data.Dest)]
+	if !exists {
+		Log(ERROR, "Unknown error were received from DHT: %s", data.Dest)
+	} else {
+		Log(ERROR, "DHT returned error: %s", e.Error())
 	}
 }
 
@@ -447,16 +465,17 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 		dht.ResponseHandlers[CMD_NODE] = dht.HandleNode
 		dht.ResponseHandlers[CMD_CP] = dht.HandleCp
 		dht.ResponseHandlers[CMD_NOTIFY] = dht.HandleNotify
-		dht.ResponseHandlers[CMD_DHCP] = dht.HandleDHCP
 	} else {
 		Log(INFO, "DHT operating in CONTROL PEER mode")
 		dht.ResponseHandlers[CMD_REGCP] = dht.HandleRegCp
 	}
+	dht.ResponseHandlers[CMD_DHCP] = dht.HandleDHCP
 	dht.ResponseHandlers[CMD_FIND] = dht.HandleFind
 	dht.ResponseHandlers[CMD_CONN] = dht.HandleConn
 	dht.ResponseHandlers[CMD_PING] = dht.HandlePing
 	dht.ResponseHandlers[CMD_STOP] = dht.HandleStop
 	dht.ResponseHandlers[CMD_UNKNOWN] = dht.HandleUnknown
+	dht.ResponseHandlers[CMD_ERROR] = dht.HandleError
 	dht.IPList = ips
 	var connected int = 0
 	for _, router := range routers {
@@ -573,12 +592,14 @@ func (dht *DHTClient) Send(msg string) bool {
 // Request an IP from DHT. DHT Server will understand empty query field
 // and send IP in response
 func (dht *DHTClient) RequestIP() {
+	Log(INFO, "Sending DHCP request")
 	req := dht.Compose(CMD_DHCP, dht.ID, "", "")
 	dht.Send(req)
 }
 
 // Notify DHT about configured IP and netmask
 func (dht *DHTClient) SendIP(ip string, mask string) {
+	Log(INFO, "Sending DHCP information")
 	req := dht.Compose(CMD_DHCP, dht.ID, ip, mask)
 	dht.Send(req)
 }
@@ -608,4 +629,20 @@ func (dht *DHTClient) MakeForwarderFailed(addr *net.UDPAddr) {
 		}
 	}
 	dht.FailedProxyList = append(dht.FailedProxyList, addr)
+}
+
+func (dht *DHTClient) ReadFromDHT() {
+	for !dht.Shutdown {
+
+	}
+}
+
+func (dht *DHTClient) ReadData() []byte {
+	buf := <-dht.DataChannel
+	Log(INFO, "READ")
+	return buf
+}
+
+func (dht *DHTClient) WriteData([]byte) {
+
 }

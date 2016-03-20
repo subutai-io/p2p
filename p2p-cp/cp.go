@@ -44,7 +44,7 @@ type DHTPeer struct {
 	Network  *net.IPNet
 }
 
-type DHTCallback func(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse
+type DHTCallback func(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) (ptp.DHTResponse, error)
 
 // Representation of a DHT Node that was connected to current DHT Bootstrap node
 type Peer struct {
@@ -244,7 +244,7 @@ func (dht *DHTRouter) EncodeResponse(resp ptp.DHTResponse) string {
 	return b.String()
 }
 
-func (dht *DHTRouter) HandleConn(req ptp.DHTRequest, addr *net.UDPAddr, p *Peer) ptp.DHTResponse {
+func (dht *DHTRouter) HandleConn(req ptp.DHTRequest, addr *net.UDPAddr, p *Peer) (ptp.DHTResponse, error) {
 	var resp ptp.DHTResponse
 	resp.Command = req.Command
 	resp.Id = "0"
@@ -265,24 +265,21 @@ func (dht *DHTRouter) HandleConn(req ptp.DHTRequest, addr *net.UDPAddr, p *Peer)
 				dht.PeerList[i] = peer
 			}
 		}
-		return resp
+		return resp, ptp.ErrorList[ptp.ERR_INCOPATIBLE_VERSION]
 	}
-
-	// We want to update Endpoint for this node
-	// Let's resolve new address from original IP and by port received from client
 
 	// First element should always be a port number
 	data := strings.Split(req.Arguments, "|")
 	if len(data) <= 1 {
 		// We should receive information about at least one network interface
 		ptp.Log(ptp.ERROR, "DHT Received malformed handshake")
-		return resp
+		return resp, ptp.ErrorList[ptp.ERR_MALFORMED_HANDSHAKE]
 	}
 
 	port, err := strconv.Atoi(data[0])
 	if err != nil {
 		ptp.Log(ptp.ERROR, "Failed to parse port from handshake packet")
-		return resp
+		return resp, ptp.ErrorList[ptp.ERR_PORT_PARSE_FAILED]
 	}
 
 	var ipList []*net.UDPAddr
@@ -294,7 +291,7 @@ func (dht *DHTRouter) HandleConn(req ptp.DHTRequest, addr *net.UDPAddr, p *Peer)
 			a, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", dIp, port))
 			if err != nil {
 				ptp.Log(ptp.ERROR, "Failed to resolve UDP address during handshake: %v", err)
-				return resp
+				return resp, ptp.ErrorList[ptp.ERR_BAD_UDP_ADDR]
 			}
 			ipList = append(ipList, a)
 			continue
@@ -328,99 +325,8 @@ func (dht *DHTRouter) HandleConn(req ptp.DHTRequest, addr *net.UDPAddr, p *Peer)
 
 	resp.Id = p.ID
 	ptp.Log(ptp.INFO, "Sending greeting with ID %s to %s", p.ID, addr)
-	return resp
+	return resp, nil
 }
-
-// ResponseConn method generates a response to a "conn" network message received as a first packet
-// from a newly connected node. Response writes an ID of the node
-/*
-func (dht *DHTRouter) ResponseConn(req ptp.DHTRequest, addr string, n Peer) ptp.DHTResponse {
-	var resp ptp.DHTResponse
-	resp.Command = req.Command
-	resp.Id = "0"
-	resp.Dest = "0"
-	var supported bool = false
-
-	// Check that current version is supported
-	for _, ver := range ptp.SUPPORTED_VERSIONS {
-		if ver == req.Query {
-			supported = true
-		}
-	}
-	if !supported {
-		ptp.Log(ptp.DEBUG, "Unsupported packet version received during connection")
-		for i, p := range dht.PeerList {
-			if p.Addr.String() == addr {
-				p.Disabled = true
-				dht.PeerList[i] = p
-			}
-		}
-		return resp
-	}
-
-	// We want to update Endpoint for this node
-	// Let's resolve new address from original IP and by port received from client
-
-	// First element should always be a port number
-	data := strings.Split(req.Arguments, "|")
-	if len(data) <= 1 {
-		// We should receive information about at least one network interface
-		ptp.Log(ptp.ERROR, "DHT Received malformed handshake")
-		return resp
-	}
-
-	port, err := strconv.Atoi(data[0])
-	if err != nil {
-		ptp.Log(ptp.ERROR, "Failed to parse port from handshake packet")
-		return resp
-	}
-
-	var ipList []*net.UDPAddr
-
-	for i, d := range data {
-		if i == 0 {
-			// Put global IP address first
-			dIp, _, _ := net.SplitHostPort(addr)
-			a, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", dIp, port))
-			if err != nil {
-				ptp.Log(ptp.ERROR, "Failed to resolve UDP address during handshake: %v", err)
-				return resp
-			}
-			ipList = append(ipList, a)
-			continue
-		}
-		if d == "" {
-			continue
-		}
-		udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", d, port))
-		if err != nil {
-			ptp.Log(ptp.ERROR, "Failed to resolve address during handshake: %v", err)
-			continue
-		}
-		var found bool = false
-		for _, ip := range ipList {
-			if ip.String() == udpAddr.String() {
-				// Sometimes when interface IP address is equal to global IP address they will duplicate
-				found = true
-			}
-		}
-		if !found {
-			ipList = append(ipList, udpAddr)
-		}
-	}
-
-	for i, peer := range dht.PeerList {
-		if peer.ConnectionAddress == addr {
-			peer.IPList = ipList
-			dht.PeerList[i] = peer
-		}
-	}
-
-	resp.Id = n.ID
-	ptp.Log(ptp.INFO, "Sending greeting with ID %s to %s", n.ID, addr)
-	return resp
-}
-*/
 
 func (dht *DHTRouter) FindFreeProxies() []string {
 	var maxProxyNum int = 1
@@ -461,11 +367,11 @@ func (dht *DHTRouter) PeerExists(id string) bool {
 	return exists
 }
 
-func (dht *DHTRouter) HandleFind(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
+func (dht *DHTRouter) HandleFind(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) (ptp.DHTResponse, error) {
 	var resp ptp.DHTResponse
 	if len(req.Id) != 36 {
 		ptp.Log(ptp.DEBUG, "Malformed ID received. Ignoring")
-		return resp
+		return resp, ptp.ErrorList[ptp.ERR_BAD_ID_RECEIVED]
 	}
 	var foundDest string
 	var hashExists bool = false
@@ -487,75 +393,23 @@ func (dht *DHTRouter) HandleFind(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 	resp.Command = req.Command
 	resp.Id = "0"
 	resp.Dest = foundDest
-	return resp
+	return resp, nil
 }
 
-// ResponseFind method generates a response to a "find" network message which sent by DHT client
-// when they want to build a p2p network based on infohash string.
-// This method goes over list of hashes and collects information about all nodes with the
-// same hash separated by comma
-/*
-func (dht *DHTRouter) ResponseFind(req ptp.DHTRequest, addr string) ptp.DHTResponse {
-	var resp ptp.DHTResponse
-	if len(req.Id) != 36 {
-		ptp.Log(ptp.DEBUG, "Malformed ID received. Ignoring")
-		return resp
-	}
-	if !dht.PeerExists(req.Id) {
-		resp.Command = ptp.CMD_UNKNOWN
-		resp.Id = req.Id
-		resp.Dest = ""
-		return resp
-	}
-	var foundDest string
-	var hashExists bool = false
-	for _, node := range dht.PeerList {
-		if node.AssociatedHash == req.Query {
-			if node.ConnectionAddress == addr {
-				hashExists = true
-				// Skip if we are the node who requested hash
-				continue
-			}
-			ptp.Log(ptp.TRACE, "Found match in hash '%s' with peer %s", req.Query, node.AssociatedHash)
-			foundDest += node.ID + ","
-		}
-	}
-	if !hashExists {
-		// Hash was not found for current node. Add it
-		dht.RegisterHash(addr, req.Query)
-	}
-	resp.Command = req.Command
-	resp.Id = "0"
-	resp.Dest = foundDest
-	return resp
-}
-*/
-
-func (dht *DHTRouter) HandlePing(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
+func (dht *DHTRouter) HandlePing(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) (ptp.DHTResponse, error) {
 	peer.MissedPing = 0
 	dht.PeerList[req.Id] = *peer
 	var resp ptp.DHTResponse
 	resp.Command = ""
-	return resp
+	return resp, nil
 }
-
-// ResponsePing responses to a received "ping" message
-/*
-func (dht *DHTRouter) ResponsePing(req ptp.DHTRequest, addr string) ptp.DHTResponse {
-	var resp ptp.DHTResponse
-	resp.Command = req.Command
-	resp.Id = "0"
-	resp.Dest = "0"
-	return resp
-}
-*/
 
 // ResponseRegCP will check newly connected CP if it was not connected before. Also,
 // this method will call a function that will try to connect to CP to see if it's
 // accessible from outside it's network and not blocked by NAT, so normal peers
 // can connect to it
 //func (dht *DHTRouter) ResponseRegCP(req ptp.DHTRequest, addr string) ptp.DHTResponse {
-func (dht *DHTRouter) HandleRegCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
+func (dht *DHTRouter) HandleRegCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) (ptp.DHTResponse, error) {
 	var resp ptp.DHTResponse
 	resp.Command = req.Command
 	resp.Id = "0"
@@ -593,11 +447,11 @@ func (dht *DHTRouter) HandleRegCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *P
 			}
 		}
 	}
-	return resp
+	return resp, nil
 }
 
 //func (dht *DHTRouter) ResponseNode(req ptp.DHTRequest, addr string) ptp.DHTResponse {
-func (dht *DHTRouter) HandleNode(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
+func (dht *DHTRouter) HandleNode(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) (ptp.DHTResponse, error) {
 	ptp.Log(ptp.DEBUG, "List of peers has been requested from %s", addr.String())
 
 	var resp ptp.DHTResponse
@@ -614,26 +468,26 @@ func (dht *DHTRouter) HandleNode(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 		}
 	}
 
-	return resp
+	return resp, nil
 }
 
 //func (dht *DHTRouter) ResponseNotify(req ptp.DHTRequest, addr string) ptp.DHTResponse {
-func (dht *DHTRouter) HandleNotify(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
+func (dht *DHTRouter) HandleNotify(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) (ptp.DHTResponse, error) {
 	var resp ptp.DHTResponse
 	resp.Command = req.Command
 	resp.Dest = req.Arguments
 	resp.Id = "0"
 
-	return resp
+	return resp, nil
 }
 
 //func (dht *DHTRouter) ResponseStop(req ptp.DHTRequest) ptp.DHTResponse {
-func (dht *DHTRouter) HandleStop(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
+func (dht *DHTRouter) HandleStop(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) (ptp.DHTResponse, error) {
 	var resp ptp.DHTResponse
 	resp.Command = req.Command
 	resp.Dest = req.Id
 	resp.Id = "0"
-	return resp
+	return resp, nil
 }
 
 // ResponseCP responses to a CP request
@@ -643,7 +497,7 @@ func (dht *DHTRouter) HandleStop(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 // Response Packet contents:
 // resp.Dest - control peer endpoint
 //
-func (dht *DHTRouter) HandleCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
+func (dht *DHTRouter) HandleCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) (ptp.DHTResponse, error) {
 	ptp.Log(ptp.DEBUG, "Received request of control peer from %s", addr.String())
 	var resp ptp.DHTResponse
 	resp.Command = req.Command
@@ -673,10 +527,10 @@ func (dht *DHTRouter) HandleCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer
 	resp.Id = req.Arguments
 	// At the same moment we should send this message to a requested address too
 
-	return resp
+	return resp, nil
 }
 
-func (dht *DHTRouter) HandleBadCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
+func (dht *DHTRouter) HandleBadCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) (ptp.DHTResponse, error) {
 	for i, cp := range dht.ControlPeers {
 		if cp.Addr.String() == req.Query {
 			if !cp.ValidateConnection() {
@@ -686,7 +540,8 @@ func (dht *DHTRouter) HandleBadCp(req ptp.DHTRequest, addr *net.UDPAddr, peer *P
 			}
 		}
 	}
-	return dht.HandleCp(req, addr, peer)
+	res, err := dht.HandleCp(req, addr, peer)
+	return res, err
 }
 
 func (dht *DHTRouter) FindNetworkForHash(hash string) *net.IPNet {
@@ -700,11 +555,16 @@ func (dht *DHTRouter) FindNetworkForHash(hash string) *net.IPNet {
 }
 
 func (dht *DHTRouter) PickFreeIP(ipnet *net.IPNet, used []net.IP) net.IP {
-	ipbase := fmt.Sprintf("%d.%d.%d.", ipnet.IP[0xc], ipnet.IP[0xd], ipnet.IP[0xe])
+	ptp.Log(ptp.DEBUG, "Picking free IP for network: %s", ipnet.String())
+	ptp.Log(ptp.DEBUG, "Used IPs: %v", used)
+	ptp.Log(ptp.DEBUG, "Mask: %s, len: %d", ipnet.Mask.String(), len(ipnet.Mask))
+	iplen := len(ipnet.IP)
+	ipbase := fmt.Sprintf("%d.%d.%d.", ipnet.IP[iplen-4], ipnet.IP[iplen-3], ipnet.IP[iplen-2])
 	for i := 3; i >= 0; i-- {
 		k := int(ipnet.Mask[i])
 		for j := 1; j < 255-k; j++ {
 			nextIp := net.ParseIP(fmt.Sprintf("%s%d", ipbase, j))
+			ptp.Log(ptp.DEBUG, "Next IP: %s", nextIp.String())
 			var inUse bool = false
 			for _, ip := range used {
 				if nextIp.String() == ip.String() {
@@ -719,20 +579,14 @@ func (dht *DHTRouter) PickFreeIP(ipnet *net.IPNet, used []net.IP) net.IP {
 	return nil
 }
 
-func (dht *DHTRouter) HandleDHCP(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
+func (dht *DHTRouter) HandleDHCP(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) (ptp.DHTResponse, error) {
+	ptp.Log(ptp.INFO, "DHCP Request from %s", addr.String())
 	var resp ptp.DHTResponse
-	if req.Query == "" {
+	if req.Query == "0" {
 		for dht.DHCPLock {
-			time.Sleep(10 * time.Microsecond)
+			time.Sleep(100 * time.Microsecond)
 		}
 		dht.DHCPLock = true
-		// Collect IPs in use
-		var ips []net.IP
-		for _, peer := range dht.PeerList {
-			if peer.ID == req.Id && peer.IP != nil {
-				ips = append(ips, peer.IP)
-			}
-		}
 		// This is DHCP request
 		for id, peer := range dht.PeerList {
 			if peer.ID == req.Id {
@@ -740,9 +594,20 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 				if ipnet == nil {
 					break
 				}
+				// Collect IPs in use
+				var ips []net.IP
+				for _, tp := range dht.PeerList {
+					if tp.AssociatedHash == peer.AssociatedHash && tp.IP != nil {
+						ips = append(ips, tp.IP)
+					}
+				}
 				peer.IP = dht.PickFreeIP(ipnet, ips)
 				peer.Network = ipnet
 				dht.PeerList[id] = peer
+				resp.Command = "dhcp"
+				_, bits := peer.Network.Mask.Size()
+				resp.Dest = fmt.Sprintf("%s/%d", peer.IP.String(), bits)
+				ptp.Log(ptp.INFO, "DHCP Response: %s", resp.Dest)
 			}
 		}
 		dht.DHCPLock = false
@@ -754,18 +619,20 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 				ip, ipnet, err := net.ParseCIDR(req.Query)
 				if err != nil {
 					ptp.Log(ptp.ERROR, "Failed to parse received DHCP information: %v", err)
-					return resp
+					return resp, ptp.ErrorList[ptp.ERR_BAD_DHCP_DATA]
 				}
 				peer.IP = ip
 				peer.Network = ipnet
+				resp.Command = "dhcp"
+				resp.Dest = "ok"
 				dht.PeerList[id] = peer
 			}
 		}
 	}
-	return resp
+	return resp, nil
 }
 
-func (dht *DHTRouter) HandleLoad(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) ptp.DHTResponse {
+func (dht *DHTRouter) HandleLoad(req ptp.DHTRequest, addr *net.UDPAddr, peer *Peer) (ptp.DHTResponse, error) {
 	for _, cp := range dht.ControlPeers {
 		if cp.ID == req.Id {
 			var err error
@@ -777,7 +644,7 @@ func (dht *DHTRouter) HandleLoad(req ptp.DHTRequest, addr *net.UDPAddr, peer *Pe
 	}
 	var resp ptp.DHTResponse
 	resp.Command = ""
-	return resp
+	return resp, nil
 }
 
 // Send method send a packet to a connected client over network to a specific UDP address
@@ -819,6 +686,7 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 			resp.Id = req.Id
 			resp.Dest = ""
 			dht.Send(conn, addr, dht.EncodeResponse(resp))
+			ptp.Log(ptp.DEBUG, "Received data from unknown node. ID: %s, Command: %s", req.Id, req.Command)
 			return
 		}
 	}
@@ -831,12 +699,15 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 	// Try to bencode
 	callback, exists := dht.Callbacks[req.Command]
 	if exists {
-		resp := callback(req, addr, &peer)
+		resp, err := callback(req, addr, &peer)
+		if err != nil {
+			dht.SendError(conn, addr, err)
+		}
 		if resp.Command != "" {
 			dht.Send(conn, addr, dht.EncodeResponse(resp))
 		}
 	} else {
-		ptp.Log(ptp.ERROR, "Unknown command received: %s", req.Command)
+		ptp.Log(ptp.ERROR, "Unknown command received %s from %s", req.Command, addr.String())
 	}
 }
 
@@ -894,7 +765,19 @@ func (dht *DHTRouter) SyncControlPeers() {
 	}
 }
 
+func (dht *DHTRouter) SendError(conn *net.UDPConn, addr *net.UDPAddr, err error) {
+	var et ptp.ErrorType = ptp.ERR_UNKNOWN_ERROR
+	for t, e := range ptp.ErrorList {
+		if e.Error() == err.Error() {
+			et = t
+		}
+	}
+	msg := dht.Compose(ptp.CMD_ERROR, "", string(et))
+	dht.Send(conn, addr, msg)
+}
+
 func main() {
+	ptp.InitErrors()
 	var (
 		argDht    int
 		argTarget string

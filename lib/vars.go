@@ -1,8 +1,8 @@
 package ptp
 
-const PACKET_VERSION string = "1"
+const PACKET_VERSION string = "3"
 
-var SUPPORTED_VERSIONS = [...]string{"1", "2"}
+var SUPPORTED_VERSIONS = [...]string{"1", "2", "3"}
 
 type DHTMessage struct {
 	Id        string "i"
@@ -55,9 +55,16 @@ const (
 	CMD_STOP    string = "stop"
 	CMD_UNKNOWN string = "unk"
 	CMD_DHCP    string = "dhcp"
+	CMD_ERROR   string = "error"
 )
 
-type PeerState int
+const (
+	DHT_ERROR_UNSUPPORTED string = "unsupported"
+)
+
+type (
+	PeerState int
+)
 
 // Peer state
 const (

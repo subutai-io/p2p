@@ -151,6 +151,18 @@ func (p *PTPCloud) GenerateDeviceName(i int) string {
 	}
 }
 
+func (p *PTPCloud) IsIPv4(ip string) bool {
+	for i := 0; i < len(ip); i++ {
+		switch ip[i] {
+		case ':':
+			return false
+		case '.':
+			return true
+		}
+	}
+	return false
+}
+
 // This method lists interfaces available in the system and retrieves their
 // IP addresses
 func (p *PTPCloud) FindNetworkAddresses() {
@@ -187,6 +199,9 @@ func (p *PTPCloud) FindNetworkAddresses() {
 				ipType = "Link Local Multicast"
 			} else if ip.IsInterfaceLocalMulticast() {
 				ipType = "Interface Local Multicast"
+			}
+			if !p.IsIPv4(ip.String()) {
+				decision = "No IPv4"
 			}
 			ptp.Log(ptp.INFO, "Interface %s: %s. Type: %s. %s", i.Name, addr.String(), ipType, decision)
 			if decision == "Saving" {
@@ -289,10 +304,17 @@ func p2pmain(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argK
 		config.Routers = argDht
 	}
 	p.dht = dhtClient.Initialize(config, p.LocalIPs)
+	// Wait for ID
+	for len(p.dht.ID) < 32 {
+		time.Sleep(100 * time.Millisecond)
+	}
+	ptp.Log(ptp.INFO, "ID assigned. Continue")
 	if argIp == "dhcp" {
+		ptp.Log(ptp.INFO, "Requesting IP")
 		p.dht.RequestIP()
 		time.Sleep(1 * time.Second)
 		for p.dht.IP == nil && p.dht.Network == nil {
+			ptp.Log(ptp.INFO, "No IP were received. Requesting again")
 			p.dht.RequestIP()
 			time.Sleep(3 * time.Second)
 		}
@@ -755,7 +777,7 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 	}
 	//var msgType ptp.MSG_TYPE = ptp.MSG_TYPE(msg.Header.Type)
 	// Decrypt message if crypter is active
-	if p.Crypter.Active {
+	if p.Crypter.Active && (msg.Header.Type == ptp.MT_INTRO || msg.Header.Type == ptp.MT_NENC || msg.Header.Type == ptp.MT_INTRO_REQ) {
 		var dec_err error
 		msg.Data, dec_err = p.Crypter.Decrypt(p.Crypter.ActiveKey.Key, msg.Data)
 		if dec_err != nil {
@@ -816,7 +838,7 @@ func (p *PTPCloud) HandleIntroRequestMessage(msg *ptp.P2PMessage, src_addr *net.
 	id := string(msg.Data)
 	peer, exists := p.NetworkPeers[id]
 	if !exists {
-		ptp.Log(ptp.DEBUG, "Introduction request came from unknown peer")
+		ptp.Log(ptp.DEBUG, "Introduction request came from unknown peer: %s", id)
 		return
 	}
 	response := p.PrepareIntroductionMessage(p.dht.ID)
