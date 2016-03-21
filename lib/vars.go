@@ -12,20 +12,6 @@ type DHTMessage struct {
 	Payload   string "p"
 }
 
-// TODO: Modify these structures
-type DHTRequest struct {
-	Id        string "i"
-	Query     string "q"
-	Command   string "c"
-	Arguments string "a"
-}
-
-type DHTResponse struct {
-	Id      string "i"
-	Dest    string "h"
-	Command string "c"
-}
-
 type MSG_TYPE uint16
 
 // Internal network packet type
