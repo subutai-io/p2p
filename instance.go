@@ -230,7 +230,7 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 
 func (p *Procedures) Show(args *Args, resp *Response) error {
 	if args.Args != "" {
-		swarm, exists := Instances[args.Command]
+		swarm, exists := Instances[args.Args]
 		resp.ExitCode = 0
 		if exists {
 			resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
