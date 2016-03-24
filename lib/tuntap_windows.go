@@ -12,6 +12,10 @@ import (
 	"unsafe"
 )
 
+var (
+	UsedInterfaces []string
+)
+
 type Interface struct {
 	Name      string
 	file      syscall.Handle
@@ -33,6 +37,8 @@ const (
 	USER_DEVICE_DIR     string         = "\\DosDevices\\Global\\"
 	TAP_SUFFIX          string         = ".tap"
 	INVALID_HANDLE      syscall.Handle = 0
+	ADD_DEV string = "addtap.bat"
+	REMOVE_DEV string = "deltapall.bat"
 )
 
 var (
@@ -113,6 +119,18 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 		}
 		syscall.RegCloseKey(iHandle)
 		adapterName := removeZeroes(string(aName))
+
+		var isInUse bool = false
+		for _, i := range UsedInterfaces {
+			if i == adapterName {
+				isInUse = true
+			}
+		}
+		if isInUse {
+			continue
+		}
+		UsedInterfaces = append(UsedInterfaces, adapterName)
+
 		tapname := fmt.Sprintf("%s%s%s", USERMODE_DEVICE_DIR, adapterId, TAP_SUFFIX)
 
 		dev.file, err = syscall.CreateFile(syscall.StringToUTF16Ptr(tapname),
@@ -134,7 +152,30 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 	return nil, nil
 }
 
+func createNewTAPDevice() {
+	// Check if we already have devices
+	if len(UsedInterfaces) == 0 {
+		// If not, remove interfaces from previous instances and/or created by other software
+		// Yes, this will active OpenVPN Connections
+		Log(WARNING, "Removing TUN/TAP Devices created by other applications or previous instances")
+		remdev := exec.Command(REMOVE_DEV)
+		err := remdev.Run()
+		if err != nil {
+			Log(ERROR, "Failed to remove TUN/TAP Devices: %v", err)
+		}
+	}
+
+	// Now add a new device
+	Log(INFO, "Creating new TUN/TAP Device")
+	adddev := exec.Command(ADD_DEV)
+	err := adddev.Run()
+	if err != nil {
+		Log(ERROR, "Failed to add TUN/TAP Device: %v", err)
+	}
+}
+
 func openDevice(ifPattern string) (*Interface, error) {
+	createNewTAPDevice()
 	handle, err := queryNetworkKey()
 	if err != nil {
 		Log(ERROR, "Failed to query Windows registry: %v", err)
@@ -242,6 +283,11 @@ func (t *Interface) WritePacket(pkt *Packet) error {
 }
 
 func (t *Interface) Close() error {
+	for i, iface := range UsedInterfaces {
+		if iface == t.Interface {
+			UsedInterfaces = append(UsedInterfaces[:i], UsedInterfaces[i+1:]...)
+		}
+	}
 	syscall.Close(t.Handle)
 	return nil
 }
@@ -250,7 +296,7 @@ func CheckPermissions() bool {
 	return true
 }
 
-func Open(ifPattern string, kind DevKind, meta bool) (*Interface, error) {
+func Open(ifPattern string, kind DevKind) (*Interface, error) {
 	inf, err := openDevice(ifPattern)
 	if err != nil {
 		return nil, err
@@ -272,7 +318,7 @@ func (t *Interface) Read(ch chan []byte) (err error) {
 		if err := syscall.ReadFile(t.file, buf, &l, &rx); err != nil {
 		}
 		if _, err := syscall.WaitForSingleObject(rx.HEvent, syscall.INFINITE); err != nil {
-			Log(ERROR, err)
+			Log(ERROR, "Failed to read from TUN/TAP: %v", err)
 		}
 		rx.Offset += l
 		ch <- buf
