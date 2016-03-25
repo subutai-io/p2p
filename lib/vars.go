@@ -1,8 +1,8 @@
 package ptp
 
-const PACKET_VERSION string = "3"
+const PACKET_VERSION string = "4"
 
-var SUPPORTED_VERSIONS = [...]string{"3", "4"}
+var SUPPORTED_VERSIONS = [...]string{"4", "5"}
 
 type DHTMessage struct {
 	Id        string "i"
@@ -10,20 +10,6 @@ type DHTMessage struct {
 	Command   string "c"
 	Arguments string "a"
 	Payload   string "p"
-}
-
-// TODO: Modify these structures
-type DHTRequest struct {
-	Id        string "i"
-	Query     string "q"
-	Command   string "c"
-	Arguments string "a"
-}
-
-type DHTResponse struct {
-	Id      string "i"
-	Dest    string "h"
-	Command string "c"
 }
 
 type MSG_TYPE uint16

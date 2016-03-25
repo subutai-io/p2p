@@ -57,7 +57,7 @@ type PeerIP struct {
 	Ips []string
 }
 
-type DHTResponseCallback func(data DHTResponse, conn *net.UDPConn)
+type DHTResponseCallback func(data DHTMessage, conn *net.UDPConn)
 
 func (dht *DHTClient) DHTClientConfig() *DHTClient {
 	return &DHTClient{
@@ -82,7 +82,7 @@ func (dht *DHTClient) AddConnection(connections []*net.UDPConn, conn *net.UDPCon
 
 func (dht *DHTClient) Handshake(conn *net.UDPConn) error {
 	// Handshake
-	var req DHTRequest
+	var req DHTMessage
 	req.Id = "0"
 	req.Query = PACKET_VERSION
 	req.Command = CMD_CONN
@@ -134,8 +134,8 @@ func (dht *DHTClient) ConnectAndHandshake(router string, ips []net.IP) (*net.UDP
 	return conn, err
 }
 
-// Extracts DHTRequest from received packet
-func (dht *DHTClient) Extract(b []byte) (response DHTResponse, err error) {
+// Extracts DHTMessage from received packet
+func (dht *DHTClient) Extract(b []byte) (response DHTMessage, err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			Log(ERROR, "Bencode Unmarshal failed %q, %v", string(b), x)
@@ -150,9 +150,9 @@ func (dht *DHTClient) Extract(b []byte) (response DHTResponse, err error) {
 	}
 }
 
-// Returns a bencoded representation of a DHTRequest
+// Returns a bencoded representation of a DHTMessage
 func (dht *DHTClient) Compose(command, id, query, arguments string) string {
-	var req DHTRequest
+	var req DHTMessage
 	// Command is mandatory
 	req.Command = command
 	// Defaults
@@ -168,7 +168,7 @@ func (dht *DHTClient) Compose(command, id, query, arguments string) string {
 	return dht.EncodeRequest(req)
 }
 
-func (dht *DHTClient) EncodeRequest(req DHTRequest) string {
+func (dht *DHTClient) EncodeRequest(req DHTMessage) string {
 	if req.Command == "" {
 		return ""
 	}
@@ -269,7 +269,7 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 	return ""
 }
 
-func (dht *DHTClient) HandleConn(data DHTResponse, conn *net.UDPConn) {
+func (dht *DHTClient) HandleConn(data DHTMessage, conn *net.UDPConn) {
 	if dht.State != D_CONNECTING && dht.State != D_RECONNECTING {
 		return
 	}
@@ -301,7 +301,7 @@ func (dht *DHTClient) HandleConn(data DHTResponse, conn *net.UDPConn) {
 	}
 }
 
-func (dht *DHTClient) HandlePing(data DHTResponse, conn *net.UDPConn) {
+func (dht *DHTClient) HandlePing(data DHTMessage, conn *net.UDPConn) {
 	msg := dht.Compose(CMD_PING, dht.ID, "", "")
 	_, err := conn.Write([]byte(msg))
 	if err != nil {
@@ -309,10 +309,10 @@ func (dht *DHTClient) HandlePing(data DHTResponse, conn *net.UDPConn) {
 	}
 }
 
-func (dht *DHTClient) HandleFind(data DHTResponse, conn *net.UDPConn) {
+func (dht *DHTClient) HandleFind(data DHTMessage, conn *net.UDPConn) {
 	// This means we've received a list of nodes we can connect to
-	if data.Dest != "" {
-		ids := strings.Split(data.Dest, ",")
+	if data.Arguments != "" {
+		ids := strings.Split(data.Arguments, ",")
 		if len(ids) == 0 {
 			Log(ERROR, "Malformed list of peers received")
 		} else {
@@ -343,46 +343,46 @@ func (dht *DHTClient) HandleFind(data DHTResponse, conn *net.UDPConn) {
 					dht.Peers = append(dht.Peers[:i], dht.Peers[i+1:]...)
 				}
 			}
-			Log(DEBUG, "Received peers from %s: %s", conn.RemoteAddr().String(), data.Dest)
-			dht.UpdateLastCatch(data.Dest)
+			Log(DEBUG, "Received peers from %s: %s", conn.RemoteAddr().String(), data.Arguments)
+			dht.UpdateLastCatch(data.Arguments)
 		}
 	} else {
 		dht.Peers = dht.Peers[:0]
 	}
 }
 
-func (dht *DHTClient) HandleRegCp(data DHTResponse, conn *net.UDPConn) {
+func (dht *DHTClient) HandleRegCp(data DHTMessage, conn *net.UDPConn) {
 	Log(INFO, "Control peer has been registered in Service Discovery Peer")
 	// We've received a registration confirmation message from DHT bootstrap node
 }
 
-func (dht *DHTClient) HandleNode(data DHTResponse, conn *net.UDPConn) {
+func (dht *DHTClient) HandleNode(data DHTMessage, conn *net.UDPConn) {
 	// We've received an IPs associated with target node
 	for i, peer := range dht.Peers {
 		if peer.ID == data.Id {
-			ips := strings.Split(data.Dest, "|")
+			ips := strings.Split(data.Arguments, "|")
 			dht.Peers[i].Ips = ips
 		}
 	}
 }
 
-func (dht *DHTClient) HandleCp(data DHTResponse, conn *net.UDPConn) {
+func (dht *DHTClient) HandleCp(data DHTMessage, conn *net.UDPConn) {
 	// We've received information about proxy
-	if data.Dest == "0" || data.Dest == "" {
+	if data.Arguments == "0" || data.Arguments == "" {
 		return
 	}
-	Log(INFO, "Received control peer %s. Saving", data.Dest)
+	Log(INFO, "Received control peer %s. Saving", data.Arguments)
 	var found bool = false
 	for _, fwd := range dht.Forwarders {
-		if fwd.Addr.String() == data.Dest && fwd.DestinationID == data.Id {
+		if fwd.Addr.String() == data.Arguments && fwd.DestinationID == data.Id {
 			found = true
 		}
 	}
 	if !found {
 		var fwd Forwarder
-		a, err := net.ResolveUDPAddr("udp", data.Dest)
+		a, err := net.ResolveUDPAddr("udp", data.Arguments)
 		if err != nil {
-			Log(ERROR, "Failed to resolve UDP Address for proxy %s", data.Dest)
+			Log(ERROR, "Failed to resolve UDP Address for proxy %s", data.Arguments)
 		} else {
 			fwd.Addr = a
 			fwd.DestinationID = data.Id
@@ -403,24 +403,24 @@ func (dht *DHTClient) HandleCp(data DHTResponse, conn *net.UDPConn) {
 	}
 }
 
-func (dht *DHTClient) HandleNotify(data DHTResponse, conn *net.UDPConn) {
+func (dht *DHTClient) HandleNotify(data DHTMessage, conn *net.UDPConn) {
 	// Notify means we should ask DHT bootstrap node for a control peer
 	// in order to connect to a node that can't reach us
 	dht.RequestControlPeer(data.Id)
 }
 
-func (dht *DHTClient) HandleStop(data DHTResponse, conn *net.UDPConn) {
+func (dht *DHTClient) HandleStop(data DHTMessage, conn *net.UDPConn) {
 	conn.Close()
 }
 
-func (dht *DHTClient) HandleDHCP(data DHTResponse, conn *net.UDPConn) {
-	if data.Dest == "ok" {
+func (dht *DHTClient) HandleDHCP(data DHTMessage, conn *net.UDPConn) {
+	if data.Arguments == "ok" {
 		Log(INFO, "DHCP Registration confirmed")
 		return
 	} else {
 		Log(INFO, "Received DHCP Information")
 	}
-	ip, ipnet, err := net.ParseCIDR(data.Dest)
+	ip, ipnet, err := net.ParseCIDR(data.Arguments)
 	if err != nil {
 		Log(ERROR, "Failed to parse received DHCP packet: %v", err)
 		return
@@ -429,7 +429,7 @@ func (dht *DHTClient) HandleDHCP(data DHTResponse, conn *net.UDPConn) {
 	dht.Network = ipnet
 }
 
-func (dht *DHTClient) HandleUnknown(data DHTResponse, conn *net.UDPConn) {
+func (dht *DHTClient) HandleUnknown(data DHTMessage, conn *net.UDPConn) {
 	Log(WARNING, "DHT server refuses our identity")
 	if dht.State == D_CONNECTING || dht.State == D_RECONNECTING {
 		time.Sleep(3 * time.Second)
@@ -442,10 +442,10 @@ func (dht *DHTClient) HandleUnknown(data DHTResponse, conn *net.UDPConn) {
 	}
 }
 
-func (dht *DHTClient) HandleError(data DHTResponse, conn *net.UDPConn) {
-	e, exists := ErrorList[ErrorType(data.Dest)]
+func (dht *DHTClient) HandleError(data DHTMessage, conn *net.UDPConn) {
+	e, exists := ErrorList[ErrorType(data.Arguments)]
 	if !exists {
-		Log(ERROR, "Unknown error were received from DHT: %s", data.Dest)
+		Log(ERROR, "Unknown error were received from DHT: %s", data.Arguments)
 	} else {
 		Log(ERROR, "DHT returned error: %s", e.Error())
 	}
@@ -504,7 +504,7 @@ func (dht *DHTClient) RegisterControlPeer() {
 	for len(dht.ID) != 36 {
 		time.Sleep(1 * time.Second)
 	}
-	var req DHTRequest
+	var req DHTMessage
 	var err error
 	req.Id = dht.ID
 	req.Query = "0"
@@ -532,7 +532,7 @@ func (dht *DHTClient) RegisterControlPeer() {
 
 // This method request a new control peer for particular host
 func (dht *DHTClient) RequestControlPeer(id string) {
-	var req DHTRequest
+	var req DHTMessage
 	var err error
 	req.Id = dht.ID
 	req.Query = ""
@@ -563,7 +563,7 @@ func (dht *DHTClient) RequestControlPeer(id string) {
 }
 
 func (dht *DHTClient) ReportControlPeerLoad(amount int) {
-	var req DHTRequest
+	var req DHTMessage
 	req.Id = dht.ID
 	req.Command = CMD_LOAD
 	req.Arguments = fmt.Sprintf("%d", amount)
@@ -606,7 +606,7 @@ func (dht *DHTClient) SendIP(ip string, mask string) {
 
 func (dht *DHTClient) Stop() {
 	dht.Shutdown = true
-	var req DHTRequest
+	var req DHTMessage
 	req.Id = dht.ID
 	req.Command = CMD_STOP
 	req.Arguments = "0"
