@@ -23,7 +23,7 @@ type RunArgs struct {
 }
 
 type Instance struct {
-	PTP  *PTPCloud
+	PTP  *ptp.PTPCloud
 	ID   string
 	Args RunArgs
 }
@@ -197,7 +197,7 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 			args.Key = string(key)
 		}
 
-		ptpInstance := p2pmain(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port)
+		ptpInstance := ptp.StartP2PInstance(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port)
 		var newInst Instance
 		newInst.ID = args.Hash
 		newInst.PTP = ptpInstance
@@ -262,7 +262,7 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 	resp.Output += fmt.Sprintf("Instances information:\n")
 	for _, ins := range Instances {
 		resp.Output += fmt.Sprintf("Hash: %s\n", ins.ID)
-		resp.Output += fmt.Sprintf("ID: %s\n", ins.PTP.dht.ID)
+		resp.Output += fmt.Sprintf("ID: %s\n", ins.PTP.Dht.ID)
 		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", ins.PTP.DeviceName, ins.PTP.Mac, ins.PTP.IP)
 		resp.Output += fmt.Sprintf("Peers:\n")
 		// TODO: Rewrite this part
