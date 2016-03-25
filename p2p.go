@@ -79,7 +79,7 @@ func (p *PTPCloud) AssignInterface(ip, mac, mask, device string) error {
 
 	p.Device, err = ptp.Open(p.DeviceName, ptp.DevTap)
 	if p.Device == nil {
-		ptp.Log(ptp.ERROR, "Failed to open TAP device: %v", err)
+		ptp.Log(ptp.ERROR, "Failed to open TAP device %s: %v", device, err)
 		return err
 	} else {
 		ptp.Log(ptp.INFO, "%v TAP Device created", p.DeviceName)
@@ -250,6 +250,11 @@ func p2pmain(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argK
 
 	if argDev == "" {
 		argDev = p.GenerateDeviceName(1)
+	} else {
+		if len(argDev) > 12 {
+			ptp.Log(ptp.INFO, "Interface name lenght should be 12 symbols max")
+			return nil
+		}
 	}
 
 	if argKeyfile != "" {
