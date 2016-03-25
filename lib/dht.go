@@ -368,7 +368,7 @@ func (dht *DHTClient) HandleNode(data DHTMessage, conn *net.UDPConn) {
 
 func (dht *DHTClient) HandleCp(data DHTMessage, conn *net.UDPConn) {
 	// We've received information about proxy
-	if data.Arguments == "0" {
+	if data.Arguments == "0" || data.Arguments == "" {
 		return
 	}
 	Log(INFO, "Received control peer %s. Saving", data.Arguments)
