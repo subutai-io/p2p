@@ -76,7 +76,7 @@ func (p *PTPCloud) AssignInterface(ip, mac, mask, device string) error {
 
 	p.Device, err = Open(p.DeviceName, DevTap)
 	if p.Device == nil {
-		Log(ERROR, "Failed to open TAP device: %v", err)
+		Log(ERROR, "Failed to open TAP device %s: %v", device, err)
 		return err
 	} else {
 		Log(INFO, "%v TAP Device created", p.DeviceName)
@@ -247,6 +247,11 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 
 	if argDev == "" {
 		argDev = p.GenerateDeviceName(1)
+	} else {
+		if len(argDev) > 12 {
+			ptp.Log(ptp.INFO, "Interface name lenght should be 12 symbols max")
+			return nil
+		}
 	}
 
 	if argKeyfile != "" {
