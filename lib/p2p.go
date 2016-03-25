@@ -249,7 +249,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		argDev = p.GenerateDeviceName(1)
 	} else {
 		if len(argDev) > 12 {
-			ptp.Log(ptp.INFO, "Interface name lenght should be 12 symbols max")
+			Log(INFO, "Interface name lenght should be 12 symbols max")
 			return nil
 		}
 	}
