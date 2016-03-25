@@ -8,7 +8,7 @@ ARCH=$(shell uname -m)
 
 all: pack
 
-$(APP): p2p.go packet.go help.go instance.go main.go
+$(APP): help.go instance.go main.go
 	$(CC) build -ldflags="-w -s -X main.VERSION=$(VERSION)" -o $@ -v $^
 
 $(CP_APP): p2p-cp/cp.go p2p-cp/proxy.go
