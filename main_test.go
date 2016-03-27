@@ -20,24 +20,26 @@ func TestStateRestore(t *testing.T) {
 	_, err := SaveInstances("t.file")
 	if err != nil {
 		t.Errorf("%v", err)
-		return
 	}
 
-	loaded, _ := LoadInstances("t.file")
+	loaded, err := LoadInstances("t.file")
+	if err != nil {
+		t.Errorf("Failed to load instances: %v", err)
+	}
 	if len(loaded) != 2 {
 		t.Errorf("Resulting instances size doesn't match saved. Expecting 2, Received: %d", len(loaded))
 	}
-	if loaded[0].IP != "10.10.10.10" {
-		t.Errorf("Loaded IP doesn't match saved")
+	if loaded[0].IP != "10.10.10.10" && loaded[0].IP != "127.0.0.1" {
+		t.Errorf("Loaded IP doesn't match saved: %s", loaded[0].IP)
 	}
-	if loaded[1].IP != "127.0.0.1" {
-		t.Errorf("Loaded IP doesn't match saved")
+	if loaded[1].IP != "127.0.0.1" && loaded[1].IP != "10.10.10.10" {
+		t.Errorf("Loaded IP doesn't match saved: %s", loaded[1].IP)
 	}
-	if loaded[0].Dev != "vptp1" {
-		t.Errorf("Loaded device name doesn't match saved")
+	if loaded[0].Dev != "vptp1" && loaded[0].Dev != "vptp2" {
+		t.Errorf("Loaded device name doesn't match saved: %s", loaded[0].Dev)
 	}
-	if loaded[1].Dev != "vptp2" {
-		t.Errorf("Loaded device name doesn't match saved")
+	if loaded[1].Dev != "vptp2" && loaded[1].Dev != "vptp1" {
+		t.Errorf("Loaded device name doesn't match saved: %s", loaded[1].Dev)
 	}
 	os.Remove("t.file")
 }
