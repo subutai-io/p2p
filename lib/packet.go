@@ -1,4 +1,4 @@
-package main
+package ptp
 
 /*
 	Know packet types:
@@ -17,7 +17,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mdlayher/ethernet"
-	ptp "github.com/subutai-io/p2p/lib"
 	"io"
 	"net"
 )
@@ -98,53 +97,53 @@ type ARPPacket struct {
 
 // Handles a IPv4 packet and sends it to it's destination
 func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
-	ptp.Log(ptp.TRACE, "Handling IPv4 Packet")
+	Log(TRACE, "Handling IPv4 Packet")
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
-		ptp.Log(ptp.ERROR, "Failed to unmarshal IPv4 packet")
+		Log(ERROR, "Failed to unmarshal IPv4 packet")
 	}
 
 	if f.EtherType != ethernet.EtherTypeIPv4 {
 		return
 	}
 
-	msg := ptp.CreateNencP2PMessage(p.Crypter, contents, uint16(proto))
+	msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto))
 	msg.Header.NetProto = uint16(proto)
 	_, err := p.SendTo(f.Destination, msg)
 	if err != nil {
-		ptp.Log(ptp.ERROR, "Failed to send message inside P2P: %v", err)
+		Log(ERROR, "Failed to send message inside P2P: %v", err)
 		return
 	}
 }
 
 // TODO: Implement IPv6 Support
 func (p *PTPCloud) handlePacketIPv6(contents []byte, proto int) {
-	ptp.Log(ptp.TRACE, "Handling IPv6 Packet")
+	Log(TRACE, "Handling IPv6 Packet")
 }
 
 // TODO: Implement PARC Universal Support
 func (p *PTPCloud) handlePARCUniversalPacket(contents []byte, proto int) {
-	ptp.Log(ptp.TRACE, "Handling PARC Universal Packet")
+	Log(TRACE, "Handling PARC Universal Packet")
 }
 
 // TODO: Implement RARP Support
 func (p *PTPCloud) handleRARPPacket(contents []byte, proto int) {
-	ptp.Log(ptp.TRACE, "Handling RARP Packet")
+	Log(TRACE, "Handling RARP Packet")
 }
 
 // TODO: Implement 802.1q Support
 func (p *PTPCloud) handle8021qPacket(contents []byte, proto int) {
-	ptp.Log(ptp.TRACE, "Handling 802.1q Packet")
+	Log(TRACE, "Handling 802.1q Packet")
 }
 
 // TODO: Implement PPPoE Discovery Support
 func (p *PTPCloud) handlePPPoEDiscoveryPacket(contents []byte, proto int) {
-	ptp.Log(ptp.TRACE, "Handling PPPoE Discovery Packet")
+	Log(TRACE, "Handling PPPoE Discovery Packet")
 }
 
 // TODO: Implement PPPoE Session Support
 func (p *PTPCloud) handlePPPoESessionPacket(contents []byte, proto int) {
-	ptp.Log(ptp.TRACE, "Handling PPPoE Session Packet")
+	Log(TRACE, "Handling PPPoE Session Packet")
 }
 
 func (p *PTPCloud) handlePacketARP(contents []byte, proto int) {
@@ -152,37 +151,37 @@ func (p *PTPCloud) handlePacketARP(contents []byte, proto int) {
 	// contents of the packet
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
-		ptp.Log(ptp.ERROR, "Failed to Unmarshal ARP Binary")
+		Log(ERROR, "Failed to Unmarshal ARP Binary")
 		return
 	}
 
 	if f.EtherType != ethernet.EtherTypeARP {
-		ptp.Log(ptp.ERROR, "Not ARP")
+		Log(ERROR, "Not ARP")
 		return
 	}
 
 	packet := new(ARPPacket)
 	if err := packet.UnmarshalARP(f.Payload); err != nil {
-		ptp.Log(ptp.ERROR, "Failed to unmarshal arp")
+		Log(ERROR, "Failed to unmarshal arp")
 		return
 	}
-	ptp.Log(ptp.TRACE, "Peers: %v, Target IP: %s", p.NetworkPeers, packet.TargetIP.String())
+	Log(TRACE, "Peers: %v, Target IP: %s", p.NetworkPeers, packet.TargetIP.String())
 	var hwAddr net.HardwareAddr = nil
 	id, exists := p.IPIDTable[packet.TargetIP.String()]
 	if !exists {
-		ptp.Log(ptp.DEBUG, "Unknown IP requested")
+		Log(DEBUG, "Unknown IP requested")
 		return
 	}
 	peer, exists := p.NetworkPeers[id]
 	if !exists {
-		ptp.Log(ptp.DEBUG, "Specified ID was not found in peer list")
+		Log(DEBUG, "Specified ID was not found in peer list")
 		return
 	}
 	hwAddr = peer.PeerHW
 	// TODO: Put there normal IP from list of ips
 	// Send a reply
 	if hwAddr == nil {
-		ptp.Log(ptp.ERROR, "Cannot find hardware address for requested IP")
+		Log(ERROR, "Cannot find hardware address for requested IP")
 		_, hwAddr = GenerateMAC()
 		peer.PeerHW = hwAddr
 		p.NetworkPeers[id] = peer
@@ -196,12 +195,12 @@ func (p *PTPCloud) handlePacketARP(contents []byte, proto int) {
 	ip := net.ParseIP(packet.TargetIP.String())
 	response, err := reply.NewPacket(OperationReply, hwAddr, ip, packet.SenderHardwareAddr, packet.SenderIP)
 	if err != nil {
-		ptp.Log(ptp.ERROR, "Failed to create ARP reply")
+		Log(ERROR, "Failed to create ARP reply")
 		return
 	}
 	rp, err := response.MarshalBinary()
 	if err != nil {
-		ptp.Log(ptp.ERROR, "Failed to marshal ARP response packet")
+		Log(ERROR, "Failed to marshal ARP response packet")
 		return
 	}
 
@@ -214,9 +213,9 @@ func (p *PTPCloud) handlePacketARP(contents []byte, proto int) {
 
 	fb, err := fr.MarshalBinary()
 	if err != nil {
-		ptp.Log(ptp.ERROR, "Failed to marshal ARP Ethernet Frame")
+		Log(ERROR, "Failed to marshal ARP Ethernet Frame")
 	}
-	ptp.Log(ptp.DEBUG, "%v", packet.String())
+	Log(DEBUG, "%v", packet.String())
 	p.WriteToDevice(fb, uint16(proto), false)
 }
 
