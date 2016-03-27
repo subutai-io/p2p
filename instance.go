@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	ptp "github.com/subutai-io/p2p/lib"
 	"os"
@@ -197,11 +198,16 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 			args.Key = string(key)
 		}
 
-		ptpInstance := ptp.StartP2PInstance(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port)
 		var newInst Instance
 		newInst.ID = args.Hash
-		newInst.PTP = ptpInstance
 		newInst.Args = *args
+		Instances[args.Hash] = newInst
+		ptpInstance := ptp.StartP2PInstance(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port)
+		if ptpInstance == nil {
+			resp.Output = resp.Output + "Failed to create P2P Instance"
+			return errors.New("Failed to create P2P Instance")
+		}
+		newInst.PTP = ptpInstance
 		Instances[args.Hash] = newInst
 		go ptpInstance.Run()
 		if SaveFile != "" {

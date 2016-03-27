@@ -546,6 +546,9 @@ func (dht *DHTRouter) HandleBadCp(req ptp.DHTMessage, addr *net.UDPAddr, peer *P
 
 func (dht *DHTRouter) FindNetworkForHash(hash string) *net.IPNet {
 	for _, peer := range dht.PeerList {
+		if peer.AssociatedHash != hash {
+			continue
+		}
 		if peer.IP == nil {
 			continue
 		}
