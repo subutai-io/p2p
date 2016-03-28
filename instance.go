@@ -167,6 +167,8 @@ func (p *Procedures) SetLog(args *NameValueArg, resp *Response) error {
 }
 
 func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
+	WaitLock()
+	Lock()
 	resp.ExitCode = 0
 	if args.Hash == "" {
 		resp.ExitCode = 1
@@ -187,13 +189,13 @@ func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
 		newKey = Instances[args.Hash].PTP.Crypter.EnrichKeyValues(newKey, args.Key, args.TTL)
 		Instances[args.Hash].PTP.Crypter.Keys = append(Instances[args.Hash].PTP.Crypter.Keys, newKey)
 	}
+	Unlock()
 	return nil
 }
 
 func (p *Procedures) Execute(args *Args, resp *Response) error {
-	ptp.Log(ptp.INFO, "Received %v", args)
 	resp.ExitCode = 0
-	resp.Output = "Command executed"
+	resp.Output = ""
 	return nil
 }
 
