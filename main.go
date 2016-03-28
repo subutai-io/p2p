@@ -155,10 +155,10 @@ func main() {
 		} else {
 			Usage()
 		}
-		os.Exit(1)
+		os.Exit(0)
 	default:
 		Usage()
-		os.Exit(1)
+		os.Exit(0)
 	}
 }
 
@@ -214,6 +214,7 @@ func Start(rpcPort, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool,
 		return
 	}
 	fmt.Printf("%s\n", response.Output)
+	os.Exit(response.ExitCode)
 }
 
 func Stop(rpcPort, hash string) {
@@ -231,6 +232,7 @@ func Stop(rpcPort, hash string) {
 		return
 	}
 	fmt.Printf("%s\n", response.Output)
+	os.Exit(response.ExitCode)
 }
 
 func Show(rpcPort, hash string) {
@@ -249,6 +251,7 @@ func Show(rpcPort, hash string) {
 		return
 	}
 	fmt.Printf("%s\n", response.Output)
+	os.Exit(response.ExitCode)
 }
 
 func Set(rpcPort, log, hash, keyfile, key, ttl string) {
@@ -270,6 +273,7 @@ func Set(rpcPort, log, hash, keyfile, key, ttl string) {
 		return
 	}
 	fmt.Printf("%s\n", response.Output)
+	os.Exit(response.ExitCode)
 }
 
 func Debug(rpcPort string) {
@@ -282,6 +286,7 @@ func Debug(rpcPort string) {
 		return
 	}
 	fmt.Printf("%s\n", response.Output)
+	os.Exit(response.ExitCode)
 }
 
 func Daemon(port, saveFile, profiling string) {
