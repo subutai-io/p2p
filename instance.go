@@ -183,6 +183,18 @@ func (p *Procedures) Execute(args *Args, resp *Response) error {
 func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 	resp.ExitCode = 0
 	resp.Output = "Running new P2P instance for " + args.Hash + "\n"
+
+	// Validate if interface name is unique
+	if args.Dev != "" {
+		for _, inst := range Instances {
+			if inst.PTP.DeviceName == args.Dev {
+				resp.ExitCode = 1
+				resp.Output = "Device name is already in use"
+				return errors.New(resp.Output)
+			}
+		}
+	}
+
 	var exists bool
 	_, exists = Instances[args.Hash]
 	if !exists {
