@@ -103,6 +103,7 @@ func main() {
 	set.StringVar(&argLog, "log", "", "Log level")
 	set.StringVar(&argKey, "key", "", "AES crypto key")
 	set.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
+	set.StringVar(&argHash, "hash", "", "Infohash of environment")
 
 	debug := flag.NewFlagSet("Debug and Profiling mode", flag.ContinueOnError)
 
@@ -213,7 +214,11 @@ func Start(rpcPort, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool,
 		fmt.Printf("Failed to run RPC request: %v\n", err)
 		return
 	}
-	fmt.Printf("%s\n", response.Output)
+	if response.ExitCode == 0 {
+		fmt.Printf("%s\n", response.Output)
+	} else {
+		fmt.Errorf("%s\n", response.Output)
+	}
 	os.Exit(response.ExitCode)
 }
 
@@ -231,7 +236,11 @@ func Stop(rpcPort, hash string) {
 		fmt.Printf("Failed to run RPC request: %v\n", err)
 		return
 	}
-	fmt.Printf("%s\n", response.Output)
+	if response.ExitCode == 0 {
+		fmt.Printf("%s\n", response.Output)
+	} else {
+		fmt.Errorf("%s\n", response.Output)
+	}
 	os.Exit(response.ExitCode)
 }
 
@@ -250,7 +259,11 @@ func Show(rpcPort, hash string) {
 		fmt.Printf("Failed to run RPC request: %v\n", err)
 		return
 	}
-	fmt.Printf("%s\n", response.Output)
+	if response.ExitCode == 0 {
+		fmt.Printf("%s\n", response.Output)
+	} else {
+		fmt.Errorf("%s\n", response.Output)
+	}
 	os.Exit(response.ExitCode)
 }
 
@@ -272,7 +285,11 @@ func Set(rpcPort, log, hash, keyfile, key, ttl string) {
 		fmt.Printf("Failed to run RPC request: %v\n", err)
 		return
 	}
-	fmt.Printf("%s\n", response.Output)
+	if response.ExitCode == 0 {
+		fmt.Printf("%s\n", response.Output)
+	} else {
+		fmt.Errorf("%s\n", response.Output)
+	}
 	os.Exit(response.ExitCode)
 }
 
