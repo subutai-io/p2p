@@ -247,6 +247,7 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 		Instances[args.Hash] = newInst
 		go ptpInstance.Run()
 		if SaveFile != "" {
+			resp.Output = resp.Output + "Saving instance into file"
 			SaveInstances(SaveFile)
 		}
 	} else {
