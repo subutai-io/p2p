@@ -325,6 +325,7 @@ func Daemon(port, saveFile, profiling string) {
 	}
 
 	if saveFile != "" {
+		SaveFile = saveFile
 		ptp.Log(ptp.INFO, "Restore file provided")
 		// Try to restore from provided file
 		instances, err := LoadInstances(saveFile)

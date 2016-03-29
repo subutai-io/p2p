@@ -127,21 +127,24 @@ func (p *PTPCloud) ListenInterface() {
 	Log(INFO, "Shutting down interface listener")
 }
 
-// This method will generate device name if none were specified at startup
-func (p *PTPCloud) GenerateDeviceName(i int) string {
-	var devName string = GetDeviceBase() + fmt.Sprintf("%d", i)
+func (p *PTPCloud) IsDeviceExists(name string) bool {
 	inf, err := net.Interfaces()
 	if err != nil {
 		Log(ERROR, "Failed to retrieve list of network interfaces")
-		return ""
+		return true
 	}
-	var exist bool = false
 	for _, i := range inf {
-		if i.Name == devName {
-			exist = true
+		if i.Name == name {
+			return true
 		}
 	}
-	if exist {
+	return false
+}
+
+// This method will generate device name if none were specified at startup
+func (p *PTPCloud) GenerateDeviceName(i int) string {
+	var devName string = GetDeviceBase() + fmt.Sprintf("%d", i)
+	if p.IsDeviceExists(devName) {
 		return p.GenerateDeviceName(i + 1)
 	} else {
 		return devName
@@ -252,6 +255,10 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 			Log(INFO, "Interface name lenght should be 12 symbols max")
 			return nil
 		}
+	}
+	if p.IsDeviceExists(argDev) {
+		Log(ERROR, "Interface is already in use. Can't create duplicate")
+		return nil
 	}
 
 	if argKeyfile != "" {
