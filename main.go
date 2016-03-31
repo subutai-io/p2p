@@ -133,6 +133,9 @@ func main() {
 	case "version":
 		fmt.Printf("p2p Cloud project %s. Packet version: %s\n", VERSION, ptp.PACKET_VERSION)
 		os.Exit(0)
+	case "stop-packet":
+		net.DialTimeout("tcp", os.Args[2], 2*time.Second)
+		os.Exit(0)
 	case "help":
 		if len(os.Args) > 2 {
 			switch os.Args[2] {
