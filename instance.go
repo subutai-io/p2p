@@ -239,6 +239,7 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 		Instances[args.Hash] = newInst
 		ptpInstance := ptp.StartP2PInstance(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port)
 		if ptpInstance == nil {
+			delete(Instances, args.Hash)
 			resp.Output = resp.Output + "Failed to create P2P Instance"
 			Unlock()
 			return errors.New("Failed to create P2P Instance")
@@ -277,9 +278,6 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 }
 
 func (p *Procedures) Show(args *Args, resp *Response) error {
-	WaitLock()
-	Lock()
-	defer Unlock()
 	if args.Args != "" {
 		swarm, exists := Instances[args.Args]
 		resp.ExitCode = 0
@@ -300,11 +298,14 @@ func (p *Procedures) Show(args *Args, resp *Response) error {
 			resp.Output = "No instances was found"
 		}
 		for key, inst := range Instances {
-			resp.Output = resp.Output + "\t" + inst.PTP.Mac + "\t" + inst.PTP.IP + "\t" + key
+			if inst.PTP != nil {
+				resp.Output = resp.Output + "\t" + inst.PTP.Mac + "\t" + inst.PTP.IP + "\t" + key
+			} else {
+				resp.Output = resp.Output + "\tUnknown\tUnknown\t" + key
+			}
 			resp.Output = resp.Output + "\n"
 		}
 	}
-	Unlock()
 	return nil
 }
 
