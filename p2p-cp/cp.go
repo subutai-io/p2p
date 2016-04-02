@@ -839,6 +839,7 @@ func main() {
 		dht.Connection = dht.SetupServer()
 		dht.Hashes = make(map[string]Infohash)
 		dht.PeerList = make(map[string]Peer)
+		dht.DHCPTable = make(map[string]DHCPSet)
 
 		dht.Callbacks = make(map[string]DHTCallback)
 		dht.Callbacks[ptp.CMD_CONN] = dht.HandleConn
