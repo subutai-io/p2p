@@ -127,21 +127,24 @@ func (p *PTPCloud) ListenInterface() {
 	Log(INFO, "Shutting down interface listener")
 }
 
-// This method will generate device name if none were specified at startup
-func (p *PTPCloud) GenerateDeviceName(i int) string {
-	var devName string = GetDeviceBase() + fmt.Sprintf("%d", i)
+func (p *PTPCloud) IsDeviceExists(name string) bool {
 	inf, err := net.Interfaces()
 	if err != nil {
 		Log(ERROR, "Failed to retrieve list of network interfaces")
-		return ""
+		return true
 	}
-	var exist bool = false
 	for _, i := range inf {
-		if i.Name == devName {
-			exist = true
+		if i.Name == name {
+			return true
 		}
 	}
-	if exist {
+	return false
+}
+
+// This method will generate device name if none were specified at startup
+func (p *PTPCloud) GenerateDeviceName(i int) string {
+	var devName string = GetDeviceBase() + fmt.Sprintf("%d", i)
+	if p.IsDeviceExists(devName) {
 		return p.GenerateDeviceName(i + 1)
 	} else {
 		return devName
@@ -253,6 +256,10 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 			return nil
 		}
 	}
+	if p.IsDeviceExists(argDev) {
+		Log(ERROR, "Interface is already in use. Can't create duplicate")
+		return nil
+	}
 
 	if argKeyfile != "" {
 		p.Crypter.ReadKeysFromFile(argKeyfile)
@@ -311,6 +318,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		time.Sleep(100 * time.Millisecond)
 	}
 	Log(INFO, "ID assigned. Continue")
+	var retries int = 0
 	if argIp == "dhcp" {
 		Log(INFO, "Requesting IP")
 		p.Dht.RequestIP()
@@ -319,6 +327,11 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 			Log(INFO, "No IP were received. Requesting again")
 			p.Dht.RequestIP()
 			time.Sleep(3 * time.Second)
+			retries++
+			if retries >= 10 {
+				Log(ERROR, "Failed to retrieve IP from network after 10 retries")
+				return nil
+			}
 		}
 		m := p.Dht.Network.Mask
 		mask := fmt.Sprintf("%d.%d.%d.%d", m[0], m[1], m[2], m[3])
@@ -917,6 +930,21 @@ func (p *PTPCloud) StopInstance() {
 	msg := CreateTestP2PMessage(p.Crypter, "STOP", 1)
 	addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", p.Dht.P2PPort))
 	p.UDPSocket.SendMessage(msg, addr)
+	var ipIt int = 200
+	for p.IsDeviceExists(p.DeviceName) {
+		time.Sleep(1 * time.Second)
+		ip := p.Dht.Network.IP
+		target := fmt.Sprintf("%d.%d.%d.%d:99", ip[0], ip[1], ip[2], ipIt)
+		Log(INFO, "Dialing %s", target)
+		_, err := net.DialTimeout("tcp", target, 2*time.Second)
+		if err != nil {
+			Log(INFO, "ERROR: %v", err)
+		}
+		ipIt++
+		if ipIt == 255 {
+			break
+		}
+	}
 	time.Sleep(3 * time.Second)
 	p.ReadyToStop = true
 }
