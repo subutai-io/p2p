@@ -318,6 +318,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		time.Sleep(100 * time.Millisecond)
 	}
 	Log(INFO, "ID assigned. Continue")
+	var retries int = 0
 	if argIp == "dhcp" {
 		Log(INFO, "Requesting IP")
 		p.Dht.RequestIP()
@@ -326,6 +327,11 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 			Log(INFO, "No IP were received. Requesting again")
 			p.Dht.RequestIP()
 			time.Sleep(3 * time.Second)
+			retries++
+			if retries >= 10 {
+				Log(ERROR, "Failed to retrieve IP from network after 10 retries")
+				return nil
+			}
 		}
 		m := p.Dht.Network.Mask
 		mask := fmt.Sprintf("%d.%d.%d.%d", m[0], m[1], m[2], m[3])
