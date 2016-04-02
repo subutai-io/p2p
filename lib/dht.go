@@ -491,9 +491,7 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 		}
 	}
 	if connected == 0 {
-		Log(WARNING, "Failed to connect to DHT. Retrying in 5 seconds")
-		time.Sleep(5 * time.Second)
-		return dht.Initialize(config, ips)
+		return nil
 	} else {
 		return dht
 	}
