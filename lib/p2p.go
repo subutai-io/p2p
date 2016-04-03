@@ -313,6 +313,13 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		config.Routers = argDht
 	}
 	p.Dht = dhtClient.Initialize(config, p.LocalIPs)
+	for p.Dht == nil {
+		Log(WARNING, "Failed to connect to DHT. Retrying in 5 seconds")
+		time.Sleep(5 * time.Second)
+		p.LocalIPs = p.LocalIPs[:0]
+		p.FindNetworkAddresses()
+		p.Dht = dhtClient.Initialize(config, p.LocalIPs)
+	}
 	// Wait for ID
 	for len(p.Dht.ID) < 32 {
 		time.Sleep(100 * time.Millisecond)
