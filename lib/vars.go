@@ -25,6 +25,7 @@ const (
 	MT_TEST               = 6        // Packet tests established connection
 	MT_PROXY              = 7        // Information about proxy (forwarder)
 	MT_BAD_TUN            = 8        // Notifies about dead tunnel
+	MT_XPING              = 9        // Internal crosspeer ping message
 )
 
 // List of commands used in DHT

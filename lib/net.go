@@ -108,6 +108,17 @@ func CreatePingP2PMessage() *P2PMessage {
 	return msg
 }
 
+func CreateXpingP2PMessage(t uint16, hw string) *P2PMessage {
+	msg := new(P2PMessage)
+	msg.Header = new(P2PMessageHeader)
+	msg.Header.Magic = MAGIC_COOKIE
+	msg.Header.Type = uint16(MT_XPING)
+	msg.Header.NetProto = t
+	msg.Header.Length = uint16(len(hw))
+	msg.Data = []byte(hw)
+	return msg
+}
+
 func CreateIntroP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
