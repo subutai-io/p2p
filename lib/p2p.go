@@ -34,7 +34,7 @@ type PTPCloud struct {
 	MessageHandlers map[uint16]MessageHandler            // Callbacks
 	ReadyToStop     bool                                 // Set to true when instance is ready to stop
 	PacketHandlers  map[PacketType]PacketHandlerCallback // Callbacks for network packet handlers
-	DHTPeerChannel  chan []string
+	DHTPeerChannel  chan []PeerIP
 }
 
 type NetworkPeer struct {
@@ -317,7 +317,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	if argDht != "" {
 		config.Routers = argDht
 	}
-	p.DHTPeerChannel = make(chan []string)
+	p.DHTPeerChannel = make(chan []PeerIP)
 	p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel)
 	for p.Dht == nil {
 		Log(WARNING, "Failed to connect to DHT. Retrying in 5 seconds")
@@ -379,6 +379,8 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 }
 
 func (p *PTPCloud) Run() {
+	go p.ReadDHTPeers()
+	go p.Dht.UpdatePeers()
 	for {
 		if p.Shutdown {
 			// TODO: Do it more safely
@@ -389,7 +391,6 @@ func (p *PTPCloud) Run() {
 			continue
 		}
 		time.Sleep(3 * time.Second)
-		p.Dht.UpdatePeers()
 		// Wait two seconds before synchronizing with catched peers
 		time.Sleep(2 * time.Second)
 		p.PurgePeers()
@@ -1007,4 +1008,18 @@ func (p *PTPCloud) StopInstance() {
 	}
 	time.Sleep(3 * time.Second)
 	p.ReadyToStop = true
+}
+
+func (p *PTPCloud) ReadDHTPeers() {
+	for {
+		if p.Shutdown {
+			break
+		}
+		peers := <-p.DHTPeerChannel
+		p.UpdatePeers(peers)
+	}
+}
+
+func (p *PTPCloud) UpdatePeers(peers []PeerIP) {
+	Log(INFO, "UPDATING PEERS 2.0: %v", peers)
 }

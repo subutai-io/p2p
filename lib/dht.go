@@ -46,6 +46,7 @@ type DHTClient struct {
 	DataChannel      chan []byte
 	CommandChannel   chan []byte
 	Listeners        int
+	PeerChannel      chan []PeerIP
 }
 
 type Forwarder struct {
@@ -220,16 +221,23 @@ func (dht *DHTClient) RequestPeerIPs(id string) {
 // with a list of peers that we can connect to
 // This method should be called periodically in case any new peers was discovered
 func (dht *DHTClient) UpdatePeers() {
-	msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
-	for _, conn := range dht.Connection {
+	for {
 		if dht.Shutdown {
-			continue
+			break
 		}
-		Log(TRACE, "Updating peer %s", conn.RemoteAddr().String())
-		_, err := conn.Write([]byte(msg))
-		if err != nil {
-			Log(ERROR, "Failed to send 'find' request to %s: %v", conn.RemoteAddr().String(), err)
+		msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
+		for _, conn := range dht.Connection {
+			if dht.Shutdown {
+				continue
+			}
+			Log(TRACE, "Updating peer %s", conn.RemoteAddr().String())
+			_, err := conn.Write([]byte(msg))
+			if err != nil {
+				Log(ERROR, "Failed to send 'find' request to %s: %v", conn.RemoteAddr().String(), err)
+			}
 		}
+		// Just in case do an update
+		sleep(5 * time.Minute)
 	}
 }
 
@@ -352,6 +360,7 @@ func (dht *DHTClient) HandleFind(data DHTMessage, conn *net.UDPConn) {
 					dht.Peers = append(dht.Peers[:i], dht.Peers[i+1:]...)
 				}
 			}
+			dht.PeerChannel <- dht.Peers
 			Log(DEBUG, "Received peers from %s: %s", conn.RemoteAddr().String(), data.Arguments)
 			dht.UpdateLastCatch(data.Arguments)
 		}
@@ -461,8 +470,9 @@ func (dht *DHTClient) HandleError(data DHTMessage, conn *net.UDPConn) {
 }
 
 // This method initializes DHT by splitting list of routers and connect to each one
-func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan []string) *DHTClient {
+func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan []PeerIP) *DHTClient {
 	dht = config
+	dht.PeerChannel = peerChan
 	routers := strings.Split(dht.Routers, ",")
 	dht.FailedRouters = make([]string, len(routers))
 	dht.ResponseHandlers = make(map[string]DHTResponseCallback)
@@ -651,5 +661,10 @@ func (dht *DHTClient) ReadData() []byte {
 }
 
 func (dht *DHTClient) WriteData([]byte) {
+
+}
+
+// 2.0
+func (dht *DHTClient) ReadPeers() {
 
 }
