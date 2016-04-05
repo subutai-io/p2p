@@ -50,6 +50,7 @@ type NetworkPeer struct {
 	Retries      int              // Number of introduction retries
 	Ready        bool             // Set to true when peer is ready to communicate with p2p network
 	State        PeerState        // State of a peer
+	FailedPings  int              // Number of missed pings
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -286,6 +287,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.MessageHandlers = make(map[uint16]MessageHandler)
 	p.MessageHandlers[MT_NENC] = p.HandleNotEncryptedMessage
 	p.MessageHandlers[MT_PING] = p.HandlePingMessage
+	p.MessageHandlers[MT_XPING] = p.HandleXpingMessage
 	p.MessageHandlers[MT_ENC] = p.HandleMessage
 	p.MessageHandlers[MT_INTRO] = p.HandleIntroMessage
 	p.MessageHandlers[MT_INTRO_REQ] = p.HandleIntroRequestMessage
@@ -373,6 +375,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 }
 
 func (p *PTPCloud) Run() {
+	go p.PingPeers()
 	for {
 		if p.Shutdown {
 			// TODO: Do it more safely
@@ -829,6 +832,27 @@ func (p *PTPCloud) HandlePingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	p.UDPSocket.SendMessage(msg, src_addr)
 }
 
+func (p *PTPCloud) HandleXpingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
+	if msg.Header.NetProto == 1 {
+		Log(DEBUG, "PING REQUEST")
+		// Send response
+		rsp := CreateXpingP2PMessage(2, p.HardwareAddr.String())
+		addr, err := net.ParseMAC(string(msg.Data))
+		if err != nil {
+			return
+		}
+		p.SendTo(addr, rsp)
+	} else {
+		Log(DEBUG, "PING RESPONSE")
+		for i, peer := range p.NetworkPeers {
+			if peer.PeerHW.String() == string(msg.Data) {
+				peer.FailedPings = 0
+				p.NetworkPeers[i] = peer
+			}
+		}
+	}
+}
+
 func (p *PTPCloud) IsPeerReady(id string) bool {
 	for _, peer := range p.NetworkPeers {
 		if peer.ID == id {
@@ -954,4 +978,28 @@ func (p *PTPCloud) StopInstance() {
 	}
 	time.Sleep(3 * time.Second)
 	p.ReadyToStop = true
+}
+
+func (p *PTPCloud) PingPeers() {
+	for {
+		if p.Shutdown {
+			break
+		}
+		msg := CreateXpingP2PMessage(1, p.HardwareAddr.String())
+		Log(DEBUG, "Sending pings")
+		for i, peer := range p.NetworkPeers {
+			if peer.Unknown {
+				continue
+			}
+			if peer.FailedPings > 2 {
+				Log(INFO, "Peer timeout. Removing")
+				delete(p.NetworkPeers, i)
+				continue
+			}
+			p.SendTo(peer.PeerHW, msg)
+			peer.FailedPings++
+			p.NetworkPeers[i] = peer
+		}
+		time.Sleep(5 * time.Second)
+	}
 }
