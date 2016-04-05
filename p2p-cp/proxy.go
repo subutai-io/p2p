@@ -52,7 +52,8 @@ func (p *Proxy) Initialize(target string, port int) {
 	ips = append(ips, net.ParseIP("127.0.0.1"))
 	go p.UDPServer.Listen(p.HandleMessage)
 	go p.RegisterQueue()
-	p.DHTClient = p.DHTClient.Initialize(config, ips)
+	ch := make(chan []string)
+	p.DHTClient = p.DHTClient.Initialize(config, ips, ch)
 	p.DHTClient.RegisterControlPeer()
 	ptp.Log(ptp.INFO, "Control peer initialization process is complete")
 }

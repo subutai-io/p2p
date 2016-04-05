@@ -45,6 +45,7 @@ type DHTClient struct {
 	Network          *net.IPNet
 	DataChannel      chan []byte
 	CommandChannel   chan []byte
+	Listeners        int
 }
 
 type Forwarder struct {
@@ -235,8 +236,10 @@ func (dht *DHTClient) UpdatePeers() {
 // Listens for packets received from DHT bootstrap node
 // Every packet is unmarshaled and turned into Request structure
 // which we should analyze and respond
-func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
+func (dht *DHTClient) ListenDHT(conn *net.UDPConn) {
 	Log(INFO, "Bootstraping via %s", conn.RemoteAddr().String())
+	dht.Listeners++
+	var failCounter = 0
 	for {
 		if dht.Shutdown {
 			Log(INFO, "Closing DHT Connection to %s", conn.RemoteAddr().String())
@@ -251,8 +254,10 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 		var buf [512]byte
 		_, _, err := conn.ReadFromUDP(buf[0:])
 		if err != nil {
-			Log(ERROR, "Failed to read from Discovery Service: %v", err)
+			Log(DEBUG, "Failed to read from Discovery Service: %v", err)
+			failCounter++
 		} else {
+			failCounter = 0
 			data, err := dht.Extract(buf[:512])
 			if err != nil {
 				Log(ERROR, "Failed to extract a message received from discovery service: %v", err)
@@ -265,8 +270,12 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 				}
 			}
 		}
+		if failCounter > 1000 {
+			Log(ERROR, "Multiple errors reading from DHT")
+			break
+		}
 	}
-	return ""
+	dht.Listeners--
 }
 
 func (dht *DHTClient) HandleConn(data DHTMessage, conn *net.UDPConn) {
@@ -452,7 +461,7 @@ func (dht *DHTClient) HandleError(data DHTMessage, conn *net.UDPConn) {
 }
 
 // This method initializes DHT by splitting list of routers and connect to each one
-func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
+func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan []string) *DHTClient {
 	dht = config
 	routers := strings.Split(dht.Routers, ",")
 	dht.FailedRouters = make([]string, len(routers))
