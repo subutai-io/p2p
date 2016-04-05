@@ -379,8 +379,8 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 }
 
 func (p *PTPCloud) Run() {
-	go p.ReadDHTPeers()
-	go p.Dht.UpdatePeers()
+	//go p.ReadDHTPeers()
+	//go p.Dht.UpdatePeers()
 	for {
 		if p.Shutdown {
 			// TODO: Do it more safely
@@ -391,6 +391,7 @@ func (p *PTPCloud) Run() {
 			continue
 		}
 		time.Sleep(3 * time.Second)
+		p.Dht.UpdatePeers()
 		// Wait two seconds before synchronizing with catched peers
 		time.Sleep(2 * time.Second)
 		p.PurgePeers()

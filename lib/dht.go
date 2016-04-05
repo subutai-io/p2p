@@ -221,24 +221,24 @@ func (dht *DHTClient) RequestPeerIPs(id string) {
 // with a list of peers that we can connect to
 // This method should be called periodically in case any new peers was discovered
 func (dht *DHTClient) UpdatePeers() {
-	for {
+	//for {
+	//if dht.Shutdown {
+	//		break
+	//}
+	msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
+	for _, conn := range dht.Connection {
 		if dht.Shutdown {
-			break
+			continue
 		}
-		msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
-		for _, conn := range dht.Connection {
-			if dht.Shutdown {
-				continue
-			}
-			Log(TRACE, "Updating peer %s", conn.RemoteAddr().String())
-			_, err := conn.Write([]byte(msg))
-			if err != nil {
-				Log(ERROR, "Failed to send 'find' request to %s: %v", conn.RemoteAddr().String(), err)
-			}
+		Log(TRACE, "Updating peer %s", conn.RemoteAddr().String())
+		_, err := conn.Write([]byte(msg))
+		if err != nil {
+			Log(ERROR, "Failed to send 'find' request to %s: %v", conn.RemoteAddr().String(), err)
 		}
-		// Just in case do an update
-		sleep(5 * time.Minute)
 	}
+	// Just in case do an update
+	//	Sleep(5 * time.Minute)
+	//}
 }
 
 // Listens for packets received from DHT bootstrap node
