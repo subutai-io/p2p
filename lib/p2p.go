@@ -37,25 +37,6 @@ type PTPCloud struct {
 	DHTPeerChannel  chan []PeerIP
 }
 
-type NetworkPeer struct {
-	ID           string           // ID of a peer
-	Unknown      bool             // TODO: Remove after moving to states
-	Handshaked   bool             // TODO: Remove after moving to states
-	WaitingPing  bool             // True if ping request was sent
-	ProxyID      int              // ID of the proxy
-	ProxyRetries int              // Number of retries to reach proxy
-	Forwarder    *net.UDPAddr     // Forwarder address
-	PeerAddr     *net.UDPAddr     // Address of peer
-	PeerLocalIP  net.IP           // IP of peers interface. TODO: Rename to IP
-	PeerHW       net.HardwareAddr // Hardware addres of peer interface. TODO: Rename to Mac
-	Endpoint     string           // Endpoint address of a peer. TODO: Make this net.UDPAddr
-	KnownIPs     []*net.UDPAddr   // List of IP addresses that accepts connection on peer
-	Retries      int              // Number of introduction retries
-	Ready        bool             // Set to true when peer is ready to communicate with p2p network
-	State        PeerState        // State of a peer
-	LastContact  time.Time        // Last ping with this peer
-}
-
 // Creates TUN/TAP Interface and configures it with provided IP tool
 func (p *PTPCloud) AssignInterface(ip, mac, mask, device string) error {
 	var err error
@@ -91,19 +72,6 @@ func (p *PTPCloud) AssignInterface(ip, mac, mask, device string) error {
 		return err
 	}
 	return nil
-}
-
-// Handles a packet that was received by TUN/TAP device
-// Receiving a packet by device means that some application sent a network
-// packet within a subnet in which our application works.
-// This method calls appropriate gorouting for extracted packet protocol
-func (p *PTPCloud) handlePacket(contents []byte, proto int) {
-	callback, exists := p.PacketHandlers[PacketType(proto)]
-	if exists {
-		callback(contents, proto)
-	} else {
-		Log(WARNING, "Captured undefined packet: %d", PacketType(proto))
-	}
 }
 
 // Listen TAP interface for incoming packets

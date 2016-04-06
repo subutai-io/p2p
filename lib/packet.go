@@ -95,6 +95,19 @@ type ARPPacket struct {
 	TargetIP net.IP
 }
 
+// Handles a packet that was received by TUN/TAP device
+// Receiving a packet by device means that some application sent a network
+// packet within a subnet in which our application works.
+// This method calls appropriate gorouting for extracted packet protocol
+func (p *PTPCloud) handlePacket(contents []byte, proto int) {
+	callback, exists := p.PacketHandlers[PacketType(proto)]
+	if exists {
+		callback(contents, proto)
+	} else {
+		Log(WARNING, "Captured undefined packet: %d", PacketType(proto))
+	}
+}
+
 // Handles a IPv4 packet and sends it to it's destination
 func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	Log(TRACE, "Handling IPv4 Packet")
