@@ -96,6 +96,11 @@ type Infohash struct {
 	Proxies []string
 }
 
+type DHCPSet struct {
+	Hash    string
+	Network *net.IPNet
+}
+
 // Router class
 type DHTRouter struct {
 	// Number of nodes participating in DHT
@@ -116,6 +121,8 @@ type DHTRouter struct {
 	Callbacks map[string]DHTCallback
 
 	DHCPLock bool
+
+	DHCPTable map[string]DHCPSet
 }
 
 // Method ValidateConnection() tries to establish connection with control
@@ -545,16 +552,11 @@ func (dht *DHTRouter) HandleBadCp(req ptp.DHTMessage, addr *net.UDPAddr, peer *P
 }
 
 func (dht *DHTRouter) FindNetworkForHash(hash string) *net.IPNet {
-	for _, peer := range dht.PeerList {
-		if peer.AssociatedHash != hash {
-			continue
-		}
-		if peer.IP == nil {
-			continue
-		}
-		return peer.Network
+	netinfo, exists := dht.DHCPTable[hash]
+	if !exists {
+		return nil
 	}
-	return nil
+	return netinfo.Network
 }
 
 func (dht *DHTRouter) PickFreeIP(ipnet *net.IPNet, used []net.IP) net.IP {
@@ -624,6 +626,20 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 					ptp.Log(ptp.ERROR, "Failed to parse received DHCP information: %v", err)
 					return resp, ptp.ErrorList[ptp.ERR_BAD_DHCP_DATA]
 				}
+				_, exists := dht.DHCPTable[peer.AssociatedHash]
+				if !exists {
+					var newnet DHCPSet
+					newnet.Hash = peer.AssociatedHash
+					newnet.Network = ipnet
+					dht.DHCPTable[peer.AssociatedHash] = newnet
+				} else {
+					if dht.CountParticipants(peer.AssociatedHash) == 0 {
+						var newnet DHCPSet
+						newnet.Hash = peer.AssociatedHash
+						newnet.Network = ipnet
+						dht.DHCPTable[peer.AssociatedHash] = newnet
+					}
+				}
 				peer.IP = ip
 				peer.Network = ipnet
 				resp.Command = "dhcp"
@@ -633,6 +649,17 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 		}
 	}
 	return resp, nil
+}
+
+// Returns number of participants of specified hash
+func (dht *DHTRouter) CountParticipants(hash string) int {
+	var count int = 0
+	for _, peer := range dht.PeerList {
+		if peer.AssociatedHash == hash {
+			count += 1
+		}
+	}
+	return count
 }
 
 func (dht *DHTRouter) HandleLoad(req ptp.DHTMessage, addr *net.UDPAddr, peer *Peer) (ptp.DHTMessage, error) {
@@ -812,6 +839,7 @@ func main() {
 		dht.Connection = dht.SetupServer()
 		dht.Hashes = make(map[string]Infohash)
 		dht.PeerList = make(map[string]Peer)
+		dht.DHCPTable = make(map[string]DHCPSet)
 
 		dht.Callbacks = make(map[string]DHTCallback)
 		dht.Callbacks[ptp.CMD_CONN] = dht.HandleConn

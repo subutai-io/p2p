@@ -50,6 +50,7 @@ type NetworkPeer struct {
 	Retries      int              // Number of introduction retries
 	Ready        bool             // Set to true when peer is ready to communicate with p2p network
 	State        PeerState        // State of a peer
+	FailedPings  int              // Number of missed pings
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -127,21 +128,24 @@ func (p *PTPCloud) ListenInterface() {
 	Log(INFO, "Shutting down interface listener")
 }
 
-// This method will generate device name if none were specified at startup
-func (p *PTPCloud) GenerateDeviceName(i int) string {
-	var devName string = GetDeviceBase() + fmt.Sprintf("%d", i)
+func (p *PTPCloud) IsDeviceExists(name string) bool {
 	inf, err := net.Interfaces()
 	if err != nil {
 		Log(ERROR, "Failed to retrieve list of network interfaces")
-		return ""
+		return true
 	}
-	var exist bool = false
 	for _, i := range inf {
-		if i.Name == devName {
-			exist = true
+		if i.Name == name {
+			return true
 		}
 	}
-	if exist {
+	return false
+}
+
+// This method will generate device name if none were specified at startup
+func (p *PTPCloud) GenerateDeviceName(i int) string {
+	var devName string = GetDeviceBase() + fmt.Sprintf("%d", i)
+	if p.IsDeviceExists(devName) {
 		return p.GenerateDeviceName(i + 1)
 	} else {
 		return devName
@@ -253,6 +257,10 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 			return nil
 		}
 	}
+	if p.IsDeviceExists(argDev) {
+		Log(ERROR, "Interface is already in use. Can't create duplicate")
+		return nil
+	}
 
 	if argKeyfile != "" {
 		p.Crypter.ReadKeysFromFile(argKeyfile)
@@ -279,6 +287,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.MessageHandlers = make(map[uint16]MessageHandler)
 	p.MessageHandlers[MT_NENC] = p.HandleNotEncryptedMessage
 	p.MessageHandlers[MT_PING] = p.HandlePingMessage
+	p.MessageHandlers[MT_XPING] = p.HandleXpingMessage
 	p.MessageHandlers[MT_ENC] = p.HandleMessage
 	p.MessageHandlers[MT_INTRO] = p.HandleIntroMessage
 	p.MessageHandlers[MT_INTRO_REQ] = p.HandleIntroRequestMessage
@@ -306,11 +315,19 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		config.Routers = argDht
 	}
 	p.Dht = dhtClient.Initialize(config, p.LocalIPs)
+	for p.Dht == nil {
+		Log(WARNING, "Failed to connect to DHT. Retrying in 5 seconds")
+		time.Sleep(5 * time.Second)
+		p.LocalIPs = p.LocalIPs[:0]
+		p.FindNetworkAddresses()
+		p.Dht = dhtClient.Initialize(config, p.LocalIPs)
+	}
 	// Wait for ID
 	for len(p.Dht.ID) < 32 {
 		time.Sleep(100 * time.Millisecond)
 	}
 	Log(INFO, "ID assigned. Continue")
+	var retries int = 0
 	if argIp == "dhcp" {
 		Log(INFO, "Requesting IP")
 		p.Dht.RequestIP()
@@ -319,6 +336,11 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 			Log(INFO, "No IP were received. Requesting again")
 			p.Dht.RequestIP()
 			time.Sleep(3 * time.Second)
+			retries++
+			if retries >= 10 {
+				Log(ERROR, "Failed to retrieve IP from network after 10 retries")
+				return nil
+			}
 		}
 		m := p.Dht.Network.Mask
 		mask := fmt.Sprintf("%d.%d.%d.%d", m[0], m[1], m[2], m[3])
@@ -353,6 +375,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 }
 
 func (p *PTPCloud) Run() {
+	go p.PingPeers()
 	for {
 		if p.Shutdown {
 			// TODO: Do it more safely
@@ -809,6 +832,27 @@ func (p *PTPCloud) HandlePingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	p.UDPSocket.SendMessage(msg, src_addr)
 }
 
+func (p *PTPCloud) HandleXpingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
+	if msg.Header.NetProto == 1 {
+		Log(DEBUG, "PING REQUEST")
+		// Send response
+		rsp := CreateXpingP2PMessage(2, p.HardwareAddr.String())
+		addr, err := net.ParseMAC(string(msg.Data))
+		if err != nil {
+			return
+		}
+		p.SendTo(addr, rsp)
+	} else {
+		Log(DEBUG, "PING RESPONSE")
+		for i, peer := range p.NetworkPeers {
+			if peer.PeerHW.String() == string(msg.Data) {
+				peer.FailedPings = 0
+				p.NetworkPeers[i] = peer
+			}
+		}
+	}
+}
+
 func (p *PTPCloud) IsPeerReady(id string) bool {
 	for _, peer := range p.NetworkPeers {
 		if peer.ID == id {
@@ -917,6 +961,45 @@ func (p *PTPCloud) StopInstance() {
 	msg := CreateTestP2PMessage(p.Crypter, "STOP", 1)
 	addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", p.Dht.P2PPort))
 	p.UDPSocket.SendMessage(msg, addr)
+	var ipIt int = 200
+	for p.IsDeviceExists(p.DeviceName) {
+		time.Sleep(1 * time.Second)
+		ip := p.Dht.Network.IP
+		target := fmt.Sprintf("%d.%d.%d.%d:99", ip[0], ip[1], ip[2], ipIt)
+		Log(INFO, "Dialing %s", target)
+		_, err := net.DialTimeout("tcp", target, 2*time.Second)
+		if err != nil {
+			Log(INFO, "ERROR: %v", err)
+		}
+		ipIt++
+		if ipIt == 255 {
+			break
+		}
+	}
 	time.Sleep(3 * time.Second)
 	p.ReadyToStop = true
+}
+
+func (p *PTPCloud) PingPeers() {
+	for {
+		if p.Shutdown {
+			break
+		}
+		msg := CreateXpingP2PMessage(1, p.HardwareAddr.String())
+		Log(DEBUG, "Sending pings")
+		for i, peer := range p.NetworkPeers {
+			if peer.Unknown {
+				continue
+			}
+			if peer.FailedPings > 2 {
+				Log(INFO, "Peer timeout. Removing")
+				delete(p.NetworkPeers, i)
+				continue
+			}
+			p.SendTo(peer.PeerHW, msg)
+			peer.FailedPings++
+			p.NetworkPeers[i] = peer
+		}
+		time.Sleep(5 * time.Second)
+	}
 }

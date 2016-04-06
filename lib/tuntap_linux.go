@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	CONFIG_DIR string = "/usr/local/etc"
+	CONFIG_DIR  string = "/usr/local/etc"
+	DEFAULT_MTU string = "1600"
 )
 
 func openDevice(ifPattern string) (*os.File, error) {
@@ -43,6 +44,11 @@ func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 		return err
 	}
 
+	err = SetMTU(dev, device, tool, DEFAULT_MTU)
+	if err != nil {
+		return err
+	}
+
 	// Configure new device
 	err = SetIp(ip, device, tool)
 	if err != nil {
@@ -51,6 +57,16 @@ func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 
 	err = SetMac(mac, device, tool)
 	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func SetMTU(dev *Interface, device, tool, mtu string) error {
+	setmtu := exec.Command(tool, "link", "set", "dev", device, "mtu", mtu)
+	err := setmtu.Run()
+	if err != nil {
+		Log(ERROR, "Failed to set MTU on device %s: %v", device, err)
 		return err
 	}
 	return nil

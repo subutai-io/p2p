@@ -8,7 +8,24 @@ import (
 	ptp "github.com/subutai-io/p2p/lib"
 	"os"
 	"runtime"
+	"time"
 )
+
+var InstanceLock bool = false
+
+func WaitLock() {
+	for InstanceLock {
+		time.Sleep(100 * time.Microsecond)
+	}
+}
+
+func Lock() {
+	InstanceLock = true
+}
+
+func Unlock() {
+	InstanceLock = false
+}
 
 type RunArgs struct {
 	IP      string
@@ -150,6 +167,8 @@ func (p *Procedures) SetLog(args *NameValueArg, resp *Response) error {
 }
 
 func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
+	WaitLock()
+	Lock()
 	resp.ExitCode = 0
 	if args.Hash == "" {
 		resp.ExitCode = 1
@@ -170,19 +189,35 @@ func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
 		newKey = Instances[args.Hash].PTP.Crypter.EnrichKeyValues(newKey, args.Key, args.TTL)
 		Instances[args.Hash].PTP.Crypter.Keys = append(Instances[args.Hash].PTP.Crypter.Keys, newKey)
 	}
+	Unlock()
 	return nil
 }
 
 func (p *Procedures) Execute(args *Args, resp *Response) error {
-	ptp.Log(ptp.INFO, "Received %v", args)
 	resp.ExitCode = 0
-	resp.Output = "Command executed"
+	resp.Output = ""
 	return nil
 }
 
 func (p *Procedures) Run(args *RunArgs, resp *Response) error {
+	WaitLock()
+	Lock()
 	resp.ExitCode = 0
 	resp.Output = "Running new P2P instance for " + args.Hash + "\n"
+	defer Unlock()
+
+	// Validate if interface name is unique
+	if args.Dev != "" {
+		for _, inst := range Instances {
+			if inst.PTP.DeviceName == args.Dev {
+				resp.ExitCode = 1
+				resp.Output = "Device name is already in use"
+				Unlock()
+				return errors.New(resp.Output)
+			}
+		}
+	}
+
 	var exists bool
 	_, exists = Instances[args.Hash]
 	if !exists {
@@ -204,22 +239,29 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 		Instances[args.Hash] = newInst
 		ptpInstance := ptp.StartP2PInstance(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port)
 		if ptpInstance == nil {
+			delete(Instances, args.Hash)
 			resp.Output = resp.Output + "Failed to create P2P Instance"
+			Unlock()
 			return errors.New("Failed to create P2P Instance")
 		}
 		newInst.PTP = ptpInstance
 		Instances[args.Hash] = newInst
 		go ptpInstance.Run()
 		if SaveFile != "" {
+			resp.Output = resp.Output + "Saving instance into file"
 			SaveInstances(SaveFile)
 		}
 	} else {
 		resp.Output = resp.Output + "Hash already in use\n"
 	}
+	Unlock()
 	return nil
 }
 
 func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
+	WaitLock()
+	Lock()
+	defer Unlock()
 	resp.ExitCode = 0
 	var exists bool
 	_, exists = Instances[args.Hash]
@@ -231,6 +273,7 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 		Instances[args.Hash].PTP.StopInstance()
 		delete(Instances, args.Hash)
 	}
+	Unlock()
 	return nil
 }
 
@@ -255,7 +298,11 @@ func (p *Procedures) Show(args *Args, resp *Response) error {
 			resp.Output = "No instances was found"
 		}
 		for key, inst := range Instances {
-			resp.Output = resp.Output + "\t" + inst.PTP.Mac + "\t" + inst.PTP.IP + "\t" + key
+			if inst.PTP != nil {
+				resp.Output = resp.Output + "\t" + inst.PTP.Mac + "\t" + inst.PTP.IP + "\t" + key
+			} else {
+				resp.Output = resp.Output + "\tUnknown\tUnknown\t" + key
+			}
 			resp.Output = resp.Output + "\n"
 		}
 	}
