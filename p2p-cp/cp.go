@@ -335,6 +335,11 @@ func (dht *DHTRouter) HandleConn(req ptp.DHTMessage, addr *net.UDPAddr, p *Peer)
 	return resp, nil
 }
 
+// SendFind sends FIND packet to every peer under specified hash
+// to notify about other network participants
+func (dht *DHTRouter) SendFind(hash string) {
+}
+
 func (dht *DHTRouter) FindFreeProxies() []string {
 	var maxProxyNum int = 1
 	var proxyNum int = 0
