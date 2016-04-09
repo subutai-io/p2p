@@ -195,6 +195,7 @@ func (p *Proxy) CleanTunnels() {
 			delete(p.Tunnels, key)
 			badId := key
 			p.NotifyBadTunnel(badId)
+			p.DHTClient.ReportControlPeerLoad(len(p.Tunnels))
 		}
 	}
 }
