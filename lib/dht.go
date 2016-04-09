@@ -56,7 +56,7 @@ type Forwarder struct {
 
 type PeerIP struct {
 	ID  string
-	Ips []string
+	Ips []*net.UDPAddr
 }
 
 type DHTResponseCallback func(data DHTMessage, conn *net.UDPConn)
@@ -221,24 +221,24 @@ func (dht *DHTClient) RequestPeerIPs(id string) {
 // with a list of peers that we can connect to
 // This method should be called periodically in case any new peers was discovered
 func (dht *DHTClient) UpdatePeers() {
-	//for {
-	//if dht.Shutdown {
-	//		break
-	//}
-	msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
-	for _, conn := range dht.Connection {
+	for {
 		if dht.Shutdown {
-			continue
+			break
 		}
-		Log(TRACE, "Updating peer %s", conn.RemoteAddr().String())
-		_, err := conn.Write([]byte(msg))
-		if err != nil {
-			Log(ERROR, "Failed to send 'find' request to %s: %v", conn.RemoteAddr().String(), err)
+		msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
+		for _, conn := range dht.Connection {
+			if dht.Shutdown {
+				continue
+			}
+			Log(TRACE, "Updating peer %s", conn.RemoteAddr().String())
+			_, err := conn.Write([]byte(msg))
+			if err != nil {
+				Log(ERROR, "Failed to send 'find' request to %s: %v", conn.RemoteAddr().String(), err)
+			}
 		}
+		// Just in case do an update
+		time.Sleep(5 * time.Minute)
 	}
-	// Just in case do an update
-	//	Sleep(5 * time.Minute)
-	//}
 }
 
 // Listens for packets received from DHT bootstrap node
@@ -379,7 +379,16 @@ func (dht *DHTClient) HandleNode(data DHTMessage, conn *net.UDPConn) {
 	for i, peer := range dht.Peers {
 		if peer.ID == data.Id {
 			ips := strings.Split(data.Arguments, "|")
-			dht.Peers[i].Ips = ips
+			var list []*net.UDPAddr
+			for _, addr := range ips {
+				ip, err := net.ResolveUDPAddr("udp", addr)
+				if err != nil {
+					Log(ERROR, "Failed to resolve address of peer: %v", err)
+					continue
+				}
+				list = append(list, ip)
+			}
+			dht.Peers[i].Ips = list
 		}
 	}
 }

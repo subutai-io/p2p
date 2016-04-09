@@ -347,30 +347,32 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 }
 
 func (p *PTPCloud) Run() {
-	//go p.ReadDHTPeers()
-	//go p.Dht.UpdatePeers()
-	for {
-		if p.Shutdown {
-			// TODO: Do it more safely
-			if p.ReadyToStop {
-				break
+	go p.ReadDHTPeers()
+	go p.Dht.UpdatePeers()
+	/*
+		for {
+			if p.Shutdown {
+				// TODO: Do it more safely
+				if p.ReadyToStop {
+					break
+				}
+				time.Sleep(1 * time.Second)
+				continue
 			}
-			time.Sleep(1 * time.Second)
-			continue
+			time.Sleep(3 * time.Second)
+			p.Dht.UpdatePeers()
+			// Wait two seconds before synchronizing with catched peers
+			time.Sleep(2 * time.Second)
+			p.PurgePeers()
+			newPeersNum := p.SyncPeers()
+			newPeersNum = newPeersNum + p.SyncForwarders()
+			p.IntroducePeers()
+			if p.Dht.Listeners == 0 {
+				p.Shutdown = true
+				p.Restart = true
+			}
 		}
-		time.Sleep(3 * time.Second)
-		p.Dht.UpdatePeers()
-		// Wait two seconds before synchronizing with catched peers
-		time.Sleep(2 * time.Second)
-		p.PurgePeers()
-		newPeersNum := p.SyncPeers()
-		newPeersNum = newPeersNum + p.SyncForwarders()
-		p.IntroducePeers()
-		if p.Dht.Listeners == 0 {
-			p.Shutdown = true
-			p.Restart = true
-		}
-	}
+	*/
 	Log(INFO, "Shutting down instance %s completed", p.Dht.NetworkHash)
 }
 
@@ -434,6 +436,8 @@ func (p *PTPCloud) IntroducePeers() {
 			}
 			continue
 		}
+		// will try to connect to every known IP addr
+		// over local network interface
 		peer.Retries = peer.Retries + 1
 		Log(DEBUG, "Intoducing to %s", peer.Endpoint)
 		addr, err := net.ResolveUDPAddr("udp", peer.Endpoint)
@@ -483,6 +487,7 @@ func (p *PTPCloud) PurgePeers() {
 }
 
 // This method tests connection with specified endpoint
+/*
 func (p *PTPCloud) TestConnection(endpoint *net.UDPAddr) bool {
 	msg := CreateTestP2PMessage(p.Crypter, "TEST", 0)
 	conn, err := net.DialUDP("udp4", nil, endpoint)
@@ -515,6 +520,7 @@ func (p *PTPCloud) TestConnection(endpoint *net.UDPAddr) bool {
 	conn.Close()
 	return false
 }
+*/
 
 func (p *PTPCloud) SyncForwarders() int {
 	var count int = 0
@@ -534,6 +540,7 @@ func (p *PTPCloud) SyncForwarders() int {
 	return count
 }
 
+/*
 func (p *PTPCloud) AssignEndpoint(peer NetworkPeer) (string, bool) {
 	interfaces, err := net.Interfaces()
 	if err != nil {
@@ -568,10 +575,12 @@ func (p *PTPCloud) AssignEndpoint(peer NetworkPeer) (string, bool) {
 	}
 	return "", false
 }
+*/
 
 // This method takes a list of catched peers from DHT and
 // adds every new peer into list of peers
 // Returns amount of peers that has been added
+/*
 func (p *PTPCloud) SyncPeers() int {
 	var count int = 0
 
@@ -586,19 +595,19 @@ func (p *PTPCloud) SyncPeers() int {
 				// Check if we know something new about this peer, e.g. new addresses were
 				// assigned to it
 				for _, ip := range id.Ips {
-					if ip == "" || ip == "0" {
+					if ip == nil {
 						continue
 					}
 					var ipFound bool = false
 					for _, kip := range peer.KnownIPs {
-						if kip.String() == ip {
+						if kip.String() == ip.String() {
 							ipFound = true
 						}
 					}
 					if !ipFound {
 						Log(INFO, "Adding new IP (%s) address to %s", ip, peer.ID)
 						// TODO: Check IP parsing
-						newIp, _ := net.ResolveUDPAddr("udp", ip)
+						newIp := ip
 						peer.KnownIPs = append(peer.KnownIPs, newIp)
 						p.NetworkPeers[i] = peer
 					}
@@ -685,6 +694,7 @@ func (p *PTPCloud) SyncPeers() int {
 	}
 	return count
 }
+*/
 
 // WriteToDevice writes data to created TUN/TAP device
 func (p *PTPCloud) WriteToDevice(b []byte, proto uint16, truncated bool) {

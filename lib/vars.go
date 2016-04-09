@@ -60,13 +60,16 @@ type (
 
 // Peer state
 const (
-	P_INIT                  PeerState = 0 + iota
-	P_CONNECTED                       = 1
-	P_HANDSHAKING                     = 2
-	P_HANDSHAKING_FAILED              = 3
-	P_WAITING_FORWARDER               = 4
-	P_HANDSHAKING_FORWARDER           = 5
-	P_DISCONNECT                      = 6
+	P_INIT                  PeerState = iota // Peer has been added recently.
+	P_REQUESTED_IP                    = iota // We know ID of a peer, but don't know it's IPs
+	P_CONNECTING_DIRECTLY             = iota // Trying to establish a direct connection
+	P_CONNECTED                       = iota // Connected, handshaked and operating normally
+	P_HANDSHAKING                     = iota // Handshake requsted
+	P_HANDSHAKING_FAILED              = iota // Handshake procedure failed
+	P_WAITING_FORWARDER               = iota // Forwarder was requested
+	P_HANDSHAKING_FORWARDER           = iota // Forwarder has been received and we're trying to handshake it
+	P_DISCONNECT                      = iota // We're disconnecting
+	P_STOP                            = iota // Peer has been stopped and now can be removed from list of peers
 )
 
 // Ping types
