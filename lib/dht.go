@@ -45,6 +45,7 @@ type DHTClient struct {
 	Network          *net.IPNet
 	DataChannel      chan []byte
 	CommandChannel   chan []byte
+	LastDhtPing      time.Time
 }
 
 type Forwarder struct {
@@ -252,6 +253,8 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 		_, _, err := conn.ReadFromUDP(buf[0:])
 		if err != nil {
 			Log(ERROR, "Failed to read from Discovery Service: %v", err)
+			dht = nil
+			return ""
 		} else {
 			data, err := dht.Extract(buf[:512])
 			if err != nil {
@@ -302,7 +305,9 @@ func (dht *DHTClient) HandleConn(data DHTMessage, conn *net.UDPConn) {
 }
 
 func (dht *DHTClient) HandlePing(data DHTMessage, conn *net.UDPConn) {
+	Log(TRACE, "Ping received")
 	msg := dht.Compose(CMD_PING, dht.ID, "", "")
+	dht.LastDhtPing = time.Now()
 	_, err := conn.Write([]byte(msg))
 	if err != nil {
 		Log(ERROR, "Failed to send 'ping' packet: %v", err)
@@ -454,6 +459,7 @@ func (dht *DHTClient) HandleError(data DHTMessage, conn *net.UDPConn) {
 // This method initializes DHT by splitting list of routers and connect to each one
 func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 	dht = config
+	dht.LastDhtPing = time.Now()
 	routers := strings.Split(dht.Routers, ",")
 	dht.FailedRouters = make([]string, len(routers))
 	dht.ResponseHandlers = make(map[string]DHTResponseCallback)

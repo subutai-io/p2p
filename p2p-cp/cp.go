@@ -665,6 +665,7 @@ func (dht *DHTRouter) CountParticipants(hash string) int {
 func (dht *DHTRouter) HandleLoad(req ptp.DHTMessage, addr *net.UDPAddr, peer *Peer) (ptp.DHTMessage, error) {
 	for _, cp := range dht.ControlPeers {
 		if cp.ID == req.Id {
+			ptp.Log(ptp.DEBUG, "Updating load: %s", req.Arguments)
 			var err error
 			cp.TunelsNum, err = strconv.Atoi(req.Arguments)
 			if err != nil {
@@ -864,7 +865,19 @@ func main() {
 		// Act as a normal (proxy) control peer
 		var proxy Proxy
 		proxy.Initialize(argTarget, argListen)
+		var interval time.Duration = time.Second * 5
 		for {
+			duration := time.Since(proxy.DHTClient.LastDhtPing)
+			if duration > interval || proxy.DHTClient == nil {
+				ptp.Log(ptp.INFO, "Reconnecting")
+				proxy.Initialize(argTarget, argListen)
+				proxy.DHTClient.LastDhtPing = time.Now()
+				time.Sleep(time.Second * 2)
+				ptp.Log(ptp.INFO, "...")
+			}
+			if proxy.DHTClient == nil {
+				continue
+			}
 			proxy.SendPing()
 			time.Sleep(3 * time.Second)
 			proxy.CleanTunnels()
