@@ -53,6 +53,11 @@ func (p *Proxy) Initialize(target string, port int) {
 	go p.UDPServer.Listen(p.HandleMessage)
 	go p.RegisterQueue()
 	p.DHTClient = p.DHTClient.Initialize(config, ips)
+	for p.DHTClient == nil || len(p.DHTClient.ID) != 36 {
+		ptp.Log(ptp.WARNING, "Failed to connect to DHT. Retrying in 5 seconds")
+		time.Sleep(5 * time.Second)
+		p.DHTClient = p.DHTClient.Initialize(config, ips)
+	}
 	p.DHTClient.RegisterControlPeer()
 	ptp.Log(ptp.INFO, "Control peer initialization process is complete")
 }

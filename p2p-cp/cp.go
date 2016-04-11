@@ -865,7 +865,19 @@ func main() {
 		// Act as a normal (proxy) control peer
 		var proxy Proxy
 		proxy.Initialize(argTarget, argListen)
+		var interval time.Duration = time.Second * 5
 		for {
+			duration := time.Since(proxy.DHTClient.LastDhtPing)
+			if duration > interval || proxy.DHTClient == nil {
+				ptp.Log(ptp.INFO, "Reconnecting")
+				proxy.Initialize(argTarget, argListen)
+				proxy.DHTClient.LastDhtPing = time.Now()
+				time.Sleep(time.Second * 2)
+				ptp.Log(ptp.INFO, "...")
+			}
+			if proxy.DHTClient == nil {
+				continue
+			}
 			proxy.SendPing()
 			time.Sleep(3 * time.Second)
 			proxy.CleanTunnels()
