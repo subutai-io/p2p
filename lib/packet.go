@@ -124,7 +124,7 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	msg.Header.NetProto = uint16(proto)
 	_, err := p.SendTo(f.Destination, msg)
 	if err != nil {
-		Log(ERROR, "Failed to send message inside P2P: %v", err)
+		Log(ERROR, "Failed to send message over P2P: %v", err)
 		return
 	}
 }

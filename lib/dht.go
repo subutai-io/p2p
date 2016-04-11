@@ -225,19 +225,23 @@ func (dht *DHTClient) UpdatePeers() {
 		if dht.Shutdown {
 			break
 		}
-		msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
-		for _, conn := range dht.Connection {
-			if dht.Shutdown {
-				continue
-			}
-			Log(TRACE, "Updating peer %s", conn.RemoteAddr().String())
-			_, err := conn.Write([]byte(msg))
-			if err != nil {
-				Log(ERROR, "Failed to send 'find' request to %s: %v", conn.RemoteAddr().String(), err)
-			}
-		}
+		dht.SendUpdateRequest()
 		// Just in case do an update
 		time.Sleep(5 * time.Minute)
+	}
+}
+
+func (dht *DHTClient) SendUpdateRequest() {
+	msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
+	for _, conn := range dht.Connection {
+		if dht.Shutdown {
+			continue
+		}
+		Log(DEBUG, "Updating peers from %s", conn.RemoteAddr().String())
+		_, err := conn.Write([]byte(msg))
+		if err != nil {
+			Log(ERROR, "Failed to send 'find' request to %s: %v", conn.RemoteAddr().String(), err)
+		}
 	}
 }
 
@@ -272,6 +276,7 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) {
 			} else {
 				callback, exists := dht.ResponseHandlers[data.Command]
 				if exists {
+					Log(TRACE, "DHT Received %v", data)
 					callback(data, conn)
 				} else {
 					Log(ERROR, "Unknown packet received from DHT: %s", data.Command)
@@ -300,22 +305,27 @@ func (dht *DHTClient) HandleConn(data DHTMessage, conn *net.UDPConn) {
 	}
 	dht.State = D_OPERATING
 	dht.ID = data.Id
+	Log(INFO, "Received connection confirmation from router %s",
+		conn.RemoteAddr().String())
+	Log(INFO, "Received personal ID for this session: %s", data.Id)
 	// Send a hash within FIND command
 	// Afterwards application should wait for response from DHT
 	// with list of clients. This may not happen if this client is the
 	// first connected node.
-	msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
-	if dht.Shutdown {
-		return
-	}
-	_, err := conn.Write([]byte(msg))
-	if err != nil {
-		Log(ERROR, "Failed to send 'find' request: %v", err)
-	} else {
-		Log(INFO, "Received connection confirmation from router %s",
-			conn.RemoteAddr().String())
-		Log(INFO, "Received personal ID for this session: %s", data.Id)
-	}
+	/*
+		msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
+		if dht.Shutdown {
+			return
+		}
+		_, err := conn.Write([]byte(msg))
+		if err != nil {
+			Log(ERROR, "Failed to send 'find' request: %v", err)
+		} else {
+			Log(INFO, "Received connection confirmation from router %s",
+				conn.RemoteAddr().String())
+			Log(INFO, "Received personal ID for this session: %s", data.Id)
+		}
+	*/
 }
 
 func (dht *DHTClient) HandlePing(data DHTMessage, conn *net.UDPConn) {
@@ -376,11 +386,15 @@ func (dht *DHTClient) HandleRegCp(data DHTMessage, conn *net.UDPConn) {
 
 func (dht *DHTClient) HandleNode(data DHTMessage, conn *net.UDPConn) {
 	// We've received an IPs associated with target node
+	Log(DEBUG, "Received IPs from %s: %v", data.Id, data.Arguments)
 	for i, peer := range dht.Peers {
 		if peer.ID == data.Id {
 			ips := strings.Split(data.Arguments, "|")
 			var list []*net.UDPAddr
 			for _, addr := range ips {
+				if addr == "" {
+					continue
+				}
 				ip, err := net.ResolveUDPAddr("udp", addr)
 				if err != nil {
 					Log(ERROR, "Failed to resolve address of peer: %v", err)
@@ -452,6 +466,7 @@ func (dht *DHTClient) HandleDHCP(data DHTMessage, conn *net.UDPConn) {
 		Log(ERROR, "Failed to parse received DHCP packet: %v", err)
 		return
 	}
+	Log(INFO, "Saving IP/Net data: %s", ip)
 	dht.IP = ip
 	dht.Network = ipnet
 }
@@ -517,6 +532,9 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan 
 			connected += 1
 			go dht.ListenDHT(conn)
 		}
+	}
+	for len(dht.ID) != 36 {
+		time.Sleep(time.Microsecond * 100)
 	}
 	if connected == 0 {
 		return nil

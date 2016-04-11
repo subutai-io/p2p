@@ -622,6 +622,10 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 		}
 		dht.DHCPLock = false
 	} else {
+		for dht.DHCPLock {
+			time.Sleep(100 * time.Microsecond)
+		}
+		dht.DHCPLock = true
 		// This is DHCP registration
 		// We're expecting data in CIDR format
 		for id, peer := range dht.PeerList {
@@ -629,6 +633,7 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 				ip, ipnet, err := net.ParseCIDR(req.Query)
 				if err != nil {
 					ptp.Log(ptp.ERROR, "Failed to parse received DHCP information: %v", err)
+					dht.DHCPLock = false
 					return resp, ptp.ErrorList[ptp.ERR_BAD_DHCP_DATA]
 				}
 				_, exists := dht.DHCPTable[peer.AssociatedHash]
@@ -652,6 +657,7 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 				dht.PeerList[id] = peer
 			}
 		}
+		dht.DHCPLock = false
 	}
 	return resp, nil
 }
@@ -739,6 +745,7 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 			dht.SendError(conn, addr, err)
 		}
 		if resp.Command != "" {
+			ptp.Log(ptp.TRACE, "Sending %v", resp)
 			dht.Send(conn, addr, dht.EncodeResponse(resp))
 		}
 	} else {

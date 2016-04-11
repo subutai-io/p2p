@@ -2,6 +2,7 @@ package ptp
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"time"
 )
@@ -19,7 +20,7 @@ type NetworkPeer struct {
 	PeerAddr      *net.UDPAddr                       // Address of peer
 	PeerLocalIP   net.IP                             // IP of peers interface. TODO: Rename to IP
 	PeerHW        net.HardwareAddr                   // Hardware addres of peer interface. TODO: Rename to Mac
-	Endpoint      string                             // Endpoint address of a peer. TODO: Make this net.UDPAddr
+	Endpoint      *net.UDPAddr                       // Endpoint address of a peer. TODO: Make this net.UDPAddr
 	KnownIPs      []*net.UDPAddr                     // List of IP addresses that accepts connection on peer
 	Retries       int                                // Number of introduction retries
 	Ready         bool                               // Set to true when peer is ready to communicate with p2p network
@@ -40,10 +41,12 @@ func (np *NetworkPeer) Run(ptpc *PTPCloud) {
 			np.StateHandlers[P_INIT] = np.StateInit
 			np.StateHandlers[P_REQUESTED_IP] = np.StateRequestedIp
 			np.StateHandlers[P_CONNECTING_DIRECTLY] = np.StateConnectingDirectly
+			np.StateHandlers[P_CONNECTED] = np.StateConnected
+			np.StateHandlers[P_HANDSHAKING] = np.StateHandshaking
 		}
 		callback, exists := np.StateHandlers[np.State]
 		if !exists {
-			Log(ERROR, "Peer %s is in unknown state")
+			Log(ERROR, "Peer %s is in unknown state: %d", np.ID, int(np.State))
 			time.Sleep(1 * time.Second)
 			continue
 		}
@@ -56,6 +59,7 @@ func (np *NetworkPeer) Run(ptpc *PTPCloud) {
 
 func (np *NetworkPeer) StateInit(ptpc *PTPCloud) error {
 	// Send request about IPs of a peer
+	Log(INFO, "Initializing new peer: %s", np.ID)
 	ptpc.Dht.RequestPeerIPs(np.ID)
 	np.State = P_REQUESTED_IP
 	return nil
@@ -63,6 +67,7 @@ func (np *NetworkPeer) StateInit(ptpc *PTPCloud) error {
 
 func (np *NetworkPeer) StateRequestedIp(ptpc *PTPCloud) error {
 	// Waiting for IPs from DHT
+	Log(INFO, "Waiting network addresses for peer: %s", np.ID)
 	for {
 		for _, PeerInfo := range ptpc.Dht.Peers {
 			if PeerInfo.ID == np.ID {
@@ -84,6 +89,7 @@ func (np *NetworkPeer) StateRequestedIp(ptpc *PTPCloud) error {
 // Otherwise, we will try to establish connection over WAN. If every attempt
 // will fail we will switch to Proxy mode.
 func (np *NetworkPeer) StateConnectingDirectly(ptpc *PTPCloud) error {
+	Log(INFO, "Trying direct conection with peer: %s", np.ID)
 	if len(np.KnownIPs) == 0 {
 		np.State = P_INIT
 		return errors.New("Joined connection state without knowing any IPs")
@@ -97,6 +103,8 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PTPCloud) error {
 	// Try to connect locally
 	isLocal := np.ProbeLocalConnection(ptpc)
 	if isLocal {
+		np.PeerAddr = np.Endpoint
+		Log(INFO, "Connected with %s over LAN", np.ID)
 		np.SendHandshake(ptpc)
 		np.State = P_HANDSHAKING
 		return nil
@@ -107,11 +115,44 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PTPCloud) error {
 	addr := np.KnownIPs[0]
 	conn := np.TestConnection(ptpc, addr)
 	if conn {
+		np.PeerAddr = np.Endpoint
+		Log(INFO, "Connected with %s over Internet", np.ID)
+		np.SendHandshake(ptpc)
 		np.State = P_HANDSHAKING
 		return nil
 	} else {
+		Log(INFO, "Direct connection with %s failed", np.ID)
 		np.RequestForwarder()
 		np.State = P_WAITING_FORWARDER
+	}
+	return nil
+}
+
+func (np *NetworkPeer) StateConnected(ptpc *PTPCloud) error {
+	Log(INFO, "Integrated with %s", np.ID)
+	Log(INFO, "IP: %s, Mac: %s", np.PeerLocalIP.String(), np.PeerHW.String())
+	time.Sleep(1 * time.Second)
+	return nil
+}
+
+func (np *NetworkPeer) StateHandshaking(ptpc *PTPCloud) error {
+	Log(INFO, "Sending handshake to %s", np.ID)
+	handshakeSentAt := time.Now()
+	interval := time.Duration(time.Second * 1)
+	retries := 0
+	for np.State == P_HANDSHAKING {
+		passed := time.Since(handshakeSentAt)
+		if passed > interval {
+			if retries >= 10 {
+				Log(ERROR, "Failed to handshake with %s", np.ID)
+				np.State = P_HANDSHAKING_FAILED
+				return errors.New(fmt.Sprintf("Failed to handshake with %s", np.ID))
+			} else {
+				handshakeSentAt = time.Now()
+				np.SendHandshake(ptpc)
+				retries++
+			}
+		}
 	}
 	return nil
 }
@@ -167,7 +208,7 @@ func (np *NetworkPeer) ProbeLocalConnection(ptpc *PTPCloud) bool {
 	}
 
 	for _, inf := range interfaces {
-		if np.Endpoint != "" {
+		if np.Endpoint != nil {
 			break
 		}
 		if inf.Name == ptpc.DeviceName {
@@ -184,6 +225,7 @@ func (np *NetworkPeer) ProbeLocalConnection(ptpc *PTPCloud) bool {
 
 				if network.Contains(kip.IP) {
 					if np.TestConnection(ptpc, kip) {
+						np.Endpoint = kip
 						return true
 						Log(INFO, "Setting endpoint for %s to %s", np.ID, kip.String())
 					}
@@ -195,5 +237,13 @@ func (np *NetworkPeer) ProbeLocalConnection(ptpc *PTPCloud) bool {
 }
 
 func (np *NetworkPeer) SendHandshake(ptpc *PTPCloud) {
-
+	Log(DEBUG, "Preparing introduction message for %s", np.ID)
+	msg := CreateIntroRequest(ptpc.Crypter, ptpc.Dht.ID)
+	msg.Header.ProxyId = uint16(np.ProxyID)
+	_, err := ptpc.UDPSocket.SendMessage(msg, np.Endpoint)
+	if err != nil {
+		Log(ERROR, "Failed to send introduction to %s", np.Endpoint.String())
+	} else {
+		Log(DEBUG, "Sent introduction handshake to %s", np.ID)
+	}
 }
