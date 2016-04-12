@@ -53,9 +53,20 @@ func (p *Proxy) Initialize(target string, port int) {
 	go p.UDPServer.Listen(p.HandleMessage)
 	go p.RegisterQueue()
 	ch := make(chan []ptp.PeerIP)
-	p.DHTClient = p.DHTClient.Initialize(config, ips, ch)
+	proxych := make(chan ptp.Forwarder)
+	p.DHTClient = p.DHTClient.Initialize(config, ips, ch, proxych)
+	for len(p.DHTClient.ID) < 32 {
+		ptp.Log(ptp.WARNING, "Failed to connect to DHT. Retrying in 5 seconds")
+		time.Sleep(5 * time.Second)
+		p.DHTClient = p.DHTClient.Initialize(config, ips, ch, proxych)
+	}
 	p.DHTClient.RegisterControlPeer()
 	ptp.Log(ptp.INFO, "Control peer initialization process is complete")
+}
+
+func (p *Proxy) Stop() {
+	p.UDPServer.Stop()
+	p.Shutdown = true
 }
 
 func (p *Proxy) GenerateHash() string {
@@ -202,6 +213,9 @@ func (p *Proxy) CleanTunnels() {
 
 func (p *Proxy) RegisterQueue() {
 	for {
+		if p.Shutdown {
+			break
+		}
 		time.Sleep(1 * time.Second)
 		if len(p.TunnelQueue) == 0 {
 			continue

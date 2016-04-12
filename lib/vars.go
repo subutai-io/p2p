@@ -20,16 +20,16 @@ type MSG_TYPE uint16
 
 // Internal network packet type
 const (
-	MT_STRING     MSG_TYPE = 0 + iota // String
-	MT_INTRO               = 1        // Introduction packet
-	MT_INTRO_REQ           = 2        // Request for introduction packet
-	MT_NENC                = 3        // Not encrypted message
-	MT_ENC                 = 4        // Encrypted message
-	MT_PING                = 5        // Internal ping message for Proxies
-	MT_XPEER_PING          = 6        // Crosspeer ping message
-	MT_TEST                = 6        // Packet tests established connection
-	MT_PROXY               = 7        // Information about proxy (forwarder)
-	MT_BAD_TUN             = 8        // Notifies about dead tunnel
+	MT_STRING     MSG_TYPE = 0 // String
+	MT_INTRO               = 1 // Introduction packet
+	MT_INTRO_REQ           = 2 // Request for introduction packet
+	MT_NENC                = 3 // Not encrypted message
+	MT_ENC                 = 4 // Encrypted message
+	MT_PING                = 5 // Internal ping message for Proxies
+	MT_XPEER_PING          = 6 // Crosspeer ping message
+	MT_TEST                = 7 // Packet tests established connection
+	MT_PROXY               = 8 // Information about proxy (forwarder)
+	MT_BAD_TUN             = 9 // Notifies about dead tunnel
 )
 
 // List of commands used in DHT
@@ -55,7 +55,7 @@ const (
 
 type (
 	PeerState int
-	PingType  string
+	PingType  uint16
 )
 
 // Peer state
@@ -74,14 +74,15 @@ const (
 
 // Ping types
 const (
-	PING_REQ  PingType = "REQ"
-	PING_RESP PingType = "RESP"
+	PING_REQ  PingType = 1
+	PING_RESP PingType = 2
 )
 
 // Timeouts and retries
 const (
-	DHT_MAX_RETRIES    int           = 10
-	DHCP_MAX_RETRIES   int           = 10
-	PEER_PING_TIMEOUT  time.Duration = 15 * time.Second
-	WAIT_PROXY_TIMEOUT time.Duration = 2 * time.Second
+	DHT_MAX_RETRIES         int           = 10
+	DHCP_MAX_RETRIES        int           = 10
+	PEER_PING_TIMEOUT       time.Duration = 5 * time.Second
+	WAIT_PROXY_TIMEOUT      time.Duration = 2 * time.Second
+	HANDSHAKE_PROXY_TIMEOUT time.Duration = 3 * time.Second
 )

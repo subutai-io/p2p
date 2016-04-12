@@ -409,10 +409,10 @@ func (dht *DHTRouter) HandleFind(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 }
 
 func (dht *DHTRouter) HandlePing(req ptp.DHTMessage, addr *net.UDPAddr, peer *Peer) (ptp.DHTMessage, error) {
-	peer.MissedPing = 0
-	dht.PeerList[req.Id] = *peer
 	var resp ptp.DHTMessage
 	resp.Command = ""
+	peer.MissedPing = 0
+	dht.PeerList[req.Id] = *peer
 	return resp, nil
 }
 
@@ -483,7 +483,6 @@ func (dht *DHTRouter) HandleNode(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 	return resp, nil
 }
 
-//func (dht *DHTRouter) ResponseNotify(req ptp.DHTMessage, addr string) ptp.DHTMessage {
 func (dht *DHTRouter) HandleNotify(req ptp.DHTMessage, addr *net.UDPAddr, peer *Peer) (ptp.DHTMessage, error) {
 	var resp ptp.DHTMessage
 	resp.Command = req.Command
@@ -493,7 +492,6 @@ func (dht *DHTRouter) HandleNotify(req ptp.DHTMessage, addr *net.UDPAddr, peer *
 	return resp, nil
 }
 
-//func (dht *DHTRouter) ResponseStop(req ptp.DHTMessage) ptp.DHTMessage {
 func (dht *DHTRouter) HandleStop(req ptp.DHTMessage, addr *net.UDPAddr, peer *Peer) (ptp.DHTMessage, error) {
 	var resp ptp.DHTMessage
 	resp.Command = req.Command
@@ -535,9 +533,21 @@ func (dht *DHTRouter) HandleCp(req ptp.DHTMessage, addr *net.UDPAddr, peer *Peer
 			}
 		}
 	}
-	resp.Arguments = candidate
-	resp.Id = req.Arguments
+	resp.Query = candidate
+	//resp.Arguments = candidate
+	resp.Arguments = req.Arguments
 	// At the same moment we should send this message to a requested address too
+
+	var sr ptp.DHTMessage
+	sr.Command = req.Command
+	sr.Id = req.Arguments
+	sr.Arguments = req.Id
+	sr.Query = candidate
+
+	p, exists := dht.PeerList[sr.Id]
+	if exists {
+		dht.Send(dht.Connection, p.Addr, dht.EncodeResponse(sr))
+	}
 
 	return resp, nil
 }
@@ -865,7 +875,6 @@ func main() {
 		dht.Callbacks[ptp.CMD_LOAD] = dht.HandleLoad
 		dht.Callbacks[ptp.CMD_DHCP] = dht.HandleDHCP
 		dht.Callbacks[ptp.CMD_STOP] = dht.HandleStop
-		//dht.Callbacks[ptp.CMD_UNKNOWN] = dht.HandleUnknown
 
 		go dht.Ping(dht.Connection)
 
@@ -876,10 +885,17 @@ func main() {
 		// Act as a normal (proxy) control peer
 		var proxy Proxy
 		proxy.Initialize(argTarget, argListen)
+		alivePeriod := time.Duration(time.Second * 15)
 		for {
 			proxy.SendPing()
 			time.Sleep(3 * time.Second)
 			proxy.CleanTunnels()
+			passed := time.Since(proxy.DHTClient.LastDHTPing)
+			if passed > alivePeriod {
+				proxy.Stop()
+				ptp.Log(ptp.WARNING, "Lost DHT connecton. Restoring")
+				proxy.Initialize(argTarget, argListen)
+			}
 		}
 	}
 }

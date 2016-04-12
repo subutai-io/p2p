@@ -35,6 +35,7 @@ type PTPCloud struct {
 	ReadyToStop     bool                                 // Set to true when instance is ready to stop
 	PacketHandlers  map[PacketType]PacketHandlerCallback // Callbacks for network packet handlers
 	DHTPeerChannel  chan []PeerIP
+	ProxyChannel    chan Forwarder
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -259,7 +260,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.MessageHandlers[MT_NENC] = p.HandleNotEncryptedMessage
 	p.MessageHandlers[MT_PING] = p.HandlePingMessage
 	p.MessageHandlers[MT_XPEER_PING] = p.HandleXpeerPingMessage
-	p.MessageHandlers[MT_ENC] = p.HandleMessage
+	//p.MessageHandlers[MT_ENC] = p.HandleMessage
 	p.MessageHandlers[MT_INTRO] = p.HandleIntroMessage
 	p.MessageHandlers[MT_INTRO_REQ] = p.HandleIntroRequestMessage
 	p.MessageHandlers[MT_PROXY] = p.HandleProxyMessage
@@ -286,13 +287,14 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		config.Routers = argDht
 	}
 	p.DHTPeerChannel = make(chan []PeerIP)
-	p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel)
+	p.ProxyChannel = make(chan Forwarder)
+	p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel, p.ProxyChannel)
 	for p.Dht == nil {
 		Log(WARNING, "Failed to connect to DHT. Retrying in 5 seconds")
 		time.Sleep(5 * time.Second)
 		p.LocalIPs = p.LocalIPs[:0]
 		p.FindNetworkAddresses()
-		p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel)
+		p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel, p.ProxyChannel)
 	}
 	// Wait for ID
 	for len(p.Dht.ID) < 32 {
@@ -348,6 +350,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 
 func (p *PTPCloud) Run() {
 	go p.ReadDHTPeers()
+	go p.ReadProxies()
 	go p.Dht.UpdatePeers()
 	for {
 		if p.Shutdown {
@@ -359,6 +362,20 @@ func (p *PTPCloud) Run() {
 			continue
 		}
 		time.Sleep(time.Second * 1)
+		updateNeeded := false
+		for i, peer := range p.NetworkPeers {
+			if peer.State == P_STOP {
+				updateNeeded = true
+				Log(INFO, "Removing peer %s", i)
+				time.Sleep(100 * time.Microsecond)
+				delete(p.IPIDTable, peer.PeerLocalIP.String())
+				delete(p.MACIDTable, peer.PeerHW.String())
+				delete(p.NetworkPeers, i)
+			}
+		}
+		if updateNeeded {
+			go p.Dht.UpdatePeers()
+		}
 	}
 	/*
 		for {
@@ -387,6 +404,7 @@ func (p *PTPCloud) Run() {
 	//Log(INFO, "Shutting down instance %s completed", p.Dht.NetworkHash)
 }
 
+/*
 func (p *PTPCloud) TouchPeers() {
 	for i, peer := range p.NetworkPeers {
 		if peer.State != P_CONNECTED {
@@ -412,6 +430,7 @@ func (p *PTPCloud) Ping(addr *net.UDPAddr) {
 	msg := CreateXpeerPingMessage(PING_REQ)
 	p.UDPSocket.SendMessage(msg, addr)
 }
+*/
 
 // This method sends information about himself to empty peers
 // Empty peers is a peer that was not sent us information
@@ -742,10 +761,10 @@ func GenerateMAC() (string, net.HardwareAddr) {
 	return mac, hw
 }
 
+/*
 // AddPeer adds new peer into list of network participants. If peer was added previously
 // information about him will be updated. If not, new entry will be added
 func (p *PTPCloud) AddPeer(addr *net.UDPAddr, id string, ip net.IP, mac net.HardwareAddr) {
-	/*
 		var found bool = false
 		for i, peer := range p.NetworkPeers {
 			if peer.ID == id {
@@ -773,12 +792,14 @@ func (p *PTPCloud) AddPeer(addr *net.UDPAddr, id string, ip net.IP, mac net.Hard
 			p.IPIDTable[ip.String()] = id
 			p.MACIDTable[mac.String()] = id
 		}
-	*/
 }
+*/
 
+/*
 func (p *NetworkPeer) ProbeConnection() bool {
 	return false
 }
+*/
 
 func (p *PTPCloud) ParseIntroString(intro string) (string, net.HardwareAddr, net.IP) {
 	parts := strings.Split(intro, ",")
@@ -804,6 +825,7 @@ func (p *PTPCloud) ParseIntroString(intro string) (string, net.HardwareAddr, net
 	return id, mac, ip
 }
 
+/*
 func (p *PTPCloud) IsPeerUnknown(id string) bool {
 	for _, peer := range p.NetworkPeers {
 		if peer.ID == id {
@@ -812,6 +834,7 @@ func (p *PTPCloud) IsPeerUnknown(id string) bool {
 	}
 	return true
 }
+*/
 
 // Handler for new messages received from P2P network
 func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error, rcv_bytes []byte) {
@@ -846,12 +869,13 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 	}
 }
 
+/*
 func (p *PTPCloud) HandleMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 
 }
+*/
 
 func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
-	Log(DEBUG, "Received P2P Message")
 	Log(TRACE, "Data: %s, Proto: %d, From: %s", msg.Data, msg.Header.NetProto, src_addr.String())
 	p.WriteToDevice(msg.Data, msg.Header.NetProto, false)
 }
@@ -861,22 +885,29 @@ func (p *PTPCloud) HandlePingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 }
 
 func (p *PTPCloud) HandleXpeerPingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
-	pt := PingType(msg.Data)
+	pt := PingType(msg.Header.NetProto)
 	if pt == PING_REQ {
 		// Send a PING response
-		msg := CreateXpeerPingMessage(PING_RESP)
-		p.UDPSocket.SendMessage(msg, src_addr)
+		r := CreateXpeerPingMessage(PING_RESP, p.HardwareAddr.String())
+		addr, err := net.ParseMAC(string(msg.Data))
+		if err != nil {
+			Log(ERROR, "Failed to parse MAC address in crosspeer ping message")
+		} else {
+			p.SendTo(addr, r)
+		}
 	} else {
 		// Handle PING response
 		for i, peer := range p.NetworkPeers {
-			if peer.PeerAddr == src_addr {
-				peer.WaitingPing = false
+			if peer.PeerHW.String() == string(msg.Data) {
+				peer.PingCount = 0
+				peer.LastContact = time.Now()
 				p.NetworkPeers[i] = peer
 			}
 		}
 	}
 }
 
+/*
 func (p *PTPCloud) IsPeerReady(id string) bool {
 	for _, peer := range p.NetworkPeers {
 		if peer.ID == id {
@@ -885,6 +916,7 @@ func (p *PTPCloud) IsPeerReady(id string) bool {
 	}
 	return false
 }
+*/
 
 func (p *PTPCloud) HandleIntroMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	id, mac, ip := p.ParseIntroString(string(msg.Data))
@@ -896,6 +928,7 @@ func (p *PTPCloud) HandleIntroMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	peer.PeerHW = mac
 	peer.PeerLocalIP = ip
 	peer.State = P_CONNECTED
+	peer.LastContact = time.Now()
 	p.IPIDTable[ip.String()] = id
 	p.MACIDTable[mac.String()] = id
 	p.NetworkPeers[id] = peer
@@ -936,21 +969,19 @@ func (p *PTPCloud) HandleIntroRequestMessage(msg *P2PMessage, src_addr *net.UDPA
 
 func (p *PTPCloud) HandleProxyMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	// Proxy registration data
-	Log(DEBUG, "Proxy confirmation received")
 	if msg.Header.ProxyId < 1 {
 		return
 	}
-	id := string(msg.Data)
+	ip := string(msg.Data)
+	Log(INFO, "Proxy confirmation received from %s. Tunnel ID %d", ip, int(msg.Header.ProxyId))
 	for key, peer := range p.NetworkPeers {
-		if peer.PeerAddr.String() == id {
+		if peer.PeerAddr.String() == ip {
 			peer.ProxyID = int(msg.Header.ProxyId)
-			Log(DEBUG, "Setting proxy ID %d for %s", msg.Header.ProxyId, peer.ID)
-			peer.Ready = true
-			peer.ProxyRetries = 0
-			peer.State = P_HANDSHAKING
 			p.NetworkPeers[key] = peer
+			return
 		}
 	}
+	Log(WARNING, "Can't set Tunnel#%d for %s: Can't find address", int(msg.Header.ProxyId), ip)
 }
 
 func (p *PTPCloud) HandleBadTun(msg *P2PMessage, src_addr *net.UDPAddr) {
@@ -967,6 +998,11 @@ func (p *PTPCloud) HandleBadTun(msg *P2PMessage, src_addr *net.UDPAddr) {
 }
 
 func (p *PTPCloud) HandleTestMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
+	/*
+		if msg.Header.NetProto > 1 {
+			return
+		}
+	*/
 	response := CreateTestP2PMessage(p.Crypter, "TEST", 0)
 	_, err := p.UDPSocket.SendMessage(response, src_addr)
 	if err != nil {
@@ -984,7 +1020,7 @@ func (p *PTPCloud) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
 		if exists {
 			msg.Header.ProxyId = uint16(peer.ProxyID)
 			Log(TRACE, "Sending to %s via proxy id %d", dst.String(), msg.Header.ProxyId)
-			size, err := p.UDPSocket.SendMessage(msg, peer.PeerAddr)
+			size, err := p.UDPSocket.SendMessage(msg, peer.Endpoint)
 			return size, err
 		}
 	}
@@ -1029,8 +1065,33 @@ func (p *PTPCloud) ReadDHTPeers() {
 	}
 }
 
+func (p *PTPCloud) ReadProxies() {
+	for {
+		if p.Shutdown {
+			break
+		}
+		proxy := <-p.ProxyChannel
+		exists := false
+		for i, peer := range p.NetworkPeers {
+			if i == proxy.DestinationID {
+				peer.Forwarder = proxy.Addr
+				peer.Endpoint = proxy.Addr
+				p.NetworkPeers[i] = peer
+				exists = true
+			}
+		}
+		if !exists {
+			Log(INFO, "Received forwarder for unknown peer")
+			p.Dht.SendUpdateRequest()
+		}
+	}
+}
+
 func (p *PTPCloud) UpdatePeers(peers []PeerIP) {
 	for _, newPeer := range peers {
+		if newPeer.ID == "" {
+			continue
+		}
 		found := false
 		for _, peer := range p.NetworkPeers {
 			if peer.ID == newPeer.ID {
@@ -1043,8 +1104,7 @@ func (p *PTPCloud) UpdatePeers(peers []PeerIP) {
 			peer.KnownIPs = newPeer.Ips
 			peer.State = P_INIT
 			p.NetworkPeers[newPeer.ID] = peer
-			p.NetworkPeers[newPeer.ID].Run(p)
-			//peer.Run(p)
+			go p.NetworkPeers[newPeer.ID].Run(p)
 		}
 	}
 }

@@ -108,14 +108,14 @@ func CreatePingP2PMessage() *P2PMessage {
 	return msg
 }
 
-func CreateXpeerPingMessage(pt PingType) *P2PMessage {
+func CreateXpeerPingMessage(pt PingType, hw string) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
 	msg.Header.Magic = MAGIC_COOKIE
 	msg.Header.Type = uint16(MT_XPEER_PING)
-	msg.Header.NetProto = 0
-	msg.Header.Length = uint16(len(pt))
-	msg.Data = []byte(pt)
+	msg.Header.NetProto = uint16(pt)
+	msg.Header.Length = uint16(len(hw))
+	msg.Data = []byte(hw)
 	return msg
 }
 
