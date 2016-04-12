@@ -26,6 +26,7 @@ type NetworkPeer struct {
 	Ready         bool                               // Set to true when peer is ready to communicate with p2p network
 	State         PeerState                          // State of a peer
 	LastContact   time.Time                          // Last ping with this peer
+	PingCount     int                                // Number of pings messages sent without response
 	StateHandlers map[PeerState]StateHandlerCallback // List of callbacks for different peer states
 }
 
@@ -43,6 +44,7 @@ func (np *NetworkPeer) Run(ptpc *PTPCloud) {
 			np.StateHandlers[P_CONNECTING_DIRECTLY] = np.StateConnectingDirectly
 			np.StateHandlers[P_CONNECTED] = np.StateConnected
 			np.StateHandlers[P_HANDSHAKING] = np.StateHandshaking
+			np.StateHandlers[P_WAITING_FORWARDER] = np.StateWaitingForwarder
 		}
 		callback, exists := np.StateHandlers[np.State]
 		if !exists {
@@ -96,7 +98,6 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PTPCloud) error {
 	}
 	// If forward mode was activated - skip direction connection attemps
 	if ptpc.ForwardMode {
-		np.RequestForwarder()
 		np.State = P_WAITING_FORWARDER
 		return nil
 	}
@@ -122,15 +123,22 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PTPCloud) error {
 		return nil
 	} else {
 		Log(INFO, "Direct connection with %s failed", np.ID)
-		np.RequestForwarder()
 		np.State = P_WAITING_FORWARDER
 	}
 	return nil
 }
 
 func (np *NetworkPeer) StateConnected(ptpc *PTPCloud) error {
-	Log(INFO, "Integrated with %s", np.ID)
-	Log(INFO, "IP: %s, Mac: %s", np.PeerLocalIP.String(), np.PeerHW.String())
+	if np.PingCount > 3 {
+		np.State = P_DISCONNECT
+		return errors.New(fmt.Sprintf("Peer %s has been timed out", np.ID))
+	}
+	passed := time.Since(np.LastContact)
+	if passed > PEER_PING_TIMEOUT {
+		msg := CreateXpeerPingMessage(PING_REQ)
+		ptpc.SendTo(np.PeerHW, msg)
+		np.PingCount++
+	}
 	time.Sleep(1 * time.Second)
 	return nil
 }
@@ -152,6 +160,21 @@ func (np *NetworkPeer) StateHandshaking(ptpc *PTPCloud) error {
 				np.SendHandshake(ptpc)
 				retries++
 			}
+		}
+	}
+	return nil
+}
+
+// Proxy was requested from DHT. This state waits for proxy
+// address
+func (np *NetworkPeer) StateWaitingForwarder(ptpc *PTPCloud) error {
+	Log(INFO, "Requesting proxy for %s", np.ID)
+	RequestForwader(ptpc)
+	waitStart := time.Now()
+	for np.Forwarder == nil {
+		time.Sleep(time.Microsecond * 100)
+		if waitStart > WAIT_PROXY_TIMEOUT {
+			return errors.New(fmt.Sprintf("No proxy were received for %s", np.ID))
 		}
 	}
 	return nil
@@ -194,7 +217,7 @@ func (np *NetworkPeer) TestConnection(ptpc *PTPCloud, endpoint *net.UDPAddr) boo
 	return false
 }
 
-func (np *NetworkPeer) RequestForwarder() {
+func (np *NetworkPeer) RequestForwarder(ptpc *PTPCloud) {
 
 }
 
