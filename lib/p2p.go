@@ -36,6 +36,7 @@ type PTPCloud struct {
 	PacketHandlers  map[PacketType]PacketHandlerCallback // Callbacks for network packet handlers
 	DHTPeerChannel  chan []PeerIP
 	ProxyChannel    chan Forwarder
+	RemovePeer      chan string
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -351,6 +352,22 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 func (p *PTPCloud) Run() {
 	go p.ReadDHTPeers()
 	go p.ReadProxies()
+	go func() {
+		for {
+			if p.Shutdown {
+				return
+			}
+			rm := <-p.Dht.RemovePeerChan
+			peer, exists := p.NetworkPeers[rm]
+			if exists {
+				Log(INFO, "Stopping %s after STOP command", rm)
+				peer.State = P_DISCONNECT
+				p.NetworkPeers[rm] = peer
+			} else {
+				Log(INFO, "Can't stop peer. ID not found")
+			}
+		}
+	}()
 	go p.Dht.UpdatePeers()
 	for {
 		if p.Shutdown {

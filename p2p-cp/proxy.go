@@ -35,32 +35,38 @@ type Tunnel struct {
 	Ready     bool
 }
 
-func (p *Proxy) Initialize(target string, port int) {
+func (p *Proxy) StartUDPServer(port int) {
 	p.UDPServer = new(ptp.PTPNet)
 	p.UDPServer.Init("", port)
+	go p.UDPServer.Listen(p.HandleMessage)
+}
+
+func (p *Proxy) StartDHT(target string) {
 	p.DHTClient = new(ptp.DHTClient)
-	p.Tunnels = make(map[int]Tunnel)
 	config := p.DHTClient.DHTClientConfig()
-	if target != "" {
-		config.Routers = target
-	}
 	config.Mode = ptp.MODE_CP
 	config.NetworkHash = p.GenerateHash()
 	config.P2PPort = p.UDPServer.GetPort()
-	ptp.Log(ptp.INFO, "Listening on a %d port", config.P2PPort)
+	if target != "" {
+		config.Routers = target
+	}
 	var ips []net.IP
 	ips = append(ips, net.ParseIP("127.0.0.1"))
-	go p.UDPServer.Listen(p.HandleMessage)
-	go p.RegisterQueue()
 	ch := make(chan []ptp.PeerIP)
 	proxych := make(chan ptp.Forwarder)
 	p.DHTClient = p.DHTClient.Initialize(config, ips, ch, proxych)
 	for len(p.DHTClient.ID) < 32 {
+		p.DHTClient.ID = ""
 		ptp.Log(ptp.WARNING, "Failed to connect to DHT. Retrying in 5 seconds")
 		time.Sleep(5 * time.Second)
 		p.DHTClient = p.DHTClient.Initialize(config, ips, ch, proxych)
 	}
 	p.DHTClient.RegisterControlPeer()
+}
+
+func (p *Proxy) Initialize() {
+	p.Tunnels = make(map[int]Tunnel)
+	go p.RegisterQueue()
 	ptp.Log(ptp.INFO, "Control peer initialization process is complete")
 }
 

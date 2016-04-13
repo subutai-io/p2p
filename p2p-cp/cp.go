@@ -10,8 +10,10 @@ import (
 	ptp "github.com/subutai-io/p2p/lib"
 	"github.com/wayn3h0/go-uuid"
 	"net"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -123,6 +125,7 @@ type DHTRouter struct {
 	DHCPLock bool
 
 	DHCPTable map[string]DHCPSet
+	Lock      sync.Mutex
 }
 
 // Method ValidateConnection() tries to establish connection with control
@@ -338,6 +341,39 @@ func (dht *DHTRouter) HandleConn(req ptp.DHTMessage, addr *net.UDPAddr, p *Peer)
 // SendFind sends FIND packet to every peer under specified hash
 // to notify about other network participants
 func (dht *DHTRouter) SendFind(hash string) {
+	ptp.Log(ptp.DEBUG, "Changes in peer list. Notifying everyone")
+	var ids []string
+	for _, peer := range dht.PeerList {
+		if peer.AssociatedHash == hash {
+			ids = append(ids, peer.ID)
+		}
+	}
+	for _, id := range ids {
+		var list string
+		for _, k := range ids {
+			if k == id {
+				continue
+			}
+			list = list + k + ","
+		}
+		var resp ptp.DHTMessage
+		resp.Id = id
+		resp.Command = ptp.CMD_FIND
+		resp.Arguments = list
+		dht.Send(dht.Connection, dht.PeerList[id].Addr, dht.EncodeResponse(resp))
+	}
+}
+
+func (dht *DHTRouter) SendStop(hash, id string) {
+	for _, peer := range dht.PeerList {
+		if peer.AssociatedHash == hash {
+			var resp ptp.DHTMessage
+			resp.Command = ptp.CMD_STOP
+			resp.Id = peer.ID
+			resp.Arguments = id
+			dht.Send(dht.Connection, peer.Addr, dht.EncodeResponse(resp))
+		}
+	}
 }
 
 func (dht *DHTRouter) FindFreeProxies() []string {
@@ -370,6 +406,7 @@ func (dht *DHTRouter) RegisterHash(addr string, hash string) {
 				newHash.Proxies = dht.FindFreeProxies()
 				dht.Hashes[hash] = newHash
 			}
+			go dht.SendFind(hash)
 		}
 	}
 }
@@ -727,9 +764,15 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 		peer.ConnectionAddress = addr.String()
 		peer.Addr = addr
 		peer.AssociatedHash = ""
+		dht.Lock.Lock()
 		dht.PeerList[peer.ID] = peer
+		dht.Lock.Unlock()
+		runtime.Gosched()
 	} else {
+		dht.Lock.Lock()
 		peer, exists = dht.PeerList[req.Id]
+		dht.Lock.Unlock()
+		runtime.Gosched()
 		if !exists {
 			// Send CMD_UNKNOWN for unknown peer
 			var resp ptp.DHTMessage
@@ -782,8 +825,13 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 	var removeKeys []string
 	for {
 		for _, key := range removeKeys {
+			hash := dht.PeerList[key].AssociatedHash
 			ptp.Log(ptp.WARNING, "%s timeout reached. Disconnecting", dht.PeerList[key].ConnectionAddress)
 			delete(dht.PeerList, key)
+			if hash != "" {
+				go dht.SendStop(hash, key)
+				go dht.SendFind(hash)
+			}
 		}
 		dht.SyncControlPeers()
 		removeKeys = removeKeys[:0]
@@ -884,7 +932,9 @@ func main() {
 	} else {
 		// Act as a normal (proxy) control peer
 		var proxy Proxy
-		proxy.Initialize(argTarget, argListen)
+		proxy.StartUDPServer(argListen)
+		proxy.StartDHT(argTarget)
+		proxy.Initialize()
 		alivePeriod := time.Duration(time.Second * 15)
 		for {
 			proxy.SendPing()
@@ -892,9 +942,9 @@ func main() {
 			proxy.CleanTunnels()
 			passed := time.Since(proxy.DHTClient.LastDHTPing)
 			if passed > alivePeriod {
-				proxy.Stop()
+				proxy.DHTClient.ID = ""
 				ptp.Log(ptp.WARNING, "Lost DHT connecton. Restoring")
-				proxy.Initialize(argTarget, argListen)
+				proxy.StartDHT(argTarget)
 			}
 		}
 	}

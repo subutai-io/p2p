@@ -49,6 +49,7 @@ type DHTClient struct {
 	PeerChannel      chan []PeerIP
 	ProxyChannel     chan Forwarder
 	LastDHTPing      time.Time
+	RemovePeerChan   chan string
 }
 
 type Forwarder struct {
@@ -65,7 +66,7 @@ type DHTResponseCallback func(data DHTMessage, conn *net.UDPConn)
 
 func (dht *DHTClient) DHTClientConfig() *DHTClient {
 	return &DHTClient{
-		Routers: "dht1.subut.ai:6881",
+		Routers: "dht1.subut.ai:6882",
 		//Routers:     "dht1.subut.ai:6881,dht2.subut.ai:6881,dht3.subut.ai:6881,dht4.subut.ai:6881,dht5.subut.ai:6881",
 		NetworkHash: "",
 	}
@@ -491,7 +492,14 @@ func (dht *DHTClient) HandleNotify(data DHTMessage, conn *net.UDPConn) {
 }
 
 func (dht *DHTClient) HandleStop(data DHTMessage, conn *net.UDPConn) {
-	conn.Close()
+	if data.Arguments != "" {
+		// We need to stop particular peer by changing it's state to
+		// P_DISCONNECT
+		Log(INFO, "Stop command for %s", data.Arguments)
+		dht.RemovePeerChan <- data.Arguments
+	} else {
+		conn.Close()
+	}
 }
 
 func (dht *DHTClient) HandleDHCP(data DHTMessage, conn *net.UDPConn) {
@@ -535,6 +543,7 @@ func (dht *DHTClient) HandleError(data DHTMessage, conn *net.UDPConn) {
 
 // This method initializes DHT by splitting list of routers and connect to each one
 func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan []PeerIP, proxyChan chan Forwarder) *DHTClient {
+	dht.RemovePeerChan = make(chan string)
 	dht = config
 	dht.PeerChannel = peerChan
 	dht.ProxyChannel = proxyChan
@@ -574,8 +583,14 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan 
 			go dht.ListenDHT(conn)
 		}
 	}
+	started := time.Now()
+	period := time.Duration(time.Second * 3)
 	for len(dht.ID) != 36 {
 		time.Sleep(time.Microsecond * 100)
+		passed := time.Since(started)
+		if passed > period {
+			break
+		}
 	}
 	if connected == 0 {
 		return nil
