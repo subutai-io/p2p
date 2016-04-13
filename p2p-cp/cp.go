@@ -723,6 +723,7 @@ func (dht *DHTRouter) CountParticipants(hash string) int {
 func (dht *DHTRouter) HandleLoad(req ptp.DHTMessage, addr *net.UDPAddr, peer *Peer) (ptp.DHTMessage, error) {
 	for _, cp := range dht.ControlPeers {
 		if cp.ID == req.Id {
+			ptp.Log(ptp.DEBUG, "Updating load: %s", req.Arguments)
 			var err error
 			cp.TunelsNum, err = strconv.Atoi(req.Arguments)
 			if err != nil {

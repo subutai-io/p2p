@@ -261,7 +261,6 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.MessageHandlers[MT_NENC] = p.HandleNotEncryptedMessage
 	p.MessageHandlers[MT_PING] = p.HandlePingMessage
 	p.MessageHandlers[MT_XPEER_PING] = p.HandleXpeerPingMessage
-	//p.MessageHandlers[MT_ENC] = p.HandleMessage
 	p.MessageHandlers[MT_INTRO] = p.HandleIntroMessage
 	p.MessageHandlers[MT_INTRO_REQ] = p.HandleIntroRequestMessage
 	p.MessageHandlers[MT_PROXY] = p.HandleProxyMessage
