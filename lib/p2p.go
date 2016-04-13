@@ -378,19 +378,14 @@ func (p *PTPCloud) Run() {
 			continue
 		}
 		time.Sleep(time.Second * 1)
-		updateNeeded := false
 		for i, peer := range p.NetworkPeers {
 			if peer.State == P_STOP {
-				updateNeeded = true
 				Log(INFO, "Removing peer %s", i)
 				time.Sleep(100 * time.Microsecond)
 				delete(p.IPIDTable, peer.PeerLocalIP.String())
 				delete(p.MACIDTable, peer.PeerHW.String())
 				delete(p.NetworkPeers, i)
 			}
-		}
-		if updateNeeded {
-			go p.Dht.UpdatePeers()
 		}
 	}
 	Log(INFO, "Shutting down instance %s completed", p.Dht.NetworkHash)
