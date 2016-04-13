@@ -1045,6 +1045,10 @@ func (p *PTPCloud) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
 
 func (p *PTPCloud) StopInstance() {
 	// Send a packet
+	for i, peer := range p.NetworkPeers {
+		peer.State = P_DISCONNECT
+		p.NetworkPeers[i] = peer
+	}
 	p.Dht.Stop()
 	p.UDPSocket.Stop()
 	p.Shutdown = true
