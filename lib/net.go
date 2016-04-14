@@ -278,6 +278,10 @@ func (uc *PTPNet) Listen(fn_received_callback UDPReceivedCallback) {
 	Log(INFO, "Stopping UDP Listener")
 }
 
+func (uc *PTPNet) Bind(addr *net.UDPAddr, local_addr *net.UDPAddr) {
+
+}
+
 func (uc *PTPNet) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, error) {
 	ser_data := msg.Serialize()
 	n, err := uc.conn.WriteToUDP(ser_data, dst_addr)

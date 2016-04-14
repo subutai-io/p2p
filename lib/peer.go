@@ -206,7 +206,7 @@ func (np *NetworkPeer) StateHandshakingForwarder(ptpc *PTPCloud) error {
 	}
 	np.ProxyRequests = 0
 	Log(INFO, "Handshaking with proxy %s for %s", np.Forwarder.String(), np.ID)
-	msg := CreateProxyP2PMessage(-1, np.PeerAddr.String(), 0)
+	msg := CreateProxyP2PMessage(-1, np.PeerAddr.String(), uint16(ptpc.UDPSocket.GetPort()))
 	_, err := ptpc.UDPSocket.SendMessage(msg, np.Forwarder)
 	if err != nil {
 		np.BlacklistCurrentProxy(ptpc)
@@ -253,7 +253,7 @@ func (np *NetworkPeer) StateStop(ptpc *PTPCloud) error {
 // Utilities functions
 
 func (np *NetworkPeer) BlacklistCurrentProxy(ptpc *PTPCloud) {
-	Log(INFO, "Adding forwarder %s to a blacklist", np.Forwarder.String())
+	Log(INFO, "%s Adding forwarder %s to a blacklist", np.ID, np.Forwarder.String())
 	ptpc.Dht.BlacklistForwarder(np.Forwarder)
 	return
 	/*

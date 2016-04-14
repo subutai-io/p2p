@@ -24,15 +24,17 @@ type Proxy struct {
 type WaitingTunnel struct {
 	Target     string
 	Source     string
+	Port       uint16
 	Registered bool
 }
 
 // Tunnel established between two peers. Tunnels doesn't
 // provide two-way connectivity.
 type Tunnel struct {
-	PingFails int
-	Endpoint  *net.UDPAddr
-	Ready     bool
+	PingFails   int
+	Endpoint    *net.UDPAddr
+	RealAddress *net.UDPAddr
+	Ready       bool
 }
 
 func (p *Proxy) StartUDPServer(port int) {
@@ -82,10 +84,11 @@ func (p *Proxy) GenerateHash() string {
 	return infohash
 }
 
-func (p *Proxy) CreateTunnel(addr string, ready bool) int {
+func (p *Proxy) CreateTunnel(addr, origin *net.UDPAddr, ready bool) int {
 	var newId int = 0
 	var t Tunnel
-	t.Endpoint, _ = net.ResolveUDPAddr("udp", addr)
+	t.Endpoint = addr
+	t.RealAddress = origin
 	t.PingFails = 0
 	t.Ready = ready
 	for i := 1; i < len(p.Tunnels)+2; i++ {
@@ -106,19 +109,24 @@ func (p *Proxy) RegisterTunnel() {
 	}
 	p.Lock = true
 	target := p.TunnelQueue[0].Target
+	target_addr, _ := net.ResolveUDPAddr("udp", target)
 	source := p.TunnelQueue[0].Source
-	ptp.Log(ptp.DEBUG, "Requested proxy for %s from %s", target, source)
+	src_addr, _ := net.ResolveUDPAddr("udp", source)
+	port := p.TunnelQueue[0].Port
+	s_ip := src_addr.IP.String()
+	realSource, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", s_ip, port))
+	ptp.Log(ptp.DEBUG, "Requested proxy for %s from %s [RS: %s]", target, source, realSource)
 	// Check if we are in the list
 	available := false
 	var foundId int
 	for id, tun := range p.Tunnels {
-		if tun.Endpoint.String() == source {
+		if tun.Endpoint.String() == realSource.String() {
 			available = true
 			foundId = id
 		}
 	}
 	if !available {
-		nId := p.CreateTunnel(source, true)
+		nId := p.CreateTunnel(realSource, src_addr, true)
 		if nId > 0 {
 			ptp.Log(ptp.DEBUG, "Requester peer %s was not found in tunnels list. Created new tunnel with ID %d", source, nId)
 		}
@@ -126,6 +134,7 @@ func (p *Proxy) RegisterTunnel() {
 		t, exists := p.Tunnels[foundId]
 		if exists && foundId > 0 {
 			t.Ready = true
+			t.RealAddress = src_addr
 			p.Tunnels[foundId] = t
 		}
 	}
@@ -138,13 +147,12 @@ func (p *Proxy) RegisterTunnel() {
 	}
 	if responseId == -1 {
 		ptp.Log(ptp.DEBUG, "Tunnel for %s was not found", target)
-		responseId = p.CreateTunnel(target, false)
+		responseId = p.CreateTunnel(target_addr, nil, false)
 	}
 	if responseId < 0 {
 		ptp.Log(ptp.ERROR, "Failed to create tunnel from %s to %s", source, target)
 	}
 	response := ptp.CreateProxyP2PMessage(responseId, target, 0)
-	src_addr, _ := net.ResolveUDPAddr("udp", source)
 	p.UDPServer.SendMessage(response, src_addr)
 	p.TunnelQueue[0].Registered = true
 	p.Lock = false
@@ -172,10 +180,11 @@ func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_b
 		var w WaitingTunnel
 		w.Target = string(msg.Data)
 		w.Source = src_addr.String()
+		w.Port = msg.Header.NetProto
 		p.TunnelQueue = append(p.TunnelQueue, w)
 	} else if msgType == ptp.MT_PING {
 		for key, tun := range p.Tunnels {
-			if tun.Endpoint.String() == src_addr.String() {
+			if tun.RealAddress.String() == src_addr.String() {
 				tun.PingFails = 0
 			}
 			p.Tunnels[key] = tun
@@ -192,7 +201,7 @@ func (p *Proxy) HandleMessage(count int, src_addr *net.UDPAddr, err error, rcv_b
 				return
 			}
 			ptp.Log(ptp.DEBUG, "Forwarding from %s to %s. Proxy ID: %d", src_addr.String(), tunnel.Endpoint.String(), msg.Header.ProxyId)
-			p.UDPServer.SendMessage(msg, tunnel.Endpoint)
+			p.UDPServer.SendMessage(msg, tunnel.RealAddress)
 		}
 	}
 }
@@ -201,7 +210,7 @@ func (p *Proxy) SendPing() {
 	for key, tunnel := range p.Tunnels {
 		tunnel.PingFails += tunnel.PingFails + 1
 		msg := ptp.CreatePingP2PMessage()
-		p.UDPServer.SendMessage(msg, tunnel.Endpoint)
+		p.UDPServer.SendMessage(msg, tunnel.RealAddress)
 		p.Tunnels[key] = tunnel
 	}
 }

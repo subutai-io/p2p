@@ -6,7 +6,9 @@ import (
 	bencode "github.com/jackpal/bencode-go"
 	"net"
 	//"os"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -50,6 +52,7 @@ type DHTClient struct {
 	ProxyChannel     chan Forwarder
 	LastDHTPing      time.Time
 	RemovePeerChan   chan string
+	ForwardersLock   sync.Mutex
 }
 
 type Forwarder struct {
@@ -744,10 +747,12 @@ func (dht *DHTClient) ReadPeers() {
 }
 
 func (dht *DHTClient) BlacklistForwarder(addr *net.UDPAddr) {
+	dht.ForwardersLock.Lock()
 	// Remove it from list of cached forwarders
 	for i, fwd := range dht.Forwarders {
 		if fwd.Addr.String() == addr.String() {
 			dht.Forwarders = append(dht.Forwarders[:i], dht.Forwarders[i+1:]...)
+			break
 		}
 	}
 	found := false
@@ -759,4 +764,6 @@ func (dht *DHTClient) BlacklistForwarder(addr *net.UDPAddr) {
 	if !found {
 		dht.ProxyBlacklist = append(dht.ProxyBlacklist, addr)
 	}
+	dht.ForwardersLock.Unlock()
+	runtime.Gosched()
 }
