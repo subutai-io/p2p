@@ -619,7 +619,7 @@ func (dht *DHTRouter) PickFreeIP(ipnet *net.IPNet, used []net.IP) net.IP {
 	ipbase := fmt.Sprintf("%d.%d.%d.", ipnet.IP[iplen-4], ipnet.IP[iplen-3], ipnet.IP[iplen-2])
 	for i := 3; i >= 0; i-- {
 		k := int(ipnet.Mask[i])
-		for j := 1; j < 255-k; j++ {
+		for j := 245; j < 255-k; j++ {
 			nextIp := net.ParseIP(fmt.Sprintf("%s%d", ipbase, j))
 			ptp.Log(ptp.DEBUG, "Next IP: %s", nextIp.String())
 			var inUse bool = false
@@ -655,6 +655,7 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 				var ips []net.IP
 				for _, tp := range dht.PeerList {
 					if tp.AssociatedHash == peer.AssociatedHash && tp.IP != nil {
+						ptp.Log(ptp.INFO, "DHCP: IP used: %s", tp.IP.String())
 						ips = append(ips, tp.IP)
 					}
 				}
@@ -689,18 +690,21 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 					newnet.Hash = peer.AssociatedHash
 					newnet.Network = ipnet
 					dht.DHCPTable[peer.AssociatedHash] = newnet
+					ptp.Log(ptp.DEBUG, "Added new DHCP Set for IP %s", ip.String())
 				} else {
 					if dht.CountParticipants(peer.AssociatedHash) == 0 {
 						var newnet DHCPSet
 						newnet.Hash = peer.AssociatedHash
 						newnet.Network = ipnet
 						dht.DHCPTable[peer.AssociatedHash] = newnet
+						ptp.Log(ptp.DEBUG, "Changed DHCP Set for IP %s", ip.String())
 					}
 				}
 				peer.IP = ip
 				peer.Network = ipnet
 				resp.Command = "dhcp"
 				resp.Arguments = "ok"
+				ptp.Log(ptp.DEBUG, "Saved DHCP %s", ip.String())
 				dht.PeerList[id] = peer
 			}
 		}
