@@ -647,6 +647,7 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 		// This is DHCP request
 		for id, peer := range dht.PeerList {
 			if peer.ID == req.Id {
+				ptp.Log(ptp.INFO, "Finding network for hash %s", peer.AssociatedHash)
 				ipnet := dht.FindNetworkForHash(peer.AssociatedHash)
 				if ipnet == nil {
 					break
@@ -768,7 +769,7 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 		peer.Endpoint = ""
 		peer.ConnectionAddress = addr.String()
 		peer.Addr = addr
-		peer.AssociatedHash = ""
+		peer.AssociatedHash = req.Payload
 		dht.Lock.Lock()
 		dht.PeerList[peer.ID] = peer
 		dht.Lock.Unlock()

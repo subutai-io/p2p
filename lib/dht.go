@@ -93,6 +93,7 @@ func (dht *DHTClient) Handshake(conn *net.UDPConn) error {
 	req.Command = CMD_CONN
 	// TODO: rename Port to something more clear
 	req.Arguments = fmt.Sprintf("%d", dht.P2PPort)
+	req.Payload = dht.NetworkHash
 	for _, ip := range dht.IPList {
 		req.Arguments = req.Arguments + "|" + ip.String()
 	}
