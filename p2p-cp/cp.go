@@ -198,11 +198,16 @@ func (dht *DHTRouter) SetupServer() *net.UDPConn {
 // IsNewPeer returns true if connected peer was not connected yes, false otherwise
 func (dht *DHTRouter) IsNewPeer(addr string) bool {
 	// TODO: Rewrite with use of ranges
+	dht.Lock.Lock()
 	for _, peer := range dht.PeerList {
 		if peer.ConnectionAddress == addr {
+			dht.Lock.Unlock()
+			runtime.Gosched()
 			return false
 		}
 	}
+	dht.Lock.Unlock()
+	runtime.Gosched()
 	return true
 }
 
@@ -269,12 +274,15 @@ func (dht *DHTRouter) HandleConn(req ptp.DHTMessage, addr *net.UDPAddr, p *Peer)
 	}
 	if !supported {
 		ptp.Log(ptp.DEBUG, "Unsupported packet version received during connection from %s", addr.String())
+		dht.Lock.Lock()
 		for i, peer := range dht.PeerList {
 			if peer.Addr.String() == addr.String() {
 				peer.Disabled = true
 				dht.PeerList[i] = peer
 			}
 		}
+		dht.Lock.Unlock()
+		runtime.Gosched()
 		return resp, ptp.ErrorList[ptp.ERR_INCOPATIBLE_VERSION]
 	}
 
@@ -326,12 +334,15 @@ func (dht *DHTRouter) HandleConn(req ptp.DHTMessage, addr *net.UDPAddr, p *Peer)
 		}
 	}
 
+	dht.Lock.Lock()
 	for i, peer := range dht.PeerList {
 		if peer.ConnectionAddress == addr.String() {
 			peer.IPList = ipList
 			dht.PeerList[i] = peer
 		}
 	}
+	dht.Lock.Unlock()
+	runtime.Gosched()
 
 	resp.Id = p.ID
 	ptp.Log(ptp.INFO, "Sending greeting with ID %s to %s", p.ID, addr)
@@ -343,11 +354,14 @@ func (dht *DHTRouter) HandleConn(req ptp.DHTMessage, addr *net.UDPAddr, p *Peer)
 func (dht *DHTRouter) SendFind(hash string) {
 	ptp.Log(ptp.DEBUG, "Changes in peer list. Notifying everyone")
 	var ids []string
+	dht.Lock.Lock()
 	for _, peer := range dht.PeerList {
 		if peer.AssociatedHash == hash {
 			ids = append(ids, peer.ID)
 		}
 	}
+	dht.Lock.Unlock()
+	runtime.Gosched()
 	for _, id := range ids {
 		var list string
 		for _, k := range ids {
@@ -365,6 +379,7 @@ func (dht *DHTRouter) SendFind(hash string) {
 }
 
 func (dht *DHTRouter) SendStop(hash, id string) {
+	dht.Lock.Lock()
 	for _, peer := range dht.PeerList {
 		if peer.AssociatedHash == hash {
 			var resp ptp.DHTMessage
@@ -374,6 +389,8 @@ func (dht *DHTRouter) SendStop(hash, id string) {
 			dht.Send(dht.Connection, peer.Addr, dht.EncodeResponse(resp))
 		}
 	}
+	dht.Lock.Unlock()
+	runtime.Gosched()
 }
 
 func (dht *DHTRouter) FindFreeProxies() []string {
@@ -394,6 +411,7 @@ func (dht *DHTRouter) FindFreeProxies() []string {
 }
 
 func (dht *DHTRouter) RegisterHash(addr string, hash string) {
+	dht.Lock.Lock()
 	for i, peer := range dht.PeerList {
 		if peer.ConnectionAddress == addr {
 			peer.AssociatedHash = hash
@@ -409,6 +427,8 @@ func (dht *DHTRouter) RegisterHash(addr string, hash string) {
 			go dht.SendFind(hash)
 		}
 	}
+	dht.Lock.Unlock()
+	runtime.Gosched()
 }
 
 func (dht *DHTRouter) PeerExists(id string) bool {
@@ -424,6 +444,7 @@ func (dht *DHTRouter) HandleFind(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 	}
 	var foundDest string
 	var hashExists bool = false
+	dht.Lock.Lock()
 	for _, node := range dht.PeerList {
 		if node.AssociatedHash == req.Query {
 			if node.ConnectionAddress == addr.String() {
@@ -435,6 +456,8 @@ func (dht *DHTRouter) HandleFind(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 			foundDest += node.ID + ","
 		}
 	}
+	dht.Lock.Unlock()
+	runtime.Gosched()
 	if !hashExists {
 		// Hash was not found for current node. Add it
 		dht.RegisterHash(addr.String(), req.Query)
@@ -830,6 +853,7 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 	req.Command = "ping"
 	var removeKeys []string
 	for {
+		dht.Lock.Lock()
 		for _, key := range removeKeys {
 			hash := dht.PeerList[key].AssociatedHash
 			ptp.Log(ptp.WARNING, "%s timeout reached. Disconnecting", dht.PeerList[key].ConnectionAddress)
@@ -839,6 +863,8 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 				go dht.SendFind(hash)
 			}
 		}
+		dht.Lock.Unlock()
+		runtime.Gosched()
 		dht.SyncControlPeers()
 		removeKeys = removeKeys[:0]
 		time.Sleep(PingTimeout)

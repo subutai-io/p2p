@@ -148,12 +148,12 @@ func (np *NetworkPeer) StateHandshaking(ptpc *PTPCloud) error {
 	Log(INFO, "Sending handshake to %s", np.ID)
 	np.SendHandshake(ptpc)
 	handshakeSentAt := time.Now()
-	interval := time.Duration(time.Second * 1)
+	interval := time.Duration(time.Second * 3)
 	retries := 0
 	for np.State == P_HANDSHAKING {
 		passed := time.Since(handshakeSentAt)
 		if passed > interval {
-			if retries >= 10 {
+			if retries >= 3 {
 				Log(ERROR, "Failed to handshake with %s", np.ID)
 				np.State = P_HANDSHAKING_FAILED
 				return errors.New(fmt.Sprintf("Failed to handshake with %s", np.ID))
@@ -206,23 +206,28 @@ func (np *NetworkPeer) StateHandshakingForwarder(ptpc *PTPCloud) error {
 		return nil
 	}
 	np.ProxyRequests = 0
-	Log(INFO, "Handshaking with proxy %s for %s", np.Forwarder.String(), np.ID)
-	msg := CreateProxyP2PMessage(-1, np.PeerAddr.String(), uint16(ptpc.UDPSocket.GetPort()))
-	_, err := ptpc.UDPSocket.SendMessage(msg, np.Forwarder)
+	err := np.SendProxyHandshake(ptpc)
 	if err != nil {
-		np.BlacklistCurrentProxy(ptpc)
-		np.Forwarder = nil
-		np.State = P_WAITING_FORWARDER
-		return errors.New(fmt.Sprintf("%s failed to send handshake to a proxy %s: %v", np.ID, np.Forwarder.String(), err))
+		return err
 	}
 	handshakeSentAt := time.Now()
+	attempts := 0
 	for np.ProxyID == 0 {
 		passed := time.Since(handshakeSentAt)
 		if passed > HANDSHAKE_PROXY_TIMEOUT {
-			np.BlacklistCurrentProxy(ptpc)
-			np.Forwarder = nil
-			np.State = P_WAITING_FORWARDER
-			return errors.New(fmt.Sprintf("%s failed to handshake with proxy %s", np.ID, np.Forwarder.String()))
+			if attempts >= 3 {
+				np.BlacklistCurrentProxy(ptpc)
+				a := np.Forwarder
+				np.Forwarder = nil
+				np.State = P_WAITING_FORWARDER
+				return errors.New(fmt.Sprintf("%s failed to handshake with proxy %s", np.ID, a.String()))
+			} else {
+				err := np.SendProxyHandshake(ptpc)
+				if err != nil {
+					return err
+				}
+				handshakeSentAt = time.Now()
+			}
 		}
 	}
 	Log(INFO, "%s handshaked with proxy %s", np.ID, np.Forwarder.String())
@@ -231,8 +236,8 @@ func (np *NetworkPeer) StateHandshakingForwarder(ptpc *PTPCloud) error {
 }
 
 func (np *NetworkPeer) StateHandshakingFailed(ptpc *PTPCloud) error {
-	Log(ERROR, "Failed to handshake with proxy %s", np.Forwarder.String())
 	if np.Forwarder != nil {
+		Log(ERROR, "Failed to handshake with %s via proxy %s", np.ID, np.Forwarder.String())
 		np.BlacklistCurrentProxy(ptpc)
 		np.Forwarder = nil
 	}
@@ -356,4 +361,18 @@ func (np *NetworkPeer) SendHandshake(ptpc *PTPCloud) {
 	} else {
 		Log(DEBUG, "Sent introduction handshake to %s [%s %d]", np.ID, np.Endpoint.String(), np.ProxyID)
 	}
+}
+
+func (np *NetworkPeer) SendProxyHandshake(ptpc *PTPCloud) error {
+	Log(INFO, "Handshaking with proxy %s for %s", np.Forwarder.String(), np.ID)
+	msg := CreateProxyP2PMessage(-1, np.PeerAddr.String(), uint16(ptpc.UDPSocket.GetPort()))
+	_, err := ptpc.UDPSocket.SendMessage(msg, np.Forwarder)
+	if err != nil {
+		np.BlacklistCurrentProxy(ptpc)
+		a := np.Forwarder
+		np.Forwarder = nil
+		np.State = P_WAITING_FORWARDER
+		return errors.New(fmt.Sprintf("%s failed to send handshake to a proxy %s: %v", np.ID, a.String(), err))
+	}
+	return nil
 }
