@@ -180,9 +180,10 @@ func (np *NetworkPeer) StateWaitingForwarder(ptpc *PTPCloud) error {
 			return nil
 		}
 	}
-	if np.ProxyRequests >= 10 {
-		Log(INFO, "Waiting for 30 seconds before next proxy attempt")
-		time.Sleep(time.Second * 30)
+	if np.ProxyRequests >= 3 {
+		Log(INFO, "We've failed to receive any proxies within this period")
+		np.State = P_DISCONNECT
+		return nil
 	}
 	Log(INFO, "Requesting proxy for %s", np.ID)
 	np.RequestForwarder(ptpc)
@@ -255,20 +256,17 @@ func (np *NetworkPeer) StateStop(ptpc *PTPCloud) error {
 func (np *NetworkPeer) BlacklistCurrentProxy(ptpc *PTPCloud) {
 	Log(INFO, "%s Adding forwarder %s to a blacklist", np.ID, np.Forwarder.String())
 	ptpc.Dht.BlacklistForwarder(np.Forwarder)
-	return
-	/*
-		exists := false
-		for _, proxy := range np.ProxyBlacklist {
-			if proxy.String() == np.Forwarder.String() {
-				exists = true
-			}
+	exists := false
+	for _, proxy := range np.ProxyBlacklist {
+		if proxy.String() == np.Forwarder.String() {
+			exists = true
 		}
-		if exists {
-			Log(INFO, "%s already has %s in a blacklist of proxies", np.ID, np.Forwarder.String())
-		} else {
-			np.ProxyBlacklist = append(np.ProxyBlacklist, np.Forwarder)
-		}
-	*/
+	}
+	if exists {
+		Log(INFO, "%s already has %s in a blacklist of proxies", np.ID, np.Forwarder.String())
+	} else {
+		np.ProxyBlacklist = append(np.ProxyBlacklist, np.Forwarder)
+	}
 }
 
 // This method tests connection with specified endpoint
@@ -307,7 +305,7 @@ func (np *NetworkPeer) TestConnection(ptpc *PTPCloud, endpoint *net.UDPAddr) boo
 }
 
 func (np *NetworkPeer) RequestForwarder(ptpc *PTPCloud) {
-	ptpc.Dht.RequestControlPeer(np.ID, ptpc.Dht.ProxyBlacklist)
+	ptpc.Dht.RequestControlPeer(np.ID, np.ProxyBlacklist)
 }
 
 // ProbeLocalConnection will try to connect to every known IP addr
