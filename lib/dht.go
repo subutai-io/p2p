@@ -596,6 +596,7 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan 
 			break
 		}
 	}
+	dht.LastDHTPing = time.Now()
 	if connected == 0 {
 		return nil
 	} else {

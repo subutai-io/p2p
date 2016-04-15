@@ -206,10 +206,12 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	// During initialization procedure, DHT Client will send
 	// a introduction packet along with a hash to a DHT bootstrap
 	// nodes that was hardcoded into it's code
-	dhtClient := new(DHTClient)
-	config := dhtClient.DHTClientConfig()
-	config.NetworkHash = argHash
-	config.Mode = MODE_CLIENT
+	/*
+		dhtClient := new(DHTClient)
+		config := dhtClient.DHTClientConfig()
+		config.NetworkHash = argHash
+		config.Mode = MODE_CLIENT
+	*/
 
 	p := new(PTPCloud)
 	p.FindNetworkAddresses()
@@ -282,25 +284,30 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.UDPSocket.Init("", port)
 	port = p.UDPSocket.GetPort()
 	Log(INFO, "Started UDP Listener at port %d", port)
-	config.P2PPort = port
-	if argDht != "" {
-		config.Routers = argDht
-	}
+	/*
+		config.P2PPort = port
+		if argDht != "" {
+			config.Routers = argDht
+		}
+	*/
+	// TODO: Move channels inside DHT
 	p.DHTPeerChannel = make(chan []PeerIP)
 	p.ProxyChannel = make(chan Forwarder)
-	p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel, p.ProxyChannel)
-	for p.Dht == nil {
-		Log(WARNING, "Failed to connect to DHT. Retrying in 5 seconds")
-		time.Sleep(5 * time.Second)
-		p.LocalIPs = p.LocalIPs[:0]
-		p.FindNetworkAddresses()
-		p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel, p.ProxyChannel)
-	}
-	// Wait for ID
-	for len(p.Dht.ID) < 32 {
-		time.Sleep(100 * time.Millisecond)
-	}
-	Log(INFO, "ID assigned. Continue")
+	p.StartDHT(argHash, argDht)
+	/*
+			p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel, p.ProxyChannel)
+		for p.Dht == nil {
+			Log(WARNING, "Failed to connect to DHT. Retrying in 5 seconds")
+			time.Sleep(5 * time.Second)
+			p.LocalIPs = p.LocalIPs[:0]
+			p.FindNetworkAddresses()
+			p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel, p.ProxyChannel)
+		}
+		// Wait for ID
+		for len(p.Dht.ID) < 32 {
+			time.Sleep(100 * time.Millisecond)
+		}
+	*/
 	var retries int = 0
 	if argIp == "dhcp" {
 		Log(INFO, "Requesting IP")
@@ -348,6 +355,26 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	return p
 }
 
+func (p *PTPCloud) StartDHT(hash, routers string) {
+	dhtClient := new(DHTClient)
+	config := dhtClient.DHTClientConfig()
+	config.NetworkHash = hash
+	config.Mode = MODE_CLIENT
+	config.P2PPort = p.UDPSocket.GetPort()
+	if routers != "" {
+		config.Routers = routers
+	}
+	p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel, p.ProxyChannel)
+	for p.Dht == nil {
+		Log(WARNING, "Failed to connect to DHT. Retrying in 5 seconds")
+		time.Sleep(5 * time.Second)
+		p.LocalIPs = p.LocalIPs[:0]
+		p.FindNetworkAddresses()
+		p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel, p.ProxyChannel)
+	}
+	Log(INFO, "ID assigned. Continue")
+}
+
 func (p *PTPCloud) Run() {
 	go p.ReadDHTPeers()
 	go p.ReadProxies()
@@ -386,6 +413,18 @@ func (p *PTPCloud) Run() {
 				delete(p.MACIDTable, peer.PeerHW.String())
 				delete(p.NetworkPeers, i)
 			}
+		}
+		passed := time.Since(p.Dht.LastDHTPing)
+		interval := time.Duration(time.Second * 50)
+		if passed > interval {
+			Log(ERROR, "Lost connection to DHT")
+			p.Dht.Shutdown = true
+			p.Dht.ID = ""
+			hash := p.Dht.NetworkHash
+			routers := p.Dht.Routers
+			time.Sleep(time.Second * 5)
+			p.StartDHT(hash, routers)
+			go p.Dht.UpdatePeers()
 		}
 	}
 	Log(INFO, "Shutting down instance %s completed", p.Dht.NetworkHash)

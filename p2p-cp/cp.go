@@ -432,7 +432,9 @@ func (dht *DHTRouter) RegisterHash(addr string, hash string) {
 }
 
 func (dht *DHTRouter) PeerExists(id string) bool {
+	dht.Lock.Lock()
 	_, exists := dht.PeerList[id]
+	dht.Lock.Unlock()
 	return exists
 }
 
@@ -472,7 +474,10 @@ func (dht *DHTRouter) HandlePing(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 	var resp ptp.DHTMessage
 	resp.Command = ""
 	peer.MissedPing = 0
+	dht.Lock.Lock()
 	dht.PeerList[req.Id] = *peer
+	dht.Lock.Unlock()
+	runtime.Gosched()
 	return resp, nil
 }
 
