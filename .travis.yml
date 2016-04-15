@@ -5,7 +5,7 @@ go: 1.5
 before_install:
     - git clone https://go.googlesource.com/go
     - cd go
-    - git checkout 1.6
+    - git checkout go1.6
     - cd src
     - ./all.bash
     - go get github.com/danderson/tuntap
