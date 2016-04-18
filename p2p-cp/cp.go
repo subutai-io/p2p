@@ -10,8 +10,10 @@ import (
 	ptp "github.com/subutai-io/p2p/lib"
 	"github.com/wayn3h0/go-uuid"
 	"net"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -123,6 +125,7 @@ type DHTRouter struct {
 	DHCPLock bool
 
 	DHCPTable map[string]DHCPSet
+	Lock      sync.Mutex
 }
 
 // Method ValidateConnection() tries to establish connection with control
@@ -195,11 +198,16 @@ func (dht *DHTRouter) SetupServer() *net.UDPConn {
 // IsNewPeer returns true if connected peer was not connected yes, false otherwise
 func (dht *DHTRouter) IsNewPeer(addr string) bool {
 	// TODO: Rewrite with use of ranges
+	dht.Lock.Lock()
 	for _, peer := range dht.PeerList {
 		if peer.ConnectionAddress == addr {
+			dht.Lock.Unlock()
+			runtime.Gosched()
 			return false
 		}
 	}
+	dht.Lock.Unlock()
+	runtime.Gosched()
 	return true
 }
 
@@ -266,12 +274,15 @@ func (dht *DHTRouter) HandleConn(req ptp.DHTMessage, addr *net.UDPAddr, p *Peer)
 	}
 	if !supported {
 		ptp.Log(ptp.DEBUG, "Unsupported packet version received during connection from %s", addr.String())
+		dht.Lock.Lock()
 		for i, peer := range dht.PeerList {
 			if peer.Addr.String() == addr.String() {
 				peer.Disabled = true
 				dht.PeerList[i] = peer
 			}
 		}
+		dht.Lock.Unlock()
+		runtime.Gosched()
 		return resp, ptp.ErrorList[ptp.ERR_INCOPATIBLE_VERSION]
 	}
 
@@ -323,16 +334,63 @@ func (dht *DHTRouter) HandleConn(req ptp.DHTMessage, addr *net.UDPAddr, p *Peer)
 		}
 	}
 
+	dht.Lock.Lock()
 	for i, peer := range dht.PeerList {
 		if peer.ConnectionAddress == addr.String() {
 			peer.IPList = ipList
 			dht.PeerList[i] = peer
 		}
 	}
+	dht.Lock.Unlock()
+	runtime.Gosched()
 
 	resp.Id = p.ID
 	ptp.Log(ptp.INFO, "Sending greeting with ID %s to %s", p.ID, addr)
 	return resp, nil
+}
+
+// SendFind sends FIND packet to every peer under specified hash
+// to notify about other network participants
+func (dht *DHTRouter) SendFind(hash string) {
+	ptp.Log(ptp.DEBUG, "Changes in peer list. Notifying everyone")
+	var ids []string
+	dht.Lock.Lock()
+	for _, peer := range dht.PeerList {
+		if peer.AssociatedHash == hash {
+			ids = append(ids, peer.ID)
+		}
+	}
+	dht.Lock.Unlock()
+	runtime.Gosched()
+	for _, id := range ids {
+		var list string
+		for _, k := range ids {
+			if k == id {
+				continue
+			}
+			list = list + k + ","
+		}
+		var resp ptp.DHTMessage
+		resp.Id = id
+		resp.Command = ptp.CMD_FIND
+		resp.Arguments = list
+		dht.Send(dht.Connection, dht.PeerList[id].Addr, dht.EncodeResponse(resp))
+	}
+}
+
+func (dht *DHTRouter) SendStop(hash, id string) {
+	dht.Lock.Lock()
+	for _, peer := range dht.PeerList {
+		if peer.AssociatedHash == hash {
+			var resp ptp.DHTMessage
+			resp.Command = ptp.CMD_STOP
+			resp.Id = peer.ID
+			resp.Arguments = id
+			dht.Send(dht.Connection, peer.Addr, dht.EncodeResponse(resp))
+		}
+	}
+	dht.Lock.Unlock()
+	runtime.Gosched()
 }
 
 func (dht *DHTRouter) FindFreeProxies() []string {
@@ -353,6 +411,7 @@ func (dht *DHTRouter) FindFreeProxies() []string {
 }
 
 func (dht *DHTRouter) RegisterHash(addr string, hash string) {
+	dht.Lock.Lock()
 	for i, peer := range dht.PeerList {
 		if peer.ConnectionAddress == addr {
 			peer.AssociatedHash = hash
@@ -365,12 +424,17 @@ func (dht *DHTRouter) RegisterHash(addr string, hash string) {
 				newHash.Proxies = dht.FindFreeProxies()
 				dht.Hashes[hash] = newHash
 			}
+			go dht.SendFind(hash)
 		}
 	}
+	dht.Lock.Unlock()
+	runtime.Gosched()
 }
 
 func (dht *DHTRouter) PeerExists(id string) bool {
+	dht.Lock.Lock()
 	_, exists := dht.PeerList[id]
+	dht.Lock.Unlock()
 	return exists
 }
 
@@ -382,6 +446,7 @@ func (dht *DHTRouter) HandleFind(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 	}
 	var foundDest string
 	var hashExists bool = false
+	dht.Lock.Lock()
 	for _, node := range dht.PeerList {
 		if node.AssociatedHash == req.Query {
 			if node.ConnectionAddress == addr.String() {
@@ -393,6 +458,8 @@ func (dht *DHTRouter) HandleFind(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 			foundDest += node.ID + ","
 		}
 	}
+	dht.Lock.Unlock()
+	runtime.Gosched()
 	if !hashExists {
 		// Hash was not found for current node. Add it
 		dht.RegisterHash(addr.String(), req.Query)
@@ -404,10 +471,13 @@ func (dht *DHTRouter) HandleFind(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 }
 
 func (dht *DHTRouter) HandlePing(req ptp.DHTMessage, addr *net.UDPAddr, peer *Peer) (ptp.DHTMessage, error) {
-	peer.MissedPing = 0
-	dht.PeerList[req.Id] = *peer
 	var resp ptp.DHTMessage
 	resp.Command = ""
+	peer.MissedPing = 0
+	dht.Lock.Lock()
+	dht.PeerList[req.Id] = *peer
+	dht.Lock.Unlock()
+	runtime.Gosched()
 	return resp, nil
 }
 
@@ -478,7 +548,6 @@ func (dht *DHTRouter) HandleNode(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 	return resp, nil
 }
 
-//func (dht *DHTRouter) ResponseNotify(req ptp.DHTMessage, addr string) ptp.DHTMessage {
 func (dht *DHTRouter) HandleNotify(req ptp.DHTMessage, addr *net.UDPAddr, peer *Peer) (ptp.DHTMessage, error) {
 	var resp ptp.DHTMessage
 	resp.Command = req.Command
@@ -488,7 +557,6 @@ func (dht *DHTRouter) HandleNotify(req ptp.DHTMessage, addr *net.UDPAddr, peer *
 	return resp, nil
 }
 
-//func (dht *DHTRouter) ResponseStop(req ptp.DHTMessage) ptp.DHTMessage {
 func (dht *DHTRouter) HandleStop(req ptp.DHTMessage, addr *net.UDPAddr, peer *Peer) (ptp.DHTMessage, error) {
 	var resp ptp.DHTMessage
 	resp.Command = req.Command
@@ -530,9 +598,21 @@ func (dht *DHTRouter) HandleCp(req ptp.DHTMessage, addr *net.UDPAddr, peer *Peer
 			}
 		}
 	}
-	resp.Arguments = candidate
-	resp.Id = req.Arguments
+	resp.Query = candidate
+	//resp.Arguments = candidate
+	resp.Arguments = req.Arguments
 	// At the same moment we should send this message to a requested address too
+
+	var sr ptp.DHTMessage
+	sr.Command = req.Command
+	sr.Id = req.Arguments
+	sr.Arguments = req.Id
+	sr.Query = candidate
+
+	p, exists := dht.PeerList[sr.Id]
+	if exists {
+		dht.Send(dht.Connection, p.Addr, dht.EncodeResponse(sr))
+	}
 
 	return resp, nil
 }
@@ -567,7 +647,7 @@ func (dht *DHTRouter) PickFreeIP(ipnet *net.IPNet, used []net.IP) net.IP {
 	ipbase := fmt.Sprintf("%d.%d.%d.", ipnet.IP[iplen-4], ipnet.IP[iplen-3], ipnet.IP[iplen-2])
 	for i := 3; i >= 0; i-- {
 		k := int(ipnet.Mask[i])
-		for j := 1; j < 255-k; j++ {
+		for j := 245; j < 255-k; j++ {
 			nextIp := net.ParseIP(fmt.Sprintf("%s%d", ipbase, j))
 			ptp.Log(ptp.DEBUG, "Next IP: %s", nextIp.String())
 			var inUse bool = false
@@ -595,6 +675,7 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 		// This is DHCP request
 		for id, peer := range dht.PeerList {
 			if peer.ID == req.Id {
+				ptp.Log(ptp.INFO, "Finding network for hash %s", peer.AssociatedHash)
 				ipnet := dht.FindNetworkForHash(peer.AssociatedHash)
 				if ipnet == nil {
 					break
@@ -603,6 +684,7 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 				var ips []net.IP
 				for _, tp := range dht.PeerList {
 					if tp.AssociatedHash == peer.AssociatedHash && tp.IP != nil {
+						ptp.Log(ptp.INFO, "DHCP: IP used: %s", tp.IP.String())
 						ips = append(ips, tp.IP)
 					}
 				}
@@ -617,6 +699,10 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 		}
 		dht.DHCPLock = false
 	} else {
+		for dht.DHCPLock {
+			time.Sleep(100 * time.Microsecond)
+		}
+		dht.DHCPLock = true
 		// This is DHCP registration
 		// We're expecting data in CIDR format
 		for id, peer := range dht.PeerList {
@@ -624,6 +710,7 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 				ip, ipnet, err := net.ParseCIDR(req.Query)
 				if err != nil {
 					ptp.Log(ptp.ERROR, "Failed to parse received DHCP information: %v", err)
+					dht.DHCPLock = false
 					return resp, ptp.ErrorList[ptp.ERR_BAD_DHCP_DATA]
 				}
 				_, exists := dht.DHCPTable[peer.AssociatedHash]
@@ -632,21 +719,25 @@ func (dht *DHTRouter) HandleDHCP(req ptp.DHTMessage, addr *net.UDPAddr, peer *Pe
 					newnet.Hash = peer.AssociatedHash
 					newnet.Network = ipnet
 					dht.DHCPTable[peer.AssociatedHash] = newnet
+					ptp.Log(ptp.DEBUG, "Added new DHCP Set for IP %s", ip.String())
 				} else {
 					if dht.CountParticipants(peer.AssociatedHash) == 0 {
 						var newnet DHCPSet
 						newnet.Hash = peer.AssociatedHash
 						newnet.Network = ipnet
 						dht.DHCPTable[peer.AssociatedHash] = newnet
+						ptp.Log(ptp.DEBUG, "Changed DHCP Set for IP %s", ip.String())
 					}
 				}
 				peer.IP = ip
 				peer.Network = ipnet
 				resp.Command = "dhcp"
 				resp.Arguments = "ok"
+				ptp.Log(ptp.DEBUG, "Saved DHCP %s", ip.String())
 				dht.PeerList[id] = peer
 			}
 		}
+		dht.DHCPLock = false
 	}
 	return resp, nil
 }
@@ -706,10 +797,16 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 		peer.Endpoint = ""
 		peer.ConnectionAddress = addr.String()
 		peer.Addr = addr
-		peer.AssociatedHash = ""
+		peer.AssociatedHash = req.Payload
+		dht.Lock.Lock()
 		dht.PeerList[peer.ID] = peer
+		dht.Lock.Unlock()
+		runtime.Gosched()
 	} else {
+		dht.Lock.Lock()
 		peer, exists = dht.PeerList[req.Id]
+		dht.Lock.Unlock()
+		runtime.Gosched()
 		if !exists {
 			// Send CMD_UNKNOWN for unknown peer
 			var resp ptp.DHTMessage
@@ -735,6 +832,7 @@ func (dht *DHTRouter) Listen(conn *net.UDPConn) {
 			dht.SendError(conn, addr, err)
 		}
 		if resp.Command != "" {
+			ptp.Log(ptp.TRACE, "Sending %v", resp)
 			dht.Send(conn, addr, dht.EncodeResponse(resp))
 		}
 	} else {
@@ -760,10 +858,18 @@ func (dht *DHTRouter) Ping(conn *net.UDPConn) {
 	req.Command = "ping"
 	var removeKeys []string
 	for {
+		dht.Lock.Lock()
 		for _, key := range removeKeys {
+			hash := dht.PeerList[key].AssociatedHash
 			ptp.Log(ptp.WARNING, "%s timeout reached. Disconnecting", dht.PeerList[key].ConnectionAddress)
 			delete(dht.PeerList, key)
+			if hash != "" {
+				go dht.SendStop(hash, key)
+				go dht.SendFind(hash)
+			}
 		}
+		dht.Lock.Unlock()
+		runtime.Gosched()
 		dht.SyncControlPeers()
 		removeKeys = removeKeys[:0]
 		time.Sleep(PingTimeout)
@@ -854,7 +960,6 @@ func main() {
 		dht.Callbacks[ptp.CMD_LOAD] = dht.HandleLoad
 		dht.Callbacks[ptp.CMD_DHCP] = dht.HandleDHCP
 		dht.Callbacks[ptp.CMD_STOP] = dht.HandleStop
-		//dht.Callbacks[ptp.CMD_UNKNOWN] = dht.HandleUnknown
 
 		go dht.Ping(dht.Connection)
 
@@ -864,23 +969,20 @@ func main() {
 	} else {
 		// Act as a normal (proxy) control peer
 		var proxy Proxy
-		proxy.Initialize(argTarget, argListen)
-		var interval time.Duration = time.Second * 5
+		proxy.StartUDPServer(argListen)
+		proxy.StartDHT(argTarget)
+		proxy.Initialize()
+		alivePeriod := time.Duration(time.Second * 15)
 		for {
-			duration := time.Since(proxy.DHTClient.LastDhtPing)
-			if duration > interval || proxy.DHTClient == nil {
-				ptp.Log(ptp.INFO, "Reconnecting")
-				proxy.Initialize(argTarget, argListen)
-				proxy.DHTClient.LastDhtPing = time.Now()
-				time.Sleep(time.Second * 2)
-				ptp.Log(ptp.INFO, "...")
-			}
-			if proxy.DHTClient == nil {
-				continue
-			}
 			proxy.SendPing()
 			time.Sleep(3 * time.Second)
 			proxy.CleanTunnels()
+			passed := time.Since(proxy.DHTClient.LastDHTPing)
+			if passed > alivePeriod {
+				proxy.DHTClient.ID = ""
+				ptp.Log(ptp.WARNING, "Lost DHT connecton. Restoring")
+				proxy.StartDHT(argTarget)
+			}
 		}
 	}
 }

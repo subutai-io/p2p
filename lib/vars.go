@@ -1,5 +1,9 @@
 package ptp
 
+import (
+	"time"
+)
+
 const PACKET_VERSION string = "4"
 
 var SUPPORTED_VERSIONS = [...]string{"4", "5"}
@@ -16,16 +20,16 @@ type MSG_TYPE uint16
 
 // Internal network packet type
 const (
-	MT_STRING    MSG_TYPE = 0 + iota // String
-	MT_INTRO              = 1        // Introduction packet
-	MT_INTRO_REQ          = 2        // Request for introduction packet
-	MT_NENC               = 3        // Not encrypted message
-	MT_ENC                = 4        // Encrypted message
-	MT_PING               = 5        // Internal ping message
-	MT_TEST               = 6        // Packet tests established connection
-	MT_PROXY              = 7        // Information about proxy (forwarder)
-	MT_BAD_TUN            = 8        // Notifies about dead tunnel
-	MT_XPING              = 9        // Internal crosspeer ping message
+	MT_STRING     MSG_TYPE = 0 // String
+	MT_INTRO               = 1 // Introduction packet
+	MT_INTRO_REQ           = 2 // Request for introduction packet
+	MT_NENC                = 3 // Not encrypted message
+	MT_ENC                 = 4 // Encrypted message
+	MT_PING                = 5 // Internal ping message for Proxies
+	MT_XPEER_PING          = 6 // Crosspeer ping message
+	MT_TEST                = 7 // Packet tests established connection
+	MT_PROXY               = 8 // Information about proxy (forwarder)
+	MT_BAD_TUN             = 9 // Notifies about dead tunnel
 )
 
 // List of commands used in DHT
@@ -51,15 +55,34 @@ const (
 
 type (
 	PeerState int
+	PingType  uint16
 )
 
 // Peer state
 const (
-	P_INIT                  PeerState = 0 + iota
-	P_CONNECTED                       = 1
-	P_HANDSHAKING                     = 2
-	P_HANDSHAKING_FAILED              = 3
-	P_WAITING_FORWARDER               = 4
-	P_HANDSHAKING_FORWARDER           = 5
-	P_DISCONNECT                      = 6
+	P_INIT                  PeerState = iota // Peer has been added recently.
+	P_REQUESTED_IP                    = iota // We know ID of a peer, but don't know it's IPs
+	P_CONNECTING_DIRECTLY             = iota // Trying to establish a direct connection
+	P_CONNECTED                       = iota // Connected, handshaked and operating normally
+	P_HANDSHAKING                     = iota // Handshake requsted
+	P_HANDSHAKING_FAILED              = iota // Handshake procedure failed
+	P_WAITING_FORWARDER               = iota // Forwarder was requested
+	P_HANDSHAKING_FORWARDER           = iota // Forwarder has been received and we're trying to handshake it
+	P_DISCONNECT                      = iota // We're disconnecting
+	P_STOP                            = iota // Peer has been stopped and now can be removed from list of peers
+)
+
+// Ping types
+const (
+	PING_REQ  PingType = 1
+	PING_RESP PingType = 2
+)
+
+// Timeouts and retries
+const (
+	DHT_MAX_RETRIES         int           = 10
+	DHCP_MAX_RETRIES        int           = 10
+	PEER_PING_TIMEOUT       time.Duration = 15 * time.Second
+	WAIT_PROXY_TIMEOUT      time.Duration = 5 * time.Second
+	HANDSHAKE_PROXY_TIMEOUT time.Duration = 3 * time.Second
 )

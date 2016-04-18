@@ -286,7 +286,7 @@ func (p *Procedures) Show(args *Args, resp *Response) error {
 			for _, peer := range swarm.PTP.NetworkPeers {
 				resp.Output = resp.Output + peer.ID + "\t"
 				resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
-				resp.Output = resp.Output + peer.Endpoint + "\t"
+				resp.Output = resp.Output + peer.Endpoint.String() + "\t"
 				resp.Output = resp.Output + peer.PeerHW.String() + "\n"
 			}
 		} else {
