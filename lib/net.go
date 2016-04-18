@@ -108,12 +108,12 @@ func CreatePingP2PMessage() *P2PMessage {
 	return msg
 }
 
-func CreateXpingP2PMessage(t uint16, hw string) *P2PMessage {
+func CreateXpeerPingMessage(pt PingType, hw string) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
 	msg.Header.Magic = MAGIC_COOKIE
-	msg.Header.Type = uint16(MT_XPING)
-	msg.Header.NetProto = t
+	msg.Header.Type = uint16(MT_XPEER_PING)
+	msg.Header.NetProto = uint16(pt)
 	msg.Header.Length = uint16(len(hw))
 	msg.Data = []byte(hw)
 	return msg
@@ -276,6 +276,10 @@ func (uc *PTPNet) Listen(fn_received_callback UDPReceivedCallback) {
 		fn_received_callback(n, src, err, uc.input_buffer[:])
 	}
 	Log(INFO, "Stopping UDP Listener")
+}
+
+func (uc *PTPNet) Bind(addr *net.UDPAddr, local_addr *net.UDPAddr) {
+
 }
 
 func (uc *PTPNet) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, error) {

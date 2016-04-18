@@ -6,7 +6,9 @@ import (
 	bencode "github.com/jackpal/bencode-go"
 	"net"
 	//"os"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -35,17 +37,22 @@ type DHTClient struct {
 	ID               string
 	Peers            []PeerIP
 	Forwarders       []Forwarder
+	ProxyBlacklist   []*net.UDPAddr
 	ResponseHandlers map[string]DHTResponseCallback
 	Mode             OperatingMode
 	Shutdown         bool
 	IPList           []net.IP
-	FailedProxyList  []*net.UDPAddr
 	State            DHTState
 	IP               net.IP
 	Network          *net.IPNet
 	DataChannel      chan []byte
 	CommandChannel   chan []byte
-	LastDhtPing      time.Time
+	Listeners        int
+	PeerChannel      chan []PeerIP
+	ProxyChannel     chan Forwarder
+	LastDHTPing      time.Time
+	RemovePeerChan   chan string
+	ForwardersLock   sync.Mutex
 }
 
 type Forwarder struct {
@@ -55,14 +62,14 @@ type Forwarder struct {
 
 type PeerIP struct {
 	ID  string
-	Ips []string
+	Ips []*net.UDPAddr
 }
 
 type DHTResponseCallback func(data DHTMessage, conn *net.UDPConn)
 
 func (dht *DHTClient) DHTClientConfig() *DHTClient {
 	return &DHTClient{
-		Routers: "dht1.subut.ai:6881",
+		Routers: "dht1.subut.ai:6882",
 		//Routers:     "dht1.subut.ai:6881,dht2.subut.ai:6881,dht3.subut.ai:6881,dht4.subut.ai:6881,dht5.subut.ai:6881",
 		NetworkHash: "",
 	}
@@ -89,6 +96,7 @@ func (dht *DHTClient) Handshake(conn *net.UDPConn) error {
 	req.Command = CMD_CONN
 	// TODO: rename Port to something more clear
 	req.Arguments = fmt.Sprintf("%d", dht.P2PPort)
+	req.Payload = dht.NetworkHash
 	for _, ip := range dht.IPList {
 		req.Arguments = req.Arguments + "|" + ip.String()
 	}
@@ -220,12 +228,23 @@ func (dht *DHTClient) RequestPeerIPs(id string) {
 // with a list of peers that we can connect to
 // This method should be called periodically in case any new peers was discovered
 func (dht *DHTClient) UpdatePeers() {
+	for {
+		if dht.Shutdown {
+			break
+		}
+		dht.SendUpdateRequest()
+		// Just in case do an update
+		time.Sleep(5 * time.Minute)
+	}
+}
+
+func (dht *DHTClient) SendUpdateRequest() {
 	msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
 	for _, conn := range dht.Connection {
 		if dht.Shutdown {
 			continue
 		}
-		Log(TRACE, "Updating peer %s", conn.RemoteAddr().String())
+		Log(DEBUG, "Updating peers from %s", conn.RemoteAddr().String())
 		_, err := conn.Write([]byte(msg))
 		if err != nil {
 			Log(ERROR, "Failed to send 'find' request to %s: %v", conn.RemoteAddr().String(), err)
@@ -236,8 +255,11 @@ func (dht *DHTClient) UpdatePeers() {
 // Listens for packets received from DHT bootstrap node
 // Every packet is unmarshaled and turned into Request structure
 // which we should analyze and respond
-func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
+func (dht *DHTClient) ListenDHT(conn *net.UDPConn) {
+	defer conn.Close()
 	Log(INFO, "Bootstraping via %s", conn.RemoteAddr().String())
+	dht.Listeners++
+	var failCounter = 0
 	for {
 		if dht.Shutdown {
 			Log(INFO, "Closing DHT Connection to %s", conn.RemoteAddr().String())
@@ -252,24 +274,29 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) string {
 		var buf [512]byte
 		_, _, err := conn.ReadFromUDP(buf[0:])
 		if err != nil {
-			Log(ERROR, "Failed to read from Discovery Service: %v", err)
-			dht = nil
-			return ""
+			Log(DEBUG, "Failed to read from Discovery Service: %v", err)
+			failCounter++
 		} else {
+			failCounter = 0
 			data, err := dht.Extract(buf[:512])
 			if err != nil {
 				Log(ERROR, "Failed to extract a message received from discovery service: %v", err)
 			} else {
 				callback, exists := dht.ResponseHandlers[data.Command]
 				if exists {
+					Log(TRACE, "DHT Received %v", data)
 					callback(data, conn)
 				} else {
 					Log(ERROR, "Unknown packet received from DHT: %s", data.Command)
 				}
 			}
 		}
+		if failCounter > 1000 {
+			Log(ERROR, "Multiple errors reading from DHT")
+			break
+		}
 	}
-	return ""
+	dht.Listeners--
 }
 
 func (dht *DHTClient) HandleConn(data DHTMessage, conn *net.UDPConn) {
@@ -286,28 +313,32 @@ func (dht *DHTClient) HandleConn(data DHTMessage, conn *net.UDPConn) {
 	}
 	dht.State = D_OPERATING
 	dht.ID = data.Id
+	Log(INFO, "Received connection confirmation from router %s",
+		conn.RemoteAddr().String())
+	Log(INFO, "Received personal ID for this session: %s", data.Id)
 	// Send a hash within FIND command
 	// Afterwards application should wait for response from DHT
 	// with list of clients. This may not happen if this client is the
 	// first connected node.
-	msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
-	if dht.Shutdown {
-		return
-	}
-	_, err := conn.Write([]byte(msg))
-	if err != nil {
-		Log(ERROR, "Failed to send 'find' request: %v", err)
-	} else {
-		Log(INFO, "Received connection confirmation from router %s",
-			conn.RemoteAddr().String())
-		Log(INFO, "Received personal ID for this session: %s", data.Id)
-	}
+	/*
+		msg := dht.Compose(CMD_FIND, dht.ID, dht.NetworkHash, "")
+		if dht.Shutdown {
+			return
+		}
+		_, err := conn.Write([]byte(msg))
+		if err != nil {
+			Log(ERROR, "Failed to send 'find' request: %v", err)
+		} else {
+			Log(INFO, "Received connection confirmation from router %s",
+				conn.RemoteAddr().String())
+			Log(INFO, "Received personal ID for this session: %s", data.Id)
+		}
+	*/
 }
 
 func (dht *DHTClient) HandlePing(data DHTMessage, conn *net.UDPConn) {
-	Log(TRACE, "Ping received")
+	dht.LastDHTPing = time.Now()
 	msg := dht.Compose(CMD_PING, dht.ID, "", "")
-	dht.LastDhtPing = time.Now()
 	_, err := conn.Write([]byte(msg))
 	if err != nil {
 		Log(ERROR, "Failed to send 'ping' packet: %v", err)
@@ -348,6 +379,7 @@ func (dht *DHTClient) HandleFind(data DHTMessage, conn *net.UDPConn) {
 					dht.Peers = append(dht.Peers[:i], dht.Peers[i+1:]...)
 				}
 			}
+			dht.PeerChannel <- dht.Peers
 			Log(DEBUG, "Received peers from %s: %s", conn.RemoteAddr().String(), data.Arguments)
 			dht.UpdateLastCatch(data.Arguments)
 		}
@@ -363,59 +395,115 @@ func (dht *DHTClient) HandleRegCp(data DHTMessage, conn *net.UDPConn) {
 
 func (dht *DHTClient) HandleNode(data DHTMessage, conn *net.UDPConn) {
 	// We've received an IPs associated with target node
+	Log(DEBUG, "Received IPs from %s: %v", data.Id, data.Arguments)
 	for i, peer := range dht.Peers {
 		if peer.ID == data.Id {
 			ips := strings.Split(data.Arguments, "|")
-			dht.Peers[i].Ips = ips
+			var list []*net.UDPAddr
+			for _, addr := range ips {
+				if addr == "" {
+					continue
+				}
+				ip, err := net.ResolveUDPAddr("udp", addr)
+				if err != nil {
+					Log(ERROR, "Failed to resolve address of peer: %v", err)
+					continue
+				}
+				list = append(list, ip)
+			}
+			dht.Peers[i].Ips = list
 		}
 	}
 }
 
 func (dht *DHTClient) HandleCp(data DHTMessage, conn *net.UDPConn) {
 	// We've received information about proxy
-	if data.Arguments == "0" || data.Arguments == "" {
+	if data.Query == "0" || data.Query == "" {
 		return
 	}
-	Log(INFO, "Received control peer %s. Saving", data.Arguments)
-	var found bool = false
-	for _, fwd := range dht.Forwarders {
-		if fwd.Addr.String() == data.Arguments && fwd.DestinationID == data.Id {
+	Log(INFO, "Received forwarder %s", data.Query)
+	addr, err := net.ResolveUDPAddr("udp", data.Query)
+	if err != nil {
+		Log(ERROR, "Received invalid forwarder: %v", err)
+		return
+	}
+	var fwd Forwarder
+	fwd.Addr = addr
+	fwd.DestinationID = data.Arguments
+	dht.ProxyChannel <- fwd
+	found := false
+	for _, f := range dht.Forwarders {
+		if f.Addr.String() == fwd.Addr.String() && f.DestinationID == fwd.DestinationID {
 			found = true
 		}
 	}
 	if !found {
-		var fwd Forwarder
-		a, err := net.ResolveUDPAddr("udp", data.Arguments)
-		if err != nil {
-			Log(ERROR, "Failed to resolve UDP Address for proxy %s", data.Arguments)
-		} else {
-			fwd.Addr = a
-			fwd.DestinationID = data.Id
-			dht.Forwarders = append(dht.Forwarders, fwd)
-			Log(DEBUG, "Control peer has been added to the list of forwarders")
-			Log(DEBUG, "Sending notify request back to the DHT")
-			msg := dht.Compose(CMD_NOTIFY, dht.ID, dht.ID, data.Id)
-			for _, conn := range dht.Connection {
-				if dht.Shutdown {
-					continue
-				}
-				_, err := conn.Write([]byte(msg))
-				if err != nil {
-					Log(ERROR, "Failed to send 'node' request to %s: %v", conn.RemoteAddr().String(), err)
+		dht.Forwarders = append(dht.Forwarders, fwd)
+	}
+	/*
+		msg := dht.Compose(CMD_NOTIFY, dht.ID, dht.ID, data.Id)
+		for _, conn := range dht.Connection {
+			if dht.Shutdown {
+				continue
+			}
+			_, err := conn.Write([]byte(msg))
+			if err != nil {
+				Log(ERROR, "Failed to send 'node' request to %s: %v", conn.RemoteAddr().String(), err)
+			}
+		}
+	*/
+
+	/*
+		Log(INFO, "Received control peer %s. Saving", data.Arguments)
+		var found bool = false
+		for _, fwd := range dht.Forwarders {
+			if fwd.Addr.String() == data.Arguments && fwd.DestinationID == data.Id {
+				found = true
+			}
+		}
+		if !found {
+			var fwd Forwarder
+			a, err := net.ResolveUDPAddr("udp", data.Arguments)
+			if err != nil {
+				Log(ERROR, "Failed to resolve UDP Address for proxy %s", data.Arguments)
+			} else {
+				fwd.Addr = a
+				fwd.DestinationID = data.Id
+				dht.Forwarders = append(dht.Forwarders, fwd)
+				Log(DEBUG, "Control peer has been added to the list of forwarders")
+				Log(DEBUG, "Sending notify request back to the DHT")
+				msg := dht.Compose(CMD_NOTIFY, dht.ID, dht.ID, data.Id)
+				for _, conn := range dht.Connection {
+					if dht.Shutdown {
+						continue
+					}
+					_, err := conn.Write([]byte(msg))
+					if err != nil {
+						Log(ERROR, "Failed to send 'node' request to %s: %v", conn.RemoteAddr().String(), err)
+					}
 				}
 			}
 		}
-	}
+	*/
 }
 
 func (dht *DHTClient) HandleNotify(data DHTMessage, conn *net.UDPConn) {
 	// Notify means we should ask DHT bootstrap node for a control peer
 	// in order to connect to a node that can't reach us
-	dht.RequestControlPeer(data.Id)
+	// TODO: Fix this
+	var l []*net.UDPAddr
+	dht.RequestControlPeer(data.Id, l)
 }
 
 func (dht *DHTClient) HandleStop(data DHTMessage, conn *net.UDPConn) {
-	conn.Close()
+	if data.Arguments != "" {
+		// We need to stop particular peer by changing it's state to
+		// P_DISCONNECT
+		Log(INFO, "Stop command for %s", data.Arguments)
+		dht.RemovePeerChan <- data.Arguments
+	} else {
+		conn.Close()
+	}
 }
 
 func (dht *DHTClient) HandleDHCP(data DHTMessage, conn *net.UDPConn) {
@@ -430,6 +518,7 @@ func (dht *DHTClient) HandleDHCP(data DHTMessage, conn *net.UDPConn) {
 		Log(ERROR, "Failed to parse received DHCP packet: %v", err)
 		return
 	}
+	Log(INFO, "Saving IP/Net data: %s", ip)
 	dht.IP = ip
 	dht.Network = ipnet
 }
@@ -457,9 +546,11 @@ func (dht *DHTClient) HandleError(data DHTMessage, conn *net.UDPConn) {
 }
 
 // This method initializes DHT by splitting list of routers and connect to each one
-func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
+func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan []PeerIP, proxyChan chan Forwarder) *DHTClient {
+	dht.RemovePeerChan = make(chan string)
 	dht = config
-	dht.LastDhtPing = time.Now()
+	dht.PeerChannel = peerChan
+	dht.ProxyChannel = proxyChan
 	routers := strings.Split(dht.Routers, ",")
 	dht.FailedRouters = make([]string, len(routers))
 	dht.ResponseHandlers = make(map[string]DHTResponseCallback)
@@ -496,6 +587,16 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP) *DHTClient {
 			go dht.ListenDHT(conn)
 		}
 	}
+	started := time.Now()
+	period := time.Duration(time.Second * 3)
+	for len(dht.ID) != 36 {
+		time.Sleep(time.Microsecond * 100)
+		passed := time.Since(started)
+		if passed > period {
+			break
+		}
+	}
+	dht.LastDHTPing = time.Now()
 	if connected == 0 {
 		return nil
 	} else {
@@ -535,13 +636,13 @@ func (dht *DHTClient) RegisterControlPeer() {
 }
 
 // This method request a new control peer for particular host
-func (dht *DHTClient) RequestControlPeer(id string) {
+func (dht *DHTClient) RequestControlPeer(id string, omit []*net.UDPAddr) {
 	var req DHTMessage
 	var err error
 	req.Id = dht.ID
 	req.Query = ""
 	// Collect list of failed forwarders
-	for _, fwd := range dht.FailedProxyList {
+	for _, fwd := range omit {
 		req.Query += fwd.String() + "|"
 	}
 	req.Command = CMD_CP
@@ -625,16 +726,6 @@ func (dht *DHTClient) Stop() {
 	}
 }
 
-func (dht *DHTClient) MakeForwarderFailed(addr *net.UDPAddr) {
-	for _, fwd := range dht.FailedProxyList {
-		if fwd.String() == addr.String() {
-			Log(DEBUG, "Can't mark proxy as failed: Already in list")
-			return
-		}
-	}
-	dht.FailedProxyList = append(dht.FailedProxyList, addr)
-}
-
 func (dht *DHTClient) ReadFromDHT() {
 	for !dht.Shutdown {
 
@@ -649,4 +740,31 @@ func (dht *DHTClient) ReadData() []byte {
 
 func (dht *DHTClient) WriteData([]byte) {
 
+}
+
+// 2.0
+func (dht *DHTClient) ReadPeers() {
+
+}
+
+func (dht *DHTClient) BlacklistForwarder(addr *net.UDPAddr) {
+	dht.ForwardersLock.Lock()
+	// Remove it from list of cached forwarders
+	for i, fwd := range dht.Forwarders {
+		if fwd.Addr.String() == addr.String() {
+			dht.Forwarders = append(dht.Forwarders[:i], dht.Forwarders[i+1:]...)
+			break
+		}
+	}
+	found := false
+	for _, fwd := range dht.ProxyBlacklist {
+		if fwd.String() == addr.String() {
+			found = true
+		}
+	}
+	if !found {
+		dht.ProxyBlacklist = append(dht.ProxyBlacklist, addr)
+	}
+	dht.ForwardersLock.Unlock()
+	runtime.Gosched()
 }
