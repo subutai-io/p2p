@@ -277,25 +277,42 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 	return nil
 }
 
-func (p *Procedures) Show(args *Args, resp *Response) error {
-	if args.Args != "" {
-		swarm, exists := Instances[args.Args]
+func (p *Procedures) Show(args *RunArgs, resp *Response) error {
+	if args.Hash != "" {
+		swarm, exists := Instances[args.Hash]
 		resp.ExitCode = 0
 		if exists {
-			resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
-			for _, peer := range swarm.PTP.NetworkPeers {
-				resp.Output = resp.Output + peer.ID + "\t"
-				resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
-				resp.Output = resp.Output + peer.Endpoint.String() + "\t"
-				resp.Output = resp.Output + peer.PeerHW.String() + "\n"
+			if args.IP != "" {
+				for _, peer := range swarm.PTP.NetworkPeers {
+					if peer.PeerLocalIP.String() == args.IP {
+						if peer.State == ptp.P_CONNECTED {
+							resp.ExitCode = 0
+							resp.Output = "Integrated with " + args.IP
+							return nil
+						}
+					}
+				}
+				resp.ExitCode = 1
+				resp.Output = "Not yet integrated with " + args.IP
+				return nil
+			} else {
+				resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
+				for _, peer := range swarm.PTP.NetworkPeers {
+					resp.Output = resp.Output + peer.ID + "\t"
+					resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
+					resp.Output = resp.Output + peer.Endpoint.String() + "\t"
+					resp.Output = resp.Output + peer.PeerHW.String() + "\n"
+				}
 			}
 		} else {
-			resp.Output = "Specified environment was not found: " + args.Args
+			resp.Output = "Specified environment was not found: " + args.Hash
+			resp.ExitCode = 1
 		}
 	} else {
 		resp.ExitCode = 0
 		if len(Instances) == 0 {
 			resp.Output = "No instances was found"
+			resp.ExitCode = 1
 		}
 		for key, inst := range Instances {
 			if inst.PTP != nil {
