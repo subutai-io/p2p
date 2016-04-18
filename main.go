@@ -98,6 +98,7 @@ func main() {
 
 	show := flag.NewFlagSet("Show flagset", flag.ContinueOnError)
 	show.StringVar(&argHash, "hash", "", "Infohash for environment")
+	show.StringVar(&argIp, "check", "", "Check if integration with specified IP is finished")
 
 	set := flag.NewFlagSet("Option Setting", flag.ContinueOnError)
 	set.StringVar(&argLog, "log", "", "Log level")
@@ -123,7 +124,7 @@ func main() {
 		Stop(argRPCPort, argHash)
 	case "show":
 		show.Parse(os.Args[2:])
-		Show(argRPCPort, argHash)
+		Show(argRPCPort, argHash, argIp)
 	case "set":
 		set.Parse(os.Args[2:])
 		Set(argRPCPort, argLog, argHash, argKeyfile, argKey, argTTL)
@@ -247,16 +248,17 @@ func Stop(rpcPort, hash string) {
 	os.Exit(response.ExitCode)
 }
 
-func Show(rpcPort, hash string) {
+func Show(rpcPort, hash, ip string) {
 	client := Dial(rpcPort)
 	var response Response
-	args := &Args{}
-	args.Command = ""
+	args := &RunArgs{}
+	//args.Command = ""
 	if hash != "" {
-		args.Args = hash
+		args.Hash = hash
 	} else {
-		args.Args = ""
+		args.Hash = ""
 	}
+	args.IP = ip
 	err := client.Call("Procedures.Show", args, &response)
 	if err != nil {
 		fmt.Printf("Failed to run RPC request: %v\n", err)
