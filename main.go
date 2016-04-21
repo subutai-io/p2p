@@ -215,7 +215,7 @@ func Start(rpcPort, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool,
 	args.Port = port
 	err := client.Call("Procedures.Run", args, &response)
 	if err != nil {
-		fmt.Printf("Failed to run RPC request: %v\n", err)
+		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
 	}
 	if response.ExitCode == 0 {
@@ -237,7 +237,7 @@ func Stop(rpcPort, hash string) {
 	args.Hash = hash
 	err := client.Call("Procedures.Stop", args, &response)
 	if err != nil {
-		fmt.Printf("Failed to run RPC request: %v\n", err)
+		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
 	}
 	if response.ExitCode == 0 {
@@ -261,7 +261,7 @@ func Show(rpcPort, hash, ip string) {
 	args.IP = ip
 	err := client.Call("Procedures.Show", args, &response)
 	if err != nil {
-		fmt.Printf("Failed to run RPC request: %v\n", err)
+		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
 	}
 	if response.ExitCode == 0 {
@@ -287,7 +287,7 @@ func Set(rpcPort, log, hash, keyfile, key, ttl string) {
 		err = client.Call("Procedures.AddKey", args, &response)
 	}
 	if err != nil {
-		fmt.Printf("Failed to run RPC request: %v\n", err)
+		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
 	}
 	if response.ExitCode == 0 {
@@ -304,7 +304,7 @@ func Debug(rpcPort string) {
 	args := &Args{}
 	err := client.Call("Procedures.Debug", args, &response)
 	if err != nil {
-		fmt.Printf("Failed to run RPC request: %v\n", err)
+		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
 	}
 	fmt.Printf("%s\n", response.Output)
