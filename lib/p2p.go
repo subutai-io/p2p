@@ -510,7 +510,7 @@ func GenerateMAC() (string, net.HardwareAddr) {
 func (p *PTPCloud) ParseIntroString(intro string) (string, net.HardwareAddr, net.IP) {
 	parts := strings.Split(intro, ",")
 	if len(parts) != 3 {
-		Log(ERROR, "Failed to parse introduction string")
+		Log(ERROR, "Failed to parse introduction string: %s", intro)
 		return "", nil, nil
 	}
 	var id string
@@ -652,6 +652,7 @@ func (p *PTPCloud) HandleBadTun(msg *P2PMessage, src_addr *net.UDPAddr) {
 			peer.ProxyID = 0
 			peer.Endpoint = nil
 			peer.Forwarder = nil
+			peer.PeerAddr = nil
 			peer.State = P_INIT
 			p.NetworkPeers[key] = peer
 		}

@@ -34,6 +34,10 @@ func (np *NetworkPeer) Run(ptpc *PTPCloud) {
 			Log(INFO, "Stopping peer %s", np.ID)
 			break
 		}
+		if ptpc.Dht.ID == "" {
+			time.Sleep(time.Microsecond * 1000)
+			continue
+		}
 		if !initialize {
 			np.StateHandlers = make(map[PeerState]StateHandlerCallback)
 			np.StateHandlers[P_INIT] = np.StateInit
