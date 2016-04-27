@@ -312,7 +312,6 @@ func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 		resp.ExitCode = 0
 		if len(Instances) == 0 {
 			resp.Output = "No instances was found"
-			resp.ExitCode = 1
 		}
 		for key, inst := range Instances {
 			if inst.PTP != nil {
