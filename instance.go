@@ -272,6 +272,7 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 		resp.Output = "Shutting down " + args.Hash
 		Instances[args.Hash].PTP.StopInstance()
 		delete(Instances, args.Hash)
+		SaveInstances(SaveFile)
 	}
 	Unlock()
 	return nil
