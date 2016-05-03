@@ -381,9 +381,12 @@ func (p *PTPCloud) Run() {
 	go func() {
 		for {
 			if p.Shutdown {
-				return
+				break
 			}
 			rm := <-p.Dht.RemovePeerChan
+			if rm == "DUMMY" {
+				continue
+			}
 			peer, exists := p.NetworkPeers[rm]
 			if exists {
 				Log(INFO, "Stopping %s after STOP command", rm)
@@ -393,6 +396,7 @@ func (p *PTPCloud) Run() {
 				Log(INFO, "Can't stop peer. ID not found")
 			}
 		}
+		Log(INFO, "Stopping peer state listener")
 	}()
 	go p.Dht.UpdatePeers()
 	for {
@@ -685,7 +689,6 @@ func (p *PTPCloud) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
 }
 
 func (p *PTPCloud) StopInstance() {
-	// Send a packet
 	for i, peer := range p.NetworkPeers {
 		peer.State = P_DISCONNECT
 		p.NetworkPeers[i] = peer
@@ -693,6 +696,12 @@ func (p *PTPCloud) StopInstance() {
 	p.Dht.Stop()
 	p.UDPSocket.Stop()
 	p.Shutdown = true
+	var peers []PeerIP
+	var proxy Forwarder
+	p.DHTPeerChannel <- peers
+	p.ProxyChannel <- proxy
+	//p.Dht.RemovePeerChan <- "DUMMY"
+	Log(INFO, "Stopping P2P Message handler")
 	// Tricky part: we need to send a message to ourselves to quit blocking operation
 	msg := CreateTestP2PMessage(p.Crypter, "STOP", 1)
 	addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", p.Dht.P2PPort))
@@ -724,6 +733,7 @@ func (p *PTPCloud) ReadDHTPeers() {
 		peers := <-p.DHTPeerChannel
 		p.UpdatePeers(peers)
 	}
+	Log(INFO, "Stopped DHT reader channel")
 }
 
 func (p *PTPCloud) ReadProxies() {
@@ -746,6 +756,7 @@ func (p *PTPCloud) ReadProxies() {
 			p.Dht.SendUpdateRequest()
 		}
 	}
+	Log(INFO, "Stopped Proxy reader channel")
 }
 
 func (p *PTPCloud) UpdatePeers(peers []PeerIP) {
