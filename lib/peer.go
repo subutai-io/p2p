@@ -61,6 +61,7 @@ func (np *NetworkPeer) Run(ptpc *PTPCloud) {
 		if err != nil {
 			Log(ERROR, "Peer %s: %v", np.ID, err)
 		}
+		time.Sleep(time.Microsecond * 500)
 	}
 }
 
