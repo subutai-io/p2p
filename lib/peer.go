@@ -35,7 +35,7 @@ func (np *NetworkPeer) Run(ptpc *PTPCloud) {
 			break
 		}
 		if ptpc.Dht.ID == "" {
-			time.Sleep(time.Microsecond * 1000)
+			time.Sleep(time.Millisecond * 500)
 			continue
 		}
 		if !initialize {
@@ -61,7 +61,7 @@ func (np *NetworkPeer) Run(ptpc *PTPCloud) {
 		if err != nil {
 			Log(ERROR, "Peer %s: %v", np.ID, err)
 		}
-		time.Sleep(time.Microsecond * 500)
+		time.Sleep(time.Millisecond * 500)
 	}
 }
 
@@ -86,7 +86,7 @@ func (np *NetworkPeer) StateRequestedIp(ptpc *PTPCloud) error {
 				}
 			}
 		}
-		time.Sleep(100 * time.Microsecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
@@ -168,6 +168,7 @@ func (np *NetworkPeer) StateHandshaking(ptpc *PTPCloud) error {
 				retries++
 			}
 		}
+		time.Sleep(time.Millisecond * 200)
 	}
 	return nil
 }
@@ -194,7 +195,7 @@ func (np *NetworkPeer) StateWaitingForwarder(ptpc *PTPCloud) error {
 	np.RequestForwarder(ptpc)
 	waitStart := time.Now()
 	for np.Forwarder == nil {
-		time.Sleep(time.Microsecond * 100)
+		time.Sleep(time.Millisecond * 100)
 		passed := time.Since(waitStart)
 		if passed > WAIT_PROXY_TIMEOUT {
 			np.ProxyRequests++
@@ -232,8 +233,10 @@ func (np *NetworkPeer) StateHandshakingForwarder(ptpc *PTPCloud) error {
 					return err
 				}
 				handshakeSentAt = time.Now()
+				attempts++
 			}
 		}
+		time.Sleep(time.Millisecond * 100)
 	}
 	Log(INFO, "%s handshaked with proxy %s", np.ID, np.Forwarder.String())
 	np.State = P_HANDSHAKING
