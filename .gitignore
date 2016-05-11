@@ -18,3 +18,8 @@ p2p-*-v*
 
 # Logs
 *.log
+
+# Debian
+*.docs
+*.substvars
+*.deb
