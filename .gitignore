@@ -18,3 +18,11 @@ p2p-*-v*
 
 # Logs
 *.log
+
+# Debian
+*.docs
+*.substvars
+*.deb
+debian/debhelper-build-stamp
+debian/files
+debian/subutai-p2p
