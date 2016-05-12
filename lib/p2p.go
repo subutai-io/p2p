@@ -52,7 +52,7 @@ func (p *PTPCloud) AssignInterface(ip, mac, mask, device string) error {
 	// TODO: Remove hard-coded path
 	yamlFile, err := ioutil.ReadFile(CONFIG_DIR + "/p2p/config.yaml")
 	if err != nil {
-		Log(ERROR, "Failed to load config: %v", err)
+		Log(WARNING, "Failed to load config: %v", err)
 		p.IPTool = "/sbin/ip"
 	}
 	err = yaml.Unmarshal(yamlFile, p)
@@ -604,7 +604,8 @@ func (p *PTPCloud) HandleIntroMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	id, mac, ip := p.ParseIntroString(string(msg.Data))
 	peer, exists := p.NetworkPeers[id]
 	if !exists {
-		Log(ERROR, "Received introduction confirmation from unknown peer: %s", id)
+		Log(DEBUG, "Received introduction confirmation from unknown peer: %s", id)
+		p.Dht.SendUpdateRequest()
 		return
 	}
 	peer.PeerHW = mac
@@ -614,6 +615,7 @@ func (p *PTPCloud) HandleIntroMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	p.IPIDTable[ip.String()] = id
 	p.MACIDTable[mac.String()] = id
 	p.NetworkPeers[id] = peer
+	Log(INFO, "Connection with peer %s has been established", id)
 }
 
 func (p *PTPCloud) HandleIntroRequestMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
