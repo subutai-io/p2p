@@ -1,0 +1,8 @@
+#!/bin/sh
+if [ -d /opt/subutai/p2p ]; then
+rm -rf /opt/subutai/p2p
+fi
+
+if [ -L /usr/bin/p2p ]; then
+rm -rf /usr/bin/p2p
+fi
