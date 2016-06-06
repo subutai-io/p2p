@@ -652,7 +652,7 @@ func (p *PTPCloud) HandleProxyMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 }
 
 func (p *PTPCloud) HandleBadTun(msg *P2PMessage, src_addr *net.UDPAddr) {
-	Log(INFO, "Cleaning bad tunnel with ID: %d", msg.Header.ProxyId)
+	Log(DEBUG, "Cleaning bad tunnel with ID: %d", msg.Header.ProxyId)
 	for key, peer := range p.NetworkPeers {
 		if peer.ProxyID == int(msg.Header.ProxyId) {
 			peer.ProxyID = 0
