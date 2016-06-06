@@ -248,6 +248,8 @@ func (np *NetworkPeer) StateHandshakingFailed(ptpc *PTPCloud) error {
 		Log(ERROR, "Failed to handshake with %s via proxy %s", np.ID, np.Forwarder.String())
 		np.BlacklistCurrentProxy(ptpc)
 		np.Forwarder = nil
+	} else {
+		Log(ERROR, "Failed to handshake directly. Switching to proxy")
 	}
 	np.State = P_WAITING_FORWARDER
 	return nil
