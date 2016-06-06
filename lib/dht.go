@@ -69,7 +69,7 @@ type DHTResponseCallback func(data DHTMessage, conn *net.UDPConn)
 
 func (dht *DHTClient) DHTClientConfig() *DHTClient {
 	return &DHTClient{
-		Routers: "dht1.subut.ai:6882",
+		Routers: "dht1.subut.ai:6881",
 		//Routers:     "dht1.subut.ai:6881,dht2.subut.ai:6881,dht3.subut.ai:6881,dht4.subut.ai:6881,dht5.subut.ai:6881",
 		NetworkHash: "",
 	}
