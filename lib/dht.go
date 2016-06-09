@@ -417,6 +417,11 @@ func (dht *DHTClient) HandleNode(data DHTMessage, conn *net.UDPConn) {
 	}
 }
 
+func (dht *DHTClient) NotifyPeerAboutProxy(id string) {
+	Log(INFO, "Notifying %s about proxy", id)
+
+}
+
 func (dht *DHTClient) HandleCp(data DHTMessage, conn *net.UDPConn) {
 	// We've received information about proxy
 	if data.Query == "0" || data.Query == "" {

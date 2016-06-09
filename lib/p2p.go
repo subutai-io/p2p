@@ -747,6 +747,9 @@ func (p *PTPCloud) ReadProxies() {
 		exists := false
 		for i, peer := range p.NetworkPeers {
 			if i == proxy.DestinationID {
+				if peer.State == P_CONNECTED {
+					peer.State = P_HANDSHAKING_FORWARDER
+				}
 				peer.Forwarder = proxy.Addr
 				peer.Endpoint = proxy.Addr
 				p.NetworkPeers[i] = peer
