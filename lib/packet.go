@@ -34,6 +34,7 @@ const (
 	PT_IPV6            PacketType = 34525
 	PT_PPPOE_DISCOVERY PacketType = 34915
 	PT_PPPOE_SESSION   PacketType = 34916
+	PT_LLDP            PacketType = 35020
 )
 
 var (
@@ -230,6 +231,10 @@ func (p *PTPCloud) handlePacketARP(contents []byte, proto int) {
 	}
 	Log(DEBUG, "%v", packet.String())
 	p.WriteToDevice(fb, uint16(proto), false)
+}
+
+func (p *PTPCloud) handlePacketLLDP(contents []byte, proto int) {
+	Log(TRACE, "Handling LLDP Session Packet")
 }
 
 func (p *ARPPacket) String() string {

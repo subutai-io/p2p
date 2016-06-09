@@ -287,7 +287,7 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) {
 					Log(TRACE, "DHT Received %v", data)
 					callback(data, conn)
 				} else {
-					Log(ERROR, "Unknown packet received from DHT: %s", data.Command)
+					Log(DEBUG, "Unsupported packet type received from DHT: %s", data.Command)
 				}
 			}
 		}
@@ -337,6 +337,7 @@ func (dht *DHTClient) HandleConn(data DHTMessage, conn *net.UDPConn) {
 }
 
 func (dht *DHTClient) HandlePing(data DHTMessage, conn *net.UDPConn) {
+	Log(INFO, "PING")
 	dht.LastDHTPing = time.Now()
 	msg := dht.Compose(CMD_PING, dht.ID, "", "")
 	_, err := conn.Write([]byte(msg))
@@ -414,6 +415,11 @@ func (dht *DHTClient) HandleNode(data DHTMessage, conn *net.UDPConn) {
 			dht.Peers[i].Ips = list
 		}
 	}
+}
+
+func (dht *DHTClient) NotifyPeerAboutProxy(id string) {
+	Log(INFO, "Notifying %s about proxy", id)
+
 }
 
 func (dht *DHTClient) HandleCp(data DHTMessage, conn *net.UDPConn) {
@@ -562,6 +568,7 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan 
 		dht.ResponseHandlers[CMD_NODE] = dht.HandleNode
 		dht.ResponseHandlers[CMD_CP] = dht.HandleCp
 		dht.ResponseHandlers[CMD_NOTIFY] = dht.HandleNotify
+		dht.ResponseHandlers[CMD_STOP] = dht.HandleStop
 	} else {
 		Log(INFO, "DHT operating in CONTROL PEER mode")
 		dht.ResponseHandlers[CMD_REGCP] = dht.HandleRegCp
@@ -570,7 +577,6 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan 
 	dht.ResponseHandlers[CMD_FIND] = dht.HandleFind
 	dht.ResponseHandlers[CMD_CONN] = dht.HandleConn
 	dht.ResponseHandlers[CMD_PING] = dht.HandlePing
-	dht.ResponseHandlers[CMD_STOP] = dht.HandleStop
 	dht.ResponseHandlers[CMD_UNKNOWN] = dht.HandleUnknown
 	dht.ResponseHandlers[CMD_ERROR] = dht.HandleError
 	dht.IPList = ips
