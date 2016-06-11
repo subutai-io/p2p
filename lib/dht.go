@@ -337,7 +337,7 @@ func (dht *DHTClient) HandleConn(data DHTMessage, conn *net.UDPConn) {
 }
 
 func (dht *DHTClient) HandlePing(data DHTMessage, conn *net.UDPConn) {
-	Log(INFO, "PING")
+	Log(TRACE, "Ping message from DHT")
 	dht.LastDHTPing = time.Now()
 	msg := dht.Compose(CMD_PING, dht.ID, "", "")
 	_, err := conn.Write([]byte(msg))
