@@ -82,7 +82,7 @@ const (
 const (
 	DHT_MAX_RETRIES         int           = 10
 	DHCP_MAX_RETRIES        int           = 10
-	PEER_PING_TIMEOUT       time.Duration = 15 * time.Second
-	WAIT_PROXY_TIMEOUT      time.Duration = 5 * time.Second
-	HANDSHAKE_PROXY_TIMEOUT time.Duration = 3 * time.Second
+	PEER_PING_TIMEOUT       time.Duration = time.Second * 15
+	WAIT_PROXY_TIMEOUT      time.Duration = time.Second * 5
+	HANDSHAKE_PROXY_TIMEOUT time.Duration = time.Second * 3
 )
