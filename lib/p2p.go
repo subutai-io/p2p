@@ -279,6 +279,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.PacketHandlers[PT_IPV6] = p.handlePacketIPv6
 	p.PacketHandlers[PT_PPPOE_DISCOVERY] = p.handlePPPoEDiscoveryPacket
 	p.PacketHandlers[PT_PPPOE_SESSION] = p.handlePPPoESessionPacket
+	p.PacketHandlers[PT_LLDP] = p.handlePacketLLDP
 
 	p.UDPSocket = new(PTPNet)
 	p.UDPSocket.Init("", port)
@@ -652,9 +653,9 @@ func (p *PTPCloud) HandleProxyMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 }
 
 func (p *PTPCloud) HandleBadTun(msg *P2PMessage, src_addr *net.UDPAddr) {
-	Log(DEBUG, "Cleaning bad tunnel with ID: %d", msg.Header.ProxyId)
+	Log(DEBUG, "Cleaning bad tunnel %d from %s", msg.Header.ProxyId, src_addr.String())
 	for key, peer := range p.NetworkPeers {
-		if peer.ProxyID == int(msg.Header.ProxyId) {
+		if peer.ProxyID == int(msg.Header.ProxyId) && peer.Endpoint.String() == src_addr.String() {
 			peer.ProxyID = 0
 			peer.Endpoint = nil
 			peer.Forwarder = nil
@@ -702,7 +703,6 @@ func (p *PTPCloud) StopInstance() {
 	var proxy Forwarder
 	p.DHTPeerChannel <- peers
 	p.ProxyChannel <- proxy
-	//p.Dht.RemovePeerChan <- "DUMMY"
 	Log(INFO, "Stopping P2P Message handler")
 	// Tricky part: we need to send a message to ourselves to quit blocking operation
 	msg := CreateTestP2PMessage(p.Crypter, "STOP", 1)
@@ -747,9 +747,7 @@ func (p *PTPCloud) ReadProxies() {
 		exists := false
 		for i, peer := range p.NetworkPeers {
 			if i == proxy.DestinationID {
-				if peer.State == P_CONNECTED {
-					peer.State = P_HANDSHAKING_FORWARDER
-				}
+				peer.State = P_HANDSHAKING_FORWARDER
 				peer.Forwarder = proxy.Addr
 				peer.Endpoint = proxy.Addr
 				p.NetworkPeers[i] = peer
