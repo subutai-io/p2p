@@ -37,6 +37,7 @@ type PTPCloud struct {
 	DHTPeerChannel  chan []PeerIP
 	ProxyChannel    chan Forwarder
 	RemovePeer      chan string
+	MessageBuffer   map[string][]byte
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -219,6 +220,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.NetworkPeers = make(map[string]*NetworkPeer)
 	p.IPIDTable = make(map[string]string)
 	p.MACIDTable = make(map[string]string)
+	p.MessageBuffer = make(map[string][]byte)
 
 	if fwd {
 		p.ForwardMode = true
@@ -571,7 +573,17 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 
 func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	Log(TRACE, "Data: %s, Proto: %d, From: %s", msg.Data, msg.Header.NetProto, src_addr.String())
-	p.WriteToDevice(msg.Data, msg.Header.NetProto, false)
+	var tid string
+	for id, peer := range p.NetworkPeers {
+		if peer.Endpoint.String() == src_addr.String() && uint16(peer.ProxyID) == msg.Header.ProxyId {
+			tid = id
+			p.MessageBuffer[id] = append(p.MessageBuffer[id], msg.Data...)
+		}
+	}
+	if msg.Header.Complete == 1 {
+		p.WriteToDevice(p.MessageBuffer[tid], msg.Header.NetProto, false)
+		p.MessageBuffer[tid] = p.MessageBuffer[tid][:0]
+	}
 }
 
 func (p *PTPCloud) HandlePingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
@@ -653,9 +665,9 @@ func (p *PTPCloud) HandleProxyMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 }
 
 func (p *PTPCloud) HandleBadTun(msg *P2PMessage, src_addr *net.UDPAddr) {
-	Log(DEBUG, "Cleaning bad tunnel %d from %s", msg.Header.ProxyId, src_addr.String())
 	for key, peer := range p.NetworkPeers {
 		if peer.ProxyID == int(msg.Header.ProxyId) && peer.Endpoint.String() == src_addr.String() {
+			Log(DEBUG, "Cleaning bad tunnel %d from %s", msg.Header.ProxyId, src_addr.String())
 			peer.ProxyID = 0
 			peer.Endpoint = nil
 			peer.Forwarder = nil
