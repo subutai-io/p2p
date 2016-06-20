@@ -179,7 +179,7 @@ func CreateNencP2PMessage(c Crypto, data []byte, netProto uint16, id uint16) *P2
 	msg.Header.Type = uint16(MT_NENC)
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
-	msg.Header.Complete = 1
+	msg.Header.Complete = id
 	msg.Header.Id = 0
 	if c.Active {
 		var err error

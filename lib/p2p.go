@@ -37,7 +37,7 @@ type PTPCloud struct {
 	DHTPeerChannel  chan []PeerIP
 	ProxyChannel    chan Forwarder
 	RemovePeer      chan string
-	MessageBuffer   map[string][]byte
+	MessageBuffer   map[string]map[uint16][]byte
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -220,7 +220,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.NetworkPeers = make(map[string]*NetworkPeer)
 	p.IPIDTable = make(map[string]string)
 	p.MACIDTable = make(map[string]string)
-	p.MessageBuffer = make(map[string][]byte)
+	p.MessageBuffer = make(map[string]map[uint16][]byte)
 
 	if fwd {
 		p.ForwardMode = true
@@ -573,16 +573,29 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 
 func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	Log(TRACE, "Data: %s, Proto: %d, From: %s", msg.Data, msg.Header.NetProto, src_addr.String())
-	var tid string
-	for id, peer := range p.NetworkPeers {
-		if peer.Endpoint.String() == src_addr.String() && uint16(peer.ProxyID) == msg.Header.ProxyId {
-			tid = id
-			p.MessageBuffer[id] = append(p.MessageBuffer[id], msg.Data...)
-		}
+	/*
+			var tid string
+			for id, peer := range p.NetworkPeers {
+				Log(INFO, "%s %d", peer.Endpoint.String(), peer.ProxyID)
+				if peer.Endpoint.String() == src_addr.String() && uint16(peer.ProxyID) == msg.Header.ProxyId {
+					tid = id
+					p.MessageBuffer[id] = append(p.MessageBuffer[id], msg.Data...)
+				}
+			}
+			if tid == "" {
+				Log(INFO, "Not found %s %d", src_addr.String(), msg.Header.ProxyId)
+				return
+			}
+	f 	*/
+	if p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] == nil {
+		p.MessageBuffer[src_addr.String()] = make(map[uint16][]byte)
 	}
+	p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] = append(p.MessageBuffer[src_addr.String()][msg.Header.ProxyId], msg.Data...)
 	if msg.Header.Complete == 1 {
-		p.WriteToDevice(p.MessageBuffer[tid], msg.Header.NetProto, false)
-		p.MessageBuffer[tid] = p.MessageBuffer[tid][:0]
+		p.WriteToDevice(p.MessageBuffer[src_addr.String()][msg.Header.ProxyId], msg.Header.NetProto, false)
+		p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] = p.MessageBuffer[src_addr.String()][msg.Header.ProxyId][:0]
+		//p.WriteToDevice(p.MessageBuffer[tid], msg.Header.NetProto, false)
+		//p.MessageBuffer[tid] = p.MessageBuffer[tid][:0]
 	}
 }
 
