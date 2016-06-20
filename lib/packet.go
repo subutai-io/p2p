@@ -121,12 +121,25 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 		return
 	}
 
-	msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto))
-	msg.Header.NetProto = uint16(proto)
-	_, err := p.SendTo(f.Destination, msg)
-	if err != nil {
-		Log(ERROR, "Failed to send message over P2P: %v", err)
-		return
+	//size := len(contents)
+	var complete uint16 = 0
+	// TODO: Review this part. I was drunk
+	//for size > 0 {
+	for len(contents) > 0 {
+		//if size < 1024 {
+		shift := 1024
+		if len(contents) < 1024 {
+			complete = 1
+			shift = len(contents)
+		}
+		msg := CreateNencP2PMessage(p.Crypter, contents[0:shift], uint16(proto), complete)
+		msg.Header.NetProto = uint16(proto)
+		_, err := p.SendTo(f.Destination, msg)
+		if err != nil {
+			Log(ERROR, "Failed to send message over P2P: %v", err)
+			return
+		}
+		contents = contents[shift:]
 	}
 }
 

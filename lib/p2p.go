@@ -37,6 +37,7 @@ type PTPCloud struct {
 	DHTPeerChannel  chan []PeerIP
 	ProxyChannel    chan Forwarder
 	RemovePeer      chan string
+	MessageBuffer   map[string]map[uint16][]byte
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -219,6 +220,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.NetworkPeers = make(map[string]*NetworkPeer)
 	p.IPIDTable = make(map[string]string)
 	p.MACIDTable = make(map[string]string)
+	p.MessageBuffer = make(map[string]map[uint16][]byte)
 
 	if fwd {
 		p.ForwardMode = true
@@ -279,6 +281,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.PacketHandlers[PT_IPV6] = p.handlePacketIPv6
 	p.PacketHandlers[PT_PPPOE_DISCOVERY] = p.handlePPPoEDiscoveryPacket
 	p.PacketHandlers[PT_PPPOE_SESSION] = p.handlePPPoESessionPacket
+	p.PacketHandlers[PT_LLDP] = p.handlePacketLLDP
 
 	p.UDPSocket = new(PTPNet)
 	p.UDPSocket.Init("", port)
@@ -570,7 +573,30 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 
 func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	Log(TRACE, "Data: %s, Proto: %d, From: %s", msg.Data, msg.Header.NetProto, src_addr.String())
-	p.WriteToDevice(msg.Data, msg.Header.NetProto, false)
+	/*
+			var tid string
+			for id, peer := range p.NetworkPeers {
+				Log(INFO, "%s %d", peer.Endpoint.String(), peer.ProxyID)
+				if peer.Endpoint.String() == src_addr.String() && uint16(peer.ProxyID) == msg.Header.ProxyId {
+					tid = id
+					p.MessageBuffer[id] = append(p.MessageBuffer[id], msg.Data...)
+				}
+			}
+			if tid == "" {
+				Log(INFO, "Not found %s %d", src_addr.String(), msg.Header.ProxyId)
+				return
+			}
+	f 	*/
+	if p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] == nil {
+		p.MessageBuffer[src_addr.String()] = make(map[uint16][]byte)
+	}
+	p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] = append(p.MessageBuffer[src_addr.String()][msg.Header.ProxyId], msg.Data...)
+	if msg.Header.Complete == 1 {
+		p.WriteToDevice(p.MessageBuffer[src_addr.String()][msg.Header.ProxyId], msg.Header.NetProto, false)
+		p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] = p.MessageBuffer[src_addr.String()][msg.Header.ProxyId][:0]
+		//p.WriteToDevice(p.MessageBuffer[tid], msg.Header.NetProto, false)
+		//p.MessageBuffer[tid] = p.MessageBuffer[tid][:0]
+	}
 }
 
 func (p *PTPCloud) HandlePingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
@@ -652,9 +678,9 @@ func (p *PTPCloud) HandleProxyMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 }
 
 func (p *PTPCloud) HandleBadTun(msg *P2PMessage, src_addr *net.UDPAddr) {
-	Log(DEBUG, "Cleaning bad tunnel with ID: %d", msg.Header.ProxyId)
 	for key, peer := range p.NetworkPeers {
-		if peer.ProxyID == int(msg.Header.ProxyId) {
+		if peer.ProxyID == int(msg.Header.ProxyId) && peer.Endpoint.String() == src_addr.String() {
+			Log(DEBUG, "Cleaning bad tunnel %d from %s", msg.Header.ProxyId, src_addr.String())
 			peer.ProxyID = 0
 			peer.Endpoint = nil
 			peer.Forwarder = nil
@@ -702,7 +728,6 @@ func (p *PTPCloud) StopInstance() {
 	var proxy Forwarder
 	p.DHTPeerChannel <- peers
 	p.ProxyChannel <- proxy
-	//p.Dht.RemovePeerChan <- "DUMMY"
 	Log(INFO, "Stopping P2P Message handler")
 	// Tricky part: we need to send a message to ourselves to quit blocking operation
 	msg := CreateTestP2PMessage(p.Crypter, "STOP", 1)
@@ -747,9 +772,7 @@ func (p *PTPCloud) ReadProxies() {
 		exists := false
 		for i, peer := range p.NetworkPeers {
 			if i == proxy.DestinationID {
-				if peer.State == P_CONNECTED {
-					peer.State = P_HANDSHAKING_FORWARDER
-				}
+				peer.State = P_HANDSHAKING_FORWARDER
 				peer.Forwarder = proxy.Addr
 				peer.Endpoint = proxy.Addr
 				p.NetworkPeers[i] = peer

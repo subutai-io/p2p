@@ -5,7 +5,6 @@ import (
 	"fmt"
 	bencode "github.com/jackpal/bencode-go"
 	"net"
-	//"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -52,7 +51,7 @@ type DHTClient struct {
 	ProxyChannel     chan Forwarder
 	LastDHTPing      time.Time
 	RemovePeerChan   chan string
-	ForwardersLock   sync.Mutex
+	ForwardersLock   sync.Mutex // To avoid multiple read-write
 }
 
 type Forwarder struct {
@@ -773,4 +772,9 @@ func (dht *DHTClient) BlacklistForwarder(addr *net.UDPAddr) {
 	}
 	dht.ForwardersLock.Unlock()
 	runtime.Gosched()
+}
+
+func (dht *DHTClient) CleanForwarderBlacklist() {
+	Log(DEBUG, "Cleaning forwarders blacklist")
+	dht.ProxyBlacklist = dht.ProxyBlacklist[:0]
 }
