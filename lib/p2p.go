@@ -1,6 +1,7 @@
 package ptp
 
 import (
+	"bytes"
 	"crypto/rand"
 	"fmt"
 	"gopkg.in/yaml.v2"
@@ -38,6 +39,7 @@ type PTPCloud struct {
 	ProxyChannel    chan Forwarder
 	RemovePeer      chan string
 	MessageBuffer   map[string]map[uint16][]byte
+	MessagePacket   map[string]map[uint16][]byte
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -221,6 +223,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.IPIDTable = make(map[string]string)
 	p.MACIDTable = make(map[string]string)
 	p.MessageBuffer = make(map[string]map[uint16][]byte)
+	p.MessagePacket = make(map[string]map[uint16][]byte)
 
 	if fwd {
 		p.ForwardMode = true
@@ -587,6 +590,16 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 				return
 			}
 	f 	*/
+	// Check if packet is duplicated (VM wifi workaround)
+	if p.MessagePacket[src_addr.String()][msg.Header.ProxyId] == nil {
+		p.MessagePacket[src_addr.String()] = make(map[uint16][]byte)
+	}
+	if bytes.Equal(p.MessagePacket[src_addr.String()][msg.Header.ProxyId], msg.Data) {
+		// Skip duplicate
+		return
+	} else {
+		p.MessagePacket[src_addr.String()][msg.Header.ProxyId] = msg.Data
+	}
 	if p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] == nil {
 		p.MessageBuffer[src_addr.String()] = make(map[uint16][]byte)
 	}

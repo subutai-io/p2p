@@ -26,6 +26,7 @@ type PacketType int
 type PacketHandlerCallback func(data []byte, proto int)
 
 const (
+	ETH_PACKET_SIZE    int        = 512
 	PT_PARC_UNIVERSAL  PacketType = 512
 	PT_IPV4            PacketType = 2048
 	PT_ARP             PacketType = 2054
@@ -121,14 +122,11 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 		return
 	}
 
-	//size := len(contents)
 	var complete uint16 = 0
 	// TODO: Review this part. I was drunk
-	//for size > 0 {
 	for len(contents) > 0 {
-		//if size < 1024 {
-		shift := 1024
-		if len(contents) < 1024 {
+		shift := ETH_PACKET_SIZE
+		if len(contents) < ETH_PACKET_SIZE {
 			complete = 1
 			shift = len(contents)
 		}
