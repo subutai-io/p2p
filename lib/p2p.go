@@ -730,7 +730,7 @@ func (p *PTPCloud) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
 		peer, exists := p.NetworkPeers[id]
 		if exists {
 			msg.Header.ProxyId = uint16(peer.ProxyID)
-			Log(TRACE, "Sending to %s via proxy id %d", dst.String(), msg.Header.ProxyId)
+			Log(DEBUG, "Sending to %s via proxy id %d", dst.String(), msg.Header.ProxyId)
 			size, err := p.UDPSocket.SendMessage(msg, peer.Endpoint)
 			return size, err
 		}

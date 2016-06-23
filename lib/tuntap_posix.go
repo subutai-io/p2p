@@ -91,3 +91,7 @@ func (t *Interface) Run() {
 	// Dummy, used for windows only
 
 }
+
+func ExtractMacFromInterface(dev *Interface) string {
+	return ""
+}
