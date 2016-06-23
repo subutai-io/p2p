@@ -72,6 +72,12 @@ func (p *PTPCloud) AssignInterface(ip, mac, mask, device string) error {
 		Log(INFO, "%v TAP Device created", p.DeviceName)
 	}
 
+	// Windows returns a real mac here. However, other systems should return empty string
+	mac = ExtractMacFromInterface(p.Device)
+	if mac != "" {
+		p.Mac = mac
+	}
+
 	err = ConfigureInterface(p.Device, p.IP, mac, p.DeviceName, p.IPTool)
 	if err != nil {
 		return err
@@ -619,6 +625,7 @@ func (p *PTPCloud) HandlePingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 func (p *PTPCloud) HandleXpeerPingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	pt := PingType(msg.Header.NetProto)
 	if pt == PING_REQ {
+		Log(DEBUG, "Ping request received")
 		// Send a PING response
 		r := CreateXpeerPingMessage(PING_RESP, p.HardwareAddr.String())
 		addr, err := net.ParseMAC(string(msg.Data))
@@ -628,6 +635,7 @@ func (p *PTPCloud) HandleXpeerPingMessage(msg *P2PMessage, src_addr *net.UDPAddr
 			p.SendTo(addr, r)
 		}
 	} else {
+		Log(DEBUG, "Ping response received")
 		// Handle PING response
 		for i, peer := range p.NetworkPeers {
 			if peer.PeerHW.String() == string(msg.Data) {
