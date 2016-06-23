@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"unicode/utf16"
 	"unsafe"
+	"bytes"
+	//"strconv"
 )
 
 var (
@@ -23,6 +25,7 @@ type Interface struct {
 	Interface string
 	IP        string
 	Mask      string
+	Mac string
 	Rx        chan []byte
 	Tx        chan []byte
 }
@@ -155,7 +158,6 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 }
 
 func createNewTAPDevice() {
-	/*
 	// Check if we already have devices
 	if len(UsedInterfaces) == 0 {
 		// If not, remove interfaces from previous instances and/or created by other software
@@ -175,7 +177,6 @@ func createNewTAPDevice() {
 	if err != nil {
 		Log(ERROR, "Failed to add TUN/TAP Device: %v", err)
 	}
-	*/
 }
 
 func openDevice(ifPattern string) (*Interface, error) {
@@ -217,6 +218,8 @@ func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 		return err
 	}
 
+	
+
 	in := []byte("\x01\x00\x00\x00")
 	var length uint32
 	err = syscall.DeviceIoControl(dev.file, TAP_IOCTL_SET_MEDIA_STATUS,
@@ -231,6 +234,29 @@ func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 		return err
 	}
 	return nil
+}
+
+func ExtractMacFromInterface(dev *Interface) (string) {
+	mac := make([]byte, 6)
+	var length uint32
+	err := syscall.DeviceIoControl(dev.file, TAP_IOCTL_GET_MAC, &mac[0], uint32(len(mac)), &mac[0], uint32(len(mac)), &length, nil)
+	if err != nil {
+		Log(ERROR, "Failed to get MAC from device")
+	}
+	var macAddr bytes.Buffer
+	/*
+	macAddr := fmt.Sprintf("%x:%x:%x:%x:%x:%x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5])
+	Log(INFO, "MAC: %s", macAddr)*/
+	for _, a := range mac {
+		if a == 0 {
+			macAddr.WriteString("00")
+			continue
+		} 
+		macAddr.WriteString(":")
+		macAddr.WriteString(fmt.Sprintf("%x", a))
+	}
+	Log(INFO, "MAC: %s", macAddr.String())
+	return macAddr.String()
 }
 
 func (t *Interface) Run() {
