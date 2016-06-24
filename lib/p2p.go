@@ -1,7 +1,7 @@
 package ptp
 
 import (
-	"bytes"
+	//	"bytes"
 	"crypto/rand"
 	"fmt"
 	"gopkg.in/yaml.v2"
@@ -78,7 +78,7 @@ func (p *PTPCloud) AssignInterface(ip, mac, mask, device string) error {
 		p.Mac = mac
 	}
 
-	err = ConfigureInterface(p.Device, p.IP, mac, p.DeviceName, p.IPTool)
+	err = ConfigureInterface(p.Device, p.IP, p.Mac, p.DeviceName, p.IPTool)
 	if err != nil {
 		return err
 	}
@@ -582,6 +582,7 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 
 func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	Log(TRACE, "Data: %s, Proto: %d, From: %s", msg.Data, msg.Header.NetProto, src_addr.String())
+	p.WriteToDevice(msg.Data, msg.Header.NetProto, false)
 	/*
 			var tid string
 			for id, peer := range p.NetworkPeers {
@@ -596,26 +597,28 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 				return
 			}
 	f 	*/
-	// Check if packet is duplicated (VM wifi workaround)
-	if p.MessagePacket[src_addr.String()][msg.Header.ProxyId] == nil {
-		p.MessagePacket[src_addr.String()] = make(map[uint16][]byte)
-	}
-	if bytes.Equal(p.MessagePacket[src_addr.String()][msg.Header.ProxyId], msg.Data) {
-		// Skip duplicate
-		return
-	} else {
-		p.MessagePacket[src_addr.String()][msg.Header.ProxyId] = msg.Data
-	}
-	if p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] == nil {
-		p.MessageBuffer[src_addr.String()] = make(map[uint16][]byte)
-	}
-	p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] = append(p.MessageBuffer[src_addr.String()][msg.Header.ProxyId], msg.Data...)
-	if msg.Header.Complete == 1 {
-		p.WriteToDevice(p.MessageBuffer[src_addr.String()][msg.Header.ProxyId], msg.Header.NetProto, false)
-		p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] = p.MessageBuffer[src_addr.String()][msg.Header.ProxyId][:0]
-		//p.WriteToDevice(p.MessageBuffer[tid], msg.Header.NetProto, false)
-		//p.MessageBuffer[tid] = p.MessageBuffer[tid][:0]
-	}
+	/*
+		// Check if packet is duplicated (VM wifi workaround)
+		if p.MessagePacket[src_addr.String()][msg.Header.ProxyId] == nil {
+			p.MessagePacket[src_addr.String()] = make(map[uint16][]byte)
+		}
+		if bytes.Equal(p.MessagePacket[src_addr.String()][msg.Header.ProxyId], msg.Data) {
+			// Skip duplicate
+			return
+		} else {
+			p.MessagePacket[src_addr.String()][msg.Header.ProxyId] = msg.Data
+		}
+		if p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] == nil {
+			p.MessageBuffer[src_addr.String()] = make(map[uint16][]byte)
+		}
+		p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] = append(p.MessageBuffer[src_addr.String()][msg.Header.ProxyId], msg.Data...)
+		if msg.Header.Complete == 1 {
+			p.WriteToDevice(p.MessageBuffer[src_addr.String()][msg.Header.ProxyId], msg.Header.NetProto, false)
+			p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] = p.MessageBuffer[src_addr.String()][msg.Header.ProxyId][:0]
+			//p.WriteToDevice(p.MessageBuffer[tid], msg.Header.NetProto, false)
+			//p.MessageBuffer[tid] = p.MessageBuffer[tid][:0]
+		}
+	*/
 }
 
 func (p *PTPCloud) HandlePingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
