@@ -746,6 +746,7 @@ func (p *PTPCloud) StopInstance() {
 		peer.State = P_DISCONNECT
 		p.NetworkPeers[i] = peer
 	}
+	ip := p.Dht.Network.IP
 	p.Dht.Stop()
 	p.UDPSocket.Stop()
 	p.Shutdown = true
@@ -761,7 +762,6 @@ func (p *PTPCloud) StopInstance() {
 	var ipIt int = 200
 	for p.IsDeviceExists(p.DeviceName) {
 		time.Sleep(1 * time.Second)
-		ip := p.Dht.Network.IP
 		target := fmt.Sprintf("%d.%d.%d.%d:99", ip[0], ip[1], ip[2], ipIt)
 		Log(INFO, "Dialing %s", target)
 		_, err := net.DialTimeout("tcp", target, 2*time.Second)
