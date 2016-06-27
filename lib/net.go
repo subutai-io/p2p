@@ -172,15 +172,15 @@ func CreateIntroRequest(c Crypto, id string) *P2PMessage {
 	return msg
 }
 
-func CreateNencP2PMessage(c Crypto, data []byte, netProto uint16, id uint16) *P2PMessage {
+func CreateNencP2PMessage(c Crypto, data []byte, netProto, complete, id uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
 	msg.Header.Magic = MAGIC_COOKIE
 	msg.Header.Type = uint16(MT_NENC)
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
-	msg.Header.Complete = id
-	msg.Header.Id = 0
+	msg.Header.Complete = complete
+	msg.Header.Id = id
 	if c.Active {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, data)

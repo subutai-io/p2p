@@ -52,6 +52,8 @@ var (
 	errInvalidARPPacket = errors.New("invalid ARP packet")
 
 	//PacketHandlers map[PacketType]PacketHandlerCallback
+
+	PacketID uint16
 )
 
 type Operation uint16
@@ -113,6 +115,10 @@ func (p *PTPCloud) handlePacket(contents []byte, proto int) {
 // Handles a IPv4 packet and sends it to it's destination
 func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	Log(TRACE, "Handling IPv4 Packet")
+	PacketID++
+	if PacketID > 65000 {
+		PacketID = 0
+	}
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		Log(ERROR, "Failed to unmarshal IPv4 packet")
@@ -141,7 +147,7 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 			complete = 1
 			shift = len(contents)
 		}
-		msg := CreateNencP2PMessage(p.Crypter, contents[0:shift], uint16(proto), complete)
+		msg := CreateNencP2PMessage(p.Crypter, contents[0:shift], uint16(proto), complete, PacketID)
 		msg.Header.NetProto = uint16(proto)
 		_, err := p.SendTo(f.Destination, msg)
 		if err != nil {

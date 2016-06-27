@@ -601,22 +601,23 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 			}
 	f 	*/
 	// Check if packet is duplicated (VM wifi workaround)
-	if p.MessagePacket[src_addr.String()][msg.Header.ProxyId] == nil {
+	if p.MessagePacket[src_addr.String()][msg.Header.Id] == nil {
 		p.MessagePacket[src_addr.String()] = make(map[uint16][]byte)
 	}
-	if bytes.Equal(p.MessagePacket[src_addr.String()][msg.Header.ProxyId], msg.Data) {
+	if bytes.Equal(p.MessagePacket[src_addr.String()][msg.Header.Id], msg.Data) {
 		// Skip duplicate
 		return
 	} else {
-		p.MessagePacket[src_addr.String()][msg.Header.ProxyId] = msg.Data
+		p.MessagePacket[src_addr.String()][msg.Header.Id] = msg.Data
 	}
-	if p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] == nil {
+	if p.MessageBuffer[src_addr.String()][msg.Header.Id] == nil {
 		p.MessageBuffer[src_addr.String()] = make(map[uint16][]byte)
 	}
-	p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] = append(p.MessageBuffer[src_addr.String()][msg.Header.ProxyId], msg.Data...)
+	p.MessageBuffer[src_addr.String()][msg.Header.Id] = append(p.MessageBuffer[src_addr.String()][msg.Header.Id], msg.Data...)
 	if msg.Header.Complete == 1 {
-		p.WriteToDevice(p.MessageBuffer[src_addr.String()][msg.Header.ProxyId], msg.Header.NetProto, false)
-		p.MessageBuffer[src_addr.String()][msg.Header.ProxyId] = p.MessageBuffer[src_addr.String()][msg.Header.ProxyId][:0]
+		p.WriteToDevice(p.MessageBuffer[src_addr.String()][msg.Header.Id], msg.Header.NetProto, false)
+		p.MessageBuffer[src_addr.String()][msg.Header.Id] = p.MessageBuffer[src_addr.String()][msg.Header.Id][:0]
+		delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
 		//p.WriteToDevice(p.MessageBuffer[tid], msg.Header.NetProto, false)
 		//p.MessageBuffer[tid] = p.MessageBuffer[tid][:0]
 	}
