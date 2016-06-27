@@ -26,7 +26,7 @@ type PacketType int
 type PacketHandlerCallback func(data []byte, proto int)
 
 const (
-	ETH_PACKET_SIZE    int        = 512
+	ETH_PACKET_SIZE    int        = 300
 	PT_PARC_UNIVERSAL  PacketType = 512
 	PT_IPV4            PacketType = 2048
 	PT_ARP             PacketType = 2054
