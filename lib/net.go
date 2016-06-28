@@ -9,7 +9,7 @@ import (
 
 const (
 	MAGIC_COOKIE uint16 = 0xabcd
-	HEADER_SIZE  int    = 16
+	HEADER_SIZE  int    = 18
 )
 
 type P2PMessageHeader struct {
@@ -21,6 +21,7 @@ type P2PMessageHeader struct {
 	SerializedLen uint16
 	Complete      uint16
 	Id            uint16
+	Seq           uint16
 }
 
 type P2PMessage struct {
@@ -38,6 +39,7 @@ func (v *P2PMessageHeader) Serialize() []byte {
 	binary.BigEndian.PutUint16(res_buf[10:12], v.SerializedLen)
 	binary.BigEndian.PutUint16(res_buf[12:14], v.Complete)
 	binary.BigEndian.PutUint16(res_buf[14:16], v.Id)
+	binary.BigEndian.PutUint16(res_buf[16:18], v.Seq)
 	return res_buf
 }
 
@@ -55,6 +57,7 @@ func P2PMessageHeaderFromBytes(bytes []byte) (*P2PMessageHeader, error) {
 	result.SerializedLen = binary.BigEndian.Uint16(bytes[10:12])
 	result.Complete = binary.BigEndian.Uint16(bytes[12:14])
 	result.Id = binary.BigEndian.Uint16(bytes[14:16])
+	result.Seq = binary.BigEndian.Uint16(bytes[16:18])
 	return result, nil
 }
 
@@ -92,6 +95,8 @@ func CreateStringP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage 
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
 	msg.Header.Complete = 1
+	msg.Header.Id = 1
+	msg.Header.Seq = 1
 	if c.Active {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
@@ -113,6 +118,7 @@ func CreatePingP2PMessage() *P2PMessage {
 	msg.Header.Length = uint16(len("1"))
 	msg.Header.Complete = 1
 	msg.Header.Id = 0
+	msg.Header.Seq = 0
 	msg.Data = []byte("1")
 	return msg
 }
@@ -126,6 +132,7 @@ func CreateXpeerPingMessage(pt PingType, hw string) *P2PMessage {
 	msg.Header.Length = uint16(len(hw))
 	msg.Header.Complete = 1
 	msg.Header.Id = 0
+	msg.Header.Seq = 0
 	msg.Data = []byte(hw)
 	return msg
 }
@@ -139,6 +146,7 @@ func CreateIntroP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg.Header.Length = uint16(len(data))
 	msg.Header.Complete = 1
 	msg.Header.Id = 0
+	msg.Header.Seq = 0
 	if c.Active {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
@@ -160,6 +168,7 @@ func CreateIntroRequest(c Crypto, id string) *P2PMessage {
 	msg.Header.Length = uint16(len(id))
 	msg.Header.Complete = 1
 	msg.Header.Id = 0
+	msg.Header.Seq = 0
 	if c.Active {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(id))
@@ -172,7 +181,7 @@ func CreateIntroRequest(c Crypto, id string) *P2PMessage {
 	return msg
 }
 
-func CreateNencP2PMessage(c Crypto, data []byte, netProto, complete, id uint16) *P2PMessage {
+func CreateNencP2PMessage(c Crypto, data []byte, netProto, complete, id, seq uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
 	msg.Header.Magic = MAGIC_COOKIE
@@ -181,6 +190,7 @@ func CreateNencP2PMessage(c Crypto, data []byte, netProto, complete, id uint16) 
 	msg.Header.Length = uint16(len(data))
 	msg.Header.Complete = complete
 	msg.Header.Id = id
+	msg.Header.Seq = seq
 	if c.Active {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, data)
@@ -202,6 +212,7 @@ func CreateTestP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg.Header.Length = uint16(len(data))
 	msg.Header.Complete = 1
 	msg.Header.Id = 0
+	msg.Header.Seq = 0
 	if c.Active {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
@@ -225,6 +236,7 @@ func CreateProxyP2PMessage(id int, data string, netProto uint16) *P2PMessage {
 	msg.Header.Complete = 1
 	msg.Header.ProxyId = uint16(id)
 	msg.Header.Id = 0
+	msg.Header.Seq = 0
 	msg.Data = []byte(data)
 	return msg
 }
@@ -240,6 +252,7 @@ func CreateBadTunnelP2PMessage(id int, netProto uint16) *P2PMessage {
 	msg.Header.ProxyId = uint16(id)
 	msg.Header.Complete = 1
 	msg.Header.Id = 0
+	msg.Header.Seq = 0
 	msg.Data = []byte(data)
 	return msg
 }
