@@ -26,7 +26,7 @@ type PacketType int
 type PacketHandlerCallback func(data []byte, proto int)
 
 const (
-	ETH_PACKET_SIZE    int        = 300
+	ETH_PACKET_SIZE    int        = 304
 	PT_PARC_UNIVERSAL  PacketType = 512
 	PT_IPV4            PacketType = 2048
 	PT_ARP             PacketType = 2054
@@ -119,6 +119,7 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	if PacketID > 65000 {
 		PacketID = 0
 	}
+	pid := PacketID
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		Log(ERROR, "Failed to unmarshal IPv4 packet")
@@ -147,7 +148,7 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 			complete = 1
 			shift = len(contents)
 		}
-		msg := CreateNencP2PMessage(p.Crypter, contents[0:shift], uint16(proto), complete, PacketID)
+		msg := CreateNencP2PMessage(p.Crypter, contents[0:shift], uint16(proto), complete, pid)
 		msg.Header.NetProto = uint16(proto)
 		_, err := p.SendTo(f.Destination, msg)
 		if err != nil {
