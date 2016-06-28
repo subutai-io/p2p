@@ -141,6 +141,7 @@ func (np *NetworkPeer) StateConnected(ptpc *PTPCloud) error {
 	}
 	passed := time.Since(np.LastContact)
 	if passed > PEER_PING_TIMEOUT {
+		Log(DEBUG, "Sending ping")
 		msg := CreateXpeerPingMessage(PING_REQ, ptpc.HardwareAddr.String())
 		ptpc.SendTo(np.PeerHW, msg)
 		np.PingCount++
@@ -189,6 +190,7 @@ func (np *NetworkPeer) StateWaitingForwarder(ptpc *PTPCloud) error {
 	if np.ProxyRequests >= 3 {
 		Log(INFO, "We've failed to receive any proxies within this period")
 		np.State = P_DISCONNECT
+		ptpc.Dht.CleanForwarderBlacklist()
 		return nil
 	}
 	Log(INFO, "Requesting proxy for %s", np.ID)
@@ -226,7 +228,7 @@ func (np *NetworkPeer) StateHandshakingForwarder(ptpc *PTPCloud) error {
 				a := np.Forwarder
 				np.Forwarder = nil
 				np.State = P_WAITING_FORWARDER
-				return errors.New(fmt.Sprintf("%s failed to handshake with proxy %s", np.ID, a.String()))
+				return errors.New(fmt.Sprintf("Failed to handshake with proxy %s [%s]", np.ID, a.String()))
 			} else {
 				err := np.SendProxyHandshake(ptpc)
 				if err != nil {
@@ -248,6 +250,8 @@ func (np *NetworkPeer) StateHandshakingFailed(ptpc *PTPCloud) error {
 		Log(ERROR, "Failed to handshake with %s via proxy %s", np.ID, np.Forwarder.String())
 		np.BlacklistCurrentProxy(ptpc)
 		np.Forwarder = nil
+	} else {
+		Log(ERROR, "Failed to handshake directly. Switching to proxy")
 	}
 	np.State = P_WAITING_FORWARDER
 	return nil
@@ -359,6 +363,9 @@ func (np *NetworkPeer) ProbeLocalConnection(ptpc *PTPCloud) bool {
 	return false
 }
 
+/*
+ * Handshakes remote peer
+ */
 func (np *NetworkPeer) SendHandshake(ptpc *PTPCloud) {
 	Log(DEBUG, "Preparing introduction message for %s", np.ID)
 	msg := CreateIntroRequest(ptpc.Crypter, ptpc.Dht.ID)
@@ -371,6 +378,9 @@ func (np *NetworkPeer) SendHandshake(ptpc *PTPCloud) {
 	}
 }
 
+/*
+ * Handshakes traffic forwarder
+ */
 func (np *NetworkPeer) SendProxyHandshake(ptpc *PTPCloud) error {
 	Log(INFO, "Handshaking with proxy %s for %s", np.Forwarder.String(), np.ID)
 	msg := CreateProxyP2PMessage(-1, np.PeerAddr.String(), uint16(ptpc.UDPSocket.GetPort()))

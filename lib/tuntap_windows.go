@@ -3,6 +3,7 @@
 package ptp
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"golang.org/x/sys/windows"
@@ -10,6 +11,7 @@ import (
 	"syscall"
 	"unicode/utf16"
 	"unsafe"
+	//"strconv"
 )
 
 var (
@@ -23,6 +25,7 @@ type Interface struct {
 	Interface string
 	IP        string
 	Mask      string
+	Mac       string
 	Rx        chan []byte
 	Tx        chan []byte
 }
@@ -37,8 +40,8 @@ const (
 	USER_DEVICE_DIR     string         = "\\DosDevices\\Global\\"
 	TAP_SUFFIX          string         = ".tap"
 	INVALID_HANDLE      syscall.Handle = 0
-	ADD_DEV string = "addtap.bat"
-	REMOVE_DEV string = "deltapall.bat"
+	ADD_DEV             string         = "addtap.bat"
+	REMOVE_DEV          string         = "deltapall.bat"
 )
 
 var (
@@ -119,6 +122,8 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 		}
 		syscall.RegCloseKey(iHandle)
 		adapterName := removeZeroes(string(aName))
+
+		// TODO: Improve this part
 
 		var isInUse bool = false
 		for _, i := range UsedInterfaces {
@@ -227,6 +232,29 @@ func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 		return err
 	}
 	return nil
+}
+
+func ExtractMacFromInterface(dev *Interface) string {
+	mac := make([]byte, 6)
+	var length uint32
+	err := syscall.DeviceIoControl(dev.file, TAP_IOCTL_GET_MAC, &mac[0], uint32(len(mac)), &mac[0], uint32(len(mac)), &length, nil)
+	if err != nil {
+		Log(ERROR, "Failed to get MAC from device")
+	}
+	var macAddr bytes.Buffer
+	/*
+		macAddr := fmt.Sprintf("%x:%x:%x:%x:%x:%x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5])
+		Log(INFO, "MAC: %s", macAddr)*/
+	for _, a := range mac {
+		if a == 0 {
+			macAddr.WriteString("00")
+			continue
+		}
+		macAddr.WriteString(":")
+		macAddr.WriteString(fmt.Sprintf("%x", a))
+	}
+	Log(INFO, "MAC: %s", macAddr.String())
+	return macAddr.String()
 }
 
 func (t *Interface) Run() {

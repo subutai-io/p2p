@@ -4,9 +4,9 @@ import (
 	"time"
 )
 
-const PACKET_VERSION string = "4"
+const PACKET_VERSION string = "6"
 
-var SUPPORTED_VERSIONS = [...]string{"4", "5"}
+var SUPPORTED_VERSIONS = [...]string{"6", "7"}
 
 type DHTMessage struct {
 	Id        string "i"
@@ -82,7 +82,7 @@ const (
 const (
 	DHT_MAX_RETRIES         int           = 10
 	DHCP_MAX_RETRIES        int           = 10
-	PEER_PING_TIMEOUT       time.Duration = 15 * time.Second
-	WAIT_PROXY_TIMEOUT      time.Duration = 5 * time.Second
-	HANDSHAKE_PROXY_TIMEOUT time.Duration = 3 * time.Second
+	PEER_PING_TIMEOUT       time.Duration = time.Second * 15
+	WAIT_PROXY_TIMEOUT      time.Duration = time.Second * 5
+	HANDSHAKE_PROXY_TIMEOUT time.Duration = time.Second * 3
 )

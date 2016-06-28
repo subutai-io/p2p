@@ -26,6 +26,7 @@ type PacketType int
 type PacketHandlerCallback func(data []byte, proto int)
 
 const (
+	ETH_PACKET_SIZE    int        = 304
 	PT_PARC_UNIVERSAL  PacketType = 512
 	PT_IPV4            PacketType = 2048
 	PT_ARP             PacketType = 2054
@@ -34,6 +35,7 @@ const (
 	PT_IPV6            PacketType = 34525
 	PT_PPPOE_DISCOVERY PacketType = 34915
 	PT_PPPOE_SESSION   PacketType = 34916
+	PT_LLDP            PacketType = 35020
 )
 
 var (
@@ -50,6 +52,8 @@ var (
 	errInvalidARPPacket = errors.New("invalid ARP packet")
 
 	//PacketHandlers map[PacketType]PacketHandlerCallback
+
+	PacketID uint16
 )
 
 type Operation uint16
@@ -111,6 +115,11 @@ func (p *PTPCloud) handlePacket(contents []byte, proto int) {
 // Handles a IPv4 packet and sends it to it's destination
 func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	Log(TRACE, "Handling IPv4 Packet")
+	PacketID++
+	if PacketID > 65000 {
+		PacketID = 0
+	}
+	pid := PacketID
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		Log(ERROR, "Failed to unmarshal IPv4 packet")
@@ -119,13 +128,36 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	if f.EtherType != ethernet.EtherTypeIPv4 {
 		return
 	}
+	/*
+		// Normal version
+		msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto), 1)
+		msg.Header.NetProto = uint16(proto)
+		_, err := p.SendTo(f.Destination, msg)
+		if err != nil {
+			Log(ERROR, "Failed to send message over P2P: %v", err)
+			return
+		}
+	*/
 
-	msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto))
-	msg.Header.NetProto = uint16(proto)
-	_, err := p.SendTo(f.Destination, msg)
-	if err != nil {
-		Log(ERROR, "Failed to send message over P2P: %v", err)
-		return
+	// Packet splitting version
+	var complete uint16 = 0
+	var seq uint16 = 0
+	// TODO: Review this part. I was drunk
+	for len(contents) > 0 {
+		shift := ETH_PACKET_SIZE
+		if len(contents) < ETH_PACKET_SIZE {
+			complete = seq
+			shift = len(contents)
+		}
+		msg := CreateNencP2PMessage(p.Crypter, contents[0:shift], uint16(proto), complete, pid, seq)
+		msg.Header.NetProto = uint16(proto)
+		_, err := p.SendTo(f.Destination, msg)
+		if err != nil {
+			Log(ERROR, "Failed to send message over P2P: %v", err)
+			return
+		}
+		contents = contents[shift:]
+		seq++
 	}
 }
 
@@ -230,6 +262,10 @@ func (p *PTPCloud) handlePacketARP(contents []byte, proto int) {
 	}
 	Log(DEBUG, "%v", packet.String())
 	p.WriteToDevice(fb, uint16(proto), false)
+}
+
+func (p *PTPCloud) handlePacketLLDP(contents []byte, proto int) {
+	Log(TRACE, "Handling LLDP Session Packet")
 }
 
 func (p *ARPPacket) String() string {

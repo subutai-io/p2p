@@ -1,6 +1,7 @@
 package ptp
 
 import (
+	"bytes"
 	"crypto/rand"
 	"fmt"
 	"gopkg.in/yaml.v2"
@@ -37,6 +38,8 @@ type PTPCloud struct {
 	DHTPeerChannel  chan []PeerIP
 	ProxyChannel    chan Forwarder
 	RemovePeer      chan string
+	MessageBuffer   map[string]map[uint16]map[uint16][]byte
+	MessagePacket   map[string]map[uint16][]byte
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -69,7 +72,13 @@ func (p *PTPCloud) AssignInterface(ip, mac, mask, device string) error {
 		Log(INFO, "%v TAP Device created", p.DeviceName)
 	}
 
-	err = ConfigureInterface(p.Device, p.IP, mac, p.DeviceName, p.IPTool)
+	// Windows returns a real mac here. However, other systems should return empty string
+	mac = ExtractMacFromInterface(p.Device)
+	if mac != "" {
+		p.Mac = mac
+	}
+
+	err = ConfigureInterface(p.Device, p.IP, p.Mac, p.DeviceName, p.IPTool)
 	if err != nil {
 		return err
 	}
@@ -219,6 +228,8 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.NetworkPeers = make(map[string]*NetworkPeer)
 	p.IPIDTable = make(map[string]string)
 	p.MACIDTable = make(map[string]string)
+	p.MessageBuffer = make(map[string]map[uint16]map[uint16][]byte)
+	p.MessagePacket = make(map[string]map[uint16][]byte)
 
 	if fwd {
 		p.ForwardMode = true
@@ -279,6 +290,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.PacketHandlers[PT_IPV6] = p.handlePacketIPv6
 	p.PacketHandlers[PT_PPPOE_DISCOVERY] = p.handlePPPoEDiscoveryPacket
 	p.PacketHandlers[PT_PPPOE_SESSION] = p.handlePPPoESessionPacket
+	p.PacketHandlers[PT_LLDP] = p.handlePacketLLDP
 
 	p.UDPSocket = new(PTPNet)
 	p.UDPSocket.Init("", port)
@@ -570,7 +582,57 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 
 func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	Log(TRACE, "Data: %s, Proto: %d, From: %s", msg.Data, msg.Header.NetProto, src_addr.String())
-	p.WriteToDevice(msg.Data, msg.Header.NetProto, false)
+	/*
+		// Normal version
+		p.WriteToDevice(msg.Data, msg.Header.NetProto, false)
+	*/
+	/*
+			var tid string
+			for id, peer := range p.NetworkPeers {
+				Log(INFO, "%s %d", peer.Endpoint.String(), peer.ProxyID)
+				if peer.Endpoint.String() == src_addr.String() && uint16(peer.ProxyID) == msg.Header.ProxyId {
+					tid = id
+					p.MessageBuffer[id] = append(p.MessageBuffer[id], msg.Data...)
+				}
+			}
+			if tid == "" {
+				Log(INFO, "Not found %s %d", src_addr.String(), msg.Header.ProxyId)
+				return
+			}
+	f 	*/
+	// Check if packet is duplicated (VM wifi workaround)
+	if p.MessagePacket[src_addr.String()][msg.Header.Id] == nil {
+		p.MessagePacket[src_addr.String()] = make(map[uint16][]byte)
+	}
+	if bytes.Equal(p.MessagePacket[src_addr.String()][msg.Header.Id], msg.Data) {
+		// Skip duplicate
+		return
+	} else {
+		p.MessagePacket[src_addr.String()][msg.Header.Id] = msg.Data
+	}
+	if p.MessageBuffer[src_addr.String()][msg.Header.Id] == nil {
+		p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
+		p.MessageBuffer[src_addr.String()][msg.Header.Id] = make(map[uint16][]byte)
+	}
+	//p.MessageBuffer[src_addr.String()][msg.Header.Id][msg.Header.Seq] = append(p.MessageBuffer[src_addr.String()][msg.Header.Id][msg.Header.Seq], msg.Data...)
+	p.MessageBuffer[src_addr.String()][msg.Header.Id][msg.Header.Seq] = msg.Data
+	if msg.Header.Complete > 0 {
+		var b []byte
+		for i := uint16(0); i <= msg.Header.Complete; i++ {
+			data, exists := p.MessageBuffer[src_addr.String()][msg.Header.Id][i]
+			if exists {
+				b = append(b, data...)
+			} else {
+				Log(ERROR, "Missing packet fragment %d/%d", i, msg.Header.Complete)
+			}
+		}
+		p.WriteToDevice(b, msg.Header.NetProto, false)
+		//p.WriteToDevice(p.MessageBuffer[src_addr.String()][msg.Header.Id], msg.Header.NetProto, false)
+		//p.MessageBuffer[src_addr.String()][msg.Header.Id] = p.MessageBuffer[src_addr.String()][msg.Header.Id][:0]
+		delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
+		//p.WriteToDevice(p.MessageBuffer[tid], msg.Header.NetProto, false)
+		//p.MessageBuffer[tid] = p.MessageBuffer[tid][:0]
+	}
 }
 
 func (p *PTPCloud) HandlePingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
@@ -580,6 +642,7 @@ func (p *PTPCloud) HandlePingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 func (p *PTPCloud) HandleXpeerPingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	pt := PingType(msg.Header.NetProto)
 	if pt == PING_REQ {
+		Log(DEBUG, "Ping request received")
 		// Send a PING response
 		r := CreateXpeerPingMessage(PING_RESP, p.HardwareAddr.String())
 		addr, err := net.ParseMAC(string(msg.Data))
@@ -587,8 +650,10 @@ func (p *PTPCloud) HandleXpeerPingMessage(msg *P2PMessage, src_addr *net.UDPAddr
 			Log(ERROR, "Failed to parse MAC address in crosspeer ping message")
 		} else {
 			p.SendTo(addr, r)
+			Log(DEBUG, "Sending to %s", addr.String())
 		}
 	} else {
+		Log(DEBUG, "Ping response received")
 		// Handle PING response
 		for i, peer := range p.NetworkPeers {
 			if peer.PeerHW.String() == string(msg.Data) {
@@ -640,6 +705,10 @@ func (p *PTPCloud) HandleProxyMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 		return
 	}
 	ip := string(msg.Data)
+	if ip == "" {
+		Log(WARNING, "Broken confirmation from proxy")
+		return
+	}
 	Log(INFO, "Proxy confirmation received from %s. Tunnel ID %d", ip, int(msg.Header.ProxyId))
 	for key, peer := range p.NetworkPeers {
 		if peer.PeerAddr.String() == ip {
@@ -652,9 +721,9 @@ func (p *PTPCloud) HandleProxyMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 }
 
 func (p *PTPCloud) HandleBadTun(msg *P2PMessage, src_addr *net.UDPAddr) {
-	Log(DEBUG, "Cleaning bad tunnel with ID: %d", msg.Header.ProxyId)
 	for key, peer := range p.NetworkPeers {
-		if peer.ProxyID == int(msg.Header.ProxyId) {
+		if peer.ProxyID == int(msg.Header.ProxyId) && peer.Endpoint.String() == src_addr.String() {
+			Log(DEBUG, "Cleaning bad tunnel %d from %s", msg.Header.ProxyId, src_addr.String())
 			peer.ProxyID = 0
 			peer.Endpoint = nil
 			peer.Forwarder = nil
@@ -682,7 +751,7 @@ func (p *PTPCloud) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
 		peer, exists := p.NetworkPeers[id]
 		if exists {
 			msg.Header.ProxyId = uint16(peer.ProxyID)
-			Log(TRACE, "Sending to %s via proxy id %d", dst.String(), msg.Header.ProxyId)
+			Log(DEBUG, "Sending to %s via proxy id %d", dst.String(), msg.Header.ProxyId)
 			size, err := p.UDPSocket.SendMessage(msg, peer.Endpoint)
 			return size, err
 		}
@@ -695,6 +764,7 @@ func (p *PTPCloud) StopInstance() {
 		peer.State = P_DISCONNECT
 		p.NetworkPeers[i] = peer
 	}
+	ip := p.Dht.Network.IP
 	p.Dht.Stop()
 	p.UDPSocket.Stop()
 	p.Shutdown = true
@@ -702,7 +772,6 @@ func (p *PTPCloud) StopInstance() {
 	var proxy Forwarder
 	p.DHTPeerChannel <- peers
 	p.ProxyChannel <- proxy
-	//p.Dht.RemovePeerChan <- "DUMMY"
 	Log(INFO, "Stopping P2P Message handler")
 	// Tricky part: we need to send a message to ourselves to quit blocking operation
 	msg := CreateTestP2PMessage(p.Crypter, "STOP", 1)
@@ -711,7 +780,6 @@ func (p *PTPCloud) StopInstance() {
 	var ipIt int = 200
 	for p.IsDeviceExists(p.DeviceName) {
 		time.Sleep(1 * time.Second)
-		ip := p.Dht.Network.IP
 		target := fmt.Sprintf("%d.%d.%d.%d:99", ip[0], ip[1], ip[2], ipIt)
 		Log(INFO, "Dialing %s", target)
 		_, err := net.DialTimeout("tcp", target, 2*time.Second)
@@ -747,6 +815,7 @@ func (p *PTPCloud) ReadProxies() {
 		exists := false
 		for i, peer := range p.NetworkPeers {
 			if i == proxy.DestinationID {
+				peer.State = P_HANDSHAKING_FORWARDER
 				peer.Forwarder = proxy.Addr
 				peer.Endpoint = proxy.Addr
 				p.NetworkPeers[i] = peer
