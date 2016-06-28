@@ -141,15 +141,14 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 
 	// Packet splitting version
 	var complete uint16 = 0
-	var seq uint16 = 0
 	// TODO: Review this part. I was drunk
 	for len(contents) > 0 {
 		shift := ETH_PACKET_SIZE
 		if len(contents) < ETH_PACKET_SIZE {
-			complete = seq
+			complete = 1
 			shift = len(contents)
 		}
-		msg := CreateNencP2PMessage(p.Crypter, contents[0:shift], uint16(proto), complete, pid, seq)
+		msg := CreateNencP2PMessage(p.Crypter, contents[0:shift], uint16(proto), complete, pid)
 		msg.Header.NetProto = uint16(proto)
 		_, err := p.SendTo(f.Destination, msg)
 		if err != nil {
@@ -157,7 +156,6 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 			return
 		}
 		contents = contents[shift:]
-		seq++
 	}
 }
 

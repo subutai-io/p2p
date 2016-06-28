@@ -38,7 +38,7 @@ type PTPCloud struct {
 	DHTPeerChannel  chan []PeerIP
 	ProxyChannel    chan Forwarder
 	RemovePeer      chan string
-	MessageBuffer   map[string]map[uint16]map[uint16][]byte
+	MessageBuffer   map[string]map[uint16][]byte
 	MessagePacket   map[string]map[uint16][]byte
 }
 
@@ -228,7 +228,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.NetworkPeers = make(map[string]*NetworkPeer)
 	p.IPIDTable = make(map[string]string)
 	p.MACIDTable = make(map[string]string)
-	p.MessageBuffer = make(map[string]map[uint16]map[uint16][]byte)
+	p.MessageBuffer = make(map[string]map[uint16][]byte)
 	p.MessagePacket = make(map[string]map[uint16][]byte)
 
 	if fwd {
@@ -611,24 +611,12 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 		p.MessagePacket[src_addr.String()][msg.Header.Id] = msg.Data
 	}
 	if p.MessageBuffer[src_addr.String()][msg.Header.Id] == nil {
-		p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
-		p.MessageBuffer[src_addr.String()][msg.Header.Id] = make(map[uint16][]byte)
+		p.MessageBuffer[src_addr.String()] = make(map[uint16][]byte)
 	}
-	//p.MessageBuffer[src_addr.String()][msg.Header.Id][msg.Header.Seq] = append(p.MessageBuffer[src_addr.String()][msg.Header.Id][msg.Header.Seq], msg.Data...)
-	p.MessageBuffer[src_addr.String()][msg.Header.Id][msg.Header.Seq] = msg.Data
-	if msg.Header.Complete > 0 {
-		var b []byte
-		for i := uint16(0); i <= msg.Header.Complete; i++ {
-			data, exists := p.MessageBuffer[src_addr.String()][msg.Header.Id][i]
-			if exists {
-				b = append(b, data...)
-			} else {
-				Log(ERROR, "Missing packet fragment %d/%d", i, msg.Header.Complete)
-			}
-		}
-		p.WriteToDevice(b, msg.Header.NetProto, false)
-		//p.WriteToDevice(p.MessageBuffer[src_addr.String()][msg.Header.Id], msg.Header.NetProto, false)
-		//p.MessageBuffer[src_addr.String()][msg.Header.Id] = p.MessageBuffer[src_addr.String()][msg.Header.Id][:0]
+	p.MessageBuffer[src_addr.String()][msg.Header.Id] = append(p.MessageBuffer[src_addr.String()][msg.Header.Id], msg.Data...)
+	if msg.Header.Complete == 1 {
+		p.WriteToDevice(p.MessageBuffer[src_addr.String()][msg.Header.Id], msg.Header.NetProto, false)
+		p.MessageBuffer[src_addr.String()][msg.Header.Id] = p.MessageBuffer[src_addr.String()][msg.Header.Id][:0]
 		delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
 		//p.WriteToDevice(p.MessageBuffer[tid], msg.Header.NetProto, false)
 		//p.MessageBuffer[tid] = p.MessageBuffer[tid][:0]
@@ -705,10 +693,6 @@ func (p *PTPCloud) HandleProxyMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 		return
 	}
 	ip := string(msg.Data)
-	if ip == "" {
-		Log(WARNING, "Broken confirmation from proxy")
-		return
-	}
 	Log(INFO, "Proxy confirmation received from %s. Tunnel ID %d", ip, int(msg.Header.ProxyId))
 	for key, peer := range p.NetworkPeers {
 		if peer.PeerAddr.String() == ip {

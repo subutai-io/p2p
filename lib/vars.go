@@ -4,9 +4,9 @@ import (
 	"time"
 )
 
-const PACKET_VERSION string = "6"
+const PACKET_VERSION string = "4"
 
-var SUPPORTED_VERSIONS = [...]string{"6", "7"}
+var SUPPORTED_VERSIONS = [...]string{"4", "5"}
 
 type DHTMessage struct {
 	Id        string "i"
