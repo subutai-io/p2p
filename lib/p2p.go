@@ -705,6 +705,10 @@ func (p *PTPCloud) HandleProxyMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 		return
 	}
 	ip := string(msg.Data)
+	if ip == "" {
+		Log(WARNING, "Broken confirmation from proxy")
+		return
+	}
 	Log(INFO, "Proxy confirmation received from %s. Tunnel ID %d", ip, int(msg.Header.ProxyId))
 	for key, peer := range p.NetworkPeers {
 		if peer.PeerAddr.String() == ip {
