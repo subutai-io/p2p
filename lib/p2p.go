@@ -616,6 +616,14 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 	}
 	p.MessageBuffer[src_addr.String()][msg.Header.Id][msg.Header.Seq] = msg.Data
 	if msg.Header.Complete > 0 {
+		wcounter := 0
+		for len(p.MessageBuffer[src_addr.String()][msg.Header.Id]) != int(msg.Header.Complete) {
+			time.Sleep(100 * time.Millisecond)
+			wcounter++
+			if wcounter > 10 {
+				return
+			}
+		}
 		var b []byte
 		for i := uint16(1); i <= msg.Header.Complete; i++ {
 			data, exists := p.MessageBuffer[src_addr.String()][msg.Header.Id][i]
@@ -623,6 +631,7 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 				b = append(b, data...)
 			} else {
 				Log(ERROR, "Missing packet: %d/%d", i, msg.Header.Complete)
+				return
 			}
 		}
 		p.WriteToDevice(b, msg.Header.NetProto, false)
