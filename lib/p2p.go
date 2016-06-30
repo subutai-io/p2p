@@ -76,6 +76,7 @@ func (p *PTPCloud) AssignInterface(ip, mac, mask, device string) error {
 	mac = ExtractMacFromInterface(p.Device)
 	if mac != "" {
 		p.Mac = mac
+		p.HardwareAddr, _ = net.ParseMAC(mac)
 	}
 
 	err = ConfigureInterface(p.Device, p.IP, p.Mac, p.DeviceName, p.IPTool)
