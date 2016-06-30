@@ -660,7 +660,7 @@ func (p *PTPCloud) HandleXpeerPingMessage(msg *P2PMessage, src_addr *net.UDPAddr
 			Log(ERROR, "Failed to parse MAC address in crosspeer ping message")
 		} else {
 			p.SendTo(addr, r)
-			Log(DEBUG, "Sending to %s", addr.String())
+			Log(DEBUG, "Sending to %s, MAC: %s", src_addr.String(), addr.String())
 		}
 	} else {
 		Log(DEBUG, "Ping response received from %s", src_addr)
@@ -683,6 +683,7 @@ func (p *PTPCloud) HandleIntroMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 		p.Dht.SendUpdateRequest()
 		return
 	}
+	Log(DEBUG, "Received intro. IP: %s, Mac: %s, ID: %s", ip.String(), mac.String(), id)
 	peer.PeerHW = mac
 	peer.PeerLocalIP = ip
 	peer.State = P_CONNECTED
