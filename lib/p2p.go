@@ -659,10 +659,10 @@ func (p *PTPCloud) HandleXpeerPingMessage(msg *P2PMessage, src_addr *net.UDPAddr
 		if err != nil {
 			Log(ERROR, "Failed to parse MAC address in crosspeer ping message")
 		} else {
-			err := p.SendTo(addr, r)
+			_, err := p.SendTo(addr, r)
 			if err != nil {
 				Log(ERROR, "Failed to send ping response: %v", err)
-			} else {}
+			} else {
 				Log(DEBUG, "Sending to %s, MAC: %s", src_addr.String(), addr.String())
 			}
 		}
