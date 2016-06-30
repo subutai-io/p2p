@@ -659,8 +659,12 @@ func (p *PTPCloud) HandleXpeerPingMessage(msg *P2PMessage, src_addr *net.UDPAddr
 		if err != nil {
 			Log(ERROR, "Failed to parse MAC address in crosspeer ping message")
 		} else {
-			p.SendTo(addr, r)
-			Log(DEBUG, "Sending to %s, MAC: %s", src_addr.String(), addr.String())
+			err := p.SendTo(addr, r)
+			if err != nil {
+				Log(ERROR, "Failed to send ping response: %v", err)
+			} else {}
+				Log(DEBUG, "Sending to %s, MAC: %s", src_addr.String(), addr.String())
+			}
 		}
 	} else {
 		Log(DEBUG, "Ping response received from %s", src_addr)
@@ -761,7 +765,11 @@ func (p *PTPCloud) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
 			Log(DEBUG, "Sending to %s via proxy id %d", dst.String(), msg.Header.ProxyId)
 			size, err := p.UDPSocket.SendMessage(msg, peer.Endpoint)
 			return size, err
+		} else {
+			Log(ERROR, "Can't send: Peer %s not found", id)
 		}
+	} else {
+		Log(ERROR, "Can't find in MACID table %s", dst.String())
 	}
 	return 0, nil
 }
