@@ -652,22 +652,18 @@ func (p *PTPCloud) HandlePingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 func (p *PTPCloud) HandleXpeerPingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	pt := PingType(msg.Header.NetProto)
 	if pt == PING_REQ {
-		Log(DEBUG, "Ping request received from %s", src_addr)
+		Log(DEBUG, "Ping request received")
 		// Send a PING response
 		r := CreateXpeerPingMessage(PING_RESP, p.HardwareAddr.String())
 		addr, err := net.ParseMAC(string(msg.Data))
 		if err != nil {
 			Log(ERROR, "Failed to parse MAC address in crosspeer ping message")
 		} else {
-			_, err := p.SendTo(addr, r)
-			if err != nil {
-				Log(ERROR, "Failed to send ping response: %v", err)
-			} else {
-				Log(DEBUG, "Sending to %s, MAC: %s", src_addr.String(), addr.String())
-			}
+			p.SendTo(addr, r)
+			Log(DEBUG, "Sending to %s", addr.String())
 		}
 	} else {
-		Log(DEBUG, "Ping response received from %s", src_addr)
+		Log(DEBUG, "Ping response received")
 		// Handle PING response
 		for i, peer := range p.NetworkPeers {
 			if peer.PeerHW.String() == string(msg.Data) {
@@ -687,7 +683,6 @@ func (p *PTPCloud) HandleIntroMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 		p.Dht.SendUpdateRequest()
 		return
 	}
-	Log(DEBUG, "Received intro. IP: %s, Mac: %s, ID: %s", ip.String(), mac.String(), id)
 	peer.PeerHW = mac
 	peer.PeerLocalIP = ip
 	peer.State = P_CONNECTED
@@ -765,11 +760,7 @@ func (p *PTPCloud) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
 			Log(DEBUG, "Sending to %s via proxy id %d", dst.String(), msg.Header.ProxyId)
 			size, err := p.UDPSocket.SendMessage(msg, peer.Endpoint)
 			return size, err
-		} else {
-			Log(ERROR, "Can't send: Peer %s not found", id)
 		}
-	} else {
-		Log(ERROR, "Can't find in MACID table %s", dst.String())
 	}
 	return 0, nil
 }
