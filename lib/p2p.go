@@ -771,7 +771,12 @@ func (p *PTPCloud) StopInstance() {
 		peer.State = P_DISCONNECT
 		p.NetworkPeers[i] = peer
 	}
-	ip := p.Dht.Network.IP
+	var ip net.IP
+	if p.Dht == nil || p.Dht.Network == nil {
+		Log(WARNING, "DHT isn't in use")
+	} else {
+		ip = p.Dht.Network.IP
+	}
 	p.Dht.Stop()
 	p.UDPSocket.Stop()
 	p.Shutdown = true
@@ -785,17 +790,19 @@ func (p *PTPCloud) StopInstance() {
 	addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", p.Dht.P2PPort))
 	p.UDPSocket.SendMessage(msg, addr)
 	var ipIt int = 200
-	for p.IsDeviceExists(p.DeviceName) {
-		time.Sleep(1 * time.Second)
-		target := fmt.Sprintf("%d.%d.%d.%d:99", ip[0], ip[1], ip[2], ipIt)
-		Log(INFO, "Dialing %s", target)
-		_, err := net.DialTimeout("tcp", target, 2*time.Second)
-		if err != nil {
-			Log(INFO, "ERROR: %v", err)
-		}
-		ipIt++
-		if ipIt == 255 {
-			break
+	if ip != nil {
+		for p.IsDeviceExists(p.DeviceName) {
+			time.Sleep(1 * time.Second)
+			target := fmt.Sprintf("%d.%d.%d.%d:99", ip[0], ip[1], ip[2], ipIt)
+			Log(INFO, "Dialing %s", target)
+			_, err := net.DialTimeout("tcp", target, 2*time.Second)
+			if err != nil {
+				Log(INFO, "ERROR: %v", err)
+			}
+			ipIt++
+			if ipIt == 255 {
+				break
+			}
 		}
 	}
 	time.Sleep(3 * time.Second)
