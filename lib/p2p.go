@@ -652,7 +652,7 @@ func (p *PTPCloud) HandlePingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 func (p *PTPCloud) HandleXpeerPingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	pt := PingType(msg.Header.NetProto)
 	if pt == PING_REQ {
-		Log(DEBUG, "Ping request received")
+		Log(DEBUG, "Ping request received from %s", src_addr)
 		// Send a PING response
 		r := CreateXpeerPingMessage(PING_RESP, p.HardwareAddr.String())
 		addr, err := net.ParseMAC(string(msg.Data))
@@ -663,7 +663,7 @@ func (p *PTPCloud) HandleXpeerPingMessage(msg *P2PMessage, src_addr *net.UDPAddr
 			Log(DEBUG, "Sending to %s", addr.String())
 		}
 	} else {
-		Log(DEBUG, "Ping response received")
+		Log(DEBUG, "Ping response received from %s", src_addr)
 		// Handle PING response
 		for i, peer := range p.NetworkPeers {
 			if peer.PeerHW.String() == string(msg.Data) {
