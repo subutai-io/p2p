@@ -192,7 +192,6 @@ func (np *NetworkPeer) StateWaitingForwarder(ptpc *PTPCloud) error {
 	if np.ProxyRequests >= 3 {
 		Log(INFO, "We've failed to receive any proxies within this period")
 		np.State = P_INIT
-		np.KnownIPs = np.KnownIPs[:0]
 		ptpc.Dht.CleanForwarderBlacklist()
 		np.ProxyRequests = 0
 		return nil
