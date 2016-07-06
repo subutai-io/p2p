@@ -633,8 +633,11 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 			wcounter++
 			if wcounter > 100 {
 				Log(ERROR, "Packet incomplete. Last sequence: %d. Len: %d, Excepting: %d", msg.Header.Seq, len(p.MessageBuffer[src_addr.String()][msg.Header.Id]), msg.Header.Complete)
+				p.BufferLock.Lock()
 				delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
 				p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
+				p.BufferLock.Unlock()
+				runtime.Gosched()
 				return
 			}
 		}
@@ -645,7 +648,10 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 				b = append(b, data...)
 			} else {
 				Log(ERROR, "Missing packet: %d/%d", i, msg.Header.Complete)
+				p.BufferLock.Lock()
 				delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
+				p.BufferLock.Unlock()
+				runtime.Gosched()
 				return
 			}
 		}
@@ -654,7 +660,10 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 			p.WriteToDevice(p.MessageBuffer[src_addr.String()][msg.Header.Id], msg.Header.NetProto, false)
 			p.MessageBuffer[src_addr.String()][msg.Header.Id] = p.MessageBuffer[src_addr.String()][msg.Header.Id][:0]
 		*/
+		p.BufferLock.Lock()
 		delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
+		p.BufferLock.Unlock()
+		runtime.Gosched()
 		//p.WriteToDevice(p.MessageBuffer[tid], msg.Header.NetProto, false)
 		//p.MessageBuffer[tid] = p.MessageBuffer[tid][:0]
 	}
