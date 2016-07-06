@@ -628,11 +628,21 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 	runtime.Gosched()
 	if msg.Header.Complete > 0 {
 		wcounter := 0
-		for len(p.MessageBuffer[src_addr.String()][msg.Header.Id]) != int(msg.Header.Complete) {
+		p.BufferLock.Lock()
+		plen := len(p.MessageBuffer[src_addr.String()][msg.Header.Id])
+		p.BufferLock.Unlock()
+		runtime.Gosched()
+		for plen != int(msg.Header.Complete) {
 			time.Sleep(10 * time.Millisecond)
+			p.BufferLock.Lock()
+			plen = len(p.MessageBuffer[src_addr.String()][msg.Header.Id])
+			p.BufferLock.Unlock()
+			runtime.Gosched()
+
 			wcounter++
 			if wcounter > 100 {
-				Log(ERROR, "Packet incomplete. Last sequence: %d. Len: %d, Excepting: %d", msg.Header.Seq, len(p.MessageBuffer[src_addr.String()][msg.Header.Id]), msg.Header.Complete)
+				Log(ERROR, "Packet incomplete")
+				//Log(ERROR, "Packet incomplete. Last sequence: %d. Len: %d, Excepting: %d", msg.Header.Seq, len(p.MessageBuffer[src_addr.String()][msg.Header.Id]), msg.Header.Complete)
 				p.BufferLock.Lock()
 				delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
 				p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
@@ -643,7 +653,10 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 		}
 		var b []byte
 		for i := uint16(1); i <= msg.Header.Complete; i++ {
+			p.BufferLock.Lock()
 			data, exists := p.MessageBuffer[src_addr.String()][msg.Header.Id][i]
+			p.BufferLock.Unlock()
+			runtime.Gosched()
 			if exists {
 				b = append(b, data...)
 			} else {
