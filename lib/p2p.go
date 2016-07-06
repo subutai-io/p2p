@@ -629,9 +629,9 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 	if msg.Header.Complete > 0 {
 		wcounter := 0
 		for len(p.MessageBuffer[src_addr.String()][msg.Header.Id]) != int(msg.Header.Complete) {
-			time.Sleep(1 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 			wcounter++
-			if wcounter > 1000 {
+			if wcounter > 100 {
 				Log(ERROR, "Packet incomplete. Last sequence: %d. Len: %d, Excepting: %d", msg.Header.Seq, len(p.MessageBuffer[src_addr.String()][msg.Header.Id]), msg.Header.Complete)
 				delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
 				p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)

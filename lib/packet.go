@@ -106,7 +106,7 @@ type ARPPacket struct {
 func (p *PTPCloud) handlePacket(contents []byte, proto int) {
 	callback, exists := p.PacketHandlers[PacketType(proto)]
 	if exists {
-		callback(contents, proto)
+		go callback(contents, proto)
 	} else {
 		Log(WARNING, "Captured undefined packet: %d", PacketType(proto))
 	}
