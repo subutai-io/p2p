@@ -1,13 +1,15 @@
 package ptp
 
 import (
-	"bytes"
+	//"bytes"
 	"crypto/rand"
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -40,6 +42,7 @@ type PTPCloud struct {
 	RemovePeer      chan string
 	MessageBuffer   map[string]map[uint16]map[uint16][]byte
 	MessagePacket   map[string]map[uint16][]byte
+	BufferLock      sync.Mutex
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -575,7 +578,7 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 	}
 	callback, exists := p.MessageHandlers[msg.Header.Type]
 	if exists {
-		callback(msg, src_addr)
+		go callback(msg, src_addr)
 	} else {
 		Log(WARNING, "Unknown message received")
 	}
@@ -602,26 +605,36 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 			}
 	f 	*/
 	// Check if packet is duplicated (VM wifi workaround)
-	if p.MessagePacket[src_addr.String()][msg.Header.Id] == nil {
-		p.MessagePacket[src_addr.String()] = make(map[uint16][]byte)
-	}
-	if bytes.Equal(p.MessagePacket[src_addr.String()][msg.Header.Id], msg.Data) {
-		// Skip duplicate
-		return
-	} else {
-		p.MessagePacket[src_addr.String()][msg.Header.Id] = msg.Data
+	/*
+		if p.MessagePacket[src_addr.String()][msg.Header.Id] == nil {
+			p.MessagePacket[src_addr.String()] = make(map[uint16][]byte)
+		}
+		if bytes.Equal(p.MessagePacket[src_addr.String()][msg.Header.Id], msg.Data) {
+			// Skip duplicate
+			return
+		} else {
+			p.MessagePacket[src_addr.String()][msg.Header.Id] = msg.Data
+		}
+	*/
+	p.BufferLock.Lock()
+	if p.MessageBuffer[src_addr.String()] == nil {
+		p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
 	}
 	if p.MessageBuffer[src_addr.String()][msg.Header.Id] == nil {
-		p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
 		p.MessageBuffer[src_addr.String()][msg.Header.Id] = make(map[uint16][]byte)
 	}
 	p.MessageBuffer[src_addr.String()][msg.Header.Id][msg.Header.Seq] = msg.Data
+	p.BufferLock.Unlock()
+	runtime.Gosched()
 	if msg.Header.Complete > 0 {
 		wcounter := 0
 		for len(p.MessageBuffer[src_addr.String()][msg.Header.Id]) != int(msg.Header.Complete) {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(1 * time.Millisecond)
 			wcounter++
-			if wcounter > 10 {
+			if wcounter > 1000 {
+				Log(ERROR, "Packet incomplete. Last sequence: %d. Len: %d, Excepting: %d", msg.Header.Seq, len(p.MessageBuffer[src_addr.String()][msg.Header.Id]), msg.Header.Complete)
+				delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
+				p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
 				return
 			}
 		}
@@ -632,6 +645,7 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 				b = append(b, data...)
 			} else {
 				Log(ERROR, "Missing packet: %d/%d", i, msg.Header.Complete)
+				delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
 				return
 			}
 		}

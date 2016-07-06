@@ -88,6 +88,8 @@ func (np *NetworkPeer) StateRequestedIp(ptpc *PTPCloud) error {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+	Log(INFO, "Received network address for peer: %s", np.ID)
+	return nil
 }
 
 // In this state we're trying to establish direct connection.
@@ -191,6 +193,7 @@ func (np *NetworkPeer) StateWaitingForwarder(ptpc *PTPCloud) error {
 		Log(INFO, "We've failed to receive any proxies within this period")
 		np.State = P_INIT
 		ptpc.Dht.CleanForwarderBlacklist()
+		np.ProxyRequests = 0
 		return nil
 	}
 	Log(INFO, "Requesting proxy for %s", np.ID)

@@ -146,7 +146,7 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	for len(contents) > 0 {
 		seq++
 		shift := ETH_PACKET_SIZE
-		if len(contents) < ETH_PACKET_SIZE {
+		if len(contents) <= ETH_PACKET_SIZE {
 			complete = seq
 			shift = len(contents)
 		}
