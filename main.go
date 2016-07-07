@@ -69,6 +69,7 @@ func main() {
 		fmt.Printf("  stop      Stop particular p2p instance\n")
 		fmt.Printf("  set       Modify p2p options during runtime\n")
 		fmt.Printf("  show      Display various information about p2p instances\n")
+		fmt.Printf("  status    Show detailed status about connectivity with each peer\n")
 		fmt.Printf("  debug     Control debugging and profiling options\n")
 		fmt.Printf("  version   Display version information\n")
 		fmt.Printf("  help      Show this message or detailed information about commands listed above\n")
@@ -137,6 +138,8 @@ func main() {
 	case "stop-packet":
 		net.DialTimeout("tcp", os.Args[2], 2*time.Second)
 		os.Exit(0)
+	case "status":
+		ShowStatus(argRPCPort)
 	case "help":
 		if len(os.Args) > 2 {
 			switch os.Args[2] {
@@ -260,6 +263,23 @@ func Show(rpcPort, hash, ip string) {
 	}
 	args.IP = ip
 	err := client.Call("Procedures.Show", args, &response)
+	if err != nil {
+		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
+		return
+	}
+	if response.ExitCode == 0 {
+		fmt.Printf("%s\n", response.Output)
+	} else {
+		fmt.Errorf("%s\n", response.Output)
+	}
+	os.Exit(response.ExitCode)
+}
+
+func ShowStatus(rpcPort string) {
+	client := Dial(rpcPort)
+	var response Response
+	args := &RunArgs{}
+	err := client.Call("Procedures.Status", args, &response)
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
