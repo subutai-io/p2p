@@ -333,6 +333,7 @@ func Debug(rpcPort string) {
 
 func Daemon(port, saveFile, profiling string) {
 	StartProfiling(profiling)
+	ptp.InitPlatform()
 	Instances = make(map[string]Instance)
 	ptp.InitErrors()
 
