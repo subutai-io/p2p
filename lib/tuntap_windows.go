@@ -57,6 +57,23 @@ var (
 	TAP_IOCTL_CONFIG_TUN            = TAP_CONTROL_CODE(10, 0)
 )
 
+func InitPlatform() {
+	remdev := exec.Command(REMOVE_DEV)
+	err := remdev.Run()
+	if err != nil {
+		Log(ERROR, "Failed to remove TUN/TAP Devices: %v", err)
+	}
+	
+	
+	for i := 0; i < 10; i++ {
+		adddev := exec.Command(ADD_DEV)
+		err := adddev.Run()
+		if err != nil {
+			Log(ERROR, "Failed to add TUN/TAP Device: %v", err)
+		}
+	}
+}
+
 func TAP_CONTROL_CODE(request, method uint32) uint32 {
 	return CTL_CODE(34, request, method, 0)
 }
@@ -159,7 +176,7 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 
 func createNewTAPDevice() {
 	// Check if we already have devices
-	
+	/*
 	if len(UsedInterfaces) == 0 {
 		// If not, remove interfaces from previous instances and/or created by other software
 		// Yes, this will active OpenVPN Connections
@@ -177,7 +194,7 @@ func createNewTAPDevice() {
 	err := adddev.Run()
 	if err != nil {
 		Log(ERROR, "Failed to add TUN/TAP Device: %v", err)
-	}
+	}*/
 }
 
 func openDevice(ifPattern string) (*Interface, error) {

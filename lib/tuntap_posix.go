@@ -14,6 +14,10 @@ type Interface struct {
 	file *os.File
 }
 
+func InitPlatform() {
+	
+}
+
 func (t *Interface) ReadPacket() (*Packet, error) {
 	buf := make([]byte, 10000)
 
