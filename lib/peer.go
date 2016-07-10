@@ -93,6 +93,15 @@ func (np *NetworkPeer) StateRequestedIp(ptpc *PTPCloud) error {
 	return nil
 }
 
+func (np *NetworkPeer) SetPeerAddr() bool {
+	if len(np.KnownIPs) == 0 {
+		return false
+	}
+	Log(INFO, "Setting peer address as %s for %s", np.KnownIPs[0].String(), np.ID)
+	np.PeerAddr = np.KnownIPs[0]
+	return true
+}
+
 // In this state we're trying to establish direct connection.
 // First we're getting list of local interfaces and see if one of
 // received IPs are in the same network. If so, we will try to establish
@@ -108,7 +117,7 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PTPCloud) error {
 	}
 	// If forward mode was activated - skip direction connection attemps
 	if ptpc.ForwardMode {
-		np.PeerAddr = np.KnownIPs[0]
+		np.SetPeerAddr()
 		np.State = P_WAITING_FORWARDER
 		return nil
 	}
@@ -132,7 +141,7 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PTPCloud) error {
 		return nil
 	} else {
 		Log(INFO, "Direct connection with %s failed", np.ID)
-		np.PeerAddr = np.KnownIPs[0]
+		np.SetPeerAddr()
 		np.State = P_WAITING_FORWARDER
 	}
 	return nil
@@ -395,6 +404,11 @@ func (np *NetworkPeer) SendHandshake(ptpc *PTPCloud) {
  * Handshakes traffic forwarder
  */
 func (np *NetworkPeer) SendProxyHandshake(ptpc *PTPCloud) error {
+	if np.PeerAddr == nil {
+		for !np.SetPeerAddr() {
+			time.Sleep(time.Millisecond * 100)
+		}
+	}
 	Log(INFO, "Handshaking with proxy %s for %s", np.Forwarder.String(), np.ID)
 	msg := CreateProxyP2PMessage(-1, np.PeerAddr.String(), uint16(ptpc.UDPSocket.GetPort()))
 	_, err := ptpc.UDPSocket.SendMessage(msg, np.Forwarder)
