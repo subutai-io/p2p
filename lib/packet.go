@@ -19,6 +19,8 @@ import (
 	"github.com/mdlayher/ethernet"
 	"io"
 	"net"
+	"runtime"
+	"sync"
 )
 
 type PacketType int
@@ -53,7 +55,8 @@ var (
 
 	//PacketHandlers map[PacketType]PacketHandlerCallback
 
-	PacketID uint16
+	PacketID          uint16
+	PacketCounterLock sync.Mutex
 )
 
 type Operation uint16
@@ -115,11 +118,14 @@ func (p *PTPCloud) handlePacket(contents []byte, proto int) {
 // Handles a IPv4 packet and sends it to it's destination
 func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	Log(TRACE, "Handling IPv4 Packet")
+	PacketCounterLock.Lock()
 	PacketID++
 	if PacketID > 65000 {
 		PacketID = 0
 	}
 	pid := PacketID
+	PacketCounterLock.Unlock()
+	runtime.Gosched()
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		Log(ERROR, "Failed to unmarshal IPv4 packet")
@@ -128,21 +134,9 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	if f.EtherType != ethernet.EtherTypeIPv4 {
 		return
 	}
-	/*
-		// Normal version
-		msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto), 1)
-		msg.Header.NetProto = uint16(proto)
-		_, err := p.SendTo(f.Destination, msg)
-		if err != nil {
-			Log(ERROR, "Failed to send message over P2P: %v", err)
-			return
-		}
-	*/
-
-	// Packet splitting version
+	// Split packet into parts and send each part
 	var complete uint16 = 0
 	var seq uint16 = 0
-	// TODO: Review this part. I was drunk
 	for len(contents) > 0 {
 		seq++
 		shift := ETH_PACKET_SIZE
@@ -155,7 +149,6 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 		_, err := p.SendTo(f.Destination, msg)
 		if err != nil {
 			Log(ERROR, "Failed to send message over P2P: %v", err)
-			return
 		}
 		contents = contents[shift:]
 	}

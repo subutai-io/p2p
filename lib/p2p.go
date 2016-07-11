@@ -604,12 +604,14 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	Log(TRACE, "Data: %s, Proto: %d, From: %s", msg.Data, msg.Header.NetProto, src_addr.String())
 	p.BufferLock.Lock()
+	// Allocate memory
 	if p.MessageBuffer[src_addr.String()] == nil {
 		p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
 	}
 	if p.MessageBuffer[src_addr.String()][msg.Header.Id] == nil {
 		p.MessageBuffer[src_addr.String()][msg.Header.Id] = make(map[uint16][]byte)
 	}
+	// Append packet contents into queue
 	p.MessageBuffer[src_addr.String()][msg.Header.Id][msg.Header.Seq] = msg.Data
 	p.BufferLock.Unlock()
 	runtime.Gosched()
@@ -619,6 +621,7 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 		plen := len(p.MessageBuffer[src_addr.String()][msg.Header.Id])
 		p.BufferLock.Unlock()
 		runtime.Gosched()
+		// Wait for packet to arrive
 		for plen != int(msg.Header.Complete) {
 			time.Sleep(10 * time.Millisecond)
 			p.BufferLock.Lock()
@@ -630,12 +633,12 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 				Log(ERROR, "Packet incomplete")
 				p.BufferLock.Lock()
 				delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
-				//p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
 				p.BufferLock.Unlock()
 				runtime.Gosched()
 				return
 			}
 		}
+		// Combine packet from parts
 		var b []byte
 		for i := uint16(1); i <= msg.Header.Complete; i++ {
 			p.BufferLock.Lock()

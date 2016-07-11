@@ -155,6 +155,7 @@ func (np *NetworkPeer) StateConnected(ptpc *PTPCloud) error {
 	}
 	passed := time.Since(np.LastContact)
 	if passed > PEER_PING_TIMEOUT {
+		np.LastError = ""
 		Log(DEBUG, "Sending ping")
 		msg := CreateXpeerPingMessage(PING_REQ, ptpc.HardwareAddr.String())
 		ptpc.SendTo(np.PeerHW, msg)
