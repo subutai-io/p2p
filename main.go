@@ -91,6 +91,7 @@ func main() {
 	start.StringVar(&argKeyfile, "keyfile", "", "Path to yaml file containing crypto key")
 	start.StringVar(&argKey, "key", "", "AES crypto key")
 	start.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
+	start.StringVar(&argTTL, "ports", "", "Ports range")
 	start.IntVar(&argPort, "port", 0, "`Port` that will be used for p2p communication. Random port number will be generated if no port were specified")
 	start.BoolVar(&argFwd, "fwd", false, "If specified, only external routing schemes will be used with use of proxy servers")
 
