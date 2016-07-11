@@ -630,7 +630,7 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 				Log(ERROR, "Packet incomplete")
 				p.BufferLock.Lock()
 				delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
-				p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
+				//p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
 				p.BufferLock.Unlock()
 				runtime.Gosched()
 				return
