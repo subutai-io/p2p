@@ -43,6 +43,7 @@ type PTPCloud struct {
 	MessageBuffer   map[string]map[uint16]map[uint16][]byte
 	MessagePacket   map[string]map[uint16][]byte
 	BufferLock      sync.Mutex
+	PeersLock       sync.Mutex
 }
 
 // Creates TUN/TAP Interface and configures it with provided IP tool
@@ -403,11 +404,17 @@ func (p *PTPCloud) Run() {
 			if rm == "DUMMY" {
 				continue
 			}
+			p.PeersLock.Lock()
 			peer, exists := p.NetworkPeers[rm]
+			p.PeersLock.Unlock()
+			runtime.Gosched()
 			if exists {
 				Log(INFO, "Stopping %s after STOP command", rm)
 				peer.State = P_DISCONNECT
+				p.PeersLock.Lock()
 				p.NetworkPeers[rm] = peer
+				p.PeersLock.Unlock()
+				runtime.Gosched()
 			} else {
 				Log(INFO, "Can't stop peer. ID not found")
 			}
@@ -431,7 +438,11 @@ func (p *PTPCloud) Run() {
 				time.Sleep(100 * time.Microsecond)
 				delete(p.IPIDTable, peer.PeerLocalIP.String())
 				delete(p.MACIDTable, peer.PeerHW.String())
+
+				p.PeersLock.Lock()
 				delete(p.NetworkPeers, i)
+				p.PeersLock.Unlock()
+				runtime.Gosched()
 			}
 		}
 		passed := time.Since(p.Dht.LastDHTPing)
@@ -470,7 +481,10 @@ func (p *PTPCloud) PurgePeers() {
 			Log(INFO, ("Removing outdated peer"))
 			delete(p.IPIDTable, peer.PeerLocalIP.String())
 			delete(p.MACIDTable, peer.PeerHW.String())
+			p.PeersLock.Lock()
 			delete(p.NetworkPeers, i)
+			p.PeersLock.Unlock()
+			runtime.Gosched()
 		}
 	}
 	return
@@ -485,7 +499,10 @@ func (p *PTPCloud) SyncForwarders() int {
 				peer.Endpoint = fwd.Addr
 				peer.Forwarder = fwd.Addr
 				peer.State = P_HANDSHAKING_FORWARDER
+				p.PeersLock.Lock()
 				p.NetworkPeers[key] = peer
+				p.PeersLock.Unlock()
+				runtime.Gosched()
 				count = count + 1
 			}
 		}
@@ -586,36 +603,6 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 
 func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	Log(TRACE, "Data: %s, Proto: %d, From: %s", msg.Data, msg.Header.NetProto, src_addr.String())
-	/*
-		// Normal version
-		p.WriteToDevice(msg.Data, msg.Header.NetProto, false)
-	*/
-	/*
-			var tid string
-			for id, peer := range p.NetworkPeers {
-				Log(INFO, "%s %d", peer.Endpoint.String(), peer.ProxyID)
-				if peer.Endpoint.String() == src_addr.String() && uint16(peer.ProxyID) == msg.Header.ProxyId {
-					tid = id
-					p.MessageBuffer[id] = append(p.MessageBuffer[id], msg.Data...)
-				}
-			}
-			if tid == "" {
-				Log(INFO, "Not found %s %d", src_addr.String(), msg.Header.ProxyId)
-				return
-			}
-	f 	*/
-	// Check if packet is duplicated (VM wifi workaround)
-	/*
-		if p.MessagePacket[src_addr.String()][msg.Header.Id] == nil {
-			p.MessagePacket[src_addr.String()] = make(map[uint16][]byte)
-		}
-		if bytes.Equal(p.MessagePacket[src_addr.String()][msg.Header.Id], msg.Data) {
-			// Skip duplicate
-			return
-		} else {
-			p.MessagePacket[src_addr.String()][msg.Header.Id] = msg.Data
-		}
-	*/
 	p.BufferLock.Lock()
 	if p.MessageBuffer[src_addr.String()] == nil {
 		p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
@@ -638,11 +625,9 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 			plen = len(p.MessageBuffer[src_addr.String()][msg.Header.Id])
 			p.BufferLock.Unlock()
 			runtime.Gosched()
-
 			wcounter++
 			if wcounter > 100 {
 				Log(ERROR, "Packet incomplete")
-				//Log(ERROR, "Packet incomplete. Last sequence: %d. Len: %d, Excepting: %d", msg.Header.Seq, len(p.MessageBuffer[src_addr.String()][msg.Header.Id]), msg.Header.Complete)
 				p.BufferLock.Lock()
 				delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
 				p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
@@ -669,16 +654,10 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 			}
 		}
 		p.WriteToDevice(b, msg.Header.NetProto, false)
-		/*
-			p.WriteToDevice(p.MessageBuffer[src_addr.String()][msg.Header.Id], msg.Header.NetProto, false)
-			p.MessageBuffer[src_addr.String()][msg.Header.Id] = p.MessageBuffer[src_addr.String()][msg.Header.Id][:0]
-		*/
 		p.BufferLock.Lock()
 		delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
 		p.BufferLock.Unlock()
 		runtime.Gosched()
-		//p.WriteToDevice(p.MessageBuffer[tid], msg.Header.NetProto, false)
-		//p.MessageBuffer[tid] = p.MessageBuffer[tid][:0]
 	}
 }
 
@@ -706,7 +685,10 @@ func (p *PTPCloud) HandleXpeerPingMessage(msg *P2PMessage, src_addr *net.UDPAddr
 			if peer.PeerHW.String() == string(msg.Data) {
 				peer.PingCount = 0
 				peer.LastContact = time.Now()
+				p.PeersLock.Lock()
 				p.NetworkPeers[i] = peer
+				p.PeersLock.Unlock()
+				runtime.Gosched()
 			}
 		}
 	}
@@ -714,7 +696,10 @@ func (p *PTPCloud) HandleXpeerPingMessage(msg *P2PMessage, src_addr *net.UDPAddr
 
 func (p *PTPCloud) HandleIntroMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	id, mac, ip := p.ParseIntroString(string(msg.Data))
+	p.PeersLock.Lock()
 	peer, exists := p.NetworkPeers[id]
+	p.PeersLock.Unlock()
+	runtime.Gosched()
 	if !exists {
 		Log(DEBUG, "Received introduction confirmation from unknown peer: %s", id)
 		p.Dht.SendUpdateRequest()
@@ -726,7 +711,10 @@ func (p *PTPCloud) HandleIntroMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	peer.LastContact = time.Now()
 	p.IPIDTable[ip.String()] = id
 	p.MACIDTable[mac.String()] = id
+	p.PeersLock.Lock()
 	p.NetworkPeers[id] = peer
+	p.PeersLock.Unlock()
+	runtime.Gosched()
 	Log(INFO, "Connection with peer %s has been established", id)
 }
 
@@ -756,7 +744,10 @@ func (p *PTPCloud) HandleProxyMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	for key, peer := range p.NetworkPeers {
 		if peer.PeerAddr.String() == ip {
 			peer.ProxyID = int(msg.Header.ProxyId)
+			p.PeersLock.Lock()
 			p.NetworkPeers[key] = peer
+			p.PeersLock.Unlock()
+			runtime.Gosched()
 			return
 		}
 	}
@@ -772,7 +763,10 @@ func (p *PTPCloud) HandleBadTun(msg *P2PMessage, src_addr *net.UDPAddr) {
 			peer.Forwarder = nil
 			peer.PeerAddr = nil
 			peer.State = P_INIT
+			p.PeersLock.Lock()
 			p.NetworkPeers[key] = peer
+			p.PeersLock.Unlock()
+			runtime.Gosched()
 		}
 	}
 }
@@ -791,7 +785,10 @@ func (p *PTPCloud) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
 	Log(TRACE, "Requested Send to %s", dst.String())
 	id, exists := p.MACIDTable[dst.String()]
 	if exists {
+		p.PeersLock.Lock()
 		peer, exists := p.NetworkPeers[id]
+		p.PeersLock.Unlock()
+		runtime.Gosched()
 		if exists {
 			msg.Header.ProxyId = uint16(peer.ProxyID)
 			Log(DEBUG, "Sending to %s via proxy id %d", dst.String(), msg.Header.ProxyId)
@@ -805,7 +802,10 @@ func (p *PTPCloud) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
 func (p *PTPCloud) StopInstance() {
 	for i, peer := range p.NetworkPeers {
 		peer.State = P_DISCONNECT
+		p.PeersLock.Lock()
 		p.NetworkPeers[i] = peer
+		p.PeersLock.Unlock()
+		runtime.Gosched()
 	}
 	var ip net.IP
 	if p.Dht == nil || p.Dht.Network == nil {
@@ -868,7 +868,10 @@ func (p *PTPCloud) ReadProxies() {
 				peer.State = P_HANDSHAKING_FORWARDER
 				peer.Forwarder = proxy.Addr
 				peer.Endpoint = proxy.Addr
+				p.PeersLock.Lock()
 				p.NetworkPeers[i] = peer
+				p.PeersLock.Unlock()
+				runtime.Gosched()
 				exists = true
 			}
 		}
@@ -896,7 +899,10 @@ func (p *PTPCloud) UpdatePeers(peers []PeerIP) {
 			peer.ID = newPeer.ID
 			peer.KnownIPs = newPeer.Ips
 			peer.State = P_INIT
+			p.PeersLock.Lock()
 			p.NetworkPeers[newPeer.ID] = peer
+			p.PeersLock.Unlock()
+			runtime.Gosched()
 			go p.NetworkPeers[newPeer.ID].Run(p)
 		}
 	}
