@@ -21,6 +21,7 @@ import (
 	"net"
 	"runtime"
 	"sync"
+	"time"
 )
 
 type PacketType int
@@ -110,7 +111,7 @@ type ARPPacket struct {
 func (p *PTPCloud) handlePacket(contents []byte, proto int) {
 	callback, exists := p.PacketHandlers[PacketType(proto)]
 	if exists {
-		go callback(contents, proto)
+		callback(contents, proto)
 	} else {
 		Log(WARNING, "Captured undefined packet: %d", PacketType(proto))
 	}
@@ -149,6 +150,7 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 		msg.Header.NetProto = uint16(proto)
 		//SendLock.Lock()
 		_, err := p.SendTo(f.Destination, msg)
+		time.Sleep(time.Millisecond * 3)
 		//SendLock.Unlock()
 		//runtime.Gosched()
 		if err != nil {
