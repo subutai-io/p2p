@@ -41,6 +41,7 @@ type PTPCloud struct {
 	ProxyChannel    chan Forwarder
 	RemovePeer      chan string
 	MessageBuffer   map[string]map[uint16]map[uint16][]byte
+	MessageLifetime map[string]map[uint16]time.Time
 	MessagePacket   map[string]map[uint16][]byte
 	BufferLock      sync.Mutex
 	PeersLock       sync.Mutex
@@ -234,6 +235,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.IPIDTable = make(map[string]string)
 	p.MACIDTable = make(map[string]string)
 	p.MessageBuffer = make(map[string]map[uint16]map[uint16][]byte)
+	p.MessageLifetime = make(map[string]map[uint16]time.Time)
 	p.MessagePacket = make(map[string]map[uint16][]byte)
 
 	if fwd {
@@ -371,6 +373,22 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	go p.ListenInterface()
 	return p
 }
+
+/*
+func (p *PTPCloud) PacketCleaner() {
+	for {
+		time.Sleep(time.Second * 1)
+		for k, p := range p.MessageLifetime {
+			for j, i := range p {
+				passed := time.Since(i)
+				if passed > time.Duration(time.Second*1) {
+					delete(p.MessageLifetime[k], j)
+				}
+			}
+		}
+	}
+}
+*/
 
 func (p *PTPCloud) StartDHT(hash, routers string) {
 	dhtClient := new(DHTClient)
@@ -648,9 +666,10 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 			if exists {
 				b = append(b, data...)
 			} else {
-				Log(ERROR, "Missing packet: %d/%d", i, msg.Header.Complete)
+				Log(WARNING, "Missing packet: %d/%d", i, msg.Header.Complete)
 				p.BufferLock.Lock()
-				delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
+				//delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
+				delete(p.MessageBuffer, src_addr.String())
 				p.BufferLock.Unlock()
 				runtime.Gosched()
 				return

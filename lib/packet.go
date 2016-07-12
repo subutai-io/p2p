@@ -147,10 +147,10 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 		}
 		msg := CreateNencP2PMessage(p.Crypter, contents[0:shift], uint16(proto), complete, pid, seq)
 		msg.Header.NetProto = uint16(proto)
-		SendLock.Lock()
+		//SendLock.Lock()
 		_, err := p.SendTo(f.Destination, msg)
-		SendLock.Unlock()
-		runtime.Gosched()
+		//SendLock.Unlock()
+		//runtime.Gosched()
 		if err != nil {
 			Log(ERROR, "Failed to send message over P2P: %v", err)
 		}
