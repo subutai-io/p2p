@@ -120,6 +120,20 @@ func CreatePingP2PMessage() *P2PMessage {
 	return msg
 }
 
+func CreateConfP2PMessage(id, seq uint16) *P2PMessage {
+	msg := new(P2PMessage)
+	msg.Header = new(P2PMessageHeader)
+	msg.Header.Magic = MAGIC_COOKIE
+	msg.Header.Type = uint16(MT_CONF)
+	msg.Header.NetProto = 0
+	msg.Header.Length = uint16(len("1"))
+	msg.Header.Complete = 1
+	msg.Header.Id = id
+	msg.Header.Seq = seq
+	msg.Data = []byte("1")
+	return msg
+}
+
 func CreateXpeerPingMessage(pt PingType, hw string) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)

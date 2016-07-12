@@ -149,8 +149,11 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PTPCloud) error {
 
 func (np *NetworkPeer) StateConnected(ptpc *PTPCloud) error {
 	if np.PingCount > 3 {
-		np.State = P_DISCONNECT
 		np.LastError = "Disconnected by timeout"
+		np.State = P_INIT
+		np.PeerAddr = nil
+		np.Endpoint = nil
+		np.PingCount = 0
 		return errors.New(fmt.Sprintf("Peer %s has been timed out", np.ID))
 	}
 	passed := time.Since(np.LastContact)
