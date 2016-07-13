@@ -119,14 +119,16 @@ func (p *PTPCloud) handlePacket(contents []byte, proto int) {
 // Handles a IPv4 packet and sends it to it's destination
 func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	Log(TRACE, "Handling IPv4 Packet")
-	PacketCounterLock.Lock()
-	PacketID++
-	if PacketID > 65000 {
-		PacketID = 0
-	}
-	pid := PacketID
-	PacketCounterLock.Unlock()
-	runtime.Gosched()
+	/*
+		PacketCounterLock.Lock()
+		PacketID++
+		if PacketID > 65000 {
+			PacketID = 0
+		}
+		pid := PacketID
+		PacketCounterLock.Unlock()
+		runtime.Gosched()
+	*/
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		Log(ERROR, "Failed to unmarshal IPv4 packet")
