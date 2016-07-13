@@ -135,7 +135,8 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	if f.EtherType != ethernet.EtherTypeIPv4 {
 		return
 	}
-	msg := CreateNencP2PMessasge(p.Crypter, contents, uint16(proto), complete, 1, 1)
+	msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto), 1, 1, 1)
+	p.SendTo(f.Destination, msg)
 	return
 	// Split packet into parts and send each part
 	var complete uint16 = 0
