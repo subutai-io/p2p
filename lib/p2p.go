@@ -1,7 +1,7 @@
 package ptp
 
 import (
-	//"bytes"
+	"bytes"
 	"crypto/rand"
 	"fmt"
 	"gopkg.in/yaml.v2"
@@ -625,9 +625,17 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 	// Allocate memory
 	if p.MessageBuffer[src_addr.String()] == nil {
 		p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
+		p.MessagePacket[src_addr.String()] = make(map[uint16][]byte)
 	}
 	if p.MessageBuffer[src_addr.String()][msg.Header.Id] == nil {
 		p.MessageBuffer[src_addr.String()][msg.Header.Id] = make(map[uint16][]byte)
+	}
+	if p.MessagePacket[src_addr.String()][msg.Header.Id] != nil {
+		if bytes.Equal(p.MessagePacket[src_addr.String()][msg.Header.Id], msg.Data) {
+			return
+		} else {
+			p.MessagePacket[src_addr.String()][msg.Header.Id] = msg.Data
+		}
 	}
 	// Append packet contents into queue
 	p.MessageBuffer[src_addr.String()][msg.Header.Id][msg.Header.Seq] = msg.Data
@@ -651,6 +659,7 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 				Log(WARNING, "Packet incomplete. Received %d from %d [%d]", plen, msg.Header.Complete, msg.Header.Id)
 				p.BufferLock.Lock()
 				delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
+				delete(p.MessagePacket[src_addr.String()], msg.Header.Id)
 				p.BufferLock.Unlock()
 				runtime.Gosched()
 				return
@@ -670,6 +679,7 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 				p.BufferLock.Lock()
 				//delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
 				delete(p.MessageBuffer, src_addr.String())
+				delete(p.MessagePacket[src_addr.String()], msg.Header.Id)
 				p.BufferLock.Unlock()
 				runtime.Gosched()
 				return
@@ -678,6 +688,7 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 		p.WriteToDevice(b, msg.Header.NetProto, false)
 		p.BufferLock.Lock()
 		delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
+		delete(p.MessagePacket[src_addr.String()], msg.Header.Id)
 		p.BufferLock.Unlock()
 		runtime.Gosched()
 	}
