@@ -621,6 +621,8 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 
 func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	Log(TRACE, "Data: %s, Proto: %d, From: %s", msg.Data, msg.Header.NetProto, src_addr.String())
+	p.WriteToDevice(msg.Data, msg.Header.NetProto, false)
+	return
 	p.BufferLock.Lock()
 	// Allocate memory
 	if p.MessageBuffer[src_addr.String()] == nil {
