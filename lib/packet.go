@@ -20,6 +20,7 @@ import (
 	"io"
 	"net"
 	//"runtime"
+	"crypto/md5"
 	"sync"
 )
 
@@ -137,7 +138,11 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	if f.EtherType != ethernet.EtherTypeIPv4 {
 		return
 	}
-	msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto), 1, 1, 1)
+	sum := md5.Sum(contents)
+	var d []byte
+	d = append(d, sum[:]...)
+	d = append(d, contents...)
+	msg := CreateNencP2PMessage(p.Crypter, d, uint16(proto), 1, 1, 1)
 	p.SendTo(f.Destination, msg)
 	return
 	pid := uint16(0)
