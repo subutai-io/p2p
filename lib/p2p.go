@@ -42,7 +42,7 @@ type PTPCloud struct {
 	RemovePeer      chan string
 	MessageBuffer   map[string]map[uint16]map[uint16][]byte
 	MessageLifetime map[string]map[uint16]time.Time
-	MessagePacket   map[string]map[uint16][]byte
+	MessagePacket   map[string][]byte
 	BufferLock      sync.Mutex
 	PeersLock       sync.Mutex
 }
@@ -236,7 +236,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.MACIDTable = make(map[string]string)
 	p.MessageBuffer = make(map[string]map[uint16]map[uint16][]byte)
 	p.MessageLifetime = make(map[string]map[uint16]time.Time)
-	p.MessagePacket = make(map[string]map[uint16][]byte)
+	p.MessagePacket = make(map[string][]byte)
 
 	if fwd {
 		p.ForwardMode = true
@@ -625,18 +625,25 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 	// Allocate memory
 	if p.MessageBuffer[src_addr.String()] == nil {
 		p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
-		p.MessagePacket[src_addr.String()] = make(map[uint16][]byte)
+		//p.MessagePacket[src_addr.String()] = make(map[uint16][]byte)
 	}
 	if p.MessageBuffer[src_addr.String()][msg.Header.Id] == nil {
 		p.MessageBuffer[src_addr.String()][msg.Header.Id] = make(map[uint16][]byte)
 	}
-	if p.MessagePacket[src_addr.String()][msg.Header.Id] != nil {
-		if bytes.Equal(p.MessagePacket[src_addr.String()][msg.Header.Id], msg.Data) {
-			return
-		} else {
-			p.MessagePacket[src_addr.String()][msg.Header.Id] = msg.Data
-		}
+	if bytes.Equal(p.MessagePacket[src_addr.String()], msg.Data) {
+		return
+	} else {
+		p.MessagePacket[src_addr.String()] = msg.Data
 	}
+	/*
+		if p.MessagePacket[src_addr.String()][msg.Header.Id] != nil {
+			if bytes.Equal(p.MessagePacket[src_addr.String()][msg.Header.Id], msg.Data) {
+				return
+			} else {
+				p.MessagePacket[src_addr.String()][msg.Header.Id] = msg.Data
+			}
+		}
+	*/
 	// Append packet contents into queue
 	p.MessageBuffer[src_addr.String()][msg.Header.Id][msg.Header.Seq] = msg.Data
 	p.BufferLock.Unlock()
@@ -659,7 +666,6 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 				Log(WARNING, "Packet incomplete. Received %d from %d [%d]", plen, msg.Header.Complete, msg.Header.Id)
 				p.BufferLock.Lock()
 				delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
-				delete(p.MessagePacket[src_addr.String()], msg.Header.Id)
 				p.BufferLock.Unlock()
 				runtime.Gosched()
 				return
@@ -679,7 +685,6 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 				p.BufferLock.Lock()
 				//delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
 				delete(p.MessageBuffer, src_addr.String())
-				delete(p.MessagePacket[src_addr.String()], msg.Header.Id)
 				p.BufferLock.Unlock()
 				runtime.Gosched()
 				return
@@ -688,7 +693,6 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 		p.WriteToDevice(b, msg.Header.NetProto, false)
 		p.BufferLock.Lock()
 		delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
-		delete(p.MessagePacket[src_addr.String()], msg.Header.Id)
 		p.BufferLock.Unlock()
 		runtime.Gosched()
 	}
