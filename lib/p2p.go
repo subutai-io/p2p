@@ -631,6 +631,8 @@ func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPA
 		p.MessageBuffer[src_addr.String()][msg.Header.Id] = make(map[uint16][]byte)
 	}
 	if bytes.Equal(p.MessagePacket[src_addr.String()], msg.Data) {
+		p.BufferLock.Unlock()
+		runtime.Gosched()
 		return
 	} else {
 		p.MessagePacket[src_addr.String()] = msg.Data
