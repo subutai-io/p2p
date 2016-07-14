@@ -760,9 +760,9 @@ func (p *PTPCloud) HandleIntroMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	peer.PeerLocalIP = ip
 	peer.State = P_CONNECTED
 	peer.LastContact = time.Now()
+	p.PeersLock.Lock()
 	p.IPIDTable[ip.String()] = id
 	p.MACIDTable[mac.String()] = id
-	p.PeersLock.Lock()
 	p.NetworkPeers[id] = peer
 	p.PeersLock.Unlock()
 	runtime.Gosched()
@@ -771,7 +771,10 @@ func (p *PTPCloud) HandleIntroMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 
 func (p *PTPCloud) HandleIntroRequestMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	id := string(msg.Data)
+	p.PeersLock.Lock()
 	peer, exists := p.NetworkPeers[id]
+	p.PeersLock.Unlock()
+	runtime.Gosched()
 	if !exists {
 		Log(DEBUG, "Introduction request came from unknown peer: %s", id)
 		p.Dht.SendUpdateRequest()
