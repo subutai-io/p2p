@@ -366,7 +366,11 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		p.Dht.Network = ipnet
 		mask := fmt.Sprintf("%d.%d.%d.%d", ipnet.Mask[0], ipnet.Mask[1], ipnet.Mask[2], ipnet.Mask[3])
 		p.Dht.SendIP(argIp, mask)
-		p.AssignInterface(p.Dht.IP.String(), argMac, mask, argDev)
+		err = p.AssignInterface(p.Dht.IP.String(), argMac, mask, argDev)
+		if err != nil {
+			Log(ERROR, "Can't configure interface")
+			return nil
+		}
 	}
 
 	go p.UDPSocket.Listen(p.HandleP2PMessage)
