@@ -214,7 +214,6 @@ func Start(rpcPort, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool,
 	args.Dht = dht
 	args.Keyfile = keyfile
 	args.Key = key
-	args.Key = ""
 	args.TTL = ttl
 	args.Fwd = fwd
 	args.Port = port
