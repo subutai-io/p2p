@@ -394,6 +394,10 @@ func (np *NetworkPeer) ProbeLocalConnection(ptpc *PTPCloud) bool {
  */
 func (np *NetworkPeer) SendHandshake(ptpc *PTPCloud) {
 	Log(DEBUG, "Preparing introduction message for %s", np.ID)
+	if ptpc.Dht.ID == "" {
+		np.LastError = "DHT Disconnected"
+		return
+	}
 	msg := CreateIntroRequest(ptpc.Crypter, ptpc.Dht.ID)
 	msg.Header.ProxyId = uint16(np.ProxyID)
 	_, err := ptpc.UDPSocket.SendMessage(msg, np.Endpoint)

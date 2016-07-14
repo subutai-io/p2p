@@ -22,7 +22,6 @@ type P2PMessageHeader struct {
 	Complete      uint16
 	Id            uint16
 	Seq           uint16
-	Sum           [16]byte
 }
 
 type P2PMessage struct {
