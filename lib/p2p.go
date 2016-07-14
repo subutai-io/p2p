@@ -2,7 +2,7 @@ package ptp
 
 import (
 	"bytes"
-	"crypto/md5"
+	//"crypto/md5"
 	"crypto/rand"
 	"fmt"
 	"gopkg.in/yaml.v2"
@@ -622,13 +622,16 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 
 func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	Log(TRACE, "Data: %s, Proto: %d, From: %s", msg.Data, msg.Header.NetProto, src_addr.String())
-	sum := msg.Data[0:16]
-	data := msg.Data[16:]
-	nsum := md5.Sum(data)
-	if !bytes.Equal(nsum[:], sum) {
-		Log(ERROR, "Packet sum mismatch")
-	}
-	p.WriteToDevice(data, msg.Header.NetProto, false)
+	/*
+		// md5
+		sum := msg.Data[0:16]
+		data := msg.Data[16:]
+		nsum := md5.Sum(data)
+		if !bytes.Equal(nsum[:], sum) {
+			Log(ERROR, "Packet sum mismatch")
+		}
+	*/
+	p.WriteToDevice(msg.Data, msg.Header.NetProto, false)
 	return
 	p.BufferLock.Lock()
 	// Allocate memory
