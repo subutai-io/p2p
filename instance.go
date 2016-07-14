@@ -241,6 +241,7 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 		if ptpInstance == nil {
 			delete(Instances, args.Hash)
 			resp.Output = resp.Output + "Failed to create P2P Instance"
+			resp.ExitCode = 1
 			Unlock()
 			return errors.New("Failed to create P2P Instance")
 		}
