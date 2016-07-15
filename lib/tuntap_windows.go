@@ -260,16 +260,20 @@ func ExtractMacFromInterface(dev *Interface) string {
 		Log(ERROR, "Failed to get MAC from device")
 	}
 	var macAddr bytes.Buffer
-	/*
-		macAddr := fmt.Sprintf("%x:%x:%x:%x:%x:%x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5])
-		Log(INFO, "MAC: %s", macAddr)*/
+	
+	i := 0
 	for _, a := range mac {
 		if a == 0 {
 			macAddr.WriteString("00")
-			continue
+		} else if a < 16 {
+			macAddr.WriteString(fmt.Sprintf("0%x", a))
+		} else {
+			macAddr.WriteString(fmt.Sprintf("%x", a))
 		}
-		macAddr.WriteString(":")
-		macAddr.WriteString(fmt.Sprintf("%x", a))
+		if i < 5 {
+			macAddr.WriteString(":")
+		}
+		i++	
 	}
 	Log(INFO, "MAC: %s", macAddr.String())
 	return macAddr.String()
