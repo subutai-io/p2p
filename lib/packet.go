@@ -150,7 +150,6 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 	msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto), 1, 1, 1)
 	p.SendTo(f.Destination, msg)
 	return
-	/*
 	pid := uint16(0)
 	// Split packet into parts and send each part
 	var complete uint16 = 0
@@ -173,7 +172,6 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 		}
 		contents = contents[shift:]
 	}
-	*/
 }
 
 // TODO: Implement IPv6 Support
