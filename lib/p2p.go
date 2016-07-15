@@ -750,6 +750,7 @@ func (p *PTPCloud) HandleXpeerPingMessage(msg *P2PMessage, src_addr *net.UDPAddr
 }
 
 func (p *PTPCloud) HandleIntroMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
+	Log(INFO, "Introduction string from %s[%d]", src_addr, msg.Header.ProxyId)
 	id, mac, ip := p.ParseIntroString(string(msg.Data))
 	p.PeersLock.Lock()
 	peer, exists := p.NetworkPeers[id]
