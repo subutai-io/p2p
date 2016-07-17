@@ -48,4 +48,3 @@ func TestPrepareIntroductionMessage(t *testing.T) {
 		t.Errorf("Failed to create introduction message")
 	}
 }
-
