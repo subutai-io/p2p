@@ -379,22 +379,6 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	return p
 }
 
-/*
-func (p *PTPCloud) PacketCleaner() {
-	for {
-		time.Sleep(time.Second * 1)
-		for k, p := range p.MessageLifetime {
-			for j, i := range p {
-				passed := time.Since(i)
-				if passed > time.Duration(time.Second*1) {
-					delete(p.MessageLifetime[k], j)
-				}
-			}
-		}
-	}
-}
-*/
-
 func (p *PTPCloud) StartDHT(hash, routers string) {
 	dhtClient := new(DHTClient)
 	config := dhtClient.DHTClientConfig()
