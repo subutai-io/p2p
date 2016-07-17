@@ -618,7 +618,7 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 	}
 	callback, exists := p.MessageHandlers[msg.Header.Type]
 	if exists {
-		go callback(msg, src_addr)
+		callback(msg, src_addr)
 	} else {
 		Log(WARNING, "Unknown message received")
 	}

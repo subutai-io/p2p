@@ -331,24 +331,3 @@ func (uc *PTPNet) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, erro
 	}
 	return n, nil
 }
-
-func Process_p2p_msg(count int, src_addr *net.UDPAddr, err error, rcv_bytes []byte) {
-	if err != nil {
-		fmt.Printf("process_p2p_msg error : %v\n", err)
-		return
-	}
-
-	buf := make([]byte, count)
-	copy(buf[:], rcv_bytes[:])
-
-	msg, des_err := P2PMessageFromBytes(buf)
-	if des_err != nil {
-		fmt.Printf("P2PMessageFromBytes err : %v\n", des_err)
-		return
-	}
-
-	fmt.Printf("processed message from %s, msg_count %d, msg_data : %s\n",
-		src_addr.String(),
-		count,
-		msg.Data)
-}
