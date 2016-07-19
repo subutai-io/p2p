@@ -69,6 +69,7 @@ func main() {
 		fmt.Printf("  stop      Stop particular p2p instance\n")
 		fmt.Printf("  set       Modify p2p options during runtime\n")
 		fmt.Printf("  show      Display various information about p2p instances\n")
+		fmt.Printf("  status    Show detailed status about connectivity with each peer\n")
 		fmt.Printf("  debug     Control debugging and profiling options\n")
 		fmt.Printf("  version   Display version information\n")
 		fmt.Printf("  help      Show this message or detailed information about commands listed above\n")
@@ -90,6 +91,7 @@ func main() {
 	start.StringVar(&argKeyfile, "keyfile", "", "Path to yaml file containing crypto key")
 	start.StringVar(&argKey, "key", "", "AES crypto key")
 	start.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
+	start.StringVar(&argTTL, "ports", "", "Ports range")
 	start.IntVar(&argPort, "port", 0, "`Port` that will be used for p2p communication. Random port number will be generated if no port were specified")
 	start.BoolVar(&argFwd, "fwd", false, "If specified, only external routing schemes will be used with use of proxy servers")
 
@@ -137,6 +139,8 @@ func main() {
 	case "stop-packet":
 		net.DialTimeout("tcp", os.Args[2], 2*time.Second)
 		os.Exit(0)
+	case "status":
+		ShowStatus(argRPCPort)
 	case "help":
 		if len(os.Args) > 2 {
 			switch os.Args[2] {
@@ -272,6 +276,23 @@ func Show(rpcPort, hash, ip string) {
 	os.Exit(response.ExitCode)
 }
 
+func ShowStatus(rpcPort string) {
+	client := Dial(rpcPort)
+	var response Response
+	args := &RunArgs{}
+	err := client.Call("Procedures.Status", args, &response)
+	if err != nil {
+		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
+		return
+	}
+	if response.ExitCode == 0 {
+		fmt.Printf("%s\n", response.Output)
+	} else {
+		fmt.Errorf("%s\n", response.Output)
+	}
+	os.Exit(response.ExitCode)
+}
+
 func Set(rpcPort, log, hash, keyfile, key, ttl string) {
 	client := Dial(rpcPort)
 	var response Response
@@ -313,6 +334,7 @@ func Debug(rpcPort string) {
 
 func Daemon(port, saveFile, profiling string) {
 	StartProfiling(profiling)
+	ptp.InitPlatform()
 	Instances = make(map[string]Instance)
 	ptp.InitErrors()
 
@@ -362,7 +384,7 @@ func Daemon(port, saveFile, profiling string) {
 		}
 	}()
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 	return
 }

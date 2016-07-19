@@ -25,6 +25,7 @@ type NetworkPeer struct {
 	StateHandlers  map[PeerState]StateHandlerCallback // List of callbacks for different peer states
 	ProxyBlacklist []*net.UDPAddr                     // Blacklist of proxies
 	ProxyRequests  int                                // Number of requests sent
+	LastError      string
 }
 
 func (np *NetworkPeer) Run(ptpc *PTPCloud) {
@@ -88,6 +89,17 @@ func (np *NetworkPeer) StateRequestedIp(ptpc *PTPCloud) error {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+	Log(INFO, "Received network address for peer: %s", np.ID)
+	return nil
+}
+
+func (np *NetworkPeer) SetPeerAddr() bool {
+	if len(np.KnownIPs) == 0 {
+		return false
+	}
+	Log(INFO, "Setting peer address as %s for %s", np.KnownIPs[0].String(), np.ID)
+	np.PeerAddr = np.KnownIPs[0]
+	return true
 }
 
 // In this state we're trying to establish direct connection.
@@ -100,11 +112,12 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PTPCloud) error {
 	Log(INFO, "Trying direct conection with peer: %s", np.ID)
 	if len(np.KnownIPs) == 0 {
 		np.State = P_INIT
+		np.LastError = fmt.Sprintf("Didn't received any IP addresses")
 		return errors.New("Joined connection state without knowing any IPs")
 	}
 	// If forward mode was activated - skip direction connection attemps
 	if ptpc.ForwardMode {
-		np.PeerAddr = np.KnownIPs[0]
+		np.SetPeerAddr()
 		np.State = P_WAITING_FORWARDER
 		return nil
 	}
@@ -128,7 +141,7 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PTPCloud) error {
 		return nil
 	} else {
 		Log(INFO, "Direct connection with %s failed", np.ID)
-		np.PeerAddr = np.KnownIPs[0]
+		np.SetPeerAddr()
 		np.State = P_WAITING_FORWARDER
 	}
 	return nil
@@ -136,11 +149,22 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PTPCloud) error {
 
 func (np *NetworkPeer) StateConnected(ptpc *PTPCloud) error {
 	if np.PingCount > 3 {
-		np.State = P_DISCONNECT
+		np.LastError = "Disconnected by timeout"
+		np.State = P_INIT
+		np.PeerAddr = nil
+		np.Endpoint = nil
+		np.PingCount = 0
 		return errors.New(fmt.Sprintf("Peer %s has been timed out", np.ID))
+	}
+	if np.Endpoint == nil {
+		np.State = P_INIT
+		np.PeerAddr = nil
+		np.PingCount = 0
+		return errors.New(fmt.Sprintf("Peer %s has lost endpoint", np.ID))
 	}
 	passed := time.Since(np.LastContact)
 	if passed > PEER_PING_TIMEOUT {
+		np.LastError = ""
 		Log(DEBUG, "Sending ping")
 		msg := CreateXpeerPingMessage(PING_REQ, ptpc.HardwareAddr.String())
 		ptpc.SendTo(np.PeerHW, msg)
@@ -160,6 +184,7 @@ func (np *NetworkPeer) StateHandshaking(ptpc *PTPCloud) error {
 		passed := time.Since(handshakeSentAt)
 		if passed > interval {
 			if retries >= 3 {
+				np.LastError = "Failed to handshake"
 				Log(ERROR, "Failed to handshake with %s", np.ID)
 				np.State = P_HANDSHAKING_FAILED
 				return errors.New(fmt.Sprintf("Failed to handshake with %s", np.ID))
@@ -188,9 +213,12 @@ func (np *NetworkPeer) StateWaitingForwarder(ptpc *PTPCloud) error {
 		}
 	}
 	if np.ProxyRequests >= 3 {
+		np.LastError = "No more proxies for this peer"
 		Log(INFO, "We've failed to receive any proxies within this period")
-		np.State = P_DISCONNECT
+		np.State = P_INIT
 		ptpc.Dht.CleanForwarderBlacklist()
+		np.ProxyBlacklist = np.ProxyBlacklist[:0]
+		np.ProxyRequests = 0
 		return nil
 	}
 	Log(INFO, "Requesting proxy for %s", np.ID)
@@ -201,6 +229,7 @@ func (np *NetworkPeer) StateWaitingForwarder(ptpc *PTPCloud) error {
 		passed := time.Since(waitStart)
 		if passed > WAIT_PROXY_TIMEOUT {
 			np.ProxyRequests++
+			np.LastError = "No forwarders received"
 			return errors.New(fmt.Sprintf("No proxy were received for %s", np.ID))
 		}
 	}
@@ -228,6 +257,7 @@ func (np *NetworkPeer) StateHandshakingForwarder(ptpc *PTPCloud) error {
 				a := np.Forwarder
 				np.Forwarder = nil
 				np.State = P_WAITING_FORWARDER
+				np.LastError = "Failed to handshake with a forwarder"
 				return errors.New(fmt.Sprintf("Failed to handshake with proxy %s [%s]", np.ID, a.String()))
 			} else {
 				err := np.SendProxyHandshake(ptpc)
@@ -247,10 +277,12 @@ func (np *NetworkPeer) StateHandshakingForwarder(ptpc *PTPCloud) error {
 
 func (np *NetworkPeer) StateHandshakingFailed(ptpc *PTPCloud) error {
 	if np.Forwarder != nil {
+		np.LastError = "Failed to handshake with this peer over forwarder"
 		Log(ERROR, "Failed to handshake with %s via proxy %s", np.ID, np.Forwarder.String())
 		np.BlacklistCurrentProxy(ptpc)
 		np.Forwarder = nil
 	} else {
+		np.LastError = "Failed to handshake with this peer"
 		Log(ERROR, "Failed to handshake directly. Switching to proxy")
 	}
 	np.State = P_WAITING_FORWARDER
@@ -368,10 +400,15 @@ func (np *NetworkPeer) ProbeLocalConnection(ptpc *PTPCloud) bool {
  */
 func (np *NetworkPeer) SendHandshake(ptpc *PTPCloud) {
 	Log(DEBUG, "Preparing introduction message for %s", np.ID)
+	if ptpc.Dht.ID == "" {
+		np.LastError = "DHT Disconnected"
+		return
+	}
 	msg := CreateIntroRequest(ptpc.Crypter, ptpc.Dht.ID)
 	msg.Header.ProxyId = uint16(np.ProxyID)
 	_, err := ptpc.UDPSocket.SendMessage(msg, np.Endpoint)
 	if err != nil {
+		np.LastError = "Failed to send intoduction message"
 		Log(ERROR, "Failed to send introduction to %s", np.Endpoint.String())
 	} else {
 		Log(DEBUG, "Sent introduction handshake to %s [%s %d]", np.ID, np.Endpoint.String(), np.ProxyID)
@@ -382,6 +419,11 @@ func (np *NetworkPeer) SendHandshake(ptpc *PTPCloud) {
  * Handshakes traffic forwarder
  */
 func (np *NetworkPeer) SendProxyHandshake(ptpc *PTPCloud) error {
+	if np.PeerAddr == nil {
+		for !np.SetPeerAddr() {
+			time.Sleep(time.Millisecond * 100)
+		}
+	}
 	Log(INFO, "Handshaking with proxy %s for %s", np.Forwarder.String(), np.ID)
 	msg := CreateProxyP2PMessage(-1, np.PeerAddr.String(), uint16(ptpc.UDPSocket.GetPort()))
 	_, err := ptpc.UDPSocket.SendMessage(msg, np.Forwarder)
@@ -390,6 +432,7 @@ func (np *NetworkPeer) SendProxyHandshake(ptpc *PTPCloud) error {
 		a := np.Forwarder
 		np.Forwarder = nil
 		np.State = P_WAITING_FORWARDER
+		np.LastError = "Failed to send handshake to a forwarder"
 		return errors.New(fmt.Sprintf("%s failed to send handshake to a proxy %s: %v", np.ID, a.String(), err))
 	}
 	return nil

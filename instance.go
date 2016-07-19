@@ -241,6 +241,7 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 		if ptpInstance == nil {
 			delete(Instances, args.Hash)
 			resp.Output = resp.Output + "Failed to create P2P Instance"
+			resp.ExitCode = 1
 			Unlock()
 			return errors.New("Failed to create P2P Instance")
 		}
@@ -352,4 +353,46 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 		}
 	}
 	return nil
+}
+
+func (p *Procedures) Status(args *RunArgs, resp *Response) error {
+	for _, ins := range Instances {
+		resp.Output += ins.ID + " | " + ins.PTP.IP + "\n"
+		for _, peer := range ins.PTP.NetworkPeers {
+			resp.Output += peer.ID + "|"
+			resp.Output += peer.PeerLocalIP.String() + "|"
+			resp.Output += "State:" + StringifyState(peer.State) + "|"
+			if peer.LastError != "" {
+				resp.Output += "LastError:" + peer.LastError
+			}
+			resp.Output += "\n"
+		}
+	}
+	return nil
+}
+
+func StringifyState(state ptp.PeerState) string {
+	switch state {
+	case ptp.P_INIT:
+		return "Initializing"
+	case ptp.P_REQUESTED_IP:
+		return "Waiting for IP"
+	case ptp.P_CONNECTING_DIRECTLY:
+		return "Trying direct connection"
+	case ptp.P_CONNECTED:
+		return "Connected"
+	case ptp.P_HANDSHAKING:
+		return "Handshaking"
+	case ptp.P_HANDSHAKING_FAILED:
+		return "Handshaking failed"
+	case ptp.P_WAITING_FORWARDER:
+		return "Waiting forwarder IP"
+	case ptp.P_HANDSHAKING_FORWARDER:
+		return "Handshaking forwarder"
+	case ptp.P_DISCONNECT:
+		return "Disconnected"
+	case ptp.P_STOP:
+		return "Stopped"
+	}
+	return "Unknown"
 }

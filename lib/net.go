@@ -95,8 +95,6 @@ func CreateStringP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage 
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
 	msg.Header.Complete = 1
-	msg.Header.Id = 1
-	msg.Header.Seq = 1
 	if c.Active {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
@@ -118,7 +116,20 @@ func CreatePingP2PMessage() *P2PMessage {
 	msg.Header.Length = uint16(len("1"))
 	msg.Header.Complete = 1
 	msg.Header.Id = 0
-	msg.Header.Seq = 0
+	msg.Data = []byte("1")
+	return msg
+}
+
+func CreateConfP2PMessage(id, seq uint16) *P2PMessage {
+	msg := new(P2PMessage)
+	msg.Header = new(P2PMessageHeader)
+	msg.Header.Magic = MAGIC_COOKIE
+	msg.Header.Type = uint16(MT_CONF)
+	msg.Header.NetProto = 0
+	msg.Header.Length = uint16(len("1"))
+	msg.Header.Complete = 1
+	msg.Header.Id = id
+	msg.Header.Seq = seq
 	msg.Data = []byte("1")
 	return msg
 }
@@ -132,7 +143,6 @@ func CreateXpeerPingMessage(pt PingType, hw string) *P2PMessage {
 	msg.Header.Length = uint16(len(hw))
 	msg.Header.Complete = 1
 	msg.Header.Id = 0
-	msg.Header.Seq = 0
 	msg.Data = []byte(hw)
 	return msg
 }
@@ -146,7 +156,6 @@ func CreateIntroP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg.Header.Length = uint16(len(data))
 	msg.Header.Complete = 1
 	msg.Header.Id = 0
-	msg.Header.Seq = 0
 	if c.Active {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
@@ -168,7 +177,6 @@ func CreateIntroRequest(c Crypto, id string) *P2PMessage {
 	msg.Header.Length = uint16(len(id))
 	msg.Header.Complete = 1
 	msg.Header.Id = 0
-	msg.Header.Seq = 0
 	if c.Active {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(id))
@@ -212,7 +220,6 @@ func CreateTestP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg.Header.Length = uint16(len(data))
 	msg.Header.Complete = 1
 	msg.Header.Id = 0
-	msg.Header.Seq = 0
 	if c.Active {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
@@ -236,7 +243,6 @@ func CreateProxyP2PMessage(id int, data string, netProto uint16) *P2PMessage {
 	msg.Header.Complete = 1
 	msg.Header.ProxyId = uint16(id)
 	msg.Header.Id = 0
-	msg.Header.Seq = 0
 	msg.Data = []byte(data)
 	return msg
 }
@@ -252,7 +258,6 @@ func CreateBadTunnelP2PMessage(id int, netProto uint16) *P2PMessage {
 	msg.Header.ProxyId = uint16(id)
 	msg.Header.Complete = 1
 	msg.Header.Id = 0
-	msg.Header.Seq = 0
 	msg.Data = []byte(data)
 	return msg
 }
@@ -325,25 +330,4 @@ func (uc *PTPNet) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, erro
 		return 0, err
 	}
 	return n, nil
-}
-
-func Process_p2p_msg(count int, src_addr *net.UDPAddr, err error, rcv_bytes []byte) {
-	if err != nil {
-		fmt.Printf("process_p2p_msg error : %v\n", err)
-		return
-	}
-
-	buf := make([]byte, count)
-	copy(buf[:], rcv_bytes[:])
-
-	msg, des_err := P2PMessageFromBytes(buf)
-	if des_err != nil {
-		fmt.Printf("P2PMessageFromBytes err : %v\n", des_err)
-		return
-	}
-
-	fmt.Printf("processed message from %s, msg_count %d, msg_data : %s\n",
-		src_addr.String(),
-		count,
-		msg.Data)
 }

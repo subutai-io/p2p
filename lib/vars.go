@@ -4,9 +4,9 @@ import (
 	"time"
 )
 
-const PACKET_VERSION string = "6"
+const PACKET_VERSION string = "5"
 
-var SUPPORTED_VERSIONS = [...]string{"6", "7"}
+var SUPPORTED_VERSIONS = [...]string{"6", "5"}
 
 type DHTMessage struct {
 	Id        string "i"
@@ -20,16 +20,17 @@ type MSG_TYPE uint16
 
 // Internal network packet type
 const (
-	MT_STRING     MSG_TYPE = 0 // String
-	MT_INTRO               = 1 // Introduction packet
-	MT_INTRO_REQ           = 2 // Request for introduction packet
-	MT_NENC                = 3 // Not encrypted message
-	MT_ENC                 = 4 // Encrypted message
-	MT_PING                = 5 // Internal ping message for Proxies
-	MT_XPEER_PING          = 6 // Crosspeer ping message
-	MT_TEST                = 7 // Packet tests established connection
-	MT_PROXY               = 8 // Information about proxy (forwarder)
-	MT_BAD_TUN             = 9 // Notifies about dead tunnel
+	MT_STRING     MSG_TYPE = 0  // String
+	MT_INTRO               = 1  // Introduction packet
+	MT_INTRO_REQ           = 2  // Request for introduction packet
+	MT_NENC                = 3  // Not encrypted message
+	MT_ENC                 = 4  // Encrypted message
+	MT_PING                = 5  // Internal ping message for Proxies
+	MT_XPEER_PING          = 6  // Crosspeer ping message
+	MT_TEST                = 7  // Packet tests established connection
+	MT_PROXY               = 8  // Information about proxy (forwarder)
+	MT_BAD_TUN             = 9  // Notifies about dead tunnel
+	MT_CONF                = 10 // Confirmation
 )
 
 // List of commands used in DHT

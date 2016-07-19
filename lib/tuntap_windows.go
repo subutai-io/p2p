@@ -57,6 +57,23 @@ var (
 	TAP_IOCTL_CONFIG_TUN            = TAP_CONTROL_CODE(10, 0)
 )
 
+func InitPlatform() {
+	remdev := exec.Command(REMOVE_DEV)
+	err := remdev.Run()
+	if err != nil {
+		Log(ERROR, "Failed to remove TUN/TAP Devices: %v", err)
+	}
+	
+	
+	for i := 0; i < 10; i++ {
+		adddev := exec.Command(ADD_DEV)
+		err := adddev.Run()
+		if err != nil {
+			Log(ERROR, "Failed to add TUN/TAP Device: %v", err)
+		}
+	}
+}
+
 func TAP_CONTROL_CODE(request, method uint32) uint32 {
 	return CTL_CODE(34, request, method, 0)
 }
@@ -159,6 +176,7 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 
 func createNewTAPDevice() {
 	// Check if we already have devices
+	/*
 	if len(UsedInterfaces) == 0 {
 		// If not, remove interfaces from previous instances and/or created by other software
 		// Yes, this will active OpenVPN Connections
@@ -176,7 +194,7 @@ func createNewTAPDevice() {
 	err := adddev.Run()
 	if err != nil {
 		Log(ERROR, "Failed to add TUN/TAP Device: %v", err)
-	}
+	}*/
 }
 
 func openDevice(ifPattern string) (*Interface, error) {
@@ -242,16 +260,20 @@ func ExtractMacFromInterface(dev *Interface) string {
 		Log(ERROR, "Failed to get MAC from device")
 	}
 	var macAddr bytes.Buffer
-	/*
-		macAddr := fmt.Sprintf("%x:%x:%x:%x:%x:%x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5])
-		Log(INFO, "MAC: %s", macAddr)*/
+	
+	i := 0
 	for _, a := range mac {
 		if a == 0 {
 			macAddr.WriteString("00")
-			continue
+		} else if a < 16 {
+			macAddr.WriteString(fmt.Sprintf("0%x", a))
+		} else {
+			macAddr.WriteString(fmt.Sprintf("%x", a))
 		}
-		macAddr.WriteString(":")
-		macAddr.WriteString(fmt.Sprintf("%x", a))
+		if i < 5 {
+			macAddr.WriteString(":")
+		}
+		i++	
 	}
 	Log(INFO, "MAC: %s", macAddr.String())
 	return macAddr.String()
