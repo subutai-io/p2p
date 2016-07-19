@@ -156,6 +156,12 @@ func (np *NetworkPeer) StateConnected(ptpc *PTPCloud) error {
 		np.PingCount = 0
 		return errors.New(fmt.Sprintf("Peer %s has been timed out", np.ID))
 	}
+	if np.Endpoint == nil {
+		np.State = P_INIT
+		np.PeerAddr = nil
+		np.PingCount = 0
+		return errors.New(fmt.Sprintf("Peer %s has lost endpoint", np.ID))
+	}
 	passed := time.Since(np.LastContact)
 	if passed > PEER_PING_TIMEOUT {
 		np.LastError = ""
