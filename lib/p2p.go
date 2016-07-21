@@ -5,13 +5,14 @@ import (
 	//"crypto/md5"
 	"crypto/rand"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	"gopkg.in/yaml.v2"
 )
 
 type MessageHandler func(message *P2PMessage, src_addr *net.UDPAddr)

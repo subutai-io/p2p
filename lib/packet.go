@@ -16,13 +16,13 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/mdlayher/ethernet"
 	"io"
 	"net"
+
+	"github.com/mdlayher/ethernet"
 	//"runtime"
 	//"crypto/md5"
 	"sync"
-	"time"
 )
 
 type PacketType int
@@ -146,7 +146,6 @@ func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
 		d = append(d, sum[:]...)
 		d = append(d, contents...)
 	*/
-	time.Sleep(time.Millisecond * 1)
 	msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto), 1, 1, 1)
 	p.SendTo(f.Destination, msg)
 	return
