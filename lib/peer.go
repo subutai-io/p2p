@@ -60,7 +60,7 @@ func (np *NetworkPeer) Run(ptpc *PTPCloud) {
 		}
 		err := callback(ptpc)
 		if err != nil {
-			Log(ERROR, "Peer %s: %v", np.ID, err)
+			Log(WARNING, "Peer %s: %v", np.ID, err)
 		}
 		time.Sleep(time.Millisecond * 500)
 	}
@@ -323,7 +323,7 @@ func (np *NetworkPeer) TestConnection(ptpc *PTPCloud, endpoint *net.UDPAddr) boo
 	msg := CreateTestP2PMessage(ptpc.Crypter, "TEST", 0)
 	conn, err := net.DialUDP("udp4", nil, endpoint)
 	if err != nil {
-		Log(ERROR, "%v", err)
+		Log(DEBUG, "%v", err)
 		return false
 	}
 	ser := msg.Serialize()
@@ -340,7 +340,7 @@ func (np *NetworkPeer) TestConnection(ptpc *PTPCloud, endpoint *net.UDPAddr) boo
 		var buf [4096]byte
 		s, _, err := conn.ReadFromUDP(buf[0:])
 		if err != nil {
-			Log(ERROR, "%v", err)
+			Log(DEBUG, "%v", err)
 			conn.Close()
 			return false
 		}
