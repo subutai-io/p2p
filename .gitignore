@@ -2,17 +2,12 @@
 *.swp
 *.swo
 
-# Binary
+# Build
+config.make
 main
 p2p
-cp
-cp/cp
-p2p-cp/p2p-cp
 tests/*
-cp-v*
-p2p-v*
-cp-*-v*
-p2p-*-v*
+p2p-*
 *.exe
 *.zip
 
