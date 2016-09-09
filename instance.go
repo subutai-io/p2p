@@ -224,14 +224,15 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 	if !exists {
 		resp.Output = resp.Output + "Lookup finished\n"
 		if args.Key != "" {
-			key := []byte(args.Key)
-			if len(key) > ptp.BLOCK_SIZE {
-				key = key[:ptp.BLOCK_SIZE]
-			} else {
-				zeros := make([]byte, ptp.BLOCK_SIZE-len(key))
-				key = append([]byte(key), zeros...)
+			if len(args.Key) < 16 {
+				args.Key += "0000000000000000"[:16-len(args.Key)]
+			} else if len(args.Key) > 16 && len(args.Key) < 24 {
+				args.Key += "000000000000000000000000"[:24-len(args.Key)]
+			} else if len(args.Key) > 24 && len(args.Key) < 32 {
+				args.Key += "00000000000000000000000000000000"[:32-len(args.Key)]
+			} else if len(args.Key) > 32 {
+				args.Key = args.Key[:32]
 			}
-			args.Key = string(key)
 		}
 
 		var newInst Instance

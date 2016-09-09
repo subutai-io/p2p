@@ -11,11 +11,6 @@ import (
 	"time"
 )
 
-const (
-	BLOCK_SIZE int = 32
-	IV_SIZE    int = aes.BlockSize
-)
-
 type CryptoKey struct {
 	TTLConfig string `yaml:"ttl"`
 	KeyConfig string `yaml:"key"`
@@ -68,24 +63,24 @@ func (c Crypto) ReadKeysFromFile(filepath string) {
 }
 
 func (c Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
-	cb, err := aes.NewCipher(key)
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(data) != IV_SIZE {
-		padding := IV_SIZE - len(data)%IV_SIZE
+	if len(data) != aes.BlockSize {
+		padding := aes.BlockSize - len(data)%aes.BlockSize
 		data = append(data, bytes.Repeat([]byte{byte(padding)}, padding)...)
 	}
 
-	encrypted_data := make([]byte, IV_SIZE+len(data))
-	iv := encrypted_data[:IV_SIZE]
+	encrypted_data := make([]byte, aes.BlockSize+len(data))
+	iv := encrypted_data[:aes.BlockSize]
 	if _, err = rand.Read(iv); err != nil {
 		return nil, err
 	}
 
-	mode := cipher.NewCBCEncrypter(cb, iv)
-	mode.CryptBlocks(encrypted_data[IV_SIZE:], data)
+	mode := cipher.NewCBCEncrypter(block, iv)
+	mode.CryptBlocks(encrypted_data[aes.BlockSize:], data)
 
 	return encrypted_data, nil
 }
@@ -95,9 +90,9 @@ func (c Crypto) Decrypt(key []byte, data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	encrypted_data := data[IV_SIZE:]
+	encrypted_data := data[aes.BlockSize:]
 
-	mode := cipher.NewCBCDecrypter(block, data[:IV_SIZE])
+	mode := cipher.NewCBCDecrypter(block, data[:aes.BlockSize])
 	mode.CryptBlocks(encrypted_data, encrypted_data)
 
 	return encrypted_data, nil
