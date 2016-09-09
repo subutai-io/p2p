@@ -78,13 +78,11 @@ func (c Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
 		data = append(data, bytes.Repeat([]byte{byte(padding)}, padding)...)
 	}
 
-	iv := make([]byte, IV_SIZE)
-	_, err = rand.Read(iv)
-	if err != nil {
+	encrypted_data := make([]byte, IV_SIZE+len(data))
+	iv := encrypted_data[:IV_SIZE]
+	if _, err = rand.Read(iv); err != nil {
 		return nil, err
 	}
-
-	encrypted_data := append(iv, data...)
 
 	mode := cipher.NewCBCEncrypter(cb, iv)
 	mode.CryptBlocks(encrypted_data[IV_SIZE:], data)
