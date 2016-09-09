@@ -56,10 +56,7 @@ func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 	}
 
 	err = SetMac(mac, device, tool)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func SetMTU(dev *Interface, device, tool, mtu string) error {

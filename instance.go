@@ -74,10 +74,7 @@ func DecodeInstances(data []byte) ([]RunArgs, error) {
 	b.Write(data)
 	d := gob.NewDecoder(&b)
 	err := d.Decode(&args)
-	if err != nil {
-		return args, err
-	}
-	return args, nil
+	return args, err
 }
 
 // Calls EncodeInstances() and saves results into specified file
@@ -111,11 +108,7 @@ func LoadInstances(filename string) ([]RunArgs, error) {
 	}
 
 	loadedInstances, err = DecodeInstances(data)
-	if err != nil {
-		return loadedInstances, err
-	}
-
-	return loadedInstances, nil
+	return loadedInstances, err
 }
 
 type Args struct {
