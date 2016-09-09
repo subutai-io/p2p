@@ -1,6 +1,7 @@
 package ptp
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -11,7 +12,7 @@ import (
 )
 
 const (
-	BLOCK_SIZE int = 16
+	BLOCK_SIZE int = 32
 	IV_SIZE    int = aes.BlockSize
 )
 
@@ -71,45 +72,35 @@ func (c Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	data_len := len(data)
-	result_data_len := (data_len + BLOCK_SIZE - 1) & (^(BLOCK_SIZE - 1))
-	encrypted_data := make([]byte, IV_SIZE+result_data_len)
-	// The IV needs to be unique, but not secured.
-	iv := make([]byte, aes.BlockSize)
+
+	if len(data) != IV_SIZE {
+		padding := IV_SIZE - len(data)%IV_SIZE
+		data = append(data, bytes.Repeat([]byte{byte(padding)}, padding)...)
+	}
+
+	iv := make([]byte, IV_SIZE)
 	_, err = rand.Read(iv)
 	if err != nil {
 		return nil, err
 	}
 
-	copy(encrypted_data[:IV_SIZE], iv)
-	count := result_data_len / BLOCK_SIZE
-	for i := 0; i < count-1; i++ {
-		mode := cipher.NewCBCEncrypter(cb, iv)
-		mode.CryptBlocks(encrypted_data[i*BLOCK_SIZE+IV_SIZE:], data[i*BLOCK_SIZE:(i+1)*BLOCK_SIZE])
-	}
+	encrypted_data := append(iv, data...)
 
-	tmp_arr := make([]byte, BLOCK_SIZE)
-	copy(tmp_arr, data[(count-1)*BLOCK_SIZE:])
 	mode := cipher.NewCBCEncrypter(cb, iv)
-	mode.CryptBlocks(encrypted_data[(count-1)*BLOCK_SIZE+IV_SIZE:], tmp_arr)
+	mode.CryptBlocks(encrypted_data[IV_SIZE:], data)
 
 	return encrypted_data, nil
 }
-
-/////////////////////////////////////////////////////
 
 func (c Crypto) Decrypt(key []byte, data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
-	iv := data[:IV_SIZE]
-	data_len := len(data) - IV_SIZE
-	decrypted_data := make([]byte, data_len)
-	count := data_len / BLOCK_SIZE
-	for i := 0; i < count; i++ {
-		mode := cipher.NewCBCDecrypter(block, iv)
-		mode.CryptBlocks(decrypted_data[i*BLOCK_SIZE:], data[i*BLOCK_SIZE+IV_SIZE:])
-	}
-	return decrypted_data, nil
+	encrypted_data := data[IV_SIZE:]
+
+	mode := cipher.NewCBCDecrypter(block, data[:IV_SIZE])
+	mode.CryptBlocks(encrypted_data, encrypted_data)
+
+	return encrypted_data, nil
 }
