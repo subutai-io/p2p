@@ -9,7 +9,7 @@ import (
 
 const (
 	CONFIG_DIR  string = "/usr/local/etc"
-	DEFAULT_MTU string = "1600"
+	DEFAULT_MTU string = "4000"
 )
 
 func openDevice(ifPattern string) (*os.File, error) {

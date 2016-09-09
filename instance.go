@@ -5,10 +5,11 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
-	ptp "github.com/subutai-io/p2p/lib"
 	"os"
 	"runtime"
 	"time"
+
+	ptp "github.com/subutai-io/p2p/lib"
 )
 
 var InstanceLock bool = false

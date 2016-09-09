@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	ptp "github.com/subutai-io/p2p/lib"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -11,6 +10,8 @@ import (
 	"os/signal"
 	"runtime/pprof"
 	"time"
+
+	ptp "github.com/subutai-io/p2p/lib"
 )
 
 var VERSION string = "Unknown"
@@ -383,8 +384,5 @@ func Daemon(port, saveFile, profiling string) {
 			os.Exit(0)
 		}
 	}()
-	for {
-		time.Sleep(1 * time.Second)
-	}
-	return
+	select {}
 }

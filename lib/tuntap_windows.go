@@ -6,11 +6,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"golang.org/x/sys/windows"
 	"os/exec"
 	"syscall"
 	"unicode/utf16"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 	//"strconv"
 )
 
@@ -63,8 +64,7 @@ func InitPlatform() {
 	if err != nil {
 		Log(ERROR, "Failed to remove TUN/TAP Devices: %v", err)
 	}
-	
-	
+
 	for i := 0; i < 10; i++ {
 		adddev := exec.Command(ADD_DEV)
 		err := adddev.Run()
@@ -177,24 +177,24 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 func createNewTAPDevice() {
 	// Check if we already have devices
 	/*
-	if len(UsedInterfaces) == 0 {
-		// If not, remove interfaces from previous instances and/or created by other software
-		// Yes, this will active OpenVPN Connections
-		Log(WARNING, "Removing TUN/TAP Devices created by other applications or previous instances")
-		remdev := exec.Command(REMOVE_DEV)
-		err := remdev.Run()
-		if err != nil {
-			Log(ERROR, "Failed to remove TUN/TAP Devices: %v", err)
+		if len(UsedInterfaces) == 0 {
+			// If not, remove interfaces from previous instances and/or created by other software
+			// Yes, this will active OpenVPN Connections
+			Log(WARNING, "Removing TUN/TAP Devices created by other applications or previous instances")
+			remdev := exec.Command(REMOVE_DEV)
+			err := remdev.Run()
+			if err != nil {
+				Log(ERROR, "Failed to remove TUN/TAP Devices: %v", err)
+			}
 		}
-	}
 
-	// Now add a new device
-	Log(INFO, "Creating new TUN/TAP Device")
-	adddev := exec.Command(ADD_DEV)
-	err := adddev.Run()
-	if err != nil {
-		Log(ERROR, "Failed to add TUN/TAP Device: %v", err)
-	}*/
+		// Now add a new device
+		Log(INFO, "Creating new TUN/TAP Device")
+		adddev := exec.Command(ADD_DEV)
+		err := adddev.Run()
+		if err != nil {
+			Log(ERROR, "Failed to add TUN/TAP Device: %v", err)
+		}*/
 }
 
 func openDevice(ifPattern string) (*Interface, error) {
@@ -260,7 +260,7 @@ func ExtractMacFromInterface(dev *Interface) string {
 		Log(ERROR, "Failed to get MAC from device")
 	}
 	var macAddr bytes.Buffer
-	
+
 	i := 0
 	for _, a := range mac {
 		if a == 0 {
@@ -273,7 +273,7 @@ func ExtractMacFromInterface(dev *Interface) string {
 		if i < 5 {
 			macAddr.WriteString(":")
 		}
-		i++	
+		i++
 	}
 	Log(INFO, "MAC: %s", macAddr.String())
 	return macAddr.String()
