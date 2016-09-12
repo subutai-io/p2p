@@ -4,8 +4,9 @@ PACK=goupx
 VERSION=$(shell git describe)
 OS=$(shell uname -s)
 ARCH=$(shell uname -m)
+sinclude config.make
 
-all: pack
+all: release
 
 $(APP): help.go instance.go main.go
 	$(CC) build -ldflags="-w -s -X main.VERSION=$(VERSION)" -o $@ -v $^
@@ -15,13 +16,18 @@ pack: $(APP)
 
 clean:
 	-rm -f $(APP)
-	-rm -f $(APP)-*-v*
-	-rm -f $(APP)-v*
+	-rm -f $(APP)-$(OS)*
+
+mrproper: clean
+mrproper:
+	-rm -f config.make
 
 test:  $(APP)
 	go test ./...
 
 release: $(APP)
+ifdef UPX_BIN
 release: pack
+endif
 release:
-	-cp $(APP) $(APP)-$(OS)-$(ARCH)-$(VERSION)
+	-mv $(APP) $(APP)-$(OS)-$(ARCH)-$(VERSION)

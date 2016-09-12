@@ -61,6 +61,10 @@ func P2PMessageHeaderFromBytes(bytes []byte) (*P2PMessageHeader, error) {
 	return result, nil
 }
 
+func GetProxyAttributes(bytes []byte) (uint16, uint16) {
+	return binary.BigEndian.Uint16(bytes[8:10]), binary.BigEndian.Uint16(bytes[2:4])
+}
+
 func (v *P2PMessage) Serialize() []byte {
 	v.Header.SerializedLen = uint16(len(v.Data))
 	Log(TRACE, "--- Serialize P2PMessage header.SerializedLen : %d", v.Header.SerializedLen)
@@ -325,6 +329,14 @@ func (uc *PTPNet) Bind(addr *net.UDPAddr, local_addr *net.UDPAddr) {
 
 func (uc *PTPNet) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, error) {
 	n, err := uc.conn.WriteToUDP(msg.Serialize(), dst_addr)
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
+func (uc *PTPNet) SendRawBytes(bytes []byte, dst_addr *net.UDPAddr) (int, error) {
+	n, err := uc.conn.WriteToUDP(bytes, dst_addr)
 	if err != nil {
 		return 0, err
 	}

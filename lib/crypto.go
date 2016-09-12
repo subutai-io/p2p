@@ -31,7 +31,7 @@ func (c Crypto) EnrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKey 
 	// Default value is +1 hour
 	ckey.Until = ckey.Until.Add(60 * time.Minute)
 	if err != nil {
-		Log(ERROR, "Failed to parse TTL. Falling back to default value of 1 hour")
+		Log(WARNING, "Failed to parse TTL. Falling back to default value of 1 hour")
 	} else {
 		ckey.Until = time.Unix(i, 0)
 	}
