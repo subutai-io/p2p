@@ -15,11 +15,11 @@ type Interface struct {
 }
 
 func InitPlatform() {
-	
+
 }
 
 func (t *Interface) ReadPacket() (*Packet, error) {
-	buf := make([]byte, 10000)
+	buf := make([]byte, 4096)
 
 	n, err := t.file.Read(buf)
 	if err != nil {
@@ -40,16 +40,11 @@ func (t *Interface) ReadPacket() (*Packet, error) {
 }
 
 func (t *Interface) WritePacket(pkt *Packet) error {
-	buf := make([]byte, len(pkt.Packet))
-	copy(buf, pkt.Packet)
-
-	var n int
-	var err error
-	n, err = t.file.Write(pkt.Packet)
+	n, err := t.file.Write(pkt.Packet)
 	if err != nil {
 		return err
 	}
-	if n != len(buf) {
+	if n != len(pkt.Packet) {
 		return io.ErrShortWrite
 	}
 	return nil

@@ -9,7 +9,7 @@ import (
 
 const (
 	CONFIG_DIR  string = "/usr/local/etc"
-	DEFAULT_MTU string = "1600"
+	DEFAULT_MTU string = "4000"
 )
 
 func openDevice(ifPattern string) (*os.File, error) {
@@ -56,10 +56,7 @@ func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 	}
 
 	err = SetMac(mac, device, tool)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func SetMTU(dev *Interface, device, tool, mtu string) error {

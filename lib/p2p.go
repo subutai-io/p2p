@@ -33,11 +33,11 @@ type PTPCloud struct {
 	Crypter         Crypto                               // Instance of crypto
 	Shutdown        bool                                 // Set to true when instance in shutdown mode
 	Restart         bool                                 // Instance will be restarted
+	ForwardMode     bool                                 // Skip local peer discovery
+	ReadyToStop     bool                                 // Set to true when instance is ready to stop
 	IPIDTable       map[string]string                    // Mapping for IP->ID
 	MACIDTable      map[string]string                    // Mapping for MAC->ID
-	ForwardMode     bool                                 // Skip local peer discovery
 	MessageHandlers map[uint16]MessageHandler            // Callbacks
-	ReadyToStop     bool                                 // Set to true when instance is ready to stop
 	PacketHandlers  map[PacketType]PacketHandlerCallback // Callbacks for network packet handlers
 	DHTPeerChannel  chan []PeerIP
 	ProxyChannel    chan Forwarder
@@ -87,10 +87,7 @@ func (p *PTPCloud) AssignInterface(ip, mac, mask, device string) error {
 	}
 
 	err = ConfigureInterface(p.Device, p.IP, p.Mac, p.DeviceName, p.IPTool)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // Listen TAP interface for incoming packets
