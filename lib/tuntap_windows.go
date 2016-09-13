@@ -10,9 +10,7 @@ import (
 	"syscall"
 	"unicode/utf16"
 	"unsafe"
-
 	"golang.org/x/sys/windows"
-	//"strconv"
 )
 
 var (
@@ -69,7 +67,7 @@ func InitPlatform() {
 		adddev := exec.Command(ADD_DEV)
 		err := adddev.Run()
 		if err != nil {
-			Log(ERROR, "Failed to add TUN/TAP Device: %v", err)
+			Log(ERROR, "1Failed to add TUN/TAP Device: %v", err)
 		}
 	}
 }
