@@ -6,6 +6,11 @@ OS=$(shell uname -s)
 ARCH=$(shell uname -m)
 sinclude config.make
 
+build: $(APP)
+ifdef UPX_BIN
+	release: pack
+endif
+
 all: release
 
 $(APP): help.go instance.go main.go
@@ -25,10 +30,7 @@ mrproper:
 test:  $(APP)
 	go test ./...
 
-release: $(APP)
-ifdef UPX_BIN
-	release: pack
-endif
+release: build
 release:
 	-mv $(APP) $(APP)-$(OS)-$(ARCH)-$(VERSION)
 
