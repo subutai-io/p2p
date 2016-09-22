@@ -86,7 +86,7 @@ func P2PMessageFromBytes(bytes []byte) (*P2PMessage, error) {
 	}
 	res.Data = make([]byte, res.Header.SerializedLen)
 	Log(TRACE, "BYTES : %s", bytes)
-	copy(res.Data[:], bytes[HEADER_SIZE:len(bytes)])
+	copy(res.Data[:], bytes[HEADER_SIZE:])
 	Log(TRACE, "res.Data : %s", res.Data)
 	return res, err
 }
@@ -328,8 +328,7 @@ func (uc *PTPNet) Bind(addr *net.UDPAddr, local_addr *net.UDPAddr) {
 }
 
 func (uc *PTPNet) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, error) {
-	ser_data := msg.Serialize()
-	n, err := uc.conn.WriteToUDP(ser_data, dst_addr)
+	n, err := uc.conn.WriteToUDP(msg.Serialize(), dst_addr)
 	if err != nil {
 		return 0, err
 	}

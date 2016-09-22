@@ -5,19 +5,23 @@ package ptp
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
-	"golang.org/x/sys/windows"
 	"os/exec"
+	"strconv"
 	"syscall"
 	"unicode/utf16"
 	"unsafe"
-	//"strconv"
+
+	"golang.org/x/sys/windows"
 )
 
 var (
+	// UsedInterfaces - List of interfaces currently in use by p2p daemon
 	UsedInterfaces []string
 )
 
+// Interface - represents a TAP interface in the system
 type Interface struct {
 	Name      string
 	file      syscall.Handle
@@ -63,8 +67,7 @@ func InitPlatform() {
 	if err != nil {
 		Log(ERROR, "Failed to remove TUN/TAP Devices: %v", err)
 	}
-	
-	
+
 	for i := 0; i < 10; i++ {
 		adddev := exec.Command(ADD_DEV)
 		err := adddev.Run()
@@ -72,6 +75,33 @@ func InitPlatform() {
 			Log(ERROR, "Failed to add TUN/TAP Device: %v", err)
 		}
 	}
+
+	for i := 0; i < 10; i++ {
+		key, err := queryNetworkKey()
+		if err != nil {
+			Log(ERROR, "Failed to retrieve network key: %v", err)
+			continue
+		}
+		inf, err := queryAdapters(key)
+		if err != nil {
+			Log(ERROR, "Failed to query interface: %v", err)
+			syscall.CloseHandle(inf.file)
+			continue
+		}
+		ip := "172." + strconv.Itoa(i) + ".4.100"
+		setip := exec.Command("netsh")
+		setip.SysProcAttr = &syscall.SysProcAttr{}
+		cmd := fmt.Sprintf(`netsh interface ip set address "%s" static %s %s`, inf.Interface, ip, "255.255.255.0")
+		Log(INFO, "Executing: %s", cmd)
+		setip.SysProcAttr.CmdLine = cmd
+		err = setip.Run()
+		syscall.CloseHandle(inf.file)
+		if err != nil {
+			Log(ERROR, "Failed to properly preconfigure TAP device with netsh: %v", err)
+			continue
+		}
+	}
+	UsedInterfaces = nil
 }
 
 func TAP_CONTROL_CODE(request, method uint32) uint32 {
@@ -87,7 +117,7 @@ func removeZeroes(s string) string {
 	var (
 		res  []byte
 		prev bool
-		size int = 0
+		size int
 	)
 	for _, b := range bytes {
 		if b == 0 && prev {
@@ -114,46 +144,49 @@ func queryNetworkKey() (syscall.Handle, error) {
 
 func queryAdapters(handle syscall.Handle) (*Interface, error) {
 	var dev Interface
-	var index uint32 = 0
+	var index uint32
 	for {
 		var length uint32 = 72
 		adapter := make([]uint16, length)
 		err := syscall.RegEnumKeyEx(handle, index, &adapter[0], &length, nil, nil, nil, nil)
 		if err == NO_MORE_ITEMS {
+			Log(WARNING, "No more items in Windows Registry")
 			break
 		}
 		index++
-		adapterId := string(utf16.Decode(adapter[0:72]))
-		adapterId = removeZeroes(adapterId)
-		path := fmt.Sprintf("%s\\%s\\Connection", NETWORK_KEY, adapterId)
+		adapterID := string(utf16.Decode(adapter[0:72]))
+		adapterID = removeZeroes(adapterID)
+		path := fmt.Sprintf("%s\\%s\\Connection", NETWORK_KEY, adapterID)
 		var iHandle syscall.Handle
 		err = syscall.RegOpenKeyEx(syscall.HKEY_LOCAL_MACHINE, syscall.StringToUTF16Ptr(path), 0, syscall.KEY_READ, &iHandle)
 		if err != nil {
+			syscall.RegCloseKey(iHandle)
 			continue
 		}
 		length = 1024
 		aName := make([]byte, length)
 		err = syscall.RegQueryValueEx(iHandle, syscall.StringToUTF16Ptr("Name"), nil, nil, &aName[0], &length)
+
 		if err != nil {
+			syscall.RegCloseKey(iHandle)
 			continue
 		}
-		syscall.RegCloseKey(iHandle)
+
 		adapterName := removeZeroes(string(aName))
 
-		// TODO: Improve this part
-
-		var isInUse bool = false
+		var isInUse = false
 		for _, i := range UsedInterfaces {
 			if i == adapterName {
 				isInUse = true
 			}
 		}
 		if isInUse {
+			Log(WARNING, "Adapter already in use. Skipping.")
 			continue
 		}
 		UsedInterfaces = append(UsedInterfaces, adapterName)
 
-		tapname := fmt.Sprintf("%s%s%s", USERMODE_DEVICE_DIR, adapterId, TAP_SUFFIX)
+		tapname := fmt.Sprintf("%s%s%s", USERMODE_DEVICE_DIR, adapterID, TAP_SUFFIX)
 
 		dev.file, err = syscall.CreateFile(syscall.StringToUTF16Ptr(tapname),
 			syscall.GENERIC_WRITE|syscall.GENERIC_READ,
@@ -167,7 +200,7 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 			continue
 		}
 		Log(INFO, "Acquired control over TAP interface: %s", adapterName)
-		dev.Name = adapterId
+		dev.Name = adapterID
 		dev.Interface = adapterName
 		return &dev, nil
 	}
@@ -177,24 +210,24 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 func createNewTAPDevice() {
 	// Check if we already have devices
 	/*
-	if len(UsedInterfaces) == 0 {
-		// If not, remove interfaces from previous instances and/or created by other software
-		// Yes, this will active OpenVPN Connections
-		Log(WARNING, "Removing TUN/TAP Devices created by other applications or previous instances")
-		remdev := exec.Command(REMOVE_DEV)
-		err := remdev.Run()
-		if err != nil {
-			Log(ERROR, "Failed to remove TUN/TAP Devices: %v", err)
+		if len(UsedInterfaces) == 0 {
+			// If not, remove interfaces from previous instances and/or created by other software
+			// Yes, this will active OpenVPN Connections
+			Log(WARNING, "Removing TUN/TAP Devices created by other applications or previous instances")
+			remdev := exec.Command(REMOVE_DEV)
+			err := remdev.Run()
+			if err != nil {
+				Log(ERROR, "Failed to remove TUN/TAP Devices: %v", err)
+			}
 		}
-	}
 
-	// Now add a new device
-	Log(INFO, "Creating new TUN/TAP Device")
-	adddev := exec.Command(ADD_DEV)
-	err := adddev.Run()
-	if err != nil {
-		Log(ERROR, "Failed to add TUN/TAP Device: %v", err)
-	}*/
+		// Now add a new device
+		Log(INFO, "Creating new TUN/TAP Device")
+		adddev := exec.Command(ADD_DEV)
+		err := adddev.Run()
+		if err != nil {
+			Log(ERROR, "Failed to add TUN/TAP Device: %v", err)
+		}*/
 }
 
 func openDevice(ifPattern string) (*Interface, error) {
@@ -209,9 +242,17 @@ func openDevice(ifPattern string) (*Interface, error) {
 		Log(ERROR, "Failed to query network adapters: %v", err)
 		return nil, err
 	}
+	if dev == nil {
+		Log(ERROR, "All devices are in use")
+		return nil, errors.New("No free TAP devices")
+	}
 	if dev.Name == "" {
 		Log(ERROR, "Failed to query network adapters: %v", err)
-		return nil, nil
+		return nil, errors.New("Empty network adapter")
+	}
+	err = syscall.CloseHandle(handle)
+	if err != nil {
+		Log(ERROR, "Failed to close retrieved handle: %v", err)
 	}
 
 	return dev, nil
@@ -221,6 +262,7 @@ func createInterface(file syscall.Handle, ifPattern string, kind DevKind) (strin
 	return "1", nil
 }
 
+// ConfigureInterface configures TAP interface by assigning it's IP and netmask using netsh Command
 func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 	dev.IP = ip
 	dev.Mask = "255.255.255.0"
@@ -260,7 +302,7 @@ func ExtractMacFromInterface(dev *Interface) string {
 		Log(ERROR, "Failed to get MAC from device")
 	}
 	var macAddr bytes.Buffer
-	
+
 	i := 0
 	for _, a := range mac {
 		if a == 0 {
@@ -273,7 +315,7 @@ func ExtractMacFromInterface(dev *Interface) string {
 		if i < 5 {
 			macAddr.WriteString(":")
 		}
-		i++	
+		i++
 	}
 	Log(INFO, "MAC: %s", macAddr.String())
 	return macAddr.String()
@@ -395,5 +437,5 @@ func (t *Interface) Write(ch chan []byte) (err error) {
 }
 
 func GetDeviceBase() string {
-	return "Local Area Network"
+	return "Local Area Network "
 }

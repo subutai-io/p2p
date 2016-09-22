@@ -5,10 +5,11 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
-	ptp "github.com/subutai-io/p2p/lib"
 	"os"
 	"runtime"
 	"time"
+
+	ptp "github.com/subutai-io/p2p/lib"
 )
 
 var InstanceLock bool = false
@@ -73,10 +74,7 @@ func DecodeInstances(data []byte) ([]RunArgs, error) {
 	b.Write(data)
 	d := gob.NewDecoder(&b)
 	err := d.Decode(&args)
-	if err != nil {
-		return args, err
-	}
-	return args, nil
+	return args, err
 }
 
 // Calls EncodeInstances() and saves results into specified file
@@ -110,11 +108,7 @@ func LoadInstances(filename string) ([]RunArgs, error) {
 	}
 
 	loadedInstances, err = DecodeInstances(data)
-	if err != nil {
-		return loadedInstances, err
-	}
-
-	return loadedInstances, nil
+	return loadedInstances, err
 }
 
 type Args struct {
@@ -223,14 +217,15 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 	if !exists {
 		resp.Output = resp.Output + "Lookup finished\n"
 		if args.Key != "" {
-			key := []byte(args.Key)
-			if len(key) > ptp.BLOCK_SIZE {
-				key = key[:ptp.BLOCK_SIZE]
-			} else {
-				zeros := make([]byte, ptp.BLOCK_SIZE-len(key))
-				key = append([]byte(key), zeros...)
+			if len(args.Key) < 16 {
+				args.Key += "0000000000000000"[:16-len(args.Key)]
+			} else if len(args.Key) > 16 && len(args.Key) < 24 {
+				args.Key += "000000000000000000000000"[:24-len(args.Key)]
+			} else if len(args.Key) > 24 && len(args.Key) < 32 {
+				args.Key += "00000000000000000000000000000000"[:32-len(args.Key)]
+			} else if len(args.Key) > 32 {
+				args.Key = args.Key[:32]
 			}
-			args.Key = string(key)
 		}
 
 		var newInst Instance

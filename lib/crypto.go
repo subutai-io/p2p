@@ -1,6 +1,7 @@
 package ptp
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -8,11 +9,6 @@ import (
 	"io/ioutil"
 	"strconv"
 	"time"
-)
-
-const (
-	BLOCK_SIZE int = 16
-	IV_SIZE    int = aes.BlockSize
 )
 
 type CryptoKey struct {
@@ -67,49 +63,37 @@ func (c Crypto) ReadKeysFromFile(filepath string) {
 }
 
 func (c Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
-	cb, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	data_len := len(data)
-	result_data_len := (data_len + BLOCK_SIZE - 1) & (^(BLOCK_SIZE - 1))
-	encrypted_data := make([]byte, IV_SIZE+result_data_len)
-	// The IV needs to be unique, but not secured.
-	iv := make([]byte, aes.BlockSize)
-	_, err = rand.Read(iv)
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
 
-	copy(encrypted_data[:IV_SIZE], iv)
-	count := result_data_len / BLOCK_SIZE
-	for i := 0; i < count-1; i++ {
-		mode := cipher.NewCBCEncrypter(cb, iv)
-		mode.CryptBlocks(encrypted_data[i*BLOCK_SIZE+IV_SIZE:], data[i*BLOCK_SIZE:(i+1)*BLOCK_SIZE])
+	if len(data) != aes.BlockSize {
+		padding := aes.BlockSize - len(data)%aes.BlockSize
+		data = append(data, bytes.Repeat([]byte{byte(padding)}, padding)...)
 	}
 
-	tmp_arr := make([]byte, BLOCK_SIZE)
-	copy(tmp_arr, data[(count-1)*BLOCK_SIZE:])
-	mode := cipher.NewCBCEncrypter(cb, iv)
-	mode.CryptBlocks(encrypted_data[(count-1)*BLOCK_SIZE+IV_SIZE:], tmp_arr)
+	encrypted_data := make([]byte, aes.BlockSize+len(data))
+	iv := encrypted_data[:aes.BlockSize]
+	if _, err = rand.Read(iv); err != nil {
+		return nil, err
+	}
+
+	mode := cipher.NewCBCEncrypter(block, iv)
+	mode.CryptBlocks(encrypted_data[aes.BlockSize:], data)
 
 	return encrypted_data, nil
 }
-
-/////////////////////////////////////////////////////
 
 func (c Crypto) Decrypt(key []byte, data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
-	iv := data[:IV_SIZE]
-	data_len := len(data) - IV_SIZE
-	decrypted_data := make([]byte, data_len)
-	count := data_len / BLOCK_SIZE
-	for i := 0; i < count; i++ {
-		mode := cipher.NewCBCDecrypter(block, iv)
-		mode.CryptBlocks(decrypted_data[i*BLOCK_SIZE:], data[i*BLOCK_SIZE+IV_SIZE:])
-	}
-	return decrypted_data, nil
+	encrypted_data := data[aes.BlockSize:]
+
+	mode := cipher.NewCBCDecrypter(block, data[:aes.BlockSize])
+	mode.CryptBlocks(encrypted_data, encrypted_data)
+
+	return encrypted_data, nil
 }
