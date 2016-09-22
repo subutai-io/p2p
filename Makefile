@@ -27,7 +27,11 @@ test:  $(APP)
 
 release: $(APP)
 ifdef UPX_BIN
-release: pack
+	release: pack
 endif
 release:
 	-mv $(APP) $(APP)-$(OS)-$(ARCH)-$(VERSION)
+
+install: 
+	@mkdir -p $(DESTDIR)/bin
+	@cp $(APP) $(DESTDIR)/bin
