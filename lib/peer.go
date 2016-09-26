@@ -15,7 +15,7 @@ type NetworkPeer struct {
 	Forwarder      *net.UDPAddr                       // Forwarder address
 	PeerAddr       *net.UDPAddr                       // Address of peer
 	PeerLocalIP    net.IP                             // IP of peers interface. TODO: Rename to IP
-	PeerHW         net.HardwareAddr                   // Hardware addres of peer interface. TODO: Rename to Mac
+	PeerHW         net.HardwareAddr                   // Hardware address of peer interface. TODO: Rename to Mac
 	Endpoint       *net.UDPAddr                       // Endpoint address of a peer. TODO: Make this net.UDPAddr
 	KnownIPs       []*net.UDPAddr                     // List of IP addresses that accepts connection on peer
 	Retries        int                                // Number of introduction retries
@@ -89,8 +89,6 @@ func (np *NetworkPeer) StateRequestedIp(ptpc *PTPCloud) error {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	Log(INFO, "Received network address for peer: %s", np.ID)
-	return nil
 }
 
 func (np *NetworkPeer) SetPeerAddr() bool {
@@ -109,13 +107,13 @@ func (np *NetworkPeer) SetPeerAddr() bool {
 // Otherwise, we will try to establish connection over WAN. If every attempt
 // will fail we will switch to Proxy mode.
 func (np *NetworkPeer) StateConnectingDirectly(ptpc *PTPCloud) error {
-	Log(INFO, "Trying direct conection with peer: %s", np.ID)
+	Log(INFO, "Trying direct connection with peer: %s", np.ID)
 	if len(np.KnownIPs) == 0 {
 		np.State = P_INIT
 		np.LastError = fmt.Sprintf("Didn't received any IP addresses")
 		return errors.New("Joined connection state without knowing any IPs")
 	}
-	// If forward mode was activated - skip direction connection attemps
+	// If forward mode was activated - skip direction connection attempts
 	if ptpc.ForwardMode {
 		np.SetPeerAddr()
 		np.State = P_WAITING_FORWARDER

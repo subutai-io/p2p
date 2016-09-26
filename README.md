@@ -1,9 +1,7 @@
 P2P Cloud
 ===================
 
-Master: [![Build Status - master](https://api.travis-ci.org/subutai-io/p2p.png?branch=master)](https://travis-ci.org/subutai-io/p2p)
-
-Dev: [![Build Status - dev](https://api.travis-ci.org/subutai-io/p2p.png?branch=dev)](https://travis-ci.org/subutai-io/p2p)
+Master: [![Build Status - master](https://api.travis-ci.org/subutai-io/p2p.png?branch=master)](https://travis-ci.org/subutai-io/p2p) [![Go Report Card](https://goreportcard.com/badge/github.com/subutai-io/p2p)](https://goreportcard.com/report/github.com/subutai-io/p2p)
 
 P2P Cloud project allows users to build their private networks. 
 

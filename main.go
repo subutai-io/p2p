@@ -226,7 +226,7 @@ func Start(rpcPort, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool,
 	if response.ExitCode == 0 {
 		fmt.Printf("%s\n", response.Output)
 	} else {
-		fmt.Errorf("%s\n", response.Output)
+		fmt.Fprintf(os.Stderr, "%s\n", response.Output)
 	}
 	os.Exit(response.ExitCode)
 }
@@ -248,7 +248,7 @@ func Stop(rpcPort, hash string) {
 	if response.ExitCode == 0 {
 		fmt.Printf("%s\n", response.Output)
 	} else {
-		fmt.Errorf("%s\n", response.Output)
+		fmt.Fprintf(os.Stderr, "%s\n", response.Output)
 	}
 	os.Exit(response.ExitCode)
 }
@@ -272,7 +272,7 @@ func Show(rpcPort, hash, ip string) {
 	if response.ExitCode == 0 {
 		fmt.Printf("%s\n", response.Output)
 	} else {
-		fmt.Errorf("%s\n", response.Output)
+		fmt.Fprintf(os.Stderr, "%s\n", response.Output)
 	}
 	os.Exit(response.ExitCode)
 }
@@ -289,7 +289,7 @@ func ShowStatus(rpcPort string) {
 	if response.ExitCode == 0 {
 		fmt.Printf("%s\n", response.Output)
 	} else {
-		fmt.Errorf("%s\n", response.Output)
+		fmt.Fprintf(os.Stderr, "%s\n", response.Output)
 	}
 	os.Exit(response.ExitCode)
 }
@@ -315,7 +315,7 @@ func Set(rpcPort, log, hash, keyfile, key, ttl string) {
 	if response.ExitCode == 0 {
 		fmt.Printf("%s\n", response.Output)
 	} else {
-		fmt.Errorf("%s\n", response.Output)
+		fmt.Fprintf(os.Stderr, "%s\n", response.Output)
 	}
 	os.Exit(response.ExitCode)
 }

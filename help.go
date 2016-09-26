@@ -5,7 +5,7 @@ import (
 )
 
 func UsageDaemon() {
-	fmt.Printf("p2p network running on the same machine are controled by daemon. \n" +
+	fmt.Printf("p2p network running on the same machine are controlled by daemon. \n" +
 		"Daemon should be started by privileged user, because process will attempt to \n" +
 		"create new virtual network interfaces (tap). \n" +
 		"When running p2p in daemon mode it will listen to a particular port specified by optional -port \n" +

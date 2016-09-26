@@ -1,8 +1,6 @@
 package ptp
 
 import (
-	"bytes"
-	//"crypto/md5"
 	"crypto/rand"
 	"fmt"
 	"io/ioutil"
@@ -245,7 +243,7 @@ func StartP2PInstance(argIp, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		argDev = p.GenerateDeviceName(1)
 	} else {
 		if len(argDev) > 12 {
-			Log(INFO, "Interface name lenght should be 12 symbols max")
+			Log(INFO, "Interface name length should be 12 symbols max")
 			return nil
 		}
 	}
@@ -608,94 +606,7 @@ func (p *PTPCloud) HandleP2PMessage(count int, src_addr *net.UDPAddr, err error,
 
 func (p *PTPCloud) HandleNotEncryptedMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
 	Log(TRACE, "Data: %s, Proto: %d, From: %s", msg.Data, msg.Header.NetProto, src_addr.String())
-	/*
-		// md5
-		sum := msg.Data[0:16]
-		data := msg.Data[16:]
-		nsum := md5.Sum(data)
-		if !bytes.Equal(nsum[:], sum) {
-			Log(ERROR, "Packet sum mismatch")
-		}
-	*/
 	p.WriteToDevice(msg.Data, msg.Header.NetProto, false)
-	return
-	p.BufferLock.Lock()
-	// Allocate memory
-	if p.MessageBuffer[src_addr.String()] == nil {
-		p.MessageBuffer[src_addr.String()] = make(map[uint16]map[uint16][]byte)
-		//p.MessagePacket[src_addr.String()] = make(map[uint16][]byte)
-	}
-	if p.MessageBuffer[src_addr.String()][msg.Header.Id] == nil {
-		p.MessageBuffer[src_addr.String()][msg.Header.Id] = make(map[uint16][]byte)
-	}
-	if bytes.Equal(p.MessagePacket[src_addr.String()], msg.Data) {
-		p.BufferLock.Unlock()
-		runtime.Gosched()
-		return
-	} else {
-		p.MessagePacket[src_addr.String()] = msg.Data
-	}
-	/*
-		if p.MessagePacket[src_addr.String()][msg.Header.Id] != nil {
-			if bytes.Equal(p.MessagePacket[src_addr.String()][msg.Header.Id], msg.Data) {
-				return
-			} else {
-				p.MessagePacket[src_addr.String()][msg.Header.Id] = msg.Data
-			}
-		}
-	*/
-	// Append packet contents into queue
-	p.MessageBuffer[src_addr.String()][msg.Header.Id][msg.Header.Seq] = msg.Data
-	p.BufferLock.Unlock()
-	runtime.Gosched()
-	if msg.Header.Complete > 0 {
-		wcounter := 0
-		p.BufferLock.Lock()
-		plen := len(p.MessageBuffer[src_addr.String()][msg.Header.Id])
-		p.BufferLock.Unlock()
-		runtime.Gosched()
-		// Wait for packet to arrive
-		for plen != int(msg.Header.Complete) {
-			time.Sleep(10 * time.Millisecond)
-			p.BufferLock.Lock()
-			plen = len(p.MessageBuffer[src_addr.String()][msg.Header.Id])
-			p.BufferLock.Unlock()
-			runtime.Gosched()
-			wcounter++
-			if wcounter > 100 {
-				Log(WARNING, "Packet incomplete. Received %d from %d [%d]", plen, msg.Header.Complete, msg.Header.Id)
-				p.BufferLock.Lock()
-				delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
-				p.BufferLock.Unlock()
-				runtime.Gosched()
-				return
-			}
-		}
-		// Combine packet from parts
-		var b []byte
-		for i := uint16(1); i <= msg.Header.Complete; i++ {
-			p.BufferLock.Lock()
-			data, exists := p.MessageBuffer[src_addr.String()][msg.Header.Id][i]
-			p.BufferLock.Unlock()
-			runtime.Gosched()
-			if exists {
-				b = append(b, data...)
-			} else {
-				Log(WARNING, "Missing packet: %d/%d", i, msg.Header.Complete)
-				p.BufferLock.Lock()
-				//delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
-				delete(p.MessageBuffer, src_addr.String())
-				p.BufferLock.Unlock()
-				runtime.Gosched()
-				return
-			}
-		}
-		p.WriteToDevice(b, msg.Header.NetProto, false)
-		p.BufferLock.Lock()
-		delete(p.MessageBuffer[src_addr.String()], msg.Header.Id)
-		p.BufferLock.Unlock()
-		runtime.Gosched()
-	}
 }
 
 func (p *PTPCloud) HandlePingMessage(msg *P2PMessage, src_addr *net.UDPAddr) {
