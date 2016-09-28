@@ -31,7 +31,7 @@ func (t *Interface) ReadPacket() (*Packet, error) {
 	pkt.Protocol = int(binary.BigEndian.Uint16(buf[12:14]))
 	/*flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
 	if flags&flagTruncated != 0 {
-		Log(INFO, "TRUNCATED")
+		Log(Info, "TRUNCATED")
 		//pkt.Truncated = true
 	}
 	*/
@@ -57,11 +57,11 @@ func (t *Interface) Close() error {
 func CheckPermissions() bool {
 	user, err := user.Current()
 	if err != nil {
-		Log(ERROR, "Failed to retrieve information about user: %v", err)
+		Log(Error, "Failed to retrieve information about user: %v", err)
 		return false
 	}
 	if user.Uid != "0" {
-		Log(ERROR, "P2P cannot run in daemon mode without root privileges")
+		Log(Error, "P2P cannot run in daemon mode without root privileges")
 		return false
 	}
 	return true

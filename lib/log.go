@@ -5,38 +5,44 @@ import (
 	"os"
 )
 
-type LOG_LEVEL int32
+// LogLevel is a level of the log message
+type LogLevel int32
 
+// Log Levels
 const (
-	TRACE LOG_LEVEL = iota
-	DEBUG
-	INFO
-	WARNING
-	ERROR
+	Trace LogLevel = iota
+	Debug
+	Info
+	Warning
+	Error
 )
 
-var log_prefixes = [...]string{"[TRACE] ", "[DEBUG] ", "[INFO] ", "[WARNING] ", "[ERROR] "}
-var log_flags = [...]int{log.Ldate | log.Ltime,
+var logPrefixes = [...]string{"[TRACE] ", "[DEBUG] ", "[INFO] ", "[WARNING] ", "[ERROR] "}
+var logFlags = [...]int{log.Ldate | log.Ltime,
 	log.Ldate | log.Ltime,
 	log.Ldate | log.Ltime,
 	log.Ldate | log.Ltime,
 	log.Ldate | log.Ltime}
 
-var log_level_min LOG_LEVEL = INFO
-var std_loggers = [...]*log.Logger{log.New(os.Stdout, log_prefixes[TRACE], log_flags[TRACE]),
-	log.New(os.Stdout, log_prefixes[DEBUG], log_flags[DEBUG]),
-	log.New(os.Stdout, log_prefixes[INFO], log_flags[INFO]),
-	log.New(os.Stdout, log_prefixes[WARNING], log_flags[WARNING]),
-	log.New(os.Stdout, log_prefixes[ERROR], log_flags[ERROR])}
+var logLevelMin = Info
+var stdLoggers = [...]*log.Logger{log.New(os.Stdout, logPrefixes[Trace], logFlags[Trace]),
+	log.New(os.Stdout, logPrefixes[Debug], logFlags[Debug]),
+	log.New(os.Stdout, logPrefixes[Info], logFlags[Info]),
+	log.New(os.Stdout, logPrefixes[Warning], logFlags[Warning]),
+	log.New(os.Stdout, logPrefixes[Error], logFlags[Error])}
 
-func SetMinLogLevel(level LOG_LEVEL) {
-	log_level_min = level
+// SetMinLogLevel sets a minimal logging level
+func SetMinLogLevel(level LogLevel) {
+	logLevelMin = level
 }
-func MinLogLevel() LOG_LEVEL { return log_level_min }
 
-func Log(level LOG_LEVEL, format string, v ...interface{}) {
-	if level < log_level_min {
+// MinLogLevel returns minimal log level
+func MinLogLevel() LogLevel { return logLevelMin }
+
+// Log writes a log message
+func Log(level LogLevel, format string, v ...interface{}) {
+	if level < logLevelMin {
 		return
 	}
-	std_loggers[level].Printf(format, v...)
+	stdLoggers[level].Printf(format, v...)
 }

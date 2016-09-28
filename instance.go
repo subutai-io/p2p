@@ -12,22 +12,24 @@ import (
 	ptp "github.com/subutai-io/p2p/lib"
 )
 
-var InstanceLock bool = false
+var instanceLock = false
 
-func WaitLock() {
-	for InstanceLock {
+func waitLock() {
+	for instanceLock {
 		time.Sleep(100 * time.Microsecond)
 	}
 }
 
-func Lock() {
-	InstanceLock = true
+func lock() {
+	instanceLock = true
 }
 
-func Unlock() {
-	InstanceLock = false
+func unlock() {
+	instanceLock = false
 }
 
+// RunArgs is a list of arguments used at instance startup and
+// some other RPC calls
 type RunArgs struct {
 	IP      string
 	Mac     string
@@ -41,34 +43,34 @@ type RunArgs struct {
 	Port    int
 }
 
-type Instance struct {
-	PTP  *ptp.PTPCloud
+type instance struct {
+	PTP  *ptp.PeerToPeer
 	ID   string
 	Args RunArgs
 }
 
 var (
-	Instances map[string]Instance
-	SaveFile  string
+	instances map[string]instance
+	saveFile  string
 )
 
-func EncodeInstances() ([]byte, error) {
+func encodeInstances() ([]byte, error) {
 	var savedInstances []RunArgs
 
-	for _, inst := range Instances {
+	for _, inst := range instances {
 		savedInstances = append(savedInstances, inst.Args)
 	}
 	b := bytes.Buffer{}
 	e := gob.NewEncoder(&b)
 	err := e.Encode(savedInstances)
 	if err != nil {
-		ptp.Log(ptp.ERROR, "Failed to encode instances: %v", err)
+		ptp.Log(ptp.Error, "Failed to encode instances: %v", err)
 		return []byte(""), err
 	}
 	return b.Bytes(), nil
 }
 
-func DecodeInstances(data []byte) ([]RunArgs, error) {
+func decodeInstances(data []byte) ([]RunArgs, error) {
 	var args []RunArgs
 	b := bytes.Buffer{}
 	b.Write(data)
@@ -77,15 +79,15 @@ func DecodeInstances(data []byte) ([]RunArgs, error) {
 	return args, err
 }
 
-// Calls EncodeInstances() and saves results into specified file
+// Calls encodeInstances() and saves results into specified file
 // Return number of bytes written and error if any
-func SaveInstances(filename string) (int, error) {
+func saveInstances(filename string) (int, error) {
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0700)
 	if err != nil {
 		return 0, err
 	}
 
-	data, err := EncodeInstances()
+	data, err := encodeInstances()
 	if err != nil {
 		return 0, err
 	}
@@ -98,7 +100,7 @@ func SaveInstances(filename string) (int, error) {
 	return s, nil
 }
 
-func LoadInstances(filename string) ([]RunArgs, error) {
+func loadInstances(filename string) ([]RunArgs, error) {
 	var loadedInstances []RunArgs
 	file, err := os.Open(filename)
 	data := make([]byte, 100000)
@@ -107,46 +109,52 @@ func LoadInstances(filename string) ([]RunArgs, error) {
 		return loadedInstances, err
 	}
 
-	loadedInstances, err = DecodeInstances(data)
+	loadedInstances, err = decodeInstances(data)
 	return loadedInstances, err
 }
 
+// Args is a simple name-value RPC arguments
 type Args struct {
 	Command string
 	Args    string
 }
 
+// NameValueArg is a simple name-value RPC arguments
 type NameValueArg struct {
 	Name  string
 	Value string
 }
 
+// StopArgs is an arguments used with Stop RPC call
 type StopArgs struct {
 	Hash string
 }
 
+// Response represents a result of RPC call
 type Response struct {
 	ExitCode int
 	Output   string
 }
 
+// Procedures is an object of RPC procedures
 type Procedures int
 
+// SetLog modifies specific option
 func (p *Procedures) SetLog(args *NameValueArg, resp *Response) error {
-	ptp.Log(ptp.INFO, "Setting option %s to %s", args.Name, args.Value)
+	ptp.Log(ptp.Info, "Setting option %s to %s", args.Name, args.Value)
 	resp.ExitCode = 0
 	if args.Name == "log" {
 		resp.Output = "Logging level has switched to " + args.Value + " level"
 		if args.Value == "DEBUG" {
-			ptp.SetMinLogLevel(ptp.DEBUG)
+			ptp.SetMinLogLevel(ptp.Debug)
 		} else if args.Value == "INFO" {
-			ptp.SetMinLogLevel(ptp.INFO)
+			ptp.SetMinLogLevel(ptp.Info)
 		} else if args.Value == "TRACE" {
-			ptp.SetMinLogLevel(ptp.TRACE)
+			ptp.SetMinLogLevel(ptp.Trace)
 		} else if args.Value == "WARNING" {
-			ptp.SetMinLogLevel(ptp.WARNING)
+			ptp.SetMinLogLevel(ptp.Warning)
 		} else if args.Value == "ERROR" {
-			ptp.SetMinLogLevel(ptp.ERROR)
+			ptp.SetMinLogLevel(ptp.Error)
 		} else {
 			resp.ExitCode = 1
 			resp.Output = "Unknown log level was specified. Supported log levels is:\n"
@@ -160,9 +168,10 @@ func (p *Procedures) SetLog(args *NameValueArg, resp *Response) error {
 	return nil
 }
 
+// AddKey adds a new crypto-key
 func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
-	WaitLock()
-	Lock()
+	waitLock()
+	lock()
 	resp.ExitCode = 0
 	if args.Hash == "" {
 		resp.ExitCode = 1
@@ -172,7 +181,7 @@ func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
 		resp.ExitCode = 1
 		resp.Output = "You have not specified key"
 	}
-	_, exists := Instances[args.Hash]
+	_, exists := instances[args.Hash]
 	if !exists {
 		resp.ExitCode = 1
 		resp.Output = "No instances with specified hash were found"
@@ -180,40 +189,42 @@ func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
 	if resp.ExitCode == 0 {
 		resp.Output = "New key added"
 		var newKey ptp.CryptoKey
-		newKey = Instances[args.Hash].PTP.Crypter.EnrichKeyValues(newKey, args.Key, args.TTL)
-		Instances[args.Hash].PTP.Crypter.Keys = append(Instances[args.Hash].PTP.Crypter.Keys, newKey)
+		newKey = instances[args.Hash].PTP.Crypter.EnrichKeyValues(newKey, args.Key, args.TTL)
+		instances[args.Hash].PTP.Crypter.Keys = append(instances[args.Hash].PTP.Crypter.Keys, newKey)
 	}
-	Unlock()
+	unlock()
 	return nil
 }
 
+// Execute is a dummy method used for tests
 func (p *Procedures) Execute(args *Args, resp *Response) error {
 	resp.ExitCode = 0
 	resp.Output = ""
 	return nil
 }
 
+// Run starts a P2P instance
 func (p *Procedures) Run(args *RunArgs, resp *Response) error {
-	WaitLock()
-	Lock()
+	waitLock()
+	lock()
 	resp.ExitCode = 0
 	resp.Output = "Running new P2P instance for " + args.Hash + "\n"
-	defer Unlock()
+	defer unlock()
 
 	// Validate if interface name is unique
 	if args.Dev != "" {
-		for _, inst := range Instances {
+		for _, inst := range instances {
 			if inst.PTP.DeviceName == args.Dev {
 				resp.ExitCode = 1
 				resp.Output = "Device name is already in use"
-				Unlock()
+				unlock()
 				return errors.New(resp.Output)
 			}
 		}
 	}
 
 	var exists bool
-	_, exists = Instances[args.Hash]
+	_, exists = instances[args.Hash]
 	if !exists {
 		resp.Output = resp.Output + "Lookup finished\n"
 		if args.Key != "" {
@@ -228,62 +239,64 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 			}
 		}
 
-		var newInst Instance
+		var newInst instance
 		newInst.ID = args.Hash
 		newInst.Args = *args
-		Instances[args.Hash] = newInst
+		instances[args.Hash] = newInst
 		ptpInstance := ptp.StartP2PInstance(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port)
 		if ptpInstance == nil {
-			delete(Instances, args.Hash)
+			delete(instances, args.Hash)
 			resp.Output = resp.Output + "Failed to create P2P Instance"
 			resp.ExitCode = 1
-			Unlock()
+			unlock()
 			return errors.New("Failed to create P2P Instance")
 		}
 		newInst.PTP = ptpInstance
-		Instances[args.Hash] = newInst
+		instances[args.Hash] = newInst
 		go ptpInstance.Run()
-		if SaveFile != "" {
+		if saveFile != "" {
 			resp.Output = resp.Output + "Saving instance into file"
-			SaveInstances(SaveFile)
+			saveInstances(saveFile)
 		}
 	} else {
 		resp.Output = resp.Output + "Hash already in use\n"
 	}
-	Unlock()
+	unlock()
 	return nil
 }
 
+// Stop is used to terminate a specific P2P instance
 func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
-	WaitLock()
-	Lock()
-	defer Unlock()
+	waitLock()
+	lock()
+	defer unlock()
 	resp.ExitCode = 0
 	var exists bool
-	_, exists = Instances[args.Hash]
+	_, exists = instances[args.Hash]
 	if !exists {
 		resp.ExitCode = 1
 		resp.Output = "Instance with hash " + args.Hash + " was not found"
 	} else {
 		resp.Output = "Shutting down " + args.Hash
-		Instances[args.Hash].PTP.StopInstance()
-		delete(Instances, args.Hash)
-		SaveInstances(SaveFile)
+		instances[args.Hash].PTP.StopInstance()
+		delete(instances, args.Hash)
+		saveInstances(saveFile)
 	}
-	Unlock()
+	unlock()
 	return nil
 }
 
+// Show is used to output information about instances
 func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 	if args.Hash != "" {
-		swarm, exists := Instances[args.Hash]
+		swarm, exists := instances[args.Hash]
 		resp.ExitCode = 0
 		if exists {
 			if args.IP != "" {
 				swarm.PTP.PeersLock.Lock()
 				for _, peer := range swarm.PTP.NetworkPeers {
 					if peer.PeerLocalIP.String() == args.IP {
-						if peer.State == ptp.P_CONNECTED {
+						if peer.State == ptp.PeerStateConnected {
 							resp.ExitCode = 0
 							resp.Output = "Integrated with " + args.IP
 							swarm.PTP.PeersLock.Unlock()
@@ -297,28 +310,27 @@ func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 				resp.ExitCode = 1
 				resp.Output = "Not yet integrated with " + args.IP
 				return nil
-			} else {
-				resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
-				swarm.PTP.PeersLock.Lock()
-				for _, peer := range swarm.PTP.NetworkPeers {
-					resp.Output = resp.Output + peer.ID + "\t"
-					resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
-					resp.Output = resp.Output + peer.Endpoint.String() + "\t"
-					resp.Output = resp.Output + peer.PeerHW.String() + "\n"
-				}
-				swarm.PTP.PeersLock.Unlock()
-				runtime.Gosched()
 			}
+			resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
+			swarm.PTP.PeersLock.Lock()
+			for _, peer := range swarm.PTP.NetworkPeers {
+				resp.Output = resp.Output + peer.ID + "\t"
+				resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
+				resp.Output = resp.Output + peer.Endpoint.String() + "\t"
+				resp.Output = resp.Output + peer.PeerHW.String() + "\n"
+			}
+			swarm.PTP.PeersLock.Unlock()
+			runtime.Gosched()
 		} else {
 			resp.Output = "Specified environment was not found: " + args.Hash
 			resp.ExitCode = 1
 		}
 	} else {
 		resp.ExitCode = 0
-		if len(Instances) == 0 {
+		if len(instances) == 0 {
 			resp.Output = "No instances was found"
 		}
-		for key, inst := range Instances {
+		for key, inst := range instances {
 			if inst.PTP != nil {
 				resp.Output = resp.Output + "\t" + inst.PTP.Mac + "\t" + inst.PTP.IP + "\t" + key
 			} else {
@@ -330,11 +342,12 @@ func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 	return nil
 }
 
+// Debug output debug information
 func (p *Procedures) Debug(args *Args, resp *Response) error {
 	resp.Output = "DEBUG INFO:\n"
 	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())
 	resp.Output += fmt.Sprintf("Instances information:\n")
-	for _, ins := range Instances {
+	for _, ins := range instances {
 		resp.Output += fmt.Sprintf("Hash: %s\n", ins.ID)
 		resp.Output += fmt.Sprintf("ID: %s\n", ins.PTP.Dht.ID)
 		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", ins.PTP.DeviceName, ins.PTP.Mac, ins.PTP.IP)
@@ -358,8 +371,9 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 	return nil
 }
 
+// Status displays information about instances, peers and their statuses
 func (p *Procedures) Status(args *RunArgs, resp *Response) error {
-	for _, ins := range Instances {
+	for _, ins := range instances {
 		resp.Output += ins.ID + " | " + ins.PTP.IP + "\n"
 		for _, peer := range ins.PTP.NetworkPeers {
 			resp.Output += peer.ID + "|"
@@ -374,27 +388,28 @@ func (p *Procedures) Status(args *RunArgs, resp *Response) error {
 	return nil
 }
 
+// StringifyState extracts human-readable word that represents a peer status
 func StringifyState(state ptp.PeerState) string {
 	switch state {
-	case ptp.P_INIT:
+	case ptp.PeerStateInit:
 		return "Initializing"
-	case ptp.P_REQUESTED_IP:
+	case ptp.PeerStateRequestedIP:
 		return "Waiting for IP"
-	case ptp.P_CONNECTING_DIRECTLY:
+	case ptp.PeerStateConnectingDirectly:
 		return "Trying direct connection"
-	case ptp.P_CONNECTED:
+	case ptp.PeerStateConnected:
 		return "Connected"
-	case ptp.P_HANDSHAKING:
+	case ptp.PeerStateHandshaking:
 		return "Handshaking"
-	case ptp.P_HANDSHAKING_FAILED:
+	case ptp.PeerStateHandshakingFailed:
 		return "Handshaking failed"
-	case ptp.P_WAITING_FORWARDER:
+	case ptp.PeerStateWaitingForwarder:
 		return "Waiting forwarder IP"
-	case ptp.P_HANDSHAKING_FORWARDER:
+	case ptp.PeerStateHandshakingForwarder:
 		return "Handshaking forwarder"
-	case ptp.P_DISCONNECT:
+	case ptp.PeerStateDisconnect:
 		return "Disconnected"
-	case ptp.P_STOP:
+	case ptp.PeerStateStop:
 		return "Stopped"
 	}
 	return "Unknown"
