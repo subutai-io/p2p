@@ -9,15 +9,18 @@ import (
 	"os/user"
 )
 
+// Interface represent network interface
 type Interface struct {
 	Name string
 	file *os.File
 }
 
+// InitPlatform does a platform specific preparation
 func InitPlatform() {
 
 }
 
+// ReadPacket reads a single packet from TUNTAP device
 func (t *Interface) ReadPacket() (*Packet, error) {
 	buf := make([]byte, 4096)
 
@@ -39,6 +42,7 @@ func (t *Interface) ReadPacket() (*Packet, error) {
 	return pkt, nil
 }
 
+// WritePacket sends a packet to a TUNTAP device
 func (t *Interface) WritePacket(pkt *Packet) error {
 	n, err := t.file.Write(pkt.Packet)
 	if err != nil {
@@ -50,10 +54,12 @@ func (t *Interface) WritePacket(pkt *Packet) error {
 	return nil
 }
 
+// Close destroys an interface
 func (t *Interface) Close() error {
 	return t.file.Close()
 }
 
+// CheckPermissions validates platform specific permissions to run TUNTAP utilities
 func CheckPermissions() bool {
 	user, err := user.Current()
 	if err != nil {
@@ -67,6 +73,7 @@ func CheckPermissions() bool {
 	return true
 }
 
+// Open creates an interface
 func Open(ifPattern string, kind DevKind) (*Interface, error) {
 	file, err := openDevice(ifPattern)
 	if err != nil {
@@ -85,12 +92,14 @@ func Open(ifPattern string, kind DevKind) (*Interface, error) {
 	return inf, nil
 }
 
+// Run is used on Windows only systems
 func (t *Interface) Run() {
 
 	// Dummy, used for windows only
 
 }
 
+// ExtractMacFromInterface should return a MAC address on Windows systems
 func ExtractMacFromInterface(dev *Interface) string {
 	return ""
 }

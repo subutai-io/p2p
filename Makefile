@@ -14,7 +14,7 @@ endif
 all: release
 
 $(APP): help.go instance.go main.go
-	$(CC) build -ldflags="-w -s -X main.VERSION=$(VERSION)" -o $@ -v $^
+	$(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $@ -v $^
 
 pack: $(APP)
 	$(PACK) $(APP)
