@@ -167,10 +167,10 @@ func (np *NetworkPeer) StateConnected(ptpc *PeerToPeer) error {
 		return fmt.Errorf("Peer %s has lost endpoint", np.ID)
 	}
 	passed := time.Since(np.LastContact)
-	if passed > PEER_PING_TIMEOUT {
+	if passed > PeerPingTimeout {
 		np.LastError = ""
 		Log(Debug, "Sending ping")
-		msg := CreateXpeerPingMessage(PING_REQ, ptpc.HardwareAddr.String())
+		msg := CreateXpeerPingMessage(PingReq, ptpc.HardwareAddr.String())
 		ptpc.SendTo(np.PeerHW, msg)
 		np.PingCount++
 	}
@@ -232,7 +232,7 @@ func (np *NetworkPeer) StateWaitingForwarder(ptpc *PeerToPeer) error {
 	for np.Forwarder == nil {
 		time.Sleep(time.Millisecond * 100)
 		passed := time.Since(waitStart)
-		if passed > WAIT_PROXY_TIMEOUT {
+		if passed > WaitProxyTimeout {
 			np.ProxyRequests++
 			np.LastError = "No forwarders received"
 			return fmt.Errorf("No proxy were received for %s", np.ID)
@@ -257,7 +257,7 @@ func (np *NetworkPeer) StateHandshakingForwarder(ptpc *PeerToPeer) error {
 	attempts := 0
 	for np.ProxyID == 0 {
 		passed := time.Since(handshakeSentAt)
-		if passed > HANDSHAKE_PROXY_TIMEOUT {
+		if passed > HandshakeProxyTimeout {
 			if attempts >= 3 {
 				np.BlacklistCurrentProxy(ptpc)
 				a := np.Forwarder

@@ -628,10 +628,10 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 // HandleXpeerPingMessage receives a cross-peer ping message
 func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	pt := PingType(msg.Header.NetProto)
-	if pt == PING_REQ {
+	if pt == PingReq {
 		Log(Debug, "Ping request received")
 		// Send a PING response
-		r := CreateXpeerPingMessage(PING_RESP, p.HardwareAddr.String())
+		r := CreateXpeerPingMessage(PingResp, p.HardwareAddr.String())
 		addr, err := net.ParseMAC(string(msg.Data))
 		if err != nil {
 			Log(Error, "Failed to parse MAC address in crosspeer ping message")

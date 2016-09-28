@@ -28,13 +28,13 @@ func StartProfiling(profile string) {
 
 	timeStr := "cpu"
 	if profile == "cpu" {
-		file_name := fmt.Sprintf("%s/%s.prof", pwd, timeStr)
-		f, err := os.Create(file_name)
+		fileName := fmt.Sprintf("%s/%s.prof", pwd, timeStr)
+		f, err := os.Create(fileName)
 		if err != nil {
 			ptp.Log(ptp.Error, "Create cpu_prof file failed. %v", err)
 			return
 		}
-		ptp.Log(ptp.Info, "Start cpu profiling to file %s", file_name)
+		ptp.Log(ptp.Info, "Start cpu profiling to file %s", fileName)
 		pprof.StartCPUProfile(f)
 	} else if profile == "memory" {
 		_, err := os.Create(fmt.Sprintf("%s/%s.p2p_mem_prof", pwd, timeStr))
@@ -48,7 +48,7 @@ func StartProfiling(profile string) {
 func main() {
 
 	var (
-		argIp       string
+		argIP       string
 		argMac      string
 		argDev      string
 		argHash     string
@@ -86,7 +86,7 @@ func main() {
 	daemon.StringVar(&argProfile, "profile", "", "Starts PTP package with profiling. Possible values : memory, cpu")
 
 	start := flag.NewFlagSet("Startup options", flag.ContinueOnError)
-	start.StringVar(&argIp, "ip", "dhcp", "`IP` address to be used in local system. Should be specified in CIDR format or `dhcp` is used by default to receive free unused IP")
+	start.StringVar(&argIP, "ip", "dhcp", "`IP` address to be used in local system. Should be specified in CIDR format or `dhcp` is used by default to receive free unused IP")
 	start.StringVar(&argMac, "mac", "", "MAC or `Hardware Address` for a TUN/TAP interface")
 	start.StringVar(&argDev, "dev", "", "TUN/TAP `interface name`")
 	start.StringVar(&argHash, "hash", "", "`Infohash` for environment")
@@ -103,7 +103,7 @@ func main() {
 
 	show := flag.NewFlagSet("Show flagset", flag.ContinueOnError)
 	show.StringVar(&argHash, "hash", "", "Infohash for environment")
-	show.StringVar(&argIp, "check", "", "Check if integration with specified IP is finished")
+	show.StringVar(&argIP, "check", "", "Check if integration with specified IP is finished")
 
 	set := flag.NewFlagSet("Option Setting", flag.ContinueOnError)
 	set.StringVar(&argLog, "log", "", "Log level")
@@ -123,13 +123,13 @@ func main() {
 		Daemon(argRPCPort, argsaveFile, argProfile)
 	case "start":
 		start.Parse(os.Args[2:])
-		Start(argRPCPort, argIp, argHash, argMac, argDev, argDht, argKeyfile, argKey, argTTL, argFwd, argPort)
+		Start(argRPCPort, argIP, argHash, argMac, argDev, argDht, argKeyfile, argKey, argTTL, argFwd, argPort)
 	case "stop":
 		stop.Parse(os.Args[2:])
 		Stop(argRPCPort, argHash)
 	case "show":
 		show.Parse(os.Args[2:])
-		Show(argRPCPort, argHash, argIp)
+		Show(argRPCPort, argHash, argIP)
 	case "set":
 		set.Parse(os.Args[2:])
 		Set(argRPCPort, argLog, argHash, argKeyfile, argKey, argTTL)
@@ -174,6 +174,7 @@ func main() {
 	}
 }
 
+// Dial connects to a local RPC server
 func Dial(port string) *rpc.Client {
 	client, err := rpc.DialHTTP("tcp", "localhost:"+port)
 	if err != nil {
@@ -183,6 +184,7 @@ func Dial(port string) *rpc.Client {
 	return client
 }
 
+// Start - begin P2P Instance
 func Start(rpcPort, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool, port int) {
 	client := Dial(rpcPort)
 	var response Response
@@ -233,6 +235,7 @@ func Start(rpcPort, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool,
 	os.Exit(response.ExitCode)
 }
 
+// Stop will terminate P2P instance
 func Stop(rpcPort, hash string) {
 	client := Dial(rpcPort)
 	var response Response
@@ -255,6 +258,7 @@ func Stop(rpcPort, hash string) {
 	os.Exit(response.ExitCode)
 }
 
+// Show outputs information about P2P instances
 func Show(rpcPort, hash, ip string) {
 	client := Dial(rpcPort)
 	var response Response
@@ -279,6 +283,7 @@ func Show(rpcPort, hash, ip string) {
 	os.Exit(response.ExitCode)
 }
 
+// ShowStatus outputs connectivity status of each peer
 func ShowStatus(rpcPort string) {
 	client := Dial(rpcPort)
 	var response Response
@@ -296,6 +301,7 @@ func ShowStatus(rpcPort string) {
 	os.Exit(response.ExitCode)
 }
 
+// Set modifies different options of P2P daemon
 func Set(rpcPort, log, hash, keyfile, key, ttl string) {
 	client := Dial(rpcPort)
 	var response Response
@@ -322,6 +328,7 @@ func Set(rpcPort, log, hash, keyfile, key, ttl string) {
 	os.Exit(response.ExitCode)
 }
 
+// Debug prints debug information
 func Debug(rpcPort string) {
 	client := Dial(rpcPort)
 	var response Response
@@ -335,6 +342,7 @@ func Debug(rpcPort string) {
 	os.Exit(response.ExitCode)
 }
 
+// Daemon starts P2P daemon
 func Daemon(port, sFile, profiling string) {
 	StartProfiling(profiling)
 	ptp.InitPlatform()

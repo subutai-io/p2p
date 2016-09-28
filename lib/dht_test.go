@@ -4,6 +4,12 @@ import (
 	"testing"
 )
 
+func TestCompose(t *testing.T) {
+	//var dht DHTClient
+	//var result = dht.Compose("TEST_COMMAND", "TEST_ID", "TEST_QUERY", "TEST_ARGS")
+	//t.Errorf("Result: %s", result)
+}
+
 func TestExtract(t *testing.T) {
 	var m = "d1:a0:1:c4:ping1:i36:00000000-1111-2222-3333-4444444444441:p0:1:q1:0e"
 	var dht DHTClient
