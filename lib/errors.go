@@ -4,32 +4,37 @@ import (
 	"errors"
 )
 
+// ErrorType is a type of an error
 type ErrorType string
 
 var (
+	// ErrorList stores known errors
 	ErrorList map[ErrorType]error
 )
 
+// Types of errors
 const (
-	ERR_UNKNOWN_ERROR       ErrorType = "unknownerror"
-	ERR_INCOPATIBLE_VERSION ErrorType = "unsupported"
-	ERR_MALFORMED_HANDSHAKE ErrorType = "badhandshake"
-	ERR_PORT_PARSE_FAILED   ErrorType = "badport"
-	ERR_BAD_UDP_ADDR        ErrorType = "badudpaddr"
-	ERR_BAD_ID_RECEIVED     ErrorType = "badid"
-	ERR_BAD_DHCP_DATA       ErrorType = "baddhcp"
+	ErrUnknownError       ErrorType = "unknownerror"
+	ErrIncopatibleVersion ErrorType = "unsupported"
+	ErrMalformedHandshake ErrorType = "badhandshake"
+	ErrPortParseFailed    ErrorType = "badport"
+	ErrBadUDPAddr         ErrorType = "badudpaddr"
+	ErrBadIDReceived      ErrorType = "badid"
+	ErrBadDHCPData        ErrorType = "baddhcp"
 )
 
-type Error struct {
+// TError -Struct for errors
+type TError struct {
 	Type ErrorType
 }
 
+// InitErrors populates ErrorList with error types
 func InitErrors() {
 	ErrorList = make(map[ErrorType]error)
-	ErrorList[ERR_INCOPATIBLE_VERSION] = errors.New("DHT received incompatible packet")
-	ErrorList[ERR_MALFORMED_HANDSHAKE] = errors.New("DHT received malformed handshake")
-	ErrorList[ERR_PORT_PARSE_FAILED] = errors.New("DHT failed to extract port from handshake")
-	ErrorList[ERR_BAD_UDP_ADDR] = errors.New("DHT failed to extract UDP address from handshake")
-	ErrorList[ERR_BAD_ID_RECEIVED] = errors.New("DHT received invalid ID from client")
-	ErrorList[ERR_BAD_DHCP_DATA] = errors.New("DHT failed to parse provided DHCP packet")
+	ErrorList[ErrIncopatibleVersion] = errors.New("DHT received incompatible packet")
+	ErrorList[ErrMalformedHandshake] = errors.New("DHT received malformed handshake")
+	ErrorList[ErrPortParseFailed] = errors.New("DHT failed to extract port from handshake")
+	ErrorList[ErrBadUDPAddr] = errors.New("DHT failed to extract UDP address from handshake")
+	ErrorList[ErrBadIDReceived] = errors.New("DHT received invalid ID from client")
+	ErrorList[ErrBadDHCPData] = errors.New("DHT failed to parse provided DHCP packet")
 }

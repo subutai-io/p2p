@@ -22,24 +22,26 @@ import (
 	"github.com/mdlayher/ethernet"
 	//"runtime"
 	//"crypto/md5"
-	"sync"
 )
 
+// PacketType is a type of the IPv4 packet
 type PacketType int
 
+// PacketHandlerCallback represents a callback function for each packet type
 type PacketHandlerCallback func(data []byte, proto int)
 
+// Packet Types
 const (
-	ETH_PACKET_SIZE    int        = 512
-	PT_PARC_UNIVERSAL  PacketType = 512
-	PT_IPV4            PacketType = 2048
-	PT_ARP             PacketType = 2054
-	PT_RARP            PacketType = 32821
-	PT_8021Q           PacketType = 33024
-	PT_IPV6            PacketType = 34525
-	PT_PPPOE_DISCOVERY PacketType = 34915
-	PT_PPPOE_SESSION   PacketType = 34916
-	PT_LLDP            PacketType = 35020
+	EthPacketSize        int        = 512
+	PacketPARCUniversal  PacketType = 512
+	PacketIPv4           PacketType = 2048
+	PacketARP            PacketType = 2054
+	PacketRARP           PacketType = 32821
+	Packet8021Q          PacketType = 33024
+	PacketIPv6           PacketType = 34525
+	PacketPPPoEDiscovery PacketType = 34915
+	PacketPPPoESession   PacketType = 34916
+	PacketLLDP           PacketType = 35020
 )
 
 var (
@@ -57,18 +59,20 @@ var (
 
 	//PacketHandlers map[PacketType]PacketHandlerCallback
 
-	PacketID          uint16
-	PacketCounterLock sync.Mutex
-	SendLock          sync.Mutex
+	// PacketID is a ID of the received packet
+	PacketID uint16
 )
 
+// Operation determines whether operation is a request or a reply
 type Operation uint16
 
+// Types of Operation
 const (
 	OperationRequest Operation = 1
 	OperationReply   Operation = 2
 )
 
+// ARPPacket represents an ARP packet
 type ARPPacket struct {
 	// HardwareType specifies an IANA-assigned hardware type, as described
 	// in RFC 826.
@@ -109,136 +113,96 @@ type ARPPacket struct {
 // Receiving a packet by device means that some application sent a network
 // packet within a subnet in which our application works.
 // This method calls appropriate gorouting for extracted packet protocol
-func (p *PTPCloud) handlePacket(contents []byte, proto int) {
+func (p *PeerToPeer) handlePacket(contents []byte, proto int) {
 	callback, exists := p.PacketHandlers[PacketType(proto)]
 	if exists {
 		callback(contents, proto)
 	} else {
-		Log(WARNING, "Captured undefined packet: %d", PacketType(proto))
+		Log(Warning, "Captured undefined packet: %d", PacketType(proto))
 	}
 }
 
 // Handles a IPv4 packet and sends it to it's destination
-func (p *PTPCloud) handlePacketIPv4(contents []byte, proto int) {
-	Log(TRACE, "Handling IPv4 Packet")
-	/*
-		PacketCounterLock.Lock()
-		PacketID++
-		if PacketID > 65000 {
-			PacketID = 0
-		}
-		pid := PacketID
-		PacketCounterLock.Unlock()
-		runtime.Gosched()
-	*/
+func (p *PeerToPeer) handlePacketIPv4(contents []byte, proto int) {
+	Log(Trace, "Handling IPv4 Packet")
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
-		Log(ERROR, "Failed to unmarshal IPv4 packet")
+		Log(Error, "Failed to unmarshal IPv4 packet")
 	}
 
 	if f.EtherType != ethernet.EtherTypeIPv4 {
 		return
 	}
-	/*
-		// md5
-		sum := md5.Sum(contents)
-		var d []byte
-		d = append(d, sum[:]...)
-		d = append(d, contents...)
-	*/
 	msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto), 1, 1, 1)
 	p.SendTo(f.Destination, msg)
-	return
-	pid := uint16(0)
-	// Split packet into parts and send each part
-	var complete uint16 = 0
-	var seq uint16 = 0
-	for len(contents) > 0 {
-		seq++
-		shift := ETH_PACKET_SIZE
-		if len(contents) <= ETH_PACKET_SIZE {
-			complete = seq
-			shift = len(contents)
-		}
-		msg := CreateNencP2PMessage(p.Crypter, contents[0:shift], uint16(proto), complete, pid, seq)
-		msg.Header.NetProto = uint16(proto)
-		//SendLock.Lock()
-		_, err := p.SendTo(f.Destination, msg)
-		//SendLock.Unlock()
-		//runtime.Gosched()
-		if err != nil {
-			Log(ERROR, "Failed to send message over P2P: %v", err)
-		}
-		contents = contents[shift:]
-	}
 }
 
 // TODO: Implement IPv6 Support
-func (p *PTPCloud) handlePacketIPv6(contents []byte, proto int) {
-	Log(TRACE, "Handling IPv6 Packet")
+func (p *PeerToPeer) handlePacketIPv6(contents []byte, proto int) {
+	Log(Trace, "Handling IPv6 Packet")
 }
 
 // TODO: Implement PARC Universal Support
-func (p *PTPCloud) handlePARCUniversalPacket(contents []byte, proto int) {
-	Log(TRACE, "Handling PARC Universal Packet")
+func (p *PeerToPeer) handlePARCUniversalPacket(contents []byte, proto int) {
+	Log(Trace, "Handling PARC Universal Packet")
 }
 
 // TODO: Implement RARP Support
-func (p *PTPCloud) handleRARPPacket(contents []byte, proto int) {
-	Log(TRACE, "Handling RARP Packet")
+func (p *PeerToPeer) handleRARPPacket(contents []byte, proto int) {
+	Log(Trace, "Handling RARP Packet")
 }
 
 // TODO: Implement 802.1q Support
-func (p *PTPCloud) handle8021qPacket(contents []byte, proto int) {
-	Log(TRACE, "Handling 802.1q Packet")
+func (p *PeerToPeer) handle8021qPacket(contents []byte, proto int) {
+	Log(Trace, "Handling 802.1q Packet")
 }
 
 // TODO: Implement PPPoE Discovery Support
-func (p *PTPCloud) handlePPPoEDiscoveryPacket(contents []byte, proto int) {
-	Log(TRACE, "Handling PPPoE Discovery Packet")
+func (p *PeerToPeer) handlePPPoEDiscoveryPacket(contents []byte, proto int) {
+	Log(Trace, "Handling PPPoE Discovery Packet")
 }
 
 // TODO: Implement PPPoE Session Support
-func (p *PTPCloud) handlePPPoESessionPacket(contents []byte, proto int) {
-	Log(TRACE, "Handling PPPoE Session Packet")
+func (p *PeerToPeer) handlePPPoESessionPacket(contents []byte, proto int) {
+	Log(Trace, "Handling PPPoE Session Packet")
 }
 
-func (p *PTPCloud) handlePacketARP(contents []byte, proto int) {
+func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
 	// Prepare new ethernet frame and fill it with
 	// contents of the packet
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
-		Log(ERROR, "Failed to Unmarshal ARP Binary")
+		Log(Error, "Failed to Unmarshal ARP Binary")
 		return
 	}
 
 	if f.EtherType != ethernet.EtherTypeARP {
-		Log(ERROR, "Not ARP")
+		Log(Error, "Not ARP")
 		return
 	}
 
 	packet := new(ARPPacket)
 	if err := packet.UnmarshalARP(f.Payload); err != nil {
-		Log(ERROR, "Failed to unmarshal arp")
+		Log(Error, "Failed to unmarshal arp")
 		return
 	}
-	Log(TRACE, "Peers: %v, Target IP: %s", p.NetworkPeers, packet.TargetIP.String())
-	var hwAddr net.HardwareAddr = nil
+	Log(Trace, "Peers: %v, Target IP: %s", p.NetworkPeers, packet.TargetIP.String())
+	var hwAddr net.HardwareAddr
 	id, exists := p.IPIDTable[packet.TargetIP.String()]
 	if !exists {
-		Log(DEBUG, "Unknown IP requested")
+		Log(Debug, "Unknown IP requested")
 		return
 	}
 	peer, exists := p.NetworkPeers[id]
 	if !exists {
-		Log(DEBUG, "Specified ID was not found in peer list")
+		Log(Debug, "Specified ID was not found in peer list")
 		return
 	}
 	hwAddr = peer.PeerHW
 	// TODO: Put there normal IP from list of ips
 	// Send a reply
 	if hwAddr == nil {
-		Log(ERROR, "Cannot find hardware address for requested IP")
+		Log(Error, "Cannot find hardware address for requested IP")
 		_, hwAddr = GenerateMAC()
 		peer.PeerHW = hwAddr
 		p.NetworkPeers[id] = peer
@@ -252,12 +216,12 @@ func (p *PTPCloud) handlePacketARP(contents []byte, proto int) {
 	ip := net.ParseIP(packet.TargetIP.String())
 	response, err := reply.NewPacket(OperationReply, hwAddr, ip, packet.SenderHardwareAddr, packet.SenderIP)
 	if err != nil {
-		Log(ERROR, "Failed to create ARP reply")
+		Log(Error, "Failed to create ARP reply")
 		return
 	}
 	rp, err := response.MarshalBinary()
 	if err != nil {
-		Log(ERROR, "Failed to marshal ARP response packet")
+		Log(Error, "Failed to marshal ARP response packet")
 		return
 	}
 
@@ -270,14 +234,14 @@ func (p *PTPCloud) handlePacketARP(contents []byte, proto int) {
 
 	fb, err := fr.MarshalBinary()
 	if err != nil {
-		Log(ERROR, "Failed to marshal ARP Ethernet Frame")
+		Log(Error, "Failed to marshal ARP Ethernet Frame")
 	}
-	Log(DEBUG, "%v", packet.String())
+	Log(Debug, "%v", packet.String())
 	p.WriteToDevice(fb, uint16(proto), false)
 }
 
-func (p *PTPCloud) handlePacketLLDP(contents []byte, proto int) {
-	Log(TRACE, "Handling LLDP Session Packet")
+func (p *PeerToPeer) handlePacketLLDP(contents []byte, proto int) {
+	Log(Trace, "Handling LLDP Session Packet")
 }
 
 func (p *ARPPacket) String() string {
@@ -334,6 +298,7 @@ func (p *ARPPacket) MarshalBinary() ([]byte, error) {
 	return b, nil
 }
 
+// UnmarshalARP unmarshals ARP header
 func (p *ARPPacket) UnmarshalARP(b []byte) error {
 	// Must have enough room to retrieve hardware address and IP lengths
 	if len(b) < 8 {
@@ -393,6 +358,7 @@ func (p *ARPPacket) UnmarshalARP(b []byte) error {
 	return nil
 }
 
+// NewPacket creates new ARP packet
 func (p *ARPPacket) NewPacket(op Operation, srcHW net.HardwareAddr, srcIP net.IP, dstHW net.HardwareAddr, dstIP net.IP) (*ARPPacket, error) {
 	// Validate hardware addresses for minimum length, and matching length
 	if len(srcHW) < 6 {

@@ -7,44 +7,49 @@ import (
 	"net"
 )
 
+// Constants
 const (
-	MAGIC_COOKIE uint16 = 0xabcd
-	HEADER_SIZE  int    = 18
+	MagicCookie uint16 = 0xabcd
+	HeaderSize  int    = 18
 )
 
+// P2PMessageHeader is header used in cross-peer packets
 type P2PMessageHeader struct {
 	Magic         uint16
 	Type          uint16
 	Length        uint16
 	NetProto      uint16
-	ProxyId       uint16
+	ProxyID       uint16
 	SerializedLen uint16
 	Complete      uint16
-	Id            uint16
+	ID            uint16
 	Seq           uint16
 }
 
+// P2PMessage is a cross-peer message packet
 type P2PMessage struct {
 	Header *P2PMessageHeader
 	Data   []byte
 }
 
+// Serialize does a header serialization
 func (v *P2PMessageHeader) Serialize() []byte {
-	res_buf := make([]byte, HEADER_SIZE)
-	binary.BigEndian.PutUint16(res_buf[0:2], v.Magic)
-	binary.BigEndian.PutUint16(res_buf[2:4], v.Type)
-	binary.BigEndian.PutUint16(res_buf[4:6], v.Length)
-	binary.BigEndian.PutUint16(res_buf[6:8], v.NetProto)
-	binary.BigEndian.PutUint16(res_buf[8:10], v.ProxyId)
-	binary.BigEndian.PutUint16(res_buf[10:12], v.SerializedLen)
-	binary.BigEndian.PutUint16(res_buf[12:14], v.Complete)
-	binary.BigEndian.PutUint16(res_buf[14:16], v.Id)
-	binary.BigEndian.PutUint16(res_buf[16:18], v.Seq)
-	return res_buf
+	resBuf := make([]byte, HeaderSize)
+	binary.BigEndian.PutUint16(resBuf[0:2], v.Magic)
+	binary.BigEndian.PutUint16(resBuf[2:4], v.Type)
+	binary.BigEndian.PutUint16(resBuf[4:6], v.Length)
+	binary.BigEndian.PutUint16(resBuf[6:8], v.NetProto)
+	binary.BigEndian.PutUint16(resBuf[8:10], v.ProxyID)
+	binary.BigEndian.PutUint16(resBuf[10:12], v.SerializedLen)
+	binary.BigEndian.PutUint16(resBuf[12:14], v.Complete)
+	binary.BigEndian.PutUint16(resBuf[14:16], v.ID)
+	binary.BigEndian.PutUint16(resBuf[16:18], v.Seq)
+	return resBuf
 }
 
+// P2PMessageHeaderFromBytes extracts message header from received packet
 func P2PMessageHeaderFromBytes(bytes []byte) (*P2PMessageHeader, error) {
-	if len(bytes) < HEADER_SIZE {
+	if len(bytes) < HeaderSize {
 		return nil, errors.New("P2PMessageHeaderFromBytes_error : less then 14 bytes")
 	}
 
@@ -53,49 +58,53 @@ func P2PMessageHeaderFromBytes(bytes []byte) (*P2PMessageHeader, error) {
 	result.Type = binary.BigEndian.Uint16(bytes[2:4])
 	result.Length = binary.BigEndian.Uint16(bytes[4:6])
 	result.NetProto = binary.BigEndian.Uint16(bytes[6:8])
-	result.ProxyId = binary.BigEndian.Uint16(bytes[8:10])
+	result.ProxyID = binary.BigEndian.Uint16(bytes[8:10])
 	result.SerializedLen = binary.BigEndian.Uint16(bytes[10:12])
 	result.Complete = binary.BigEndian.Uint16(bytes[12:14])
-	result.Id = binary.BigEndian.Uint16(bytes[14:16])
+	result.ID = binary.BigEndian.Uint16(bytes[14:16])
 	result.Seq = binary.BigEndian.Uint16(bytes[16:18])
 	return result, nil
 }
 
+// GetProxyAttributes returns information related to current proxy in a message header
 func GetProxyAttributes(bytes []byte) (uint16, uint16) {
 	return binary.BigEndian.Uint16(bytes[8:10]), binary.BigEndian.Uint16(bytes[2:4])
 }
 
+// Serialize constructs a P2P message
 func (v *P2PMessage) Serialize() []byte {
 	v.Header.SerializedLen = uint16(len(v.Data))
-	Log(TRACE, "--- Serialize P2PMessage header.SerializedLen : %d", v.Header.SerializedLen)
-	res_buf := v.Header.Serialize()
-	res_buf = append(res_buf, v.Data...)
-	return res_buf
+	Log(Trace, "--- Serialize P2PMessage header.SerializedLen : %d", v.Header.SerializedLen)
+	resBuf := v.Header.Serialize()
+	resBuf = append(resBuf, v.Data...)
+	return resBuf
 }
 
+// P2PMessageFromBytes extract a payload from received packet
 func P2PMessageFromBytes(bytes []byte) (*P2PMessage, error) {
 	res := new(P2PMessage)
-	var err error = nil
+	var err error
 	res.Header, err = P2PMessageHeaderFromBytes(bytes)
 	if err != nil {
 		return nil, err
 	}
-	Log(TRACE, "--- P2PMessageHeaderFromBytes Length : %d, SerLen : %d", res.Header.Length, res.Header.SerializedLen)
-	if res.Header.Magic != MAGIC_COOKIE {
+	Log(Trace, "--- P2PMessageHeaderFromBytes Length : %d, SerLen : %d", res.Header.Length, res.Header.SerializedLen)
+	if res.Header.Magic != MagicCookie {
 		return nil, errors.New("magic cookie not presented")
 	}
 	res.Data = make([]byte, res.Header.SerializedLen)
-	Log(TRACE, "BYTES : %s", bytes)
-	copy(res.Data[:], bytes[HEADER_SIZE:])
-	Log(TRACE, "res.Data : %s", res.Data)
+	Log(Trace, "BYTES : %s", bytes)
+	copy(res.Data[:], bytes[HeaderSize:])
+	Log(Trace, "res.Data : %s", res.Data)
 	return res, err
 }
 
+// CreateStringP2PMessage creates a normal P2P message
 func CreateStringP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
-	msg.Header.Magic = MAGIC_COOKIE
-	msg.Header.Type = uint16(MT_STRING)
+	msg.Header.Magic = MagicCookie
+	msg.Header.Type = uint16(MsgTypeString)
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
 	msg.Header.Complete = 1
@@ -103,7 +112,7 @@ func CreateStringP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage 
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {
-			Log(ERROR, "Failed to encrypt data")
+			Log(Error, "Failed to encrypt data")
 		}
 	} else {
 		msg.Data = []byte(data)
@@ -111,60 +120,64 @@ func CreateStringP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage 
 	return msg
 }
 
+// CreatePingP2PMessage creates a PING message
 func CreatePingP2PMessage() *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
-	msg.Header.Magic = MAGIC_COOKIE
-	msg.Header.Type = uint16(MT_PING)
+	msg.Header.Magic = MagicCookie
+	msg.Header.Type = uint16(MsgTypePing)
 	msg.Header.NetProto = 0
 	msg.Header.Length = uint16(len("1"))
 	msg.Header.Complete = 1
-	msg.Header.Id = 0
+	msg.Header.ID = 0
 	msg.Data = []byte("1")
 	return msg
 }
 
+// CreateConfP2PMessage creates a confirmation message
 func CreateConfP2PMessage(id, seq uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
-	msg.Header.Magic = MAGIC_COOKIE
-	msg.Header.Type = uint16(MT_CONF)
+	msg.Header.Magic = MagicCookie
+	msg.Header.Type = uint16(MsgTypeConf)
 	msg.Header.NetProto = 0
 	msg.Header.Length = uint16(len("1"))
 	msg.Header.Complete = 1
-	msg.Header.Id = id
+	msg.Header.ID = id
 	msg.Header.Seq = seq
 	msg.Data = []byte("1")
 	return msg
 }
 
+// CreateXpeerPingMessage creates a cross-peer PING message
 func CreateXpeerPingMessage(pt PingType, hw string) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
-	msg.Header.Magic = MAGIC_COOKIE
-	msg.Header.Type = uint16(MT_XPEER_PING)
+	msg.Header.Magic = MagicCookie
+	msg.Header.Type = uint16(MsgTypeXpeerPing)
 	msg.Header.NetProto = uint16(pt)
 	msg.Header.Length = uint16(len(hw))
 	msg.Header.Complete = 1
-	msg.Header.Id = 0
+	msg.Header.ID = 0
 	msg.Data = []byte(hw)
 	return msg
 }
 
+// CreateIntroP2PMessage creates a handshake response
 func CreateIntroP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
-	msg.Header.Magic = MAGIC_COOKIE
-	msg.Header.Type = uint16(MT_INTRO)
+	msg.Header.Magic = MagicCookie
+	msg.Header.Type = uint16(MsgTypeIntro)
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
 	msg.Header.Complete = 1
-	msg.Header.Id = 0
+	msg.Header.ID = 0
 	if c.Active {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {
-			Log(ERROR, "Failed to encrypt data")
+			Log(Error, "Failed to encrypt data")
 		}
 	} else {
 		msg.Data = []byte(data)
@@ -172,20 +185,21 @@ func CreateIntroP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	return msg
 }
 
+// CreateIntroRequest creates a handshake request
 func CreateIntroRequest(c Crypto, id string) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
-	msg.Header.Magic = MAGIC_COOKIE
-	msg.Header.Type = uint16(MT_INTRO_REQ)
+	msg.Header.Magic = MagicCookie
+	msg.Header.Type = uint16(MsgTypeIntroReq)
 	msg.Header.NetProto = 0
 	msg.Header.Length = uint16(len(id))
 	msg.Header.Complete = 1
-	msg.Header.Id = 0
+	msg.Header.ID = 0
 	if c.Active {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(id))
 		if err != nil {
-			Log(ERROR, "Failed to encrypt data")
+			Log(Error, "Failed to encrypt data")
 		}
 	} else {
 		msg.Data = []byte(id)
@@ -193,21 +207,22 @@ func CreateIntroRequest(c Crypto, id string) *P2PMessage {
 	return msg
 }
 
+// CreateNencP2PMessage creates a normal message with encryption
 func CreateNencP2PMessage(c Crypto, data []byte, netProto, complete, id, seq uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
-	msg.Header.Magic = MAGIC_COOKIE
-	msg.Header.Type = uint16(MT_NENC)
+	msg.Header.Magic = MagicCookie
+	msg.Header.Type = uint16(MsgTypeNenc)
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
 	msg.Header.Complete = complete
-	msg.Header.Id = id
+	msg.Header.ID = id
 	msg.Header.Seq = seq
 	if c.Active {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, data)
 		if err != nil {
-			Log(ERROR, "Failed to encrypt data")
+			Log(Error, "Failed to encrypt data")
 		}
 	} else {
 		msg.Data = data
@@ -215,20 +230,21 @@ func CreateNencP2PMessage(c Crypto, data []byte, netProto, complete, id, seq uin
 	return msg
 }
 
+// CreateTestP2PMessage creates a test cross-peer message
 func CreateTestP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
-	msg.Header.Magic = MAGIC_COOKIE
-	msg.Header.Type = uint16(MT_TEST)
+	msg.Header.Magic = MagicCookie
+	msg.Header.Type = uint16(MsgTypeTest)
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
 	msg.Header.Complete = 1
-	msg.Header.Id = 0
+	msg.Header.ID = 0
 	if c.Active {
 		var err error
 		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {
-			Log(ERROR, "Failed to encrypt data")
+			Log(Error, "Failed to encrypt data")
 		}
 	} else {
 		msg.Data = []byte(data)
@@ -236,61 +252,68 @@ func CreateTestP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	return msg
 }
 
+// CreateProxyP2PMessage creates a proxy message
 func CreateProxyP2PMessage(id int, data string, netProto uint16) *P2PMessage {
 	// We don't need to encrypt this message
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
-	msg.Header.Magic = MAGIC_COOKIE
-	msg.Header.Type = uint16(MT_PROXY)
+	msg.Header.Magic = MagicCookie
+	msg.Header.Type = uint16(MsgTypeProxy)
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
 	msg.Header.Complete = 1
-	msg.Header.ProxyId = uint16(id)
-	msg.Header.Id = 0
+	msg.Header.ProxyID = uint16(id)
+	msg.Header.ID = 0
 	msg.Data = []byte(data)
 	return msg
 }
 
+// CreateBadTunnelP2PMessage creates a badtunnel message
 func CreateBadTunnelP2PMessage(id int, netProto uint16) *P2PMessage {
 	data := "rem"
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
-	msg.Header.Magic = MAGIC_COOKIE
-	msg.Header.Type = uint16(MT_BAD_TUN)
+	msg.Header.Magic = MagicCookie
+	msg.Header.Type = uint16(MsgTypeBadTun)
 	msg.Header.NetProto = netProto
 	msg.Header.Length = uint16(len(data))
-	msg.Header.ProxyId = uint16(id)
+	msg.Header.ProxyID = uint16(id)
 	msg.Header.Complete = 1
-	msg.Header.Id = 0
+	msg.Header.ID = 0
 	msg.Data = []byte(data)
 	return msg
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-type PTPNet struct {
-	host         string
-	port         int
-	addr         *net.UDPAddr
-	conn         *net.UDPConn
-	input_buffer [4096]byte
-	disposed     bool
+// Network is a network subsystem
+type Network struct {
+	host     string
+	port     int
+	addr     *net.UDPAddr
+	conn     *net.UDPConn
+	inBuffer [4096]byte
+	disposed bool
 }
 
-func (uc *PTPNet) Stop() {
+// Stop will terminate packet reader
+func (uc *Network) Stop() {
 	uc.disposed = true
 }
 
-func (uc *PTPNet) Disposed() bool {
+// Disposed returns whether service is willing to stop or not
+func (uc *Network) Disposed() bool {
 	return uc.disposed
 }
 
-func (uc *PTPNet) Addr() *net.UDPAddr {
+// Addr returns assigned address
+func (uc *Network) Addr() *net.UDPAddr {
 	return uc.addr
 }
 
-func (uc *PTPNet) Init(host string, port int) error {
-	var err error = nil
+// Init creates a UDP connection
+func (uc *Network) Init(host string, port int) error {
+	var err error
 	uc.host = host
 	uc.port = port
 	uc.disposed = true
@@ -308,35 +331,41 @@ func (uc *PTPNet) Init(host string, port int) error {
 	return nil
 }
 
-func (uc *PTPNet) GetPort() int {
+// GetPort return a port assigned
+func (uc *Network) GetPort() int {
 	addr, _ := net.ResolveUDPAddr("udp", uc.conn.LocalAddr().String())
 	return addr.Port
 }
 
+// UDPReceivedCallback is executed when message is received
 type UDPReceivedCallback func(count int, src_addr *net.UDPAddr, err error, buff []byte)
 
-func (uc *PTPNet) Listen(fn_received_callback UDPReceivedCallback) {
+// Listen is a main listener of a network traffic
+func (uc *Network) Listen(receivedCallback UDPReceivedCallback) {
 	for !uc.Disposed() {
-		n, src, err := uc.conn.ReadFromUDP(uc.input_buffer[:])
-		fn_received_callback(n, src, err, uc.input_buffer[:])
+		n, src, err := uc.conn.ReadFromUDP(uc.inBuffer[:])
+		receivedCallback(n, src, err, uc.inBuffer[:])
 	}
-	Log(INFO, "Stopping UDP Listener")
+	Log(Info, "Stopping UDP Listener")
 }
 
-func (uc *PTPNet) Bind(addr *net.UDPAddr, local_addr *net.UDPAddr) {
+// Bind is depricated
+func (uc *Network) Bind(addr *net.UDPAddr, localAddr *net.UDPAddr) {
 
 }
 
-func (uc *PTPNet) SendMessage(msg *P2PMessage, dst_addr *net.UDPAddr) (int, error) {
-	n, err := uc.conn.WriteToUDP(msg.Serialize(), dst_addr)
+// SendMessage sends message over network
+func (uc *Network) SendMessage(msg *P2PMessage, dstAddr *net.UDPAddr) (int, error) {
+	n, err := uc.conn.WriteToUDP(msg.Serialize(), dstAddr)
 	if err != nil {
 		return 0, err
 	}
 	return n, nil
 }
 
-func (uc *PTPNet) SendRawBytes(bytes []byte, dst_addr *net.UDPAddr) (int, error) {
-	n, err := uc.conn.WriteToUDP(bytes, dst_addr)
+// SendRawBytes sends bytes over network
+func (uc *Network) SendRawBytes(bytes []byte, dstAddr *net.UDPAddr) (int, error) {
+	n, err := uc.conn.WriteToUDP(bytes, dstAddr)
 	if err != nil {
 		return 0, err
 	}

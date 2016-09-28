@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// CryptoKey represents a key and it's expiration date
 type CryptoKey struct {
 	TTLConfig string `yaml:"ttl"`
 	KeyConfig string `yaml:"key"`
@@ -18,12 +19,14 @@ type CryptoKey struct {
 	Key       []byte
 }
 
+// Crypto is a object used by crypto subsystem
 type Crypto struct {
 	Keys      []CryptoKey
 	ActiveKey CryptoKey
 	Active    bool
 }
 
+// EnrichKeyValues update information about current and feature keys
 func (c Crypto) EnrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKey {
 	var err error
 	i, err := strconv.ParseInt(datetime, 10, 64)
@@ -31,29 +34,30 @@ func (c Crypto) EnrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKey 
 	// Default value is +1 hour
 	ckey.Until = ckey.Until.Add(60 * time.Minute)
 	if err != nil {
-		Log(WARNING, "Failed to parse TTL. Falling back to default value of 1 hour")
+		Log(Warning, "Failed to parse TTL. Falling back to default value of 1 hour")
 	} else {
 		ckey.Until = time.Unix(i, 0)
 	}
 	ckey.Key = []byte(key)
 	if err != nil {
-		Log(ERROR, "Failed to parse provided TTL value: %v", err)
+		Log(Error, "Failed to parse provided TTL value: %v", err)
 		return ckey
 	}
 	return ckey
 }
 
+// ReadKeysFromFile read a file stored in a file system and extracts keys to be used
 func (c Crypto) ReadKeysFromFile(filepath string) {
 	yamlFile, err := ioutil.ReadFile(filepath)
 	if err != nil {
-		Log(ERROR, "Failed to read key file yaml: %v", err)
+		Log(Error, "Failed to read key file yaml: %v", err)
 		c.Active = false
 		return
 	}
 	var ckey CryptoKey
 	err = yaml.Unmarshal(yamlFile, ckey)
 	if err != nil {
-		Log(ERROR, "Failed to parse config: %v", err)
+		Log(Error, "Failed to parse config: %v", err)
 		c.Active = false
 		return
 	}
@@ -62,6 +66,7 @@ func (c Crypto) ReadKeysFromFile(filepath string) {
 	c.Keys = append(c.Keys, ckey)
 }
 
+// Encrypt encrypts data
 func (c Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -73,27 +78,28 @@ func (c Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
 		data = append(data, bytes.Repeat([]byte{byte(padding)}, padding)...)
 	}
 
-	encrypted_data := make([]byte, aes.BlockSize+len(data))
-	iv := encrypted_data[:aes.BlockSize]
+	encData := make([]byte, aes.BlockSize+len(data))
+	iv := encData[:aes.BlockSize]
 	if _, err = rand.Read(iv); err != nil {
 		return nil, err
 	}
 
 	mode := cipher.NewCBCEncrypter(block, iv)
-	mode.CryptBlocks(encrypted_data[aes.BlockSize:], data)
+	mode.CryptBlocks(encData[aes.BlockSize:], data)
 
-	return encrypted_data, nil
+	return encData, nil
 }
 
+// Decrypt decrypts data
 func (c Crypto) Decrypt(key []byte, data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
-	encrypted_data := data[aes.BlockSize:]
+	encData := data[aes.BlockSize:]
 
 	mode := cipher.NewCBCDecrypter(block, data[:aes.BlockSize])
-	mode.CryptBlocks(encrypted_data, encrypted_data)
+	mode.CryptBlocks(encData, encData)
 
-	return encrypted_data, nil
+	return encData, nil
 }
