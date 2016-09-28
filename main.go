@@ -14,8 +14,10 @@ import (
 	ptp "github.com/subutai-io/p2p/lib"
 )
 
-var VERSION string = "Unknown"
+// AppVersion is a Version of P2P
+var AppVersion = "Unknown"
 
+// StartProfiling will create a .prof file to analyze p2p app performance
 func StartProfiling(profile string) {
 
 	pwd, err := os.Getwd()
@@ -24,9 +26,9 @@ func StartProfiling(profile string) {
 		return
 	}
 
-	time_str := "cpu"
+	timeStr := "cpu"
 	if profile == "cpu" {
-		file_name := fmt.Sprintf("%s/%s.prof", pwd, time_str)
+		file_name := fmt.Sprintf("%s/%s.prof", pwd, timeStr)
 		f, err := os.Create(file_name)
 		if err != nil {
 			ptp.Log(ptp.Error, "Create cpu_prof file failed. %v", err)
@@ -35,7 +37,7 @@ func StartProfiling(profile string) {
 		ptp.Log(ptp.Info, "Start cpu profiling to file %s", file_name)
 		pprof.StartCPUProfile(f)
 	} else if profile == "memory" {
-		_, err := os.Create(fmt.Sprintf("%s/%s.p2p_mem_prof", pwd, time_str))
+		_, err := os.Create(fmt.Sprintf("%s/%s.p2p_mem_prof", pwd, timeStr))
 		if err != nil {
 			ptp.Log(ptp.Error, "Create mem_prof file failed. %v", err)
 			return
@@ -135,7 +137,7 @@ func main() {
 		debug.Parse(os.Args[2:])
 		Debug(argRPCPort)
 	case "version":
-		fmt.Printf("p2p Cloud project %s. Packet version: %s\n", VERSION, ptp.PacketVersion)
+		fmt.Printf("p2p Cloud project %s. Packet version: %s\n", AppVersion, ptp.PacketVersion)
 		os.Exit(0)
 	case "stop-packet":
 		net.DialTimeout("tcp", os.Args[2], 2*time.Second)
