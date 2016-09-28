@@ -20,7 +20,7 @@ func StartProfiling(profile string) {
 
 	pwd, err := os.Getwd()
 	if err != nil {
-		ptp.Log(ptp.ERROR, "Getwd() error : %v", err)
+		ptp.Log(ptp.Error, "Getwd() error : %v", err)
 		return
 	}
 
@@ -29,15 +29,15 @@ func StartProfiling(profile string) {
 		file_name := fmt.Sprintf("%s/%s.prof", pwd, time_str)
 		f, err := os.Create(file_name)
 		if err != nil {
-			ptp.Log(ptp.ERROR, "Create cpu_prof file failed. %v", err)
+			ptp.Log(ptp.Error, "Create cpu_prof file failed. %v", err)
 			return
 		}
-		ptp.Log(ptp.INFO, "Start cpu profiling to file %s", file_name)
+		ptp.Log(ptp.Info, "Start cpu profiling to file %s", file_name)
 		pprof.StartCPUProfile(f)
 	} else if profile == "memory" {
 		_, err := os.Create(fmt.Sprintf("%s/%s.p2p_mem_prof", pwd, time_str))
 		if err != nil {
-			ptp.Log(ptp.ERROR, "Create mem_prof file failed. %v", err)
+			ptp.Log(ptp.Error, "Create mem_prof file failed. %v", err)
 			return
 		}
 	}
@@ -55,7 +55,7 @@ func main() {
 		argKey      string
 		argTTL      string
 		argLog      string
-		argSaveFile string
+		argsaveFile string
 		argFwd      bool
 		argRPCPort  string
 		argProfile  string
@@ -79,7 +79,7 @@ func main() {
 	}
 
 	daemon := flag.NewFlagSet("p2p in daemon mode", flag.ContinueOnError)
-	daemon.StringVar(&argSaveFile, "save", "", "Path to restore file")
+	daemon.StringVar(&argsaveFile, "save", "", "Path to restore file")
 	daemon.StringVar(&argRPCPort, "rpc", "52523", "Port for RPC communication")
 	daemon.StringVar(&argProfile, "profile", "", "Starts PTP package with profiling. Possible values : memory, cpu")
 
@@ -118,7 +118,7 @@ func main() {
 	switch os.Args[1] {
 	case "daemon":
 		daemon.Parse(os.Args[2:])
-		Daemon(argRPCPort, argSaveFile, argProfile)
+		Daemon(argRPCPort, argsaveFile, argProfile)
 	case "start":
 		start.Parse(os.Args[2:])
 		Start(argRPCPort, argIp, argHash, argMac, argDev, argDht, argKeyfile, argKey, argTTL, argFwd, argPort)
@@ -135,7 +135,7 @@ func main() {
 		debug.Parse(os.Args[2:])
 		Debug(argRPCPort)
 	case "version":
-		fmt.Printf("p2p Cloud project %s. Packet version: %s\n", VERSION, ptp.PACKET_VERSION)
+		fmt.Printf("p2p Cloud project %s. Packet version: %s\n", VERSION, ptp.PacketVersion)
 		os.Exit(0)
 	case "stop-packet":
 		net.DialTimeout("tcp", os.Args[2], 2*time.Second)
@@ -146,19 +146,19 @@ func main() {
 		if len(os.Args) > 2 {
 			switch os.Args[2] {
 			case "daemon":
-				UsageDaemon()
+				usageDaemon()
 				daemon.PrintDefaults()
 			case "start":
-				UsageStart()
+				usageStart()
 				start.PrintDefaults()
 			case "show":
-				UsageShow()
+				usageShow()
 				show.PrintDefaults()
 			case "stop":
-				UsageStop()
+				usageStop()
 				stop.PrintDefaults()
 			case "set":
-				UsageSet()
+				usageSet()
 				set.PrintDefaults()
 			}
 
@@ -175,7 +175,7 @@ func main() {
 func Dial(port string) *rpc.Client {
 	client, err := rpc.DialHTTP("tcp", "localhost:"+port)
 	if err != nil {
-		ptp.Log(ptp.ERROR, "Failed to connect to RPC %v", err)
+		ptp.Log(ptp.Error, "Failed to connect to RPC %v", err)
 		os.Exit(1)
 	}
 	return client
@@ -336,7 +336,7 @@ func Debug(rpcPort string) {
 func Daemon(port, saveFile, profiling string) {
 	StartProfiling(profiling)
 	ptp.InitPlatform()
-	Instances = make(map[string]Instance)
+	instances = make(map[string]instance)
 	ptp.InitErrors()
 
 	if !ptp.CheckPermissions() {
@@ -348,19 +348,19 @@ func Daemon(port, saveFile, profiling string) {
 	rpc.HandleHTTP()
 	listen, err := net.Listen("tcp", "localhost:"+port)
 	if err != nil {
-		ptp.Log(ptp.ERROR, "Cannot start RPC listener %v", err)
+		ptp.Log(ptp.Error, "Cannot start RPC listener %v", err)
 		os.Exit(1)
 	}
 
 	if saveFile != "" {
-		SaveFile = saveFile
-		ptp.Log(ptp.INFO, "Restore file provided")
+		saveFile = saveFile
+		ptp.Log(ptp.Info, "Restore file provided")
 		// Try to restore from provided file
-		instances, err := LoadInstances(saveFile)
+		instances, err := loadInstances(saveFile)
 		if err != nil {
-			ptp.Log(ptp.ERROR, "Failed to load instances: %v", err)
+			ptp.Log(ptp.Error, "Failed to load instances: %v", err)
 		} else {
-			ptp.Log(ptp.INFO, "%d instances were loaded from file", len(instances))
+			ptp.Log(ptp.Info, "%d instances were loaded from file", len(instances))
 			for _, inst := range instances {
 				resp := new(Response)
 				proc.Run(&inst, resp)
@@ -368,7 +368,7 @@ func Daemon(port, saveFile, profiling string) {
 		}
 	}
 
-	ptp.Log(ptp.INFO, "Starting RPC Listener on %s port", port)
+	ptp.Log(ptp.Info, "Starting RPC Listener on %s port", port)
 	go http.Serve(listen, nil)
 
 	// Capture SIGINT
