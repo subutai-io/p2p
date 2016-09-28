@@ -6,23 +6,23 @@ import (
 )
 
 func TestStateRestore(t *testing.T) {
-	Instances = make(map[string]Instance)
+	instances = make(map[string]instance)
 	var (
-		i1 Instance
-		i2 Instance
+		i1 instance
+		i2 instance
 	)
 	i1.Args.IP = "10.10.10.10"
 	i1.Args.Dev = "vptp1"
-	Instances["1"] = i1
+	instances["1"] = i1
 	i2.Args.IP = "127.0.0.1"
 	i2.Args.Dev = "vptp2"
-	Instances["2"] = i2
-	_, err := SaveInstances("t.file")
+	instances["2"] = i2
+	_, err := saveInstances("t.file")
 	if err != nil {
 		t.Errorf("%v", err)
 	}
 
-	loaded, err := LoadInstances("t.file")
+	loaded, err := loadInstances("t.file")
 	if err != nil {
 		t.Errorf("Failed to load instances: %v", err)
 	}
