@@ -333,7 +333,7 @@ func Debug(rpcPort string) {
 	os.Exit(response.ExitCode)
 }
 
-func Daemon(port, saveFile, profiling string) {
+func Daemon(port, sFile, profiling string) {
 	StartProfiling(profiling)
 	ptp.InitPlatform()
 	instances = make(map[string]instance)
@@ -352,8 +352,8 @@ func Daemon(port, saveFile, profiling string) {
 		os.Exit(1)
 	}
 
-	if saveFile != "" {
-		saveFile = saveFile
+	if sFile != "" {
+		saveFile = sFile
 		ptp.Log(ptp.Info, "Restore file provided")
 		// Try to restore from provided file
 		instances, err := loadInstances(saveFile)
