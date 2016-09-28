@@ -352,11 +352,11 @@ func (np *NetworkPeer) TestConnection(ptpc *PeerToPeer, endpoint *net.UDPAddr) b
 		if err != nil {
 			Log(Debug, "%v", err)
 			conn.Close()
-			return false
+			break
 		}
 		if s > 0 {
 			conn.Close()
-			return true
+			break
 		}
 	}
 	conn.Close()
