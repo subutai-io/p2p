@@ -83,15 +83,15 @@ const (
 
 // Ping types
 const (
-	PING_REQ  PingType = 1
-	PING_RESP PingType = 2
+	PingReq  PingType = 1
+	PingResp PingType = 2
 )
 
 // Timeouts and retries
 const (
-	DHT_MAX_RETRIES         int           = 10
-	DHCP_MAX_RETRIES        int           = 10
-	PEER_PING_TIMEOUT       time.Duration = time.Second * 15
-	WAIT_PROXY_TIMEOUT      time.Duration = time.Second * 5
-	HANDSHAKE_PROXY_TIMEOUT time.Duration = time.Second * 3
+	DHTMaxRetries         int           = 10
+	DHCPMaxRetries        int           = 10
+	PeerPingTimeout       time.Duration = time.Second * 15
+	WaitProxyTimeout      time.Duration = time.Second * 5
+	HandshakeProxyTimeout time.Duration = time.Second * 3
 )
