@@ -62,6 +62,7 @@ func main() {
 		argRPCPort  string
 		argProfile  string
 		argPort     int
+		argType     bool
 	)
 
 	var Usage = func() {
@@ -113,6 +114,9 @@ func main() {
 
 	debug := flag.NewFlagSet("Debug and Profiling mode", flag.ContinueOnError)
 
+	version := flag.NewFlagSet("Version output", flag.ContinueOnError)
+	version.BoolVar(&argType, "n", false, "Prints numeric variant of the version")
+
 	if len(os.Args) < 2 {
 		os.Args = append(os.Args, "help")
 	}
@@ -137,7 +141,14 @@ func main() {
 		debug.Parse(os.Args[2:])
 		Debug(argRPCPort)
 	case "version":
-		fmt.Printf("p2p Cloud project %s. Packet version: %s\n", AppVersion, ptp.PacketVersion)
+		version.Parse(os.Args[2:])
+		if argType {
+			var macro, minor, micro int
+			fmt.Sscanf(AppVersion, "%d.%d.%d", &macro, &minor, &micro)
+			fmt.Printf("%d.%d.%d\n", macro, minor, micro)
+		} else {
+			fmt.Printf("p2p Cloud project %s. Packet version: %s\n", AppVersion, ptp.PacketVersion)
+		}
 		os.Exit(0)
 	case "stop-packet":
 		net.DialTimeout("tcp", os.Args[2], 2*time.Second)
