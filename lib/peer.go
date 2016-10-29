@@ -119,7 +119,7 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PeerToPeer) error {
 		np.LastError = fmt.Sprintf("Didn't received any IP addresses")
 		return errors.New("Joined connection state without knowing any IPs")
 	}
-	// If forward mode was activated - skip direction connection attempts
+	// If forward mode was activated - skip direct connection attempts
 	if ptpc.ForwardMode {
 		np.SetPeerAddr()
 		np.State = PeerStateWaitingForwarder
@@ -132,6 +132,8 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PeerToPeer) error {
 		Log(Info, "Connected with %s over LAN", np.ID)
 		np.State = PeerStateHandshaking
 		return nil
+	} else {
+		Log(Info, "Can't connect with %s over LAN", np.ID)
 	}
 	// Try direct connection over the internet. If target host is not
 	// behind NAT we should connect to it successfully
@@ -356,6 +358,7 @@ func (np *NetworkPeer) TestConnection(ptpc *PeerToPeer, endpoint *net.UDPAddr) b
 		}
 		if s > 0 {
 			conn.Close()
+			return true
 			break
 		}
 	}
@@ -379,6 +382,7 @@ func (np *NetworkPeer) ProbeLocalConnection(ptpc *PeerToPeer) bool {
 
 	for _, inf := range interfaces {
 		if np.Endpoint != nil {
+			Log(Info, "Endpoint already set")
 			break
 		}
 		if inf.Name == ptpc.DeviceName {
