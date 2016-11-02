@@ -258,13 +258,14 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 	if !exists {
 		resp.ExitCode = 1
 		resp.Output = "Instance with hash " + args.Hash + " was not found"
+		instances_mut.Unlock()
 	} else {
 		resp.Output = "Shutting down " + args.Hash
 		instances[args.Hash].PTP.StopInstance()
 		delete(instances, args.Hash)
+		instances_mut.Unlock()
 		saveInstances(saveFile)
 	}
-	instances_mut.Unlock()
 	return nil
 }
 
