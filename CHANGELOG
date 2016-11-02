@@ -1,0 +1,6 @@
+# Change Log
+
+## [4.0.5] 11/02/2016
+
+* Fixed an issue when p2p was not able to connect to LAN peers
+* Modified output of `versions` command. Added -h flag to display only version number
