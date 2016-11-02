@@ -85,6 +85,7 @@ func (p *PeerToPeer) AssignInterface(ip, mac, mask, device string) error {
 	}
 
 	err = ConfigureInterface(p.Device, p.IP, p.Mac, p.DeviceName, p.IPTool)
+	Log(Info, "Interface has been configured")
 	return err
 }
 
