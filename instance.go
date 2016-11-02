@@ -305,12 +305,12 @@ func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 				resp.Output = resp.Output + peer.PeerHW.String() + "\n"
 			}
 			swarm.PTP.PeersLock.Unlock()
-			instances_mut.Unlock()
 			runtime.Gosched()
 		} else {
 			resp.Output = "Specified environment was not found: " + args.Hash
 			resp.ExitCode = 1
 		}
+		instances_mut.Unlock()
 	} else {
 		resp.ExitCode = 0
 		instances_mut.Lock()
