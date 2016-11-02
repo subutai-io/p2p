@@ -232,10 +232,11 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 			resp.ExitCode = 1
 			return errors.New("Failed to create P2P Instance")
 		}
+		ptp.Log(ptp.Info, "Instance created")
 		newInst.PTP = ptpInstance
-		instances_mut.Lock()
+		instances_mut.RLock()
 		instances[args.Hash] = newInst
-		instances_mut.Unlock()
+		instances_mut.RUnlock()
 		go ptpInstance.Run()
 		if saveFile != "" {
 			resp.Output = resp.Output + "Saving instance into file"
