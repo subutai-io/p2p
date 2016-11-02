@@ -35,16 +35,16 @@ type instance struct {
 var (
 	instances     map[string]instance
 	saveFile      string
-	instances_mut sync.RWMutex
+	instances_mut sync.Mutex
 )
 
 func encodeInstances() ([]byte, error) {
 	var savedInstances []RunArgs
-	instances_mut.RLock()
+	instances_mut.Lock()
 	for _, inst := range instances {
 		savedInstances = append(savedInstances, inst.Args)
 	}
-	instances_mut.RUnlock()
+	instances_mut.Unlock()
 	b := bytes.Buffer{}
 	e := gob.NewEncoder(&b)
 	err := e.Encode(savedInstances)
@@ -164,7 +164,7 @@ func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
 		resp.ExitCode = 1
 		resp.Output = "You have not specified key"
 	}
-	instances_mut.RLock()
+	instances_mut.Lock()
 	_, exists := instances[args.Hash]
 	if !exists {
 		resp.ExitCode = 1
@@ -176,7 +176,7 @@ func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
 		newKey = instances[args.Hash].PTP.Crypter.EnrichKeyValues(newKey, args.Key, args.TTL)
 		instances[args.Hash].PTP.Crypter.Keys = append(instances[args.Hash].PTP.Crypter.Keys, newKey)
 	}
-	instances_mut.RUnlock()
+	instances_mut.Unlock()
 	return nil
 }
 
@@ -194,21 +194,22 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 
 	// Validate if interface name is unique
 	if args.Dev != "" {
-		instances_mut.RLock()
+		instances_mut.Lock()
 		for _, inst := range instances {
 			if inst.PTP.DeviceName == args.Dev {
 				resp.ExitCode = 1
 				resp.Output = "Device name is already in use"
-				instances_mut.RUnlock()
+				instances_mut.Unlock()
 				return errors.New(resp.Output)
 			}
 		}
+		instances_mut.Unlock()
 	}
 
 	var exists bool
-	instances_mut.RLock()
+	instances_mut.Lock()
 	_, exists = instances[args.Hash]
-	instances_mut.RUnlock()
+	instances_mut.Unlock()
 	if !exists {
 		resp.Output = resp.Output + "Lookup finished\n"
 		if args.Key != "" {
@@ -270,7 +271,7 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 // Show is used to output information about instances
 func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 	if args.Hash != "" {
-		instances_mut.RLock()
+		instances_mut.Lock()
 		swarm, exists := instances[args.Hash]
 		resp.ExitCode = 0
 		if exists {
@@ -282,14 +283,14 @@ func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 							resp.ExitCode = 0
 							resp.Output = "Integrated with " + args.IP
 							swarm.PTP.PeersLock.Unlock()
-							instances_mut.RUnlock()
+							instances_mut.Unlock()
 							runtime.Gosched()
 							return nil
 						}
 					}
 				}
 				swarm.PTP.PeersLock.Unlock()
-				instances_mut.RUnlock()
+				instances_mut.Unlock()
 				runtime.Gosched()
 				resp.ExitCode = 1
 				resp.Output = "Not yet integrated with " + args.IP
@@ -304,22 +305,21 @@ func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 				resp.Output = resp.Output + peer.PeerHW.String() + "\n"
 			}
 			swarm.PTP.PeersLock.Unlock()
-			instances_mut.RUnlock()
+			instances_mut.Unlock()
 			runtime.Gosched()
 		} else {
 			resp.Output = "Specified environment was not found: " + args.Hash
 			resp.ExitCode = 1
-			instances_mut.RUnlock()
 		}
 	} else {
 		resp.ExitCode = 0
-		instances_mut.RLock()
+		instances_mut.Lock()
 		inst_len := len(instances)
-		instances_mut.RUnlock()
+		instances_mut.Unlock()
 		if inst_len == 0 {
 			resp.Output = "No instances was found"
 		}
-		instances_mut.RLock()
+		instances_mut.Lock()
 		for key, inst := range instances {
 			if inst.PTP != nil {
 				resp.Output = resp.Output + "\t" + inst.PTP.Mac + "\t" + inst.PTP.IP + "\t" + key
@@ -328,7 +328,7 @@ func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 			}
 			resp.Output = resp.Output + "\n"
 		}
-		instances_mut.RUnlock()
+		instances_mut.Unlock()
 	}
 	return nil
 }
@@ -338,7 +338,7 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 	resp.Output = "DEBUG INFO:\n"
 	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())
 	resp.Output += fmt.Sprintf("Instances information:\n")
-	instances_mut.RLock()
+	instances_mut.Lock()
 	for _, ins := range instances {
 		resp.Output += fmt.Sprintf("Hash: %s\n", ins.ID)
 		resp.Output += fmt.Sprintf("ID: %s\n", ins.PTP.Dht.ID)
@@ -360,13 +360,13 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 			resp.Output += fmt.Sprintf("\t--- End of %s ---\n", id)
 		}
 	}
-	instances_mut.RUnlock()
+	instances_mut.Unlock()
 	return nil
 }
 
 // Status displays information about instances, peers and their statuses
 func (p *Procedures) Status(args *RunArgs, resp *Response) error {
-	instances_mut.RLock()
+	instances_mut.Lock()
 	for _, ins := range instances {
 		resp.Output += ins.ID + " | " + ins.PTP.IP + "\n"
 		for _, peer := range ins.PTP.NetworkPeers {
@@ -379,7 +379,7 @@ func (p *Procedures) Status(args *RunArgs, resp *Response) error {
 			resp.Output += "\n"
 		}
 	}
-	instances_mut.RUnlock()
+	instances_mut.Unlock()
 	return nil
 }
 
