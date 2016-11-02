@@ -166,7 +166,6 @@ func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
 	}
 	instances_mut.RLock()
 	_, exists := instances[args.Hash]
-	instances_mut.RUnlock()
 	if !exists {
 		resp.ExitCode = 1
 		resp.Output = "No instances with specified hash were found"
@@ -177,6 +176,7 @@ func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
 		newKey = instances[args.Hash].PTP.Crypter.EnrichKeyValues(newKey, args.Key, args.TTL)
 		instances[args.Hash].PTP.Crypter.Keys = append(instances[args.Hash].PTP.Crypter.Keys, newKey)
 	}
+	instances_mut.RUnlock()
 	return nil
 }
 
@@ -251,20 +251,18 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 	resp.ExitCode = 0
 	var exists bool
-	instances_mut.RLock()
+	instances_mut.Lock()
 	_, exists = instances[args.Hash]
-	instances_mut.RUnlock()
 	if !exists {
 		resp.ExitCode = 1
 		resp.Output = "Instance with hash " + args.Hash + " was not found"
 	} else {
 		resp.Output = "Shutting down " + args.Hash
-		instances_mut.Lock()
 		instances[args.Hash].PTP.StopInstance()
 		delete(instances, args.Hash)
-		instances_mut.Unlock()
 		saveInstances(saveFile)
 	}
+	instances_mut.Unlock()
 	return nil
 }
 
@@ -273,7 +271,6 @@ func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 	if args.Hash != "" {
 		instances_mut.RLock()
 		swarm, exists := instances[args.Hash]
-		instances_mut.RUnlock()
 		resp.ExitCode = 0
 		if exists {
 			if args.IP != "" {
@@ -284,12 +281,14 @@ func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 							resp.ExitCode = 0
 							resp.Output = "Integrated with " + args.IP
 							swarm.PTP.PeersLock.Unlock()
+							instances_mut.RUnlock()
 							runtime.Gosched()
 							return nil
 						}
 					}
 				}
 				swarm.PTP.PeersLock.Unlock()
+				instances_mut.RUnlock()
 				runtime.Gosched()
 				resp.ExitCode = 1
 				resp.Output = "Not yet integrated with " + args.IP
@@ -304,10 +303,12 @@ func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 				resp.Output = resp.Output + peer.PeerHW.String() + "\n"
 			}
 			swarm.PTP.PeersLock.Unlock()
+			instances_mut.RUnlock()
 			runtime.Gosched()
 		} else {
 			resp.Output = "Specified environment was not found: " + args.Hash
 			resp.ExitCode = 1
+			instances_mut.RUnlock()
 		}
 	} else {
 		resp.ExitCode = 0
