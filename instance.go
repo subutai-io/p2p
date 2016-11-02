@@ -234,9 +234,9 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 		}
 		ptp.Log(ptp.Info, "Instance created")
 		newInst.PTP = ptpInstance
-		instances_mut.RLock()
+		instances_mut.Lock()
 		instances[args.Hash] = newInst
-		instances_mut.RUnlock()
+		instances_mut.Unlock()
 		go ptpInstance.Run()
 		if saveFile != "" {
 			resp.Output = resp.Output + "Saving instance into file"
