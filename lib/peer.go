@@ -28,6 +28,7 @@ type NetworkPeer struct {
 	ProxyBlacklist []*net.UDPAddr                     // Blacklist of proxies
 	ProxyRequests  int                                // Number of requests sent
 	LastError      string
+	ForceProxy     bool
 }
 
 // Run is main loop for a peer
@@ -120,7 +121,7 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PeerToPeer) error {
 		return errors.New("Joined connection state without knowing any IPs")
 	}
 	// If forward mode was activated - skip direct connection attempts
-	if ptpc.ForwardMode {
+	if ptpc.ForwardMode || np.ForceProxy {
 		np.SetPeerAddr()
 		np.State = PeerStateWaitingForwarder
 		return nil

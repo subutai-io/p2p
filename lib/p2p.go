@@ -669,6 +669,18 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 		p.Dht.SendUpdateRequest()
 		return
 	}
+	if msg.Header.ProxyID > 0 && peer.ProxyID == 0 {
+		peer.ForceProxy = true
+		peer.PeerAddr = nil
+		peer.Endpoint = nil
+		peer.State = PeerStateInit
+		peer.KnownIPs = peer.KnownIPs[:0]
+		p.PeersLock.Lock()
+		p.NetworkPeers[id] = peer
+		p.PeersLock.Unlock()
+		runtime.Gosched()
+		return
+	}
 	peer.PeerHW = mac
 	peer.PeerLocalIP = ip
 	peer.State = PeerStateConnected
