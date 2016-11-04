@@ -395,6 +395,11 @@ func (np *NetworkPeer) ProbeLocalConnection(ptpc *PeerToPeer) bool {
 			if !netip.IsGlobalUnicast() {
 				continue
 			}
+			for _, i := range GlobalIPList {
+				if i == addr.String() {
+					continue
+				}
+			}
 			for _, kip := range np.KnownIPs {
 				Log(Debug, "Probing new IP %s against network %s", kip.IP.String(), network.String())
 

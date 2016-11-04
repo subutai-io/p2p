@@ -13,6 +13,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var GlobalIPList []string
+
 // MessageHandler is a messages callback
 type MessageHandler func(message *P2PMessage, srcAddr *net.UDPAddr)
 
@@ -51,6 +53,14 @@ type PeerToPeer struct {
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
 func (p *PeerToPeer) AssignInterface(ip, mac, mask, device string) error {
 	var err error
+
+	for _, i := range GlobalIPList {
+		if i == ip {
+			Log(Error, "Can't assign IP Address: IP %s is already in use", ip)
+			return fmt.Errorf("Can't assign IP Address: IP %s is already in use", ip)
+		}
+	}
+	GlobalIPList = append(GlobalIPList, ip)
 
 	p.IP = ip
 	p.Mac = mac
