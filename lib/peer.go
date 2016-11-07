@@ -395,7 +395,7 @@ func (np *NetworkPeer) ProbeLocalConnection(ptpc *PeerToPeer) bool {
 			if !netip.IsGlobalUnicast() {
 				continue
 			}
-			for _, i := range GlobalIPList {
+			for _, i := range GlobalIPBlacklist {
 				if i == addr.String() {
 					continue
 				}

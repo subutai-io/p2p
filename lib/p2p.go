@@ -13,7 +13,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var GlobalIPList []string
+var GlobalIPBlacklist []string
 
 // MessageHandler is a messages callback
 type MessageHandler func(message *P2PMessage, srcAddr *net.UDPAddr)
@@ -54,13 +54,13 @@ type PeerToPeer struct {
 func (p *PeerToPeer) AssignInterface(ip, mac, mask, device string) error {
 	var err error
 
-	for _, i := range GlobalIPList {
+	for _, i := range GlobalIPBlacklist {
 		if i == ip {
 			Log(Error, "Can't assign IP Address: IP %s is already in use", ip)
 			return fmt.Errorf("Can't assign IP Address: IP %s is already in use", ip)
 		}
 	}
-	GlobalIPList = append(GlobalIPList, ip)
+	GlobalIPBlacklist = append(GlobalIPBlacklist, ip)
 
 	p.IP = ip
 	p.Mac = mac
@@ -454,8 +454,15 @@ func (p *PeerToPeer) Run() {
 			if peer.State == PeerStateStop {
 				Log(Info, "Removing peer %s", i)
 				time.Sleep(100 * time.Microsecond)
-				delete(p.IPIDTable, peer.PeerLocalIP.String())
+				lip := peer.PeerLocalIP.String()
+				delete(p.IPIDTable, lip)
 				delete(p.MACIDTable, peer.PeerHW.String())
+
+				for k, i := range GlobalIPBlacklist {
+					if i == lip {
+						GlobalIPBlacklist = append(GlobalIPBlacklist[:k], GlobalIPBlacklist[k+1:]...)
+					}
+				}
 
 				p.PeersLock.Lock()
 				delete(p.NetworkPeers, i)
@@ -693,6 +700,7 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	}
 	peer.PeerHW = mac
 	peer.PeerLocalIP = ip
+	GlobalIPBlacklist = append(GlobalIPBlacklist, ip.String())
 	peer.State = PeerStateConnected
 	peer.LastContact = time.Now()
 	p.PeersLock.Lock()
