@@ -471,7 +471,7 @@ func (p *PeerToPeer) Run() {
 			}
 		}
 		passed := time.Since(p.Dht.LastDHTPing)
-		interval := time.Duration(time.Second * 50)
+		interval := time.Duration(time.Second * 45)
 		if passed > interval {
 			Log(Error, "Lost connection to DHT")
 			p.Dht.Shutdown = true
