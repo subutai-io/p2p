@@ -1,5 +1,15 @@
 # Change Log
 
+## [4.0.6] 11/09/2016
+
+* Modified timeout intervals to speed up disconnect procedure
+* Modified DHT reconnect procedures to exclude uneccessary reconnects
+* Channels has been moved to DHT to improve code readability
+* Proper handling of "Unknown" command to force reconnect to DHT
+* STOP procedure modified to force peer disconnect
+* Fixed network comparison to exclude possible connection over existing p2p interface
+* Fixed several issues with deadlocks while dealing with instances
+
 ## [4.0.5] 11/02/2016
 
 * Fixed an issue when p2p was not able to connect to LAN peers
