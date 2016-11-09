@@ -13,6 +13,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var GlobalIPBlacklist []string
+
 // MessageHandler is a messages callback
 type MessageHandler func(message *P2PMessage, srcAddr *net.UDPAddr)
 
@@ -38,8 +40,8 @@ type PeerToPeer struct {
 	MACIDTable      map[string]string                    // Mapping for MAC->ID
 	MessageHandlers map[uint16]MessageHandler            // Callbacks
 	PacketHandlers  map[PacketType]PacketHandlerCallback // Callbacks for network packet handlers
-	DHTPeerChannel  chan []PeerIP
-	ProxyChannel    chan Forwarder
+	//DHTPeerChannel  chan []PeerIP
+	//ProxyChannel    chan Forwarder
 	RemovePeer      chan string
 	MessageBuffer   map[string]map[uint16]map[uint16][]byte
 	MessageLifetime map[string]map[uint16]time.Time
@@ -51,6 +53,14 @@ type PeerToPeer struct {
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
 func (p *PeerToPeer) AssignInterface(ip, mac, mask, device string) error {
 	var err error
+
+	for _, i := range GlobalIPBlacklist {
+		if i == ip {
+			Log(Error, "Can't assign IP Address: IP %s is already in use", ip)
+			return fmt.Errorf("Can't assign IP Address: IP %s is already in use", ip)
+		}
+	}
+	GlobalIPBlacklist = append(GlobalIPBlacklist, ip)
 
 	p.IP = ip
 	p.Mac = mac
@@ -191,6 +201,11 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 			if !p.IsIPv4(ip.String()) {
 				decision = "No IPv4"
 			}
+			for _, i := range GlobalIPBlacklist {
+				if i == ip.String() {
+					decision = "Ignoring"
+				}
+			}
 			Log(Info, "Interface %s: %s. Type: %s. %s", i.Name, addr.String(), ipType, decision)
 			if decision == "Saving" {
 				p.LocalIPs = append(p.LocalIPs, ip)
@@ -310,11 +325,11 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		}
 	*/
 	// TODO: Move channels inside DHT
-	p.DHTPeerChannel = make(chan []PeerIP)
-	p.ProxyChannel = make(chan Forwarder)
+	//p.DHTPeerChannel = make(chan []PeerIP)
+	//p.ProxyChannel = make(chan Forwarder)
 	p.StartDHT(argHash, argDht)
 	/*
-			p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel, p.ProxyChannel)
+		p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel, p.ProxyChannel)
 		for p.Dht == nil {
 			Log(Warning, "Failed to connect to DHT. Retrying in 5 seconds")
 			time.Sleep(5 * time.Second)
@@ -388,13 +403,13 @@ func (p *PeerToPeer) StartDHT(hash, routers string) {
 	if routers != "" {
 		config.Routers = routers
 	}
-	p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel, p.ProxyChannel)
+	p.Dht = dhtClient.Initialize(config, p.LocalIPs, nil, nil)
 	for p.Dht == nil {
 		Log(Warning, "Failed to connect to DHT. Retrying in 5 seconds")
 		time.Sleep(5 * time.Second)
 		p.LocalIPs = p.LocalIPs[:0]
 		p.FindNetworkAddresses()
-		p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel, p.ProxyChannel)
+		p.Dht = dhtClient.Initialize(config, p.LocalIPs, nil, nil)
 	}
 	Log(Info, "ID assigned. Continue")
 }
@@ -408,24 +423,33 @@ func (p *PeerToPeer) Run() {
 			if p.Shutdown {
 				break
 			}
-			rm := <-p.Dht.RemovePeerChan
-			if rm == "DUMMY" {
-				continue
+			select {
+			case rm, r := <-p.Dht.RemovePeerChan:
+				if r {
+					if rm == "DUMMY" || rm == "" {
+						continue
+					}
+					p.PeersLock.Lock()
+					peer, exists := p.NetworkPeers[rm]
+					p.PeersLock.Unlock()
+					runtime.Gosched()
+					if exists {
+						Log(Info, "Stopping %s after STOP command", rm)
+						peer.State = PeerStateDisconnect
+						p.PeersLock.Lock()
+						p.NetworkPeers[rm] = peer
+						p.PeersLock.Unlock()
+						runtime.Gosched()
+					} else {
+						Log(Info, "Can't stop peer. ID not found")
+					}
+				} else {
+					Log(Trace, "Channel was closed")
+				}
+			default:
+				time.Sleep(100 * time.Microsecond)
 			}
-			p.PeersLock.Lock()
-			peer, exists := p.NetworkPeers[rm]
-			p.PeersLock.Unlock()
-			runtime.Gosched()
-			if exists {
-				Log(Info, "Stopping %s after STOP command", rm)
-				peer.State = PeerStateDisconnect
-				p.PeersLock.Lock()
-				p.NetworkPeers[rm] = peer
-				p.PeersLock.Unlock()
-				runtime.Gosched()
-			} else {
-				Log(Info, "Can't stop peer. ID not found")
-			}
+			//rm := <-p.Dht.RemovePeerChan
 		}
 		Log(Info, "Stopping peer state listener")
 	}()
@@ -444,8 +468,15 @@ func (p *PeerToPeer) Run() {
 			if peer.State == PeerStateStop {
 				Log(Info, "Removing peer %s", i)
 				time.Sleep(100 * time.Microsecond)
-				delete(p.IPIDTable, peer.PeerLocalIP.String())
+				lip := peer.PeerLocalIP.String()
+				delete(p.IPIDTable, lip)
 				delete(p.MACIDTable, peer.PeerHW.String())
+
+				for k, i := range GlobalIPBlacklist {
+					if i == lip {
+						GlobalIPBlacklist = append(GlobalIPBlacklist[:k], GlobalIPBlacklist[k+1:]...)
+					}
+				}
 
 				p.PeersLock.Lock()
 				delete(p.NetworkPeers, i)
@@ -454,7 +485,7 @@ func (p *PeerToPeer) Run() {
 			}
 		}
 		passed := time.Since(p.Dht.LastDHTPing)
-		interval := time.Duration(time.Second * 50)
+		interval := time.Duration(time.Second * 45)
 		if passed > interval {
 			Log(Error, "Lost connection to DHT")
 			p.Dht.Shutdown = true
@@ -683,6 +714,7 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	}
 	peer.PeerHW = mac
 	peer.PeerLocalIP = ip
+	GlobalIPBlacklist = append(GlobalIPBlacklist, ip.String())
 	peer.State = PeerStateConnected
 	peer.LastContact = time.Now()
 	p.PeersLock.Lock()
@@ -804,8 +836,8 @@ func (p *PeerToPeer) StopInstance() {
 	p.Shutdown = true
 	var peers []PeerIP
 	var proxy Forwarder
-	p.DHTPeerChannel <- peers
-	p.ProxyChannel <- proxy
+	p.Dht.PeerChannel <- peers
+	p.Dht.ProxyChannel <- proxy
 	Log(Info, "Stopping P2P Message handler")
 	// Tricky part: we need to send a message to ourselves to quit blocking operation
 	msg := CreateTestP2PMessage(p.Crypter, "STOP", 1)
@@ -837,8 +869,16 @@ func (p *PeerToPeer) ReadDHTPeers() {
 		if p.Shutdown {
 			break
 		}
-		peers := <-p.DHTPeerChannel
-		p.UpdatePeers(peers)
+		select {
+		case peers, hasData := <-p.Dht.PeerChannel:
+			if hasData {
+				p.UpdatePeers(peers)
+			} else {
+				Log(Trace, "Clossed channel")
+			}
+		default:
+			time.Sleep(100 * time.Microsecond)
+		}
 	}
 	Log(Info, "Stopped DHT reader channel")
 }
@@ -849,23 +889,32 @@ func (p *PeerToPeer) ReadProxies() {
 		if p.Shutdown {
 			break
 		}
-		proxy := <-p.ProxyChannel
-		exists := false
-		for i, peer := range p.NetworkPeers {
-			if i == proxy.DestinationID {
-				peer.State = PeerStateHandshakingForwarder
-				peer.Forwarder = proxy.Addr
-				peer.Endpoint = proxy.Addr
-				p.PeersLock.Lock()
-				p.NetworkPeers[i] = peer
-				p.PeersLock.Unlock()
-				runtime.Gosched()
-				exists = true
+		select {
+		case proxy, hasData := <-p.Dht.ProxyChannel:
+			if hasData {
+				exists := false
+				for i, peer := range p.NetworkPeers {
+					if i == proxy.DestinationID {
+						peer.State = PeerStateHandshakingForwarder
+						peer.Forwarder = proxy.Addr
+						peer.Endpoint = proxy.Addr
+						p.PeersLock.Lock()
+						p.NetworkPeers[i] = peer
+						p.PeersLock.Unlock()
+						runtime.Gosched()
+						exists = true
+					}
+				}
+				if !exists {
+					Log(Info, "Received forwarder for unknown peer")
+					p.Dht.SendUpdateRequest()
+				}
+
+			} else {
+				Log(Trace, "Clossed channel")
 			}
-		}
-		if !exists {
-			Log(Info, "Received forwarder for unknown peer")
-			p.Dht.SendUpdateRequest()
+		default:
+			time.Sleep(100 * time.Microsecond)
 		}
 	}
 	Log(Info, "Stopped Proxy reader channel")
