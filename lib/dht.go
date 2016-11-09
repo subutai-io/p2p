@@ -381,6 +381,9 @@ func (dht *DHTClient) HandleFind(data DHTMessage, conn *net.UDPConn) {
 					dht.Peers = append(dht.Peers[:i], dht.Peers[i+1:]...)
 				}
 			}
+			if dht.PeerChannel == nil {
+				dht.PeerChannel = make(chan []PeerIP)
+			}
 			dht.PeerChannel <- dht.Peers
 			Log(Debug, "Received peers from %s: %s", conn.RemoteAddr().String(), data.Arguments)
 			dht.UpdateLastCatch(data.Arguments)
@@ -441,6 +444,9 @@ func (dht *DHTClient) HandleCp(data DHTMessage, conn *net.UDPConn) {
 	var fwd Forwarder
 	fwd.Addr = addr
 	fwd.DestinationID = data.Arguments
+	if dht.ProxyChannel == nil {
+		dht.ProxyChannel = make(chan Forwarder)
+	}
 	dht.ProxyChannel <- fwd
 	found := false
 	for _, f := range dht.Forwarders {
@@ -468,6 +474,9 @@ func (dht *DHTClient) HandleStop(data DHTMessage, conn *net.UDPConn) {
 		// We need to stop particular peer by changing it's state to
 		// P_DISCONNECT
 		Log(Info, "Stop command for %s", data.Arguments)
+		if dht.RemovePeerChan == nil {
+			dht.RemovePeerChan = make(chan string)
+		}
 		dht.RemovePeerChan <- data.Arguments
 	} else {
 		conn.Close()
@@ -496,6 +505,7 @@ func (dht *DHTClient) HandleDHCP(data DHTMessage, conn *net.UDPConn) {
 // handshaked clients
 func (dht *DHTClient) HandleUnknown(data DHTMessage, conn *net.UDPConn) {
 	Log(Warning, "DHT server refuses our identity")
+	dht.ID = ""
 	if dht.State == DHTStateConnecting || dht.State == DHTStateReconnecting {
 		time.Sleep(3 * time.Second)
 	}
@@ -520,9 +530,11 @@ func (dht *DHTClient) HandleError(data DHTMessage, conn *net.UDPConn) {
 // Initialize - This method initializes DHT by splitting list of routers and connect to each one
 func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan []PeerIP, proxyChan chan Forwarder) *DHTClient {
 	dht.RemovePeerChan = make(chan string)
+	dht.PeerChannel = make(chan []PeerIP)
+	dht.ProxyChannel = make(chan Forwarder)
 	dht = config
-	dht.PeerChannel = peerChan
-	dht.ProxyChannel = proxyChan
+	//dht.PeerChannel = peerChan
+	//dht.ProxyChannel = proxyChan
 	routers := strings.Split(dht.Routers, ",")
 	dht.FailedRouters = make([]string, len(routers))
 	dht.ResponseHandlers = make(map[string]DHTResponseCallback)

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -161,6 +162,7 @@ func (np *NetworkPeer) StateConnected(ptpc *PeerToPeer) error {
 		np.PeerAddr = nil
 		np.Endpoint = nil
 		np.PingCount = 0
+		time.Sleep(30 * time.Second)
 		return fmt.Errorf("Peer %s has been timed out", np.ID)
 	}
 	if np.Endpoint == nil {
@@ -172,7 +174,7 @@ func (np *NetworkPeer) StateConnected(ptpc *PeerToPeer) error {
 	passed := time.Since(np.LastContact)
 	if passed > PeerPingTimeout {
 		np.LastError = ""
-		Log(Debug, "Sending ping")
+		Log(Trace, "Sending ping")
 		msg := CreateXpeerPingMessage(PingReq, ptpc.HardwareAddr.String())
 		ptpc.SendTo(np.PeerHW, msg)
 		np.PingCount++
@@ -399,6 +401,14 @@ func (np *NetworkPeer) ProbeLocalConnection(ptpc *PeerToPeer) bool {
 				Log(Debug, "Probing new IP %s against network %s", kip.IP.String(), network.String())
 
 				if network.Contains(kip.IP) {
+
+					for _, i := range GlobalIPBlacklist {
+						str := kip.String()
+						parts := strings.Split(str, ":")
+						if len(parts) > 1 && i == parts[0] {
+							continue
+						}
+					}
 					if np.TestConnection(ptpc, kip) {
 						np.Endpoint = kip
 						Log(Info, "Setting endpoint for %s to %s", np.ID, kip.String())
