@@ -89,6 +89,10 @@ func saveInstances(filename string) (int, error) {
 func loadInstances(filename string) ([]RunArgs, error) {
 	var loadedInstances []RunArgs
 	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
 	data := make([]byte, 100000)
 	_, err = file.Read(data)
 	if err != nil {
