@@ -5,10 +5,11 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
-	ptp "github.com/subutai-io/p2p/lib"
 	"os"
 	"runtime"
 	"sync"
+
+	ptp "github.com/subutai-io/p2p/lib"
 )
 
 // RunArgs is a list of arguments used at instance startup and
@@ -71,6 +72,7 @@ func saveInstances(filename string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	defer file.Close()
 
 	data, err := encodeInstances()
 	if err != nil {
@@ -81,7 +83,6 @@ func saveInstances(filename string) (int, error) {
 	if err != nil {
 		return s, err
 	}
-	file.Close()
 	return s, nil
 }
 
