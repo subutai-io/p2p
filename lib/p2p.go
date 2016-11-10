@@ -828,7 +828,11 @@ func (p *PeerToPeer) StopInstance() {
 	}
 	p.PeersLock.Unlock()
 	runtime.Gosched()
+	stopStarted := time.Now()
 	for len(p.NetworkPeers) > 0 {
+		if time.Since(stopStarted) > time.Duration(time.Second*5) {
+			break
+		}
 		time.Sleep(100 * time.Microsecond)
 	}
 	Log(Info, "All peers under this instance has been removed")
