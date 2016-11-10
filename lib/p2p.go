@@ -472,16 +472,19 @@ func (p *PeerToPeer) Run() {
 				delete(p.IPIDTable, lip)
 				delete(p.MACIDTable, peer.PeerHW.String())
 
-				for k, i := range GlobalIPBlacklist {
-					if i == lip {
-						GlobalIPBlacklist = append(GlobalIPBlacklist[:k], GlobalIPBlacklist[k+1:]...)
+				k := 0
+				for k, ipb := range GlobalIPBlacklist {
+					if ipb == lip {
+						//GlobalIPBlacklist = append(GlobalIPBlacklist[:k], GlobalIPBlacklist[k+1:]...)
+						GlobalIPBlacklist[k] = ipb
+						k++
 					}
 				}
+				GlobalIPBlacklist = GlobalIPBlacklist[:k]
 
-				p.PeersLock.Lock()
 				delete(p.NetworkPeers, i)
-				p.PeersLock.Unlock()
 				runtime.Gosched()
+				Log(Info, "Remove complete")
 			}
 		}
 		passed := time.Since(p.Dht.LastDHTPing)
@@ -818,13 +821,18 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 
 // StopInstance stops current instance
 func (p *PeerToPeer) StopInstance() {
+	p.PeersLock.Lock()
 	for i, peer := range p.NetworkPeers {
 		peer.State = PeerStateDisconnect
-		p.PeersLock.Lock()
 		p.NetworkPeers[i] = peer
-		p.PeersLock.Unlock()
-		runtime.Gosched()
 	}
+	p.PeersLock.Unlock()
+	runtime.Gosched()
+	for len(p.NetworkPeers) > 0 {
+		time.Sleep(100 * time.Microsecond)
+	}
+	Log(Info, "All peers under this instance has been removed")
+
 	var ip net.IP
 	if p.Dht == nil || p.Dht.Network == nil {
 		Log(Warning, "DHT isn't in use")
@@ -834,10 +842,6 @@ func (p *PeerToPeer) StopInstance() {
 	p.Dht.Stop()
 	p.UDPSocket.Stop()
 	p.Shutdown = true
-	var peers []PeerIP
-	var proxy Forwarder
-	p.Dht.PeerChannel <- peers
-	p.Dht.ProxyChannel <- proxy
 	Log(Info, "Stopping P2P Message handler")
 	// Tricky part: we need to send a message to ourselves to quit blocking operation
 	msg := CreateTestP2PMessage(p.Crypter, "STOP", 1)

@@ -287,35 +287,35 @@ func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 		resp.ExitCode = 0
 		if exists {
 			if args.IP != "" {
-				swarm.PTP.PeersLock.Lock()
+				//swarm.PTP.PeersLock.Lock()
 				for _, peer := range swarm.PTP.NetworkPeers {
 					if peer.PeerLocalIP.String() == args.IP {
 						if peer.State == ptp.PeerStateConnected {
 							resp.ExitCode = 0
 							resp.Output = "Integrated with " + args.IP
-							swarm.PTP.PeersLock.Unlock()
-							instances_mut.Unlock()
+							//swarm.PTP.PeersLock.Unlock()
+							//instances_mut.Unlock()
 							runtime.Gosched()
 							return nil
 						}
 					}
 				}
-				swarm.PTP.PeersLock.Unlock()
-				runtime.Gosched()
+				//swarm.PTP.PeersLock.Unlock()
+				//runtime.Gosched()
 				resp.ExitCode = 1
 				resp.Output = "Not yet integrated with " + args.IP
 				return nil
 			}
 			resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
-			swarm.PTP.PeersLock.Lock()
+			//swarm.PTP.PeersLock.Lock()
 			for _, peer := range swarm.PTP.NetworkPeers {
 				resp.Output = resp.Output + peer.ID + "\t"
 				resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
 				resp.Output = resp.Output + peer.Endpoint.String() + "\t"
 				resp.Output = resp.Output + peer.PeerHW.String() + "\n"
 			}
-			swarm.PTP.PeersLock.Unlock()
-			runtime.Gosched()
+			//swarm.PTP.PeersLock.Unlock()
+			//runtime.Gosched()
 		} else {
 			resp.Output = "Specified environment was not found: " + args.Hash
 			resp.ExitCode = 1

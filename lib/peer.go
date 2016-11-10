@@ -69,6 +69,7 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 		}
 		time.Sleep(time.Millisecond * 500)
 	}
+	Log(Info, "Peer %s has been stopped", np.ID)
 }
 
 // StateInit executed during peer initialization
