@@ -369,18 +369,20 @@ func (dht *DHTClient) HandleFind(data DHTMessage, conn *net.UDPConn) {
 					dht.Peers = append(dht.Peers, p)
 				}
 			}
-			for i, peer := range dht.Peers {
+			k := 0
+			for _, peer := range dht.Peers {
 				var found = false
 				for _, id := range ids {
 					if peer.ID == id {
 						found = true
 					}
 				}
-				if !found {
-					Log(Info, "Removing")
-					dht.Peers = append(dht.Peers[:i], dht.Peers[i+1:]...)
+				if found {
+					dht.Peers[k] = peer
+					k++
 				}
 			}
+			dht.Peers = dht.Peers[:k]
 			if dht.PeerChannel == nil {
 				dht.PeerChannel = make(chan []PeerIP)
 			}
