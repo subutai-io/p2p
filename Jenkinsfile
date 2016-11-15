@@ -108,9 +108,11 @@ try {
 		}
 		/* upload p2p */
 		unstash 'p2p'
-		sh """
-			mv p2p p2p${suffix}
-		"""
+		if (suffix != '') {
+			sh """
+				mv p2p p2p${suffix}
+			"""			
+		}
 		println("starting upload")
 		String responseP2P = sh (script: """
 			set +x
@@ -132,9 +134,11 @@ try {
 
 		/* upload p2p.exe */
 		unstash 'p2p.exe'
-		sh """
-			mv p2p.exe p2p${suffix}.exe
-		"""
+		if (suffix != '') {
+			sh """
+				mv p2p.exe p2p${suffix}.exe
+			"""
+		}
 
 		String responseP2Pexe = sh (script: """
 			set +x
@@ -155,9 +159,11 @@ try {
 
 		/* upload p2p_osx */
 		unstash 'p2p_osx'
-		sh """
-			mv p2p_osx p2p_osx${suffix}
-		"""
+		if (suffix != '') {
+			sh """
+				mv p2p_osx p2p_osx${suffix}
+			"""
+		}
 
 		String responseP2Posx = sh (script: """
 			set +x
