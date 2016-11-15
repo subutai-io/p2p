@@ -46,6 +46,7 @@ const (
 	INVALID_HANDLE      syscall.Handle = 0
 	ADD_DEV             string         = "addtap.bat"
 	REMOVE_DEV          string         = "deltapall.bat"
+	ConfigDir                          = "C:\\"
 )
 
 var (
@@ -65,39 +66,40 @@ func InitPlatform() {
 	remdev := exec.Command(REMOVE_DEV)
 	err := remdev.Run()
 	if err != nil {
-		Log(ERROR, "Failed to remove TUN/TAP Devices: %v", err)
+		Log(Error, "Failed to remove TUN/TAP Devices: %v", err)
 	}
 
 	for i := 0; i < 10; i++ {
 		adddev := exec.Command(ADD_DEV)
 		err := adddev.Run()
 		if err != nil {
-			Log(ERROR, "Failed to add TUN/TAP Device: %v", err)
+			Log(Error, "Failed to add TUN/TAP Device: %v", err)
 		}
 	}
 
 	for i := 0; i < 10; i++ {
 		key, err := queryNetworkKey()
 		if err != nil {
-			Log(ERROR, "Failed to retrieve network key: %v", err)
+			Log(Error, "Failed to retrieve network key: %v", err)
 			continue
 		}
 		inf, err := queryAdapters(key)
-		if err != nil {
-			Log(ERROR, "Failed to query interface: %v", err)
-			syscall.CloseHandle(inf.file)
+		if err != nil || inf == nil {
+			Log(Error, "Failed to query interface: %v", err)
 			continue
 		}
 		ip := "172." + strconv.Itoa(i) + ".4.100"
 		setip := exec.Command("netsh")
 		setip.SysProcAttr = &syscall.SysProcAttr{}
+
 		cmd := fmt.Sprintf(`netsh interface ip set address "%s" static %s %s`, inf.Interface, ip, "255.255.255.0")
-		Log(INFO, "Executing: %s", cmd)
+		Log(Info, "Executing: %s", cmd)
+
 		setip.SysProcAttr.CmdLine = cmd
 		err = setip.Run()
 		syscall.CloseHandle(inf.file)
 		if err != nil {
-			Log(ERROR, "Failed to properly preconfigure TAP device with netsh: %v", err)
+			Log(Error, "Failed to properly preconfigure TAP device with netsh: %v", err)
 			continue
 		}
 	}
@@ -150,7 +152,7 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 		adapter := make([]uint16, length)
 		err := syscall.RegEnumKeyEx(handle, index, &adapter[0], &length, nil, nil, nil, nil)
 		if err == NO_MORE_ITEMS {
-			Log(WARNING, "No more items in Windows Registry")
+			Log(Warning, "No more items in Windows Registry")
 			break
 		}
 		index++
@@ -181,7 +183,7 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 			}
 		}
 		if isInUse {
-			Log(WARNING, "Adapter already in use. Skipping.")
+			Log(Warning, "Adapter already in use. Skipping.")
 			continue
 		}
 		UsedInterfaces = append(UsedInterfaces, adapterName)
@@ -199,7 +201,7 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 			syscall.CloseHandle(dev.Handle)
 			continue
 		}
-		Log(INFO, "Acquired control over TAP interface: %s", adapterName)
+		Log(Info, "Acquired control over TAP interface: %s", adapterName)
 		dev.Name = adapterID
 		dev.Interface = adapterName
 		return &dev, nil
@@ -234,25 +236,25 @@ func openDevice(ifPattern string) (*Interface, error) {
 	createNewTAPDevice()
 	handle, err := queryNetworkKey()
 	if err != nil {
-		Log(ERROR, "Failed to query Windows registry: %v", err)
+		Log(Error, "Failed to query Windows registry: %v", err)
 		return nil, err
 	}
 	dev, err := queryAdapters(handle)
 	if err != nil {
-		Log(ERROR, "Failed to query network adapters: %v", err)
+		Log(Error, "Failed to query network adapters: %v", err)
 		return nil, err
 	}
 	if dev == nil {
-		Log(ERROR, "All devices are in use")
+		Log(Error, "All devices are in use")
 		return nil, errors.New("No free TAP devices")
 	}
 	if dev.Name == "" {
-		Log(ERROR, "Failed to query network adapters: %v", err)
+		Log(Error, "Failed to query network adapters: %v", err)
 		return nil, errors.New("Empty network adapter")
 	}
 	err = syscall.CloseHandle(handle)
 	if err != nil {
-		Log(ERROR, "Failed to close retrieved handle: %v", err)
+		Log(Error, "Failed to close retrieved handle: %v", err)
 	}
 
 	return dev, nil
@@ -266,15 +268,15 @@ func createInterface(file syscall.Handle, ifPattern string, kind DevKind) (strin
 func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 	dev.IP = ip
 	dev.Mask = "255.255.255.0"
-	Log(INFO, "Configuring %s. IP: %s Mask: %s", dev.Interface, dev.IP, dev.Mask)
+	Log(Info, "Configuring %s. IP: %s Mask: %s", dev.Interface, dev.IP, dev.Mask)
 	setip := exec.Command("netsh")
 	setip.SysProcAttr = &syscall.SysProcAttr{}
 	cmd := fmt.Sprintf(`netsh interface ip set address "%s" static %s %s`, dev.Interface, dev.IP, dev.Mask)
-	Log(INFO, "Executing: %s", cmd)
+	Log(Info, "Executing: %s", cmd)
 	setip.SysProcAttr.CmdLine = cmd
 	err := setip.Run()
 	if err != nil {
-		Log(ERROR, "Failed to properly configure TAP device with netsh: %v", err)
+		Log(Error, "Failed to properly configure TAP device with netsh: %v", err)
 		return err
 	}
 
@@ -288,7 +290,7 @@ func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 		&length,
 		nil)
 	if err != nil {
-		Log(ERROR, "Failed to change device status to 'connected': %v", err)
+		Log(Error, "Failed to change device status to 'connected': %v", err)
 		return err
 	}
 	return nil
@@ -299,7 +301,7 @@ func ExtractMacFromInterface(dev *Interface) string {
 	var length uint32
 	err := syscall.DeviceIoControl(dev.file, TAP_IOCTL_GET_MAC, &mac[0], uint32(len(mac)), &mac[0], uint32(len(mac)), &length, nil)
 	if err != nil {
-		Log(ERROR, "Failed to get MAC from device")
+		Log(Error, "Failed to get MAC from device")
 	}
 	var macAddr bytes.Buffer
 
@@ -317,7 +319,7 @@ func ExtractMacFromInterface(dev *Interface) string {
 		}
 		i++
 	}
-	Log(INFO, "MAC: %s", macAddr.String())
+	Log(Info, "MAC: %s", macAddr.String())
 	return macAddr.String()
 }
 
@@ -326,12 +328,12 @@ func (t *Interface) Run() {
 	t.Tx = make(chan []byte, 1500)
 	go func() {
 		if err := t.Read(t.Rx); err != nil {
-			Log(ERROR, "Failed to read packet: %v", err)
+			Log(Error, "Failed to read packet: %v", err)
 		}
 	}()
 	go func() {
 		if err := t.Write(t.Tx); err != nil {
-			Log(ERROR, "Failed ro write packet: %v", err)
+			Log(Error, "Failed ro write packet: %v", err)
 		}
 	}()
 }
@@ -410,7 +412,7 @@ func (t *Interface) Read(ch chan []byte) (err error) {
 		if err := syscall.ReadFile(t.file, buf, &l, &rx); err != nil {
 		}
 		if _, err := syscall.WaitForSingleObject(rx.HEvent, syscall.INFINITE); err != nil {
-			Log(ERROR, "Failed to read from TUN/TAP: %v", err)
+			Log(Error, "Failed to read from TUN/TAP: %v", err)
 		}
 		rx.Offset += l
 		ch <- buf

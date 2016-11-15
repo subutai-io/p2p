@@ -5,10 +5,11 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
-	ptp "github.com/subutai-io/p2p/lib"
 	"os"
 	"runtime"
 	"sync"
+
+	ptp "github.com/subutai-io/p2p/lib"
 )
 
 // RunArgs is a list of arguments used at instance startup and
@@ -45,6 +46,7 @@ func encodeInstances() ([]byte, error) {
 		savedInstances = append(savedInstances, inst.Args)
 	}
 	instances_mut.Unlock()
+	runtime.Gosched()
 	b := bytes.Buffer{}
 	e := gob.NewEncoder(&b)
 	err := e.Encode(savedInstances)
@@ -71,6 +73,7 @@ func saveInstances(filename string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	defer file.Close()
 
 	data, err := encodeInstances()
 	if err != nil {
@@ -81,13 +84,16 @@ func saveInstances(filename string) (int, error) {
 	if err != nil {
 		return s, err
 	}
-	file.Close()
 	return s, nil
 }
 
 func loadInstances(filename string) ([]RunArgs, error) {
 	var loadedInstances []RunArgs
 	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
 	data := make([]byte, 100000)
 	_, err = file.Read(data)
 	if err != nil {
@@ -177,6 +183,7 @@ func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
 		instances[args.Hash].PTP.Crypter.Keys = append(instances[args.Hash].PTP.Crypter.Keys, newKey)
 	}
 	instances_mut.Unlock()
+	runtime.Gosched()
 	return nil
 }
 
@@ -200,16 +207,19 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 				resp.ExitCode = 1
 				resp.Output = "Device name is already in use"
 				instances_mut.Unlock()
+				runtime.Gosched()
 				return errors.New(resp.Output)
 			}
 		}
 		instances_mut.Unlock()
+		runtime.Gosched()
 	}
 
 	var exists bool
 	instances_mut.Lock()
 	_, exists = instances[args.Hash]
 	instances_mut.Unlock()
+	runtime.Gosched()
 	if !exists {
 		resp.Output = resp.Output + "Lookup finished\n"
 		if args.Key != "" {
@@ -238,6 +248,7 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 		instances_mut.Lock()
 		instances[args.Hash] = newInst
 		instances_mut.Unlock()
+		runtime.Gosched()
 		go ptpInstance.Run()
 		if saveFile != "" {
 			resp.Output = resp.Output + "Saving instance into file"
@@ -259,11 +270,13 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 		resp.ExitCode = 1
 		resp.Output = "Instance with hash " + args.Hash + " was not found"
 		instances_mut.Unlock()
+		runtime.Gosched()
 	} else {
 		resp.Output = "Shutting down " + args.Hash
 		instances[args.Hash].PTP.StopInstance()
 		delete(instances, args.Hash)
 		instances_mut.Unlock()
+		runtime.Gosched()
 		saveInstances(saveFile)
 	}
 	return nil
@@ -274,49 +287,50 @@ func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 	if args.Hash != "" {
 		instances_mut.Lock()
 		swarm, exists := instances[args.Hash]
+		instances_mut.Unlock()
+		runtime.Gosched()
 		resp.ExitCode = 0
 		if exists {
 			if args.IP != "" {
-				swarm.PTP.PeersLock.Lock()
+				//swarm.PTP.PeersLock.Lock()
 				for _, peer := range swarm.PTP.NetworkPeers {
 					if peer.PeerLocalIP.String() == args.IP {
 						if peer.State == ptp.PeerStateConnected {
 							resp.ExitCode = 0
 							resp.Output = "Integrated with " + args.IP
-							swarm.PTP.PeersLock.Unlock()
-							instances_mut.Unlock()
+							//swarm.PTP.PeersLock.Unlock()
+							//instances_mut.Unlock()
 							runtime.Gosched()
 							return nil
 						}
 					}
 				}
-				swarm.PTP.PeersLock.Unlock()
-				instances_mut.Unlock()
-				runtime.Gosched()
+				//swarm.PTP.PeersLock.Unlock()
+				//runtime.Gosched()
 				resp.ExitCode = 1
 				resp.Output = "Not yet integrated with " + args.IP
 				return nil
 			}
 			resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
-			swarm.PTP.PeersLock.Lock()
+			//swarm.PTP.PeersLock.Lock()
 			for _, peer := range swarm.PTP.NetworkPeers {
 				resp.Output = resp.Output + peer.ID + "\t"
 				resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
 				resp.Output = resp.Output + peer.Endpoint.String() + "\t"
 				resp.Output = resp.Output + peer.PeerHW.String() + "\n"
 			}
-			swarm.PTP.PeersLock.Unlock()
-			runtime.Gosched()
+			//swarm.PTP.PeersLock.Unlock()
+			//runtime.Gosched()
 		} else {
 			resp.Output = "Specified environment was not found: " + args.Hash
 			resp.ExitCode = 1
 		}
-		instances_mut.Unlock()
 	} else {
 		resp.ExitCode = 0
 		instances_mut.Lock()
 		inst_len := len(instances)
 		instances_mut.Unlock()
+		runtime.Gosched()
 		if inst_len == 0 {
 			resp.Output = "No instances was found"
 		}
@@ -330,6 +344,7 @@ func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 			resp.Output = resp.Output + "\n"
 		}
 		instances_mut.Unlock()
+		runtime.Gosched()
 	}
 	return nil
 }
@@ -362,6 +377,7 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 		}
 	}
 	instances_mut.Unlock()
+	runtime.Gosched()
 	return nil
 }
 
@@ -381,6 +397,7 @@ func (p *Procedures) Status(args *RunArgs, resp *Response) error {
 		}
 	}
 	instances_mut.Unlock()
+	runtime.Gosched()
 	return nil
 }
 

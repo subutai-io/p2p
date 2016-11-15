@@ -69,6 +69,7 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 		}
 		time.Sleep(time.Millisecond * 500)
 	}
+	Log(Info, "Peer %s has been stopped", np.ID)
 }
 
 // StateInit executed during peer initialization
@@ -162,7 +163,6 @@ func (np *NetworkPeer) StateConnected(ptpc *PeerToPeer) error {
 		np.PeerAddr = nil
 		np.Endpoint = nil
 		np.PingCount = 0
-		time.Sleep(30 * time.Second)
 		return fmt.Errorf("Peer %s has been timed out", np.ID)
 	}
 	if np.Endpoint == nil {
