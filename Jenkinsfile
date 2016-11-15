@@ -113,7 +113,6 @@ try {
 				mv p2p p2p${suffix}
 			"""			
 		}
-		println("starting upload")
 		String responseP2P = sh (script: """
 			set +x
 			curl -s -k https://eu0.cdn.subut.ai:8338/kurjun/rest/raw/info?name=p2p${suffix}
@@ -122,13 +121,12 @@ try {
 			set +x
 			curl -s -k -Ffile=@p2p${suffix} -Ftoken=${token} ${url}/raw/upload
 		"""
-		println("starting delete")
 		/* delete old p2p */
 		if (responseP2P != "Not found") {
 			def jsonp2p = jsonParse(responseP2P)
 			sh """
 				set +x
-				curl -s -k -X DELETE ${url}/apt/delete?id=${jsonDeb["id"]}'&'token=${token}
+				curl -s -k -X DELETE ${url}/apt/delete?id=${jsonp2p["id"]}'&'token=${token}
 			"""
 		}
 
@@ -139,7 +137,6 @@ try {
 				mv p2p.exe p2p${suffix}.exe
 			"""
 		}
-
 		String responseP2Pexe = sh (script: """
 			set +x
 			curl -s -k https://eu0.cdn.subut.ai:8338/kurjun/rest/raw/info?name=p2p${suffix}.exe
@@ -150,10 +147,10 @@ try {
 		"""
 		/* delete old p2p.exe */
 		if (responseP2Pexe != "Not found") {
-			def jsonp2p = jsonParse(responseP2Pexe)
+			def jsonp2pexe = jsonParse(responseP2Pexe)
 			sh """
 				set +x
-				curl -s -k -X DELETE ${url}/apt/delete?id=${jsonDeb["id"]}'&'token=${token}
+				curl -s -k -X DELETE ${url}/apt/delete?id=${jsonp2pexe["id"]}'&'token=${token}
 			"""
 		}
 
@@ -164,7 +161,6 @@ try {
 				mv p2p_osx p2p_osx${suffix}
 			"""
 		}
-
 		String responseP2Posx = sh (script: """
 			set +x
 			curl -s -k https://eu0.cdn.subut.ai:8338/kurjun/rest/raw/info?name=p2p_osx${suffix}
@@ -175,10 +171,10 @@ try {
 		"""
 		/* delete old p2p */
 		if (responseP2Posx != "Not found") {
-			def jsonp2p = jsonParse(responseP2Posx)
+			def jsonp2posx = jsonParse(responseP2Posx)
 			sh """
 				set +x
-				curl -s -k -X DELETE ${url}/apt/delete?id=${jsonDeb["id"]}'&'token=${token}
+				curl -s -k -X DELETE ${url}/apt/delete?id=${jsonp2posx["id"]}'&'token=${token}
 			"""
 		}
 	}
