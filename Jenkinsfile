@@ -108,6 +108,11 @@ try {
 		}
 		/* upload p2p */
 		unstash 'p2p'
+		/* get p2p version */
+		String p2pVersion = sh (script: """
+			set +x
+			p2p version -n
+			""", returnStdout: true)
 		if (suffix != '') {
 			sh """
 				mv p2p p2p${suffix}
@@ -119,7 +124,7 @@ try {
 			""", returnStdout: true)
 		sh """
 			set +x
-			curl -s -k -Ffile=@p2p${suffix} -Ftoken=${token} ${url}/raw/upload
+			curl -s -k -Ffile=@p2p${suffix} -Fversion=${p2pVersion} -Ftoken=${token} ${url}/raw/upload
 		"""
 		/* delete old p2p */
 		if (responseP2P != "Not found") {
@@ -143,7 +148,7 @@ try {
 			""", returnStdout: true)
 		sh """
 			set +x
-			curl -s -k -Ffile=@p2p${suffix}.exe -Ftoken=${token} ${url}/raw/upload
+			curl -s -k -Ffile=@p2p${suffix}.exe -Fversion=${p2pVersion} -Ftoken=${token} ${url}/raw/upload
 		"""
 		/* delete old p2p.exe */
 		if (responseP2Pexe != "Not found") {
@@ -167,7 +172,7 @@ try {
 			""", returnStdout: true)
 		sh """
 			set +x
-			curl -s -k -Ffile=@p2p_osx${suffix} -Ftoken=${token} ${url}/raw/upload
+			curl -s -k -Ffile=@p2p_osx${suffix} -Fversion=${p2pVersion} -Ftoken=${token} ${url}/raw/upload
 		"""
 		/* delete old p2p */
 		if (responseP2Posx != "Not found") {
