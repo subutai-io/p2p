@@ -109,7 +109,7 @@ try {
 		/* upload p2p */
 		unstash 'p2p'
 		/* get p2p version */
-		Sgring p2pVersion = sh (script: """
+		String p2pVersion = sh (script: """
 			set +x
 			p2p version -n
 			""", returnStdout: true)
