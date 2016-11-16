@@ -111,7 +111,7 @@ try {
 		/* get p2p version */
 		String p2pVersion = sh (script: """
 			set +x
-			p2p version -n
+			./p2p version | cut -d " " -f 4
 			""", returnStdout: true)
 		if (suffix != '') {
 			sh """
