@@ -131,7 +131,7 @@ try {
 			def jsonp2p = jsonParse(responseP2P)
 			sh """
 				set +x
-				curl -s -k -X DELETE ${url}/apt/delete?id=${jsonp2p["id"]}'&'token=${token}
+				curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2p["id"]}'&'token=${token}
 			"""
 		}
 
@@ -155,7 +155,7 @@ try {
 			def jsonp2pexe = jsonParse(responseP2Pexe)
 			sh """
 				set +x
-				curl -s -k -X DELETE ${url}/apt/delete?id=${jsonp2pexe["id"]}'&'token=${token}
+				curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2pexe["id"]}'&'token=${token}
 			"""
 		}
 
@@ -179,7 +179,7 @@ try {
 			def jsonp2posx = jsonParse(responseP2Posx)
 			sh """
 				set +x
-				curl -s -k -X DELETE ${url}/apt/delete?id=${jsonp2posx["id"]}'&'token=${token}
+				curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2posx["id"]}'&'token=${token}
 			"""
 		}
 	}
