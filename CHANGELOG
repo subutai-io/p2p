@@ -1,5 +1,13 @@
 # Change Log
 
+## [4.0.7] 11/16/2016
+
+* Fixed close command for save file
+* Fixed issues with unproper shutdown of peers, causing 'stop' procedure to hang
+* Fixed panic in DHT when removing outdated peers
+* Added jenkinsfile for automatic build across linux, windows and darwin platforms
+* Modified intervals to reduce CPU load
+
 ## [4.0.6] 11/09/2016
 
 * Modified timeout intervals to speed up disconnect procedure
