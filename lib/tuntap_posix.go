@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"io"
 	"os"
-	"os/user"
+	//"os/user"
 )
 
 // Interface represent network interface
@@ -61,16 +61,23 @@ func (t *Interface) Close() error {
 
 // CheckPermissions validates platform specific permissions to run TUNTAP utilities
 func CheckPermissions() bool {
-	user, err := user.Current()
-	if err != nil {
-		Log(Error, "Failed to retrieve information about user: %v", err)
-		return false
-	}
-	if user.Uid != "0" {
+	if os.Getuid() != 0 {
 		Log(Error, "P2P cannot run in daemon mode without root privileges")
 		return false
 	}
 	return true
+	/*
+		user, err := user.Current()
+		if err != nil {
+			Log(Error, "Failed to retrieve information about user: %v", err)
+			return false
+		}
+		if user.Uid != "0" {
+			Log(Error, "P2P cannot run in daemon mode without root privileges")
+			return false
+		}
+		return true
+	*/
 }
 
 // Open creates an interface

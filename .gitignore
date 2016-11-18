@@ -8,6 +8,7 @@ main
 p2p
 tests/*
 p2p-*
+p2p_osx
 *.exe
 *.zip
 

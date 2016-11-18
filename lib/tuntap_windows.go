@@ -156,7 +156,7 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 			break
 		}
 		index++
-		adapterID := string(utf16.Decode(adapter[0:72]))
+		adapterID := string(utf16.Decode(adapter[0:length]))
 		adapterID = removeZeroes(adapterID)
 		path := fmt.Sprintf("%s\\%s\\Connection", NETWORK_KEY, adapterID)
 		var iHandle syscall.Handle
@@ -174,7 +174,15 @@ func queryAdapters(handle syscall.Handle) (*Interface, error) {
 			continue
 		}
 
-		adapterName := removeZeroes(string(aName))
+		aNameUtf16 := make([]uint16, length/2)
+		for i := 0; i < int(length)-2; i += 2 {
+			aNameUtf16[i/2] = binary.LittleEndian.Uint16(aName[i:])
+		}
+		aNameUtf16[length/2-1] = 0
+
+		adapterName := string(utf16.Decode(aNameUtf16))
+		adapterName = removeZeroes(adapterName)
+		Log(Warning, "AdapterName : %s, len : %d", adapterName, len(adapterName))
 
 		var isInUse = false
 		for _, i := range UsedInterfaces {
