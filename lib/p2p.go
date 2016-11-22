@@ -117,7 +117,6 @@ func (p *PeerToPeer) ListenInterface() {
 		if packet.Truncated {
 			Log(Debug, "Truncated packet")
 		}
-		// TODO: Make handlePacket as a part of PeerToPeer
 		go p.handlePacket(packet.Packet, packet.Protocol)
 	}
 	p.Device.Close()
