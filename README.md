@@ -7,6 +7,19 @@ P2P Cloud
 
 P2P Cloud project allows users to build their private networks. 
 
+Building
+-------------------
+
+p2p is shipped with a Makefile, so building it a pretty easy task. You just run
+```
+make
+``` 
+command to buld a single binary for current platform or you can try to
+```
+make all
+```
+in order to build p2p for linux, windows and macos
+
 Running
 -------------------
 
