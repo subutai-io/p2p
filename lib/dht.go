@@ -250,6 +250,7 @@ func (dht *DHTClient) UpdatePeers() {
 		// Just in case do an update
 		time.Sleep(5 * time.Minute)
 	}
+	Log(Info, "Stopped DHT updater")
 }
 
 // SendUpdateRequest requests a new list of peer from DHT server
@@ -561,6 +562,10 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan 
 	dht.ResponseHandlers[DhtCmdError] = dht.HandleError
 	dht.IPList = ips
 	var connected int
+	for _, con := range dht.Connection {
+		con.Close()
+	}
+	dht.Connection = dht.Connection[:0]
 	for _, router := range routers {
 		conn, err := dht.ConnectAndHandshake(router, dht.IPList)
 		if err != nil || conn == nil {
