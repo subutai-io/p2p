@@ -89,13 +89,14 @@ func (np *NetworkPeer) StateRequestedIP(ptpc *PeerToPeer) error {
 	updateInterval := time.Duration(time.Second * 5)
 	attempts := 0
 	for {
-		if time.Since(requestSendAt) > updateInterval {
+		if time.Since(requestSentAt) > updateInterval {
 			Log(Warning, "Didn't got network addresses for peer. Requesting again")
+			requestSentAt = time.Now()
 			ptpc.Dht.RequestPeerIPs(np.ID)
 			attempts++
 		}
 		if attempts > 5 {
-			np.PeerState = PeerStateDisconnect
+			np.State = PeerStateDisconnect
 			break
 		}
 		for _, PeerInfo := range ptpc.Dht.Peers {
