@@ -1,5 +1,13 @@
 # Change Log
 
+## [4.0.8] 11/25/2016
+
+* Fixed buffer overflow in DHT client
+* Fixed peer removal
+* Fixed infinite wait of network address
+* Fixed goroutine cleanup
+* Modified procedure of network address receiving
+
 ## [4.0.7] 11/18/2016
 
 * Fixed issues with starting daemon on MacOS
