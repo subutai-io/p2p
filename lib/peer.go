@@ -85,7 +85,20 @@ func (np *NetworkPeer) StateInit(ptpc *PeerToPeer) error {
 func (np *NetworkPeer) StateRequestedIP(ptpc *PeerToPeer) error {
 	// Waiting for IPs from DHT
 	Log(Info, "Waiting network addresses for peer: %s", np.ID)
+	requestSentAt := time.Now()
+	updateInterval := time.Duration(time.Second * 5)
+	attempts := 0
 	for {
+		if time.Since(requestSentAt) > updateInterval {
+			Log(Warning, "Didn't got network addresses for peer. Requesting again")
+			requestSentAt = time.Now()
+			ptpc.Dht.RequestPeerIPs(np.ID)
+			attempts++
+		}
+		if attempts > 5 {
+			np.State = PeerStateDisconnect
+			break
+		}
 		for _, PeerInfo := range ptpc.Dht.Peers {
 			if PeerInfo.ID == np.ID {
 				if len(PeerInfo.Ips) >= 1 {
@@ -97,6 +110,7 @@ func (np *NetworkPeer) StateRequestedIP(ptpc *PeerToPeer) error {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+	return nil
 }
 
 // SetPeerAddr will update peer address
@@ -293,6 +307,7 @@ func (np *NetworkPeer) StateHandshakingFailed(ptpc *PeerToPeer) error {
 		Log(Error, "Failed to handshake with %s via proxy %s", np.ID, np.Forwarder.String())
 		np.BlacklistCurrentProxy(ptpc)
 		np.Forwarder = nil
+		np.State = PeerStateDisconnect
 	} else {
 		np.LastError = "Failed to handshake with this peer"
 		Log(Error, "Failed to handshake directly. Switching to proxy")

@@ -250,6 +250,7 @@ func (dht *DHTClient) UpdatePeers() {
 		// Just in case do an update
 		time.Sleep(5 * time.Minute)
 	}
+	Log(Info, "Stopped DHT updater")
 }
 
 // SendUpdateRequest requests a new list of peer from DHT server
@@ -286,14 +287,14 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) {
 			}
 			break
 		}
-		var buf [512]byte
+		var buf [2048]byte
 		_, _, err := conn.ReadFromUDP(buf[0:])
 		if err != nil {
 			Log(Debug, "Failed to read from Discovery Service: %v", err)
 			failCounter++
 		} else {
 			failCounter = 0
-			data, err := dht.Extract(buf[:512])
+			data, err := dht.Extract(buf[:2048])
 			if err != nil {
 				Log(Error, "Failed to extract a message received from discovery service: %v", err)
 			} else {
@@ -561,6 +562,10 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan 
 	dht.ResponseHandlers[DhtCmdError] = dht.HandleError
 	dht.IPList = ips
 	var connected int
+	for _, con := range dht.Connection {
+		con.Close()
+	}
+	dht.Connection = dht.Connection[:0]
 	for _, router := range routers {
 		conn, err := dht.ConnectAndHandshake(router, dht.IPList)
 		if err != nil || conn == nil {
