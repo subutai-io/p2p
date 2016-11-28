@@ -1,10 +1,10 @@
-APP=p2p
 CC=go
 PACK=goupx
 VERSION=$(shell git describe)
 OS=$(shell uname -s)
 ARCH=$(shell uname -m)
 sinclude config.make
+APP=$(NAME_BASE)
 
 build: $(APP)
 ifdef UPX_BIN
@@ -34,6 +34,10 @@ clean:
 	-rm -f $(APP)_osx
 	-rm -f $(APP).exe
 	-rm -f $(APP)-$(OS)*
+	-rm -f $(NAME_PREFIX)
+	-rm -f $(NAME_PREFIX)_osx
+	-rm -f $(NAME_PREFIX).exe
+	-rm -f $(NAME_PREFIX)-$(OS)*
 
 mrproper: clean
 mrproper:
@@ -49,3 +53,8 @@ release:
 install: 
 	@mkdir -p $(DESTDIR)/bin
 	@cp $(APP) $(DESTDIR)/bin
+
+ifdef BUILD_DEBIAN
+debian:
+	debuild -B -d
+endif
