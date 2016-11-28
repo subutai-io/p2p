@@ -13,8 +13,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var GlobalIPBlacklist []string
-
 // MessageHandler is a messages callback
 type MessageHandler func(message *P2PMessage, srcAddr *net.UDPAddr)
 
@@ -40,27 +38,18 @@ type PeerToPeer struct {
 	MACIDTable      map[string]string                    // Mapping for MAC->ID
 	MessageHandlers map[uint16]MessageHandler            // Callbacks
 	PacketHandlers  map[PacketType]PacketHandlerCallback // Callbacks for network packet handlers
-	//DHTPeerChannel  chan []PeerIP
-	//ProxyChannel    chan Forwarder
 	RemovePeer      chan string
 	MessageBuffer   map[string]map[uint16]map[uint16][]byte
 	MessageLifetime map[string]map[uint16]time.Time
 	MessagePacket   map[string][]byte
 	BufferLock      sync.Mutex
 	PeersLock       sync.Mutex
+	IPBlacklist     []string // List of IP address that will be ignored
 }
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
 func (p *PeerToPeer) AssignInterface(ip, mac, mask, device string) error {
 	var err error
-
-	for _, i := range GlobalIPBlacklist {
-		if i == ip {
-			Log(Error, "Can't assign IP Address: IP %s is already in use", ip)
-			return fmt.Errorf("Can't assign IP Address: IP %s is already in use", ip)
-		}
-	}
-	GlobalIPBlacklist = append(GlobalIPBlacklist, ip)
 
 	p.IP = ip
 	p.Mac = mac
@@ -200,7 +189,7 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 			if !p.IsIPv4(ip.String()) {
 				decision = "No IPv4"
 			}
-			for _, i := range GlobalIPBlacklist {
+			for _, i := range p.IPBlacklist {
 				if i == ip.String() {
 					decision = "Ignoring"
 				}
@@ -215,7 +204,7 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 }
 
 // StartP2PInstance is an entry point of a P2P library.
-func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int) *PeerToPeer {
+func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int, ignoreIPs []string) *PeerToPeer {
 
 	var hw net.HardwareAddr
 
@@ -470,17 +459,6 @@ func (p *PeerToPeer) Run() {
 				lip := peer.PeerLocalIP.String()
 				delete(p.IPIDTable, lip)
 				delete(p.MACIDTable, peer.PeerHW.String())
-
-				k := 0
-				for k, ipb := range GlobalIPBlacklist {
-					if ipb == lip {
-						//GlobalIPBlacklist = append(GlobalIPBlacklist[:k], GlobalIPBlacklist[k+1:]...)
-						GlobalIPBlacklist[k] = ipb
-						k++
-					}
-				}
-				GlobalIPBlacklist = GlobalIPBlacklist[:k]
-
 				delete(p.NetworkPeers, i)
 				runtime.Gosched()
 				Log(Info, "Remove complete")
@@ -716,7 +694,6 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	}
 	peer.PeerHW = mac
 	peer.PeerLocalIP = ip
-	GlobalIPBlacklist = append(GlobalIPBlacklist, ip.String())
 	peer.State = PeerStateConnected
 	peer.LastContact = time.Now()
 	p.PeersLock.Lock()
