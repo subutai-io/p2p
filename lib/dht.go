@@ -287,14 +287,14 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) {
 			}
 			break
 		}
-		var buf [512]byte
+		var buf [2048]byte
 		_, _, err := conn.ReadFromUDP(buf[0:])
 		if err != nil {
 			Log(Debug, "Failed to read from Discovery Service: %v", err)
 			failCounter++
 		} else {
 			failCounter = 0
-			data, err := dht.Extract(buf[:512])
+			data, err := dht.Extract(buf[:2048])
 			if err != nil {
 				Log(Error, "Failed to extract a message received from discovery service: %v", err)
 			} else {

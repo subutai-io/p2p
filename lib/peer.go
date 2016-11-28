@@ -86,10 +86,16 @@ func (np *NetworkPeer) StateRequestedIP(ptpc *PeerToPeer) error {
 	// Waiting for IPs from DHT
 	Log(Info, "Waiting network addresses for peer: %s", np.ID)
 	requestSentAt := time.Now()
-	interval := time.Duration(time.Second * 5)
+	updateInterval := time.Duration(time.Second * 5)
+	attempts := 0
 	for {
-		if time.Since(requestSentAt) > interval {
-			Log(Error, "Failed to retrieve network addresses. Peer seems to be down")
+		if time.Since(requestSentAt) > updateInterval {
+			Log(Warning, "Didn't got network addresses for peer. Requesting again")
+			requestSentAt = time.Now()
+			ptpc.Dht.RequestPeerIPs(np.ID)
+			attempts++
+		}
+		if attempts > 5 {
 			np.State = PeerStateDisconnect
 			break
 		}
