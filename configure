@@ -42,10 +42,40 @@ fi
 
 # Configure Debian packager
 echo "checking gobuild"
-if [ ! -x gobuild ]; then
-    echo "gobuild was not found"
+which debuild
+if [ $? != 0 ]; then
+    echo "debuild was not found"
 else
     # Prepare changelog: TODO
+    # date -d'11/25/2016' "+%a, %d %b %Y %H:%M:%S %z"
+    rm -f deb-changelog.tmp
+    started=0
+    while IFS='' read -r line || [[ -n "$line" ]]; do
+        st=${line:0:2}
+        if [ "$st" == "##" ]; then
+            if [ $started -eq 1 ]; then
+                date_formatted=`date -d"$release_date" "+%a, %d %b %Y %H:%M:%S %z"`
+                echo "" >> deb-changelog.tmp
+                echo " -- Subutai Social <admin@subut.ai> $date_formatted" >> deb-changelog.tmp
+                echo "" >> deb-changelog.tmp
+                started=0
+            fi
+            started=1
+            release_date=`echo $line | cut -d "]" -f2 | sed -e 's/^[[:space:]]*//'`
+            version_num=`echo $line | cut -d "[" -f2 | cut -d "]" -f1`
+            echo "subutai-p2p ($version_num) unstable; urgency=medium" >> deb-changelog.tmp
+            echo "" >> deb-changelog.tmp
+        elif [ "$st" == "* " ]; then
+            echo " $line" >> deb-changelog.tmp
+        fi
+    done < CHANGELOG
+    if [ $started -eq 1 ]; then
+        date_formatted=`date -d"$release_date" "+%a, %d %b %Y %H:%M:%S %z"`
+        echo "" >> deb-changelog.tmp
+        echo " -- Subutai Social <admin@subut.ai> $date_formatted" >> deb-changelog.tmp
+        echo "" >> deb-changelog.tmp
+        started=0
+    fi
 
     # Prepare postinst script
     if [ "$branch" == "master" ]; then
