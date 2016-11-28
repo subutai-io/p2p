@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strings"
 	"time"
 )
 
@@ -417,13 +416,6 @@ func (np *NetworkPeer) ProbeLocalConnection(ptpc *PeerToPeer) bool {
 
 				if network.Contains(kip.IP) {
 
-					for _, i := range GlobalIPBlacklist {
-						str := kip.String()
-						parts := strings.Split(str, ":")
-						if len(parts) > 1 && i == parts[0] {
-							continue
-						}
-					}
 					if np.TestConnection(ptpc, kip) {
 						np.Endpoint = kip
 						Log(Info, "Setting endpoint for %s to %s", np.ID, kip.String())
