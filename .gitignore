@@ -11,6 +11,7 @@ p2p-*
 p2p_osx
 *.exe
 *.zip
+*.tmp
 
 # Logs
 *.log
@@ -22,3 +23,5 @@ p2p_osx
 debian/debhelper-build-stamp
 debian/files
 debian/subutai-p2p
+debian/postinst
+debian/changelog
