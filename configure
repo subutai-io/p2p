@@ -158,8 +158,22 @@ else
         echo "" >> deb-changelog.tmp
         started=0
     fi
-
     mv deb-changelog.tmp debian/changelog
+
+    # Generatin control file
+    echo "Source: subutai-$name_base" > debian/control
+    echo "Section: unknown" >> debian/control
+    echo "Priority: optional" >> debian/control
+    echo "Maintainer: $maintainer <$maintainer_email>" >> debian/control
+    echo "Build-Depends: debhelper (>=9)" >> debian/control
+    echo "Standards-Version: 3.9.6" >> debian/control
+    echo "Homepage: https://subut.ai" >> debian/control
+    echo "Package: subutai-$name_base" >> debian/control
+    echo "Architecture: any" >> debian/control
+    echo "Depends: \${shlibs:Depends}, \${misc:Depends}" >> debian/control
+    echo "Description: P2P Network for Subutai" >> debian/control
+
+    echo $control_file
 
     # Prepare postinst script
     if [ "$branch" == "master" ]; then
