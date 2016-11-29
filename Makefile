@@ -8,7 +8,7 @@ APP=$(NAME_BASE)
 
 build: $(APP)
 ifdef UPX_BIN
-	release: pack
+release: pack
 endif
 
 linux: $(APP)
@@ -26,8 +26,10 @@ $(APP).exe:
 $(APP)_osx:
 	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $@ -v $^
 
+ifdef UPX_BIN
 pack: $(APP)
 	$(PACK) $(APP)
+endif
 
 clean:
 	-rm -f $(APP)
@@ -54,7 +56,9 @@ install:
 	@mkdir -p $(DESTDIR)/bin
 	@cp $(APP) $(DESTDIR)/bin
 
-ifdef BUILD_DEBIAN
-debian:
-	debuild -B -d
+ifeq ($(BUILD_DEB), 1)
+debian: *.deb
+
+*.deb:
+	debuild --preserve-env -B -d
 endif
