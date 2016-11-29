@@ -8,6 +8,9 @@ usage: configure [options]
 Configure p2p
 
 Options:
+    --scheme=<build_scheme>
+    Builds p2p with specified build scheme. Supported schemes is: master, dev, branch. Default: master
+
     --help
     Display this help screen
 ENDHELP
@@ -16,12 +19,42 @@ ENDHELP
 upx_bin=upx
 upx_go=$GOPATH/bin/goupx
 name_prefix=p2p
+scheme="master"
 branch=`git branch | grep \* | cut -d ' ' -f2`
 
-# Configure output binary name
-echo "Current branch is $branch"
-if [ "$branch" != "master" ]; then
-    name_base="$name_prefix-$branch"
+while [ $# -ge 1 ]; do
+    case "$1" in
+        --scheme=*)
+            scheme="`echo ${1} | awk '{print substr($0,10)}'`" ;;
+        --help)
+            showhelp
+            exit 0
+            ;;
+        *)
+            showhelp
+            exit 1
+            ;;
+    esac
+
+    shift
+done
+
+echo "Preparing $scheme build"
+
+if [ "$scheme" == "branch" ]; then
+    # Configure output binary name
+    echo "Current branch is $branch"
+    if [ "$branch" != "master" ]; then
+        name_base="$name_prefix-$branch"
+    fi
+elif [ "$scheme" == "dev" ]; then
+    name_base="$name_prefix-dev"
+elif [ "$scheme" == "master" ]; then
+    name_base="$name_prefix"
+else
+    echo "ERROR! $scheme scheme is not supported"
+    showhelp
+    exit 1
 fi
 echo "Building $name_base"
 
