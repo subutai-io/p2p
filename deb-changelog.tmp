@@ -1,4 +1,4 @@
-subutai-p2p (4.0.8) unstable; urgency=medium
+subutai-p2p-debian (4.0.8) unstable; urgency=medium
 
  * Fixed buffer overflow in DHT client
  * Fixed peer removal
@@ -6,9 +6,9 @@ subutai-p2p (4.0.8) unstable; urgency=medium
  * Fixed goroutine cleanup
  * Modified procedure of network address receiving
 
- -- Subutai Social <admin@subut.ai> Fri, 25 Nov 2016 00:00:00 +0600
+ -- Subutai Social <jenkins@subut.ai> Fri, 25 Nov 2016 00:00:00 +0600
 
-subutai-p2p (4.0.7) unstable; urgency=medium
+subutai-p2p-debian (4.0.7) unstable; urgency=medium
 
  * Fixed issues with starting daemon on MacOS
  * Fixed close command for save file
@@ -17,9 +17,9 @@ subutai-p2p (4.0.7) unstable; urgency=medium
  * Added jenkinsfile for automatic build across linux, windows and darwin platforms
  * Modified intervals to reduce CPU load
 
- -- Subutai Social <admin@subut.ai> Fri, 18 Nov 2016 00:00:00 +0600
+ -- Subutai Social <jenkins@subut.ai> Fri, 18 Nov 2016 00:00:00 +0600
 
-subutai-p2p (4.0.6) unstable; urgency=medium
+subutai-p2p-debian (4.0.6) unstable; urgency=medium
 
  * Modified timeout intervals to speed up disconnect procedure
  * Modified DHT reconnect procedures to exclude uneccessary reconnects
@@ -29,9 +29,9 @@ subutai-p2p (4.0.6) unstable; urgency=medium
  * Fixed network comparison to exclude possible connection over existing p2p interface
  * Fixed several issues with deadlocks while dealing with instances
 
- -- Subutai Social <admin@subut.ai> Wed, 09 Nov 2016 00:00:00 +0600
+ -- Subutai Social <jenkins@subut.ai> Wed, 09 Nov 2016 00:00:00 +0600
 
-subutai-p2p (4.0.5) unstable; urgency=medium
+subutai-p2p-debian (4.0.5) unstable; urgency=medium
 
  * Fixed an issue when p2p was not able to connect to LAN peers
  * Modified output of `versions` command. Added -h flag to display only version number

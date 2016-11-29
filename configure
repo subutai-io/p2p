@@ -41,7 +41,7 @@ if [ ! -x $upx_go ]; then
 fi
 
 # Configure Debian packager
-echo "checking gobuild"
+echo "checking debuild"
 which debuild
 if [ $? != 0 ]; then
     echo "debuild was not found"
@@ -56,14 +56,14 @@ else
             if [ $started -eq 1 ]; then
                 date_formatted=`date -d"$release_date" "+%a, %d %b %Y %H:%M:%S %z"`
                 echo "" >> deb-changelog.tmp
-                echo " -- Subutai Social <admin@subut.ai> $date_formatted" >> deb-changelog.tmp
+                echo " -- Subutai Social <jenkins@subut.ai> $date_formatted" >> deb-changelog.tmp
                 echo "" >> deb-changelog.tmp
                 started=0
             fi
             started=1
             release_date=`echo $line | cut -d "]" -f2 | sed -e 's/^[[:space:]]*//'`
             version_num=`echo $line | cut -d "[" -f2 | cut -d "]" -f1`
-            echo "subutai-p2p ($version_num) unstable; urgency=medium" >> deb-changelog.tmp
+            echo "subutai-$name_base ($version_num) unstable; urgency=medium" >> deb-changelog.tmp
             echo "" >> deb-changelog.tmp
         elif [ "$st" == "* " ]; then
             echo " $line" >> deb-changelog.tmp
@@ -76,6 +76,8 @@ else
         echo "" >> deb-changelog.tmp
         started=0
     fi
+
+    mv deb-changelog.tmp debian/changelog
 
     # Prepare postinst script
     if [ "$branch" == "master" ]; then
