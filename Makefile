@@ -53,8 +53,8 @@ release:
 	-mv $(APP) $(APP)-$(OS)-$(ARCH)-$(VERSION)
 
 install: 
-	@mkdir -p $(DESTDIR)/usr/bin
-	@cp $(APP) $(DESTDIR)/usr/bin/$(NAME_PREFIX)
+	@mkdir -p $(DESTDIR)/opt/subutai/bin
+	@cp $(APP) $(DESTDIR)/opt/subutai/bin/$(NAME_PREFIX)
 
 uninstall:
 	@rm -f $(DESTDIR)/bin/$(NAME_PREFIX)
