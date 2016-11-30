@@ -37,6 +37,7 @@ var (
 	instances     map[string]instance
 	saveFile      string
 	instances_mut sync.Mutex
+	usedIPs       []string
 )
 
 func encodeInstances() ([]byte, error) {
@@ -237,12 +238,13 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 		var newInst instance
 		newInst.ID = args.Hash
 		newInst.Args = *args
-		ptpInstance := ptp.StartP2PInstance(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port)
+		ptpInstance := ptp.StartP2PInstance(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port, usedIPs)
 		if ptpInstance == nil {
 			resp.Output = resp.Output + "Failed to create P2P Instance"
 			resp.ExitCode = 1
 			return errors.New("Failed to create P2P Instance")
 		}
+		usedIPs = append(usedIPs, ptpInstance.IP)
 		ptp.Log(ptp.Info, "Instance created")
 		newInst.PTP = ptpInstance
 		instances_mut.Lock()
@@ -272,12 +274,21 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 		instances_mut.Unlock()
 		runtime.Gosched()
 	} else {
+		ip := instances[args.Hash].PTP.IP
 		resp.Output = "Shutting down " + args.Hash
 		instances[args.Hash].PTP.StopInstance()
 		delete(instances, args.Hash)
 		instances_mut.Unlock()
 		runtime.Gosched()
 		saveInstances(saveFile)
+		k := 0
+		for k, i := range usedIPs {
+			if i != ip {
+				usedIPs[k] = i
+				k++
+			}
+		}
+		usedIPs = usedIPs[:k]
 	}
 	return nil
 }
