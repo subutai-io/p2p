@@ -22,6 +22,6 @@ p2p_osx
 *.deb
 debian/debhelper-build-stamp
 debian/files
-debian/subutai-p2p
+debian/subutai-*
 debian/postinst
 debian/changelog
