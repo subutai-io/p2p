@@ -1,5 +1,9 @@
 # Change Log
 
+## [4.0.9] 11/30/2016
+
+ * Fixed p2p over p2p issue, when client was connecting over existing p2p connection
+
 ## [4.0.8] 11/25/2016
 
 * Fixed buffer overflow in DHT client
