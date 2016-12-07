@@ -3,6 +3,7 @@ PACK=goupx
 VERSION=$(shell git describe)
 OS=$(shell uname -s)
 ARCH=$(shell uname -m)
+NAME_PERFIX=p2p
 sinclude config.make
 APP=$(NAME_BASE)
 
