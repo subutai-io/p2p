@@ -1,7 +1,5 @@
 #/bin/sh
 #
-#
-exit 0
 
 if [ -d /tmp/Subutai ]; then
 rm -rf /tmp/Subutai
