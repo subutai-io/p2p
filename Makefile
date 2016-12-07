@@ -1,14 +1,16 @@
-APP=p2p
 CC=go
 PACK=goupx
 VERSION=$(shell git describe)
 OS=$(shell uname -s)
 ARCH=$(shell uname -m)
+NAME_PERFIX=p2p
+NAME_BASE=p2p
 sinclude config.make
+APP=$(NAME_BASE)
 
 build: $(APP)
 ifdef UPX_BIN
-	release: pack
+release: pack
 endif
 
 linux: $(APP)
@@ -26,14 +28,20 @@ $(APP).exe:
 $(APP)_osx:
 	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $@ -v $^
 
+ifdef UPX_BIN
 pack: $(APP)
 	$(PACK) $(APP)
+endif
 
 clean:
 	-rm -f $(APP)
 	-rm -f $(APP)_osx
 	-rm -f $(APP).exe
 	-rm -f $(APP)-$(OS)*
+	-rm -f $(NAME_PREFIX)
+	-rm -f $(NAME_PREFIX)_osx
+	-rm -f $(NAME_PREFIX).exe
+	-rm -f $(NAME_PREFIX)-$(OS)*
 
 mrproper: clean
 mrproper:
@@ -47,5 +55,20 @@ release:
 	-mv $(APP) $(APP)-$(OS)-$(ARCH)-$(VERSION)
 
 install: 
-	@mkdir -p $(DESTDIR)/bin
-	@cp $(APP) $(DESTDIR)/bin
+	@mkdir -p $(DESTDIR)/opt/subutai/bin
+	@cp $(APP) $(DESTDIR)/opt/subutai/bin/$(NAME_PREFIX)
+
+uninstall:
+	@rm -f $(DESTDIR)/bin/$(NAME_PREFIX)
+
+ifeq ($(BUILD_DEB), 1)
+debian: *.deb
+
+*.deb:
+	debuild --preserve-env -B -d
+
+debian-source: *.changes
+
+*.changes:
+	debuild --preserve-env -S -d
+endif
