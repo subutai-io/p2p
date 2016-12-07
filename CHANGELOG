@@ -1,5 +1,9 @@
 # Change Log
 
+## [4.0.10] 12/07/2016
+
+* Added configuration for deb packaging
+
 ## [4.0.9] 11/30/2016
 
 * Fixed p2p over p2p issue, when client was connecting over existing p2p connection
