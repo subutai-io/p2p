@@ -64,4 +64,9 @@ debian: *.deb
 
 *.deb:
 	debuild --preserve-env -B -d
+
+debian-source: *.changes
+
+*.changes:
+	debuild --preserve-env -S -d
 endif

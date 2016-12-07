@@ -148,7 +148,7 @@ else
             started=1
             release_date=`echo $line | cut -d "]" -f2 | sed -e 's/^[[:space:]]*//'`
             version_num=`echo $line | cut -d "[" -f2 | cut -d "]" -f1`
-            echo "subutai-$name_base ($version_num) unstable; urgency=medium" >> deb-changelog.tmp
+            echo "subutai-$name_base ($version_num) trusty; urgency=medium" >> deb-changelog.tmp
             echo "" >> deb-changelog.tmp
         elif [ "$st" == "* " ]; then
             echo "  $line" >> deb-changelog.tmp
@@ -165,7 +165,7 @@ else
 
     # Generatin control file
     echo "Source: subutai-$name_base" > debian/control
-    echo "Section: unknown" >> debian/control
+    echo "Section: net" >> debian/control
     echo "Priority: optional" >> debian/control
     echo "Maintainer: $maintainer <$maintainer_email>" >> debian/control
     echo "Build-Depends: debhelper (>=9)" >> debian/control

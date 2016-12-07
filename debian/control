@@ -1,5 +1,5 @@
 Source: subutai-p2p-dev
-Section: unknown
+Section: net
 Priority: optional
 Maintainer: Mikhail Savochkin <i@crioto.com>
 Build-Depends: debhelper (>=9)
