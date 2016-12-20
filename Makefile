@@ -74,4 +74,4 @@ debian-source: *.changes
 endif
 
 snapcraft: help.go instance.go main.go
-	GOBIN=$(shell pwd)/../go/bin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $@ -v $^
+	GOBIN=$(shell pwd)/../go/bin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $(APP) -v $^
