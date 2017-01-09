@@ -5,10 +5,10 @@
 # Build
 config.make
 main
-p2p
+/p2p
 tests/*
-p2p-*
-p2p_osx
+/p2p-*
+/p2p_osx
 *.exe
 *.zip
 *.tmp
