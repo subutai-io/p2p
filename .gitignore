@@ -25,3 +25,4 @@ debian/files
 debian/subutai-*
 debian/postinst
 debian/changelog
+debian/control

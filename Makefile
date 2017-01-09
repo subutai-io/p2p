@@ -62,14 +62,14 @@ uninstall:
 	@rm -f $(DESTDIR)/bin/$(NAME_PREFIX)
 
 ifeq ($(BUILD_DEB), 1)
-debian: ../*.deb
+debian: *.deb
 
-../*.deb:
+*.deb:
 	debuild --preserve-env -B -d
 
-debian-source: ../*.changes
+debian-source: *.changes
 
-../*.changes:
+*.changes:
 	debuild --preserve-env -S -d
 endif
 
