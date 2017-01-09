@@ -1,5 +1,17 @@
 # Change Log
 
+## [4.0.13] 12/29/2016
+
+* Intermediate Release
+
+## [4.0.12] 12/21/2016
+
+* Added support of snapcraft builds
+
+## [4.0.11] 12/14/2016
+
+* Fixed crash when lost connection to a DHT
+
 ## [4.0.10] 12/07/2016
 
 * Added configuration for deb packaging

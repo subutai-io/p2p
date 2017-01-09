@@ -873,6 +873,10 @@ func (p *PeerToPeer) ReadProxies() {
 		if p.Shutdown {
 			break
 		}
+		if p.Dht == nil {
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
 		select {
 		case proxy, hasData := <-p.Dht.ProxyChannel:
 			if hasData {
