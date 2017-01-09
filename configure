@@ -168,7 +168,7 @@ else
     echo "Section: net" >> debian/control
     echo "Priority: optional" >> debian/control
     echo "Maintainer: $maintainer <$maintainer_email>" >> debian/control
-    echo "Build-Depends: debhelper (>=9)" >> debian/control
+    echo "Build-Depends: git (>=2), go (>=1.5), debhelper (>=9)" >> debian/control
     echo "Standards-Version: 3.9.6" >> debian/control
     echo "Homepage: https://subut.ai" >> debian/control
     echo "" >> debian/control
