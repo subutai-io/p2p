@@ -20,12 +20,19 @@ Options:
     --maintainer-email=<email>
         Email of package maintainer email. Appropriate GPG key should exist in the system
 
+    --version-postfix=<postfix>
+	Place an extra version number of debian package
+
+    --debian-release=<codename>
+	Codename of target Debian/Ubuntu release
+
     --help
     Display this help screen
 ENDHELP
 }
 
 upx_bin=upx
+gopath=
 upx_go=$GOPATH/bin/goupx
 name_prefix=p2p
 scheme="master"
@@ -34,6 +41,8 @@ maintainer="Subutai Social"
 maintainer_email="jenkins@subut.ai"
 build_deb=1
 prefix=/usr
+debian_release=trusty
+version_postfix=
 
 while [ $# -ge 1 ]; do
     case "$1" in
@@ -45,6 +54,10 @@ while [ $# -ge 1 ]; do
             maintainer_email="`echo ${1} | awk '{print substr($0,20)}'`" ;;
         --no-debian)
             build_deb=0 ;;
+	--debian-release=*)
+            debian_release="`echo ${1} | awk '{print substr($0,18)}'`" ;;
+	--version-postfix=*)
+            version_postfix=-"`echo ${1} | awk '{print substr($0,19)}'`" ;;
         --help)
             showhelp
             exit 0
@@ -94,8 +107,8 @@ echo "Building $name_base"
 
 echo "checking go environment"
 if [ "$GOPATH" == "" ]; then
-    echo "GOPATH is not set. Aborting"
-    exit 1
+    echo "GOPATH is not set. Setting to home directory"
+	gopath=~
 fi
 
 echo "checking upx"
@@ -148,7 +161,7 @@ else
             started=1
             release_date=`echo $line | cut -d "]" -f2 | sed -e 's/^[[:space:]]*//'`
             version_num=`echo $line | cut -d "[" -f2 | cut -d "]" -f1`
-            echo "subutai-$name_base ($version_num) xenial; urgency=medium" >> deb-changelog.tmp
+            echo "subutai-$name_base ($version_num$version_postfix-0ubuntu1~$debian_release) $debian_release; urgency=medium" >> deb-changelog.tmp
             echo "" >> deb-changelog.tmp
         elif [ "$st" == "* " ]; then
             echo "  $line" >> deb-changelog.tmp
@@ -168,7 +181,7 @@ else
     echo "Section: net" >> debian/control
     echo "Priority: optional" >> debian/control
     echo "Maintainer: $maintainer <$maintainer_email>" >> debian/control
-    echo "Build-Depends: git (>=2), go (>=1.5), debhelper (>=9)" >> debian/control
+    echo "Build-Depends: git (>=2), golang (>=1.5), debhelper (>=9)" >> debian/control
     echo "Standards-Version: 3.9.6" >> debian/control
     echo "Homepage: https://subut.ai" >> debian/control
     echo "" >> debian/control
@@ -188,7 +201,15 @@ else
 fi
 
 echo "Downloading necessary packages"
+if [ ! -z $gopath ]; then
+export GOPATH=/tmp
+export GOBIN=/tmp/go-bin
+fi
+
+go get github.com/subutai-io/p2p
+go get github.com/subutai-io/p2p/lib
 go get
+
 if [ $? != 0 ]; then
     echo "Failed to get required packages. go get exited with error code $?"
 fi
@@ -208,6 +229,10 @@ echo "export NAME_BASE" >> config.make
 echo "export BUILD_DEB" >> config.make
 echo "export NAME_PREFIX" >> config.make
 echo "export PREFIX" >> config.make
+if [ ! -z "$gopath" ]; then
+echo "GOPATH = /tmp" >> config.make
+echo "export GOPATH" >> config.make
+fi
 if [ "$upx_bin" != "" ]; then
     echo "export UPX_BIN" >> config.make
 fi
