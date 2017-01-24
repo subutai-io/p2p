@@ -44,10 +44,24 @@ try {
 			make all
 		"""
 
-		sh """
-			./configure --maintainer='Jenkins Admin' --maintainer-email='jenkins@subut.ai' --debian-release=yakkety --scheme=${env.BRANCH_NAME}
-			make debian-source
-		"""
+		if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
+			for (i in [ 'trusty', 'utopic', 'vivid', 'willy', 'xenial', 'yakkety', 'zesty']) {
+				sh """
+					./configure --maintainer='Jenkins Admin' --maintainer-email='jenkins@subut.ai' --debian-release=${codeName} --scheme=${env.BRANCH_NAME}
+					make debian-source
+					dput ppa:subutai-social/subutai \$(ls ../subutai-p2p*changes)
+				"""			
+			}
+		}
+
+		/* TESTING */
+		for (codeName in [ 'trusty', 'utopic', 'vivid', 'willy', 'xenial', 'yakkety', 'zesty']) {
+			sh """
+				./configure --maintainer='Jenkins Admin' --maintainer-email='jenkins@subut.ai' --debian-release=${codeName} --scheme=master
+				make debian-source
+				dput ppa:subutai-social/subutai \$(ls ../subutai-p2p*changes)
+			"""			
+		}
 
 		/* stash p2p binary to use it in next node() */
 		stash includes: 'p2p', name: 'p2p'
