@@ -50,14 +50,14 @@ try {
 		stash includes: 'p2p_osx', name: 'p2p_osx'
 
 		if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
-			for (i in [ 'trusty', 'vivid', 'willy', 'xenial', 'yakkety', 'zesty']) {
+			for (codeName in [ 'trusty', 'vivid', 'xenial', 'yakkety', 'zesty']) {
 				sh """
 					find ../ -maxdepth 1 -type f -name subutai-p2p*.dsc -delete
 					find ../ -maxdepth 1 -type f -name subutai-p2p*.build -delete
 					find ../ -maxdepth 1 -type f -name subutai-p2p*.tar.gz -delete
 					find ../ -maxdepth 1 -type f -name subutai-p2p*.changes -delete
 					find ../ -maxdepth 1 -type f -name subutai-p2p*.ppa.upload -delete
-					./configure --maintainer='Jenkins Admin' --maintainer-email='jenkins@subut.ai' --debian-release=${codeName} --scheme=${env.BRANCH_NAME}
+					./configure --maintainer='Jenkins Admin' --maintainer-email='jenkins@subut.ai' --debian-release=${codeName} --scheme=${env.BRANCH_NAME} --version-postfix=${env.BUILD_NUMBER}
 					make debian-source
 					dput ppa:subutai-social/subutai \$(ls ../subutai-p2p*changes)
 				"""			
@@ -65,14 +65,14 @@ try {
 		}
 
 		/* TESTING */
-		for (codeName in [ 'trusty', 'vivid', 'wily', 'xenial', 'yakkety', 'zesty']) {
+		for (codeName in [ 'trusty', 'vivid', 'xenial', 'yakkety', 'zesty']) {
 			sh """
 				find ../ -maxdepth 1 -type f -name subutai-p2p*.dsc -delete
 				find ../ -maxdepth 1 -type f -name subutai-p2p*.build -delete
 				find ../ -maxdepth 1 -type f -name subutai-p2p*.tar.gz -delete
 				find ../ -maxdepth 1 -type f -name subutai-p2p*.changes -delete
 				find ../ -maxdepth 1 -type f -name subutai-p2p*.ppa.upload -delete
-				./configure --maintainer='Jenkins Admin' --maintainer-email='jenkins@subut.ai' --debian-release=${codeName} --scheme=master
+				./configure --maintainer='Jenkins Admin' --maintainer-email='jenkins@subut.ai' --debian-release=${codeName} --scheme=master --version-postfix=${env.BUILD_NUMBER}
 				make debian-source
 				dput ppa:subutai-social/subutai \$(ls ../subutai-p2p*changes)
 			"""			
