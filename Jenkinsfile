@@ -47,11 +47,11 @@ try {
 		if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 			for (i in [ 'trusty', 'utopic', 'vivid', 'willy', 'xenial', 'yakkety', 'zesty']) {
 				sh """
-					if test -f ../subutai-p2p*.dsc; then rm ../subutai-p2p*.dsc; fi
-					if test -f ../subutai-p2p*.build; then rm ../subutai-p2p*.build; fi
-					if test -f ../subutai-p2p*.tar.gz; then rm ../subutai-p2p*.tar.gz; fi
-					if test -f ../subutai-p2p*.changes; then rm ../subutai-p2p*.changes; fi
-					if test -f ../subutai-p2p*.ppa.upload; then rm ../subutai-p2p*.ppa.upload; fi
+					find ../ -maxdepth 1 -type f -name subutai-p2p*.dsc -delete
+					find ../ -maxdepth 1 -type f -name subutai-p2p*.build -delete
+					find ../ -maxdepth 1 -type f -name subutai-p2p*.tar.gz -delete
+					find ../ -maxdepth 1 -type f -name subutai-p2p*.changes -delete
+					find ../ -maxdepth 1 -type f -name subutai-p2p*.ppa.upload -delete
 					./configure --maintainer='Jenkins Admin' --maintainer-email='jenkins@subut.ai' --debian-release=${codeName} --scheme=${env.BRANCH_NAME}
 					make debian-source
 					dput ppa:subutai-social/subutai \$(ls ../subutai-p2p*changes)
@@ -62,11 +62,11 @@ try {
 		/* TESTING */
 		for (codeName in [ 'trusty', 'utopic', 'vivid', 'willy', 'xenial', 'yakkety', 'zesty']) {
 			sh """
-				if test -f ../subutai-p2p*.dsc; then rm ../subutai-p2p*.dsc; fi
-				if test -f ../subutai-p2p*.build; then rm ../subutai-p2p*.build; fi
-				if test -f ../subutai-p2p*.tar.gz; then rm ../subutai-p2p*.tar.gz; fi
-				if test -f ../subutai-p2p*.changes; then rm ../subutai-p2p*.changes; fi
-				if test -f ../subutai-p2p*.ppa.upload; then rm ../subutai-p2p*.ppa.upload; fi
+				find ../ -maxdepth 1 -type f -name subutai-p2p*.dsc -delete
+				find ../ -maxdepth 1 -type f -name subutai-p2p*.build -delete
+				find ../ -maxdepth 1 -type f -name subutai-p2p*.tar.gz -delete
+				find ../ -maxdepth 1 -type f -name subutai-p2p*.changes -delete
+				find ../ -maxdepth 1 -type f -name subutai-p2p*.ppa.upload -delete
 				./configure --maintainer='Jenkins Admin' --maintainer-email='jenkins@subut.ai' --debian-release=${codeName} --scheme=master
 				make debian-source
 				dput ppa:subutai-social/subutai \$(ls ../subutai-p2p*changes)
