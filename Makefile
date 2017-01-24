@@ -47,8 +47,15 @@ mrproper: clean
 mrproper:
 	-rm -f config.make
 
+ifeq ($(BUILD_DEB), 1)
 test:  $(APP)
 	go test ./...
+else
+test: skip-test
+endif
+
+skip-test: $(APP)
+	@echo "Test skipped"
 
 release: build
 release:

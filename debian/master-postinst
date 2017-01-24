@@ -1,39 +1,4 @@
 #/bin/sh
 #
 
-if [ -d /tmp/Subutai ]; then
-rm -rf /tmp/Subutai
-fi
-mkdir -p /tmp/Subutai
-mkdir -p /opt/subutai/p2p/bin
-
-subutai_dir="/opt/subutai/p2p"
-
-jsonval() {
-temp=`echo $json | sed 's/\\\\\//\//g' | sed 's/[{}]//g' | awk -v k="text" '{n=split($0,a,","); for (i=1; i<=n; i++) print a[i]}' | sed 's/\"\:\"/\|/g' | sed 's/[\,]/ /g' | sed 's/\"//g' | grep -w $prop`
-echo ${temp##*|}
-}
-
-download() {
-json=`curl -k -s -X GET https://cdn.subut.ai:8338/kurjun/rest/file/info?name=$filename` 
-prop='id'
-id=`jsonval`
-if [ -e $target ]; then
-if [ "`md5sum $target | awk '{print $4}'`" = "`echo $id | cut -d '.' -f 2`" ]; then :
-else curl -k -o $target https://cdn.subut.ai:8338/kurjun/rest/file/get\?id\=$id
-fi
-else curl -k -o $target https://cdn.subut.ai:8338/kurjun/rest/file/get\?id\=$id
-fi
-} 
-
-get_p2p() {
-echo "Downloading p2p"
-target="$subutai_dir/bin/p2p"; filename="p2p"; download
-chmod +x $subutai_dir/bin/p2p
-if [ ! -L /usr/bin/p2p ]; then
-ln -s $subutai_dir/bin/p2p /usr/bin/p2p
-fi
 service p2p restart
-}
-
-get_p2p
