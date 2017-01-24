@@ -44,8 +44,13 @@ try {
 			make all
 		"""
 
+		/* stash p2p binary to use it in next node() */
+		stash includes: 'p2p', name: 'p2p'
+		stash includes: 'p2p.exe', name: 'p2p.exe'
+		stash includes: 'p2p_osx', name: 'p2p_osx'
+
 		if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
-			for (i in [ 'trusty', 'utopic', 'vivid', 'willy', 'xenial', 'yakkety', 'zesty']) {
+			for (i in [ 'trusty', 'vivid', 'willy', 'xenial', 'yakkety', 'zesty']) {
 				sh """
 					find ../ -maxdepth 1 -type f -name subutai-p2p*.dsc -delete
 					find ../ -maxdepth 1 -type f -name subutai-p2p*.build -delete
@@ -60,7 +65,7 @@ try {
 		}
 
 		/* TESTING */
-		for (codeName in [ 'trusty', 'utopic', 'vivid', 'willy', 'xenial', 'yakkety', 'zesty']) {
+		for (codeName in [ 'trusty', 'vivid', 'wily', 'xenial', 'yakkety', 'zesty']) {
 			sh """
 				find ../ -maxdepth 1 -type f -name subutai-p2p*.dsc -delete
 				find ../ -maxdepth 1 -type f -name subutai-p2p*.build -delete
@@ -72,11 +77,6 @@ try {
 				dput ppa:subutai-social/subutai \$(ls ../subutai-p2p*changes)
 			"""			
 		}
-
-		/* stash p2p binary to use it in next node() */
-		stash includes: 'p2p', name: 'p2p'
-		stash includes: 'p2p.exe', name: 'p2p.exe'
-		stash includes: 'p2p_osx', name: 'p2p_osx'
 	}
 
 	if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
