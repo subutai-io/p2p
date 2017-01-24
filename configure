@@ -218,15 +218,15 @@ go get gopkg.in/yaml.v2
 
 rm -rf debian/extra-code
 mkdir -p debian/extra-code
-mkdir -p debian/extra-code/src/github.com/subutai-io/p2p
+mkdir -p debian/extra-code/src/github.com/subutai-io
 cp -r $GOPATH/src/github.com/subutai-io/p2p debian/extra-code/src/github.com/subutai-io
-mkdir -p debian/extra-code/src/github.com/mdlayher/ethernet
+mkdir -p debian/extra-code/src/github.com/mdlayher
 cp -r $GOPATH/src/github.com/mdlayher/ethernet debian/extra-code/src/github.com/mdlayher
-mkdir -p debian/extra-code/src/github.com/jackpal/bencode-go
+mkdir -p debian/extra-code/src/github.com/jackpal
 cp -r $GOPATH/src/github.com/jackpal/bencode-go debian/extra-code/src/github.com/jackpal
-mkdir -p debian/extra-code/src/gopkg.in/yaml.v2
+mkdir -p debian/extra-code/src/gopkg.in
 cp -r $GOPATH/src/gopkg.in/yaml.v2 debian/extra-code/src/gopkg.in
-mkdir -p debian/extra-code/src/gopkg.in/check.v1
+mkdir -p debian/extra-code/src/gopkg.in
 cp -r $GOPATH/src/gopkg.in/check.v1 debian/extra-code/src/gopkg.in
 else
 echo "Copying extra-code to GOPATH: $GOPATH"
