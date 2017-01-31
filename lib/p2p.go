@@ -435,7 +435,7 @@ func (p *PeerToPeer) Run() {
 					Log(Trace, "Channel was closed")
 				}
 			default:
-				time.Sleep(100 * time.Millisecond)
+				time.Sleep(500 * time.Millisecond)
 			}
 			//rm := <-p.Dht.RemovePeerChan
 		}
@@ -861,7 +861,7 @@ func (p *PeerToPeer) ReadDHTPeers() {
 				Log(Trace, "Clossed channel")
 			}
 		default:
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 		}
 	}
 	Log(Info, "Stopped DHT reader channel")
@@ -902,7 +902,7 @@ func (p *PeerToPeer) ReadProxies() {
 				Log(Trace, "Clossed channel")
 			}
 		default:
-			time.Sleep(100 * time.Microsecond)
+			time.Sleep(500 * time.Millisecond)
 		}
 	}
 	Log(Info, "Stopped Proxy reader channel")
