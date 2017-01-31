@@ -455,7 +455,7 @@ func (p *PeerToPeer) Run() {
 		for i, peer := range p.NetworkPeers {
 			if peer.State == PeerStateStop {
 				Log(Info, "Removing peer %s", i)
-				time.Sleep(100 * time.Microsecond)
+				time.Sleep(100 * time.Millisecond)
 				lip := peer.PeerLocalIP.String()
 				delete(p.IPIDTable, lip)
 				delete(p.MACIDTable, peer.PeerHW.String())
@@ -809,7 +809,7 @@ func (p *PeerToPeer) StopInstance() {
 		if time.Since(stopStarted) > time.Duration(time.Second*5) {
 			break
 		}
-		time.Sleep(100 * time.Microsecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 	Log(Info, "All peers under this instance has been removed")
 
