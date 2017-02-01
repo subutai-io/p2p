@@ -61,7 +61,6 @@ type DHTClient struct {
 	LastDHTPing      time.Time
 	RemovePeerChan   chan string
 	ForwardersLock   sync.Mutex // To avoid multiple read-write
-	LastPeerUpdate   time.Time
 }
 
 // Forwarder structure represents a Proxy received from DHT server
@@ -243,18 +242,15 @@ func (dht *DHTClient) RequestPeerIPs(id string) {
 // with a list of peers that we can connect to
 // This method should be called periodically in case any new peers was discovered
 func (dht *DHTClient) UpdatePeers() {
-	if dht.Shutdown {
-		return
+	for {
+		if dht.Shutdown {
+			break
+		}
+		dht.SendUpdateRequest()
+		// Just in case do an update
+		time.Sleep(5 * time.Minute)
 	}
-	passed := time.Since(dht.LastPeerUpdate)
-	interval := time.Duration(time.Second * 5)
-	if passed < interval {
-		return
-	}
-	dht.LastPeerUpdate = time.Now()
-	dht.SendUpdateRequest()
-	// Just in case do an update
-	time.Sleep(5 * time.Minute)
+	Log(Info, "Stopped DHT updater")
 }
 
 // SendUpdateRequest requests a new list of peer from DHT server
@@ -592,7 +588,6 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan 
 		}
 	}
 	dht.LastDHTPing = time.Now()
-	dht.LastPeerUpdate = time.Now()
 	if connected == 0 {
 		return nil
 	}
