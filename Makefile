@@ -20,12 +20,15 @@ macos: $(APP)_osx
 all: linux windows macos
 
 $(APP): help.go instance.go main.go
+	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	$(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $@ -v $^
 
 $(APP).exe:
+	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	GOOS=windows $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $@ -v $^
 	
 $(APP)_osx:
+	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $@ -v $^
 
 ifdef UPX_BIN
@@ -81,5 +84,6 @@ debian-source: *.changes
 endif
 
 snapcraft: help.go instance.go main.go
+	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	GOPATH=$(shell pwd)/../go GOBIN=$(shell pwd)/../go/bin $(CC) get
 	GOPATH=$(shell pwd)/../go GOBIN=$(shell pwd)/../go/bin $(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)" -o $(APP) -v $^
