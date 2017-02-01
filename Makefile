@@ -82,4 +82,4 @@ endif
 
 snapcraft: help.go instance.go main.go
 	GOPATH=$(shell pwd)/../go GOBIN=$(shell pwd)/../go/bin $(CC) get
-	GOPATH=$(shell pwd)/../go GOBIN=$(shell pwd)/../go/bin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $(APP) -v $^
+	GOPATH=$(shell pwd)/../go GOBIN=$(shell pwd)/../go/bin $(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)" -o $(APP) -v $^
