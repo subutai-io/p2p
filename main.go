@@ -11,7 +11,8 @@ import (
 	"runtime/pprof"
 	"time"
 
-	ptp "github.com/subutai-io/p2p/lib"
+	//ptp "github.com/subutai-io/p2p/lib"
+	ptp "./lib"
 )
 
 // AppVersion is a Version of P2P
