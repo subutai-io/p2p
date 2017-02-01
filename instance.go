@@ -9,8 +9,7 @@ import (
 	"runtime"
 	"sync"
 
-	//ptp "github.com/subutai-io/p2p/lib"
-	ptp "./lib"
+	ptp "github.com/subutai-io/p2p/lib"
 )
 
 // RunArgs is a list of arguments used at instance startup and
