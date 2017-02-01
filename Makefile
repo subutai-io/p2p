@@ -84,6 +84,8 @@ debian-source: *.changes
 endif
 
 snapcraft: help.go instance.go main.go
+	$(eval export GOPATH=$(shell pwd)/../go)
+	$(eval export GOBIN=$(shell pwd)/../go/bin)
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
-	GOPATH=$(shell pwd)/../go GOBIN=$(shell pwd)/../go/bin $(CC) get
-	GOPATH=$(shell pwd)/../go GOBIN=$(shell pwd)/../go/bin $(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)" -o $(APP) -v $^
+	$(CC) get -d
+	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)" -o $(APP) -v $^
