@@ -585,7 +585,7 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan 
 	started := time.Now()
 	period := time.Duration(time.Second * 3)
 	for len(dht.ID) != 36 {
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(time.Microsecond * 100)
 		passed := time.Since(started)
 		if passed > period {
 			break
