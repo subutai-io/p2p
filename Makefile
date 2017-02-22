@@ -20,12 +20,15 @@ macos: $(APP)_osx
 all: linux windows macos
 
 $(APP): help.go instance.go main.go
+	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	$(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $@ -v $^
 
 $(APP).exe:
+	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	GOOS=windows $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $@ -v $^
 	
 $(APP)_osx:
+	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $@ -v $^
 
 ifdef UPX_BIN
@@ -47,8 +50,15 @@ mrproper: clean
 mrproper:
 	-rm -f config.make
 
+ifeq ($(BUILD_DEB), 1)
 test:  $(APP)
 	go test ./...
+else
+test: skip-test
+endif
+
+skip-test: $(APP)
+	@echo "Test skipped"
 
 release: build
 release:
@@ -74,5 +84,8 @@ debian-source: *.changes
 endif
 
 snapcraft: help.go instance.go main.go
-	GOPATH=$(shell pwd)/../go GOBIN=$(shell pwd)/../go/bin $(CC) get
-	GOPATH=$(shell pwd)/../go GOBIN=$(shell pwd)/../go/bin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $(APP) -v $^
+	$(eval export GOPATH=$(shell pwd)/../go)
+	$(eval export GOBIN=$(shell pwd)/../go/bin)
+	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
+	$(CC) get -d
+	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)" -o $(APP) -v $^
