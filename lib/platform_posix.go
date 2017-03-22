@@ -5,8 +5,10 @@ package ptp
 import (
 	"encoding/binary"
 	"io"
+	"log/syslog"
 	"os"
 	//"os/user"
+	"fmt"
 )
 
 // Interface represent network interface
@@ -14,6 +16,8 @@ type Interface struct {
 	Name string
 	file *os.File
 }
+
+var syslogLevel = [...]syslog.Priority{syslog.LOG_DEBUG, syslog.LOG_DEBUG, syslog.LOG_INFO, syslog.LOG_WARNING, syslog.LOG_ERR}
 
 // InitPlatform does a platform specific preparation
 func InitPlatform() {
@@ -109,4 +113,12 @@ func (t *Interface) Run() {
 // ExtractMacFromInterface should return a MAC address on Windows systems
 func ExtractMacFromInterface(dev *Interface) string {
 	return ""
+}
+
+// Syslog provides additional logging to the syslog server
+func Syslog(level LogLevel, format string, v ...interface{}) {
+	if l3, err := syslog.Dial("udp", syslogSocket, syslogLevel[level], "p2p"); err == nil {
+		l3.Write([]byte(fmt.Sprintf(format, v...)))
+		l3.Close()
+	}
 }

@@ -61,6 +61,7 @@ func main() {
 		argFwd      bool
 		argRPCPort  string
 		argProfile  string
+		argSyslog   string
 		argPort     int
 		argType     bool
 	)
@@ -84,6 +85,7 @@ func main() {
 	daemon := flag.NewFlagSet("p2p in daemon mode", flag.ContinueOnError)
 	daemon.StringVar(&argsaveFile, "save", "", "Path to restore file")
 	daemon.StringVar(&argRPCPort, "rpc", "52523", "Port for RPC communication")
+	daemon.StringVar(&argSyslog, "syslog", "", "Syslog socket: 127.0.0.1:1514")
 	daemon.StringVar(&argProfile, "profile", "", "Starts PTP package with profiling. Possible values : memory, cpu")
 
 	start := flag.NewFlagSet("Startup options", flag.ContinueOnError)
@@ -124,6 +126,7 @@ func main() {
 	switch os.Args[1] {
 	case "daemon":
 		daemon.Parse(os.Args[2:])
+		ptp.SetSyslogSocket(argSyslog)
 		Daemon(argRPCPort, argsaveFile, argProfile)
 	case "start":
 		start.Parse(os.Args[2:])
