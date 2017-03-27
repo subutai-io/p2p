@@ -161,7 +161,7 @@ try {
 			unstash 'p2p.exe'
 			String responseP2Pexe = sh (script: """
 				set +x
-				curl -s -k ${url}}/raw/info?name=p2p.exe
+				curl -s -k ${url}/raw/info?name=p2p.exe
 				""", returnStdout: true)
 			sh """
 				set +x
