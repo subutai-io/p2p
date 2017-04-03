@@ -25,6 +25,7 @@ var logFlags = [...]int{log.Ldate | log.Ltime,
 	log.Ldate | log.Ltime}
 
 var logLevelMin = Info
+var syslogSocket = ""
 var stdLoggers = [...]*log.Logger{log.New(os.Stdout, logPrefixes[Trace], logFlags[Trace]),
 	log.New(os.Stdout, logPrefixes[Debug], logFlags[Debug]),
 	log.New(os.Stdout, logPrefixes[Info], logFlags[Info]),
@@ -45,4 +46,12 @@ func Log(level LogLevel, format string, v ...interface{}) {
 		return
 	}
 	stdLoggers[level].Printf(format, v...)
+	if level != Trace {
+		go Syslog(level, format, v...)
+	}
+}
+
+// SetSyslogSocket sets an adders of the syslog server
+func SetSyslogSocket(socket string) {
+	syslogSocket = socket
 }

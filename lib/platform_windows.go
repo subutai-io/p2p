@@ -449,3 +449,8 @@ func (t *Interface) Write(ch chan []byte) (err error) {
 func GetDeviceBase() string {
 	return "Local Area Network "
 }
+
+// Syslog provides additional logging to the syslog server
+func Syslog(level LogLevel, format string, v ...interface{}) {
+	Log(Info, "Syslog is not supported on this platform. Please do not use syslog flag.")
+}

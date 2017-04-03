@@ -2,6 +2,12 @@
 
 notifyBuildDetails = ""
 p2pCommitId = ""
+cdnHost = ""
+
+switch (env.BRANCH_NAME) {
+	case ~/master/: cdnHost = "stagecdn.subut.ai"; break;
+	default: cdnHost = "devcdn.subut.ai"
+}
 
 try {
 	notifyBuild('STARTED')
@@ -116,7 +122,7 @@ try {
 			notifyBuildDetails = "\nFailed on Stage - Upload p2p binaries to kurjun"
 
 			/* cdn auth creadentials */
-			String url = "https://eu0.cdn.subut.ai:8338/kurjun/rest"
+			String url = "https://${cdnHost}:8338/kurjun/rest"
 			String user = "jenkins"
 			def authID = sh (script: """
 				set +x
@@ -127,12 +133,6 @@ try {
 				curl -s -k -Fmessage=\"${authID}\" -Fuser=${user} ${url}/auth/token
 				""", returnStdout: true)
 
-			/* UPLOAD */
-			if (env.BRANCH_NAME != 'master') {
-				suffix = "_${env.BRANCH_NAME}"
-			} else {
-				suffix = ""
-			}
 			/* upload p2p */
 			unstash 'p2p'
 			/* get p2p version */
@@ -140,73 +140,58 @@ try {
 				set +x
 				./p2p version | cut -d " " -f 4 | tr -d '\n'
 				""", returnStdout: true)
-			if (suffix != '') {
-				sh """
-					mv p2p p2p${suffix}
-				"""			
-			}
 			String responseP2P = sh (script: """
 				set +x
-				curl -s -k https://eu0.cdn.subut.ai:8338/kurjun/rest/raw/info?name=p2p${suffix}
+				curl -s -k ${url}/raw/info?name=p2p
 				""", returnStdout: true)
 			sh """
 				set +x
-				curl -s -k -Ffile=@p2p${suffix} -Fversion=${p2pVersion} -Ftoken=${token} ${url}/raw/upload
+				curl -s -k -Ffile=@p2p -Fversion=${p2pVersion} -Ftoken=${token} ${url}/raw/upload
 			"""
 			/* delete old p2p */
 			if (responseP2P != "Not found") {
 				def jsonp2p = jsonParse(responseP2P)
 				sh """
 					set +x
-					curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2p["id"]}'&'token=${token}
+					curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2p[0]["id"]}'&'token=${token}
 				"""
 			}
 
 			/* upload p2p.exe */
 			unstash 'p2p.exe'
-			if (suffix != '') {
-				sh """
-					mv p2p.exe p2p${suffix}.exe
-				"""
-			}
 			String responseP2Pexe = sh (script: """
 				set +x
-				curl -s -k https://eu0.cdn.subut.ai:8338/kurjun/rest/raw/info?name=p2p${suffix}.exe
+				curl -s -k ${url}/raw/info?name=p2p.exe
 				""", returnStdout: true)
 			sh """
 				set +x
-				curl -s -k -Ffile=@p2p${suffix}.exe -Fversion=${p2pVersion} -Ftoken=${token} ${url}/raw/upload
+				curl -s -k -Ffile=@p2p.exe -Fversion=${p2pVersion} -Ftoken=${token} ${url}/raw/upload
 			"""
 			/* delete old p2p.exe */
 			if (responseP2Pexe != "Not found") {
 				def jsonp2pexe = jsonParse(responseP2Pexe)
 				sh """
 					set +x
-					curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2pexe["id"]}'&'token=${token}
+					curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2pexe[0]["id"]}'&'token=${token}
 				"""
 			}
 
 			/* upload p2p_osx */
 			unstash 'p2p_osx'
-			if (suffix != '') {
-				sh """
-					mv p2p_osx p2p_osx${suffix}
-				"""
-			}
 			String responseP2Posx = sh (script: """
 				set +x
-				curl -s -k https://eu0.cdn.subut.ai:8338/kurjun/rest/raw/info?name=p2p_osx${suffix}
+				curl -s -k ${url}/raw/info?name=p2p_osx
 				""", returnStdout: true)
 			sh """
 				set +x
-				curl -s -k -Ffile=@p2p_osx${suffix} -Fversion=${p2pVersion} -Ftoken=${token} ${url}/raw/upload
+				curl -s -k -Ffile=@p2p_osx -Fversion=${p2pVersion} -Ftoken=${token} ${url}/raw/upload
 			"""
 			/* delete old p2p */
 			if (responseP2Posx != "Not found") {
 				def jsonp2posx = jsonParse(responseP2Posx)
 				sh """
 					set +x
-					curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2posx["id"]}'&'token=${token}
+					curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2posx[0]["id"]}'&'token=${token}
 				"""
 			}
 		}
