@@ -71,37 +71,37 @@ try {
 		}
 	}
 
-	if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
-		node() {
-			/* Checkout subos repo and push new subutai binary */
-			deleteDir()
+	// if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
+	// 	node() {
+	// 		/* Checkout subos repo and push new subutai binary */
+	// 		deleteDir()
 
-			stage("Push new p2p binary to subos repo")
-			/* Get subutai binary from stage and push it to same branch of subos repo
-			*/
-			notifyBuildDetails = "\nFailed on Stage - Push new subutai binary to subos repo"
+	// 		stage("Push new p2p binary to subos repo")
+	// 		/* Get subutai binary from stage and push it to same branch of subos repo
+	// 		*/
+	// 		notifyBuildDetails = "\nFailed on Stage - Push new subutai binary to subos repo"
 
-			String subosRepoName = "github.com/subutai-io/subos.git"
+	// 		String subosRepoName = "github.com/subutai-io/subos.git"
 
-			git branch: "${env.BRANCH_NAME}", changelog: false, credentialsId: 'hub-optdyn-github-auth', poll: false, url: "https://${subosRepoName}"
+	// 		git branch: "${env.BRANCH_NAME}", changelog: false, credentialsId: 'hub-optdyn-github-auth', poll: false, url: "https://${subosRepoName}"
 
-			dir("p2p/bin") {
-				unstash 'p2p'
-			}
+	// 		dir("p2p/bin") {
+	// 			unstash 'p2p'
+	// 		}
 
-			withCredentials([[$class: 'UsernamePasswordMultiBinding', 
-				credentialsId: 'hub-optdyn-github-auth', 
-				passwordVariable: 'GIT_PASSWORD', 
-				usernameVariable: 'GIT_USER']]) {
-				sh """
-					git config user.email jenkins@subut.ai
-					git config user.name 'Jenkins Admin'
-					git commit p2p/bin/p2p -m 'Push subutai version from subutai-io/p2p@${p2pCommitId}'
-					git push https://${env.GIT_USER}:'${env.GIT_PASSWORD}'@${subosRepoName} ${env.BRANCH_NAME}
-				"""
-			}
-		}
-	}
+	// 		withCredentials([[$class: 'UsernamePasswordMultiBinding', 
+	// 			credentialsId: 'hub-optdyn-github-auth', 
+	// 			passwordVariable: 'GIT_PASSWORD', 
+	// 			usernameVariable: 'GIT_USER']]) {
+	// 			sh """
+	// 				git config user.email jenkins@subut.ai
+	// 				git config user.name 'Jenkins Admin'
+	// 				git commit p2p/bin/p2p -m 'Push subutai version from subutai-io/p2p@${p2pCommitId}'
+	// 				git push https://${env.GIT_USER}:'${env.GIT_PASSWORD}'@${subosRepoName} ${env.BRANCH_NAME}
+	// 			"""
+	// 		}
+	// 	}
+	// }
 	
 	/*
 	** Trigger subutai-io/snap build on commit to p2p/dev
