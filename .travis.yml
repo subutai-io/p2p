@@ -3,6 +3,11 @@ language: go
 go: 1.5
 
 before_install:
+    - git clone https://go.googlesource.com/go
+    - cd go
+    - git checkout go1.6
+    - cd src
+    - ./all.bash
     - go get github.com/danderson/tuntap
     - go get github.com/mdlayher/ethernet
     - go get gopkg.in/yaml.v2
