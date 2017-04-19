@@ -3,24 +3,15 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Subutai P2P's documentation!
+Programming guide
 =======================================
 
-Contents:
-
-.. toctree::
-   :maxdepth: 2
-
-   about
-   troubleshooting
-   programming
-
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+aAsdfasdfa
+sdf
+asd
+fasdf
+asd
+fa
+sdf
+sd
+f
