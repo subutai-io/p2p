@@ -126,7 +126,9 @@ func main() {
 	switch os.Args[1] {
 	case "daemon":
 		daemon.Parse(os.Args[2:])
-		ptp.SetSyslogSocket(argSyslog)
+		if argSyslog != "" {
+			ptp.SetSyslogSocket(argSyslog)
+		}
 		Daemon(argRPCPort, argsaveFile, argProfile)
 	case "start":
 		start.Parse(os.Args[2:])
