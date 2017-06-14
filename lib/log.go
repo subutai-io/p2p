@@ -46,7 +46,7 @@ func Log(level LogLevel, format string, v ...interface{}) {
 		return
 	}
 	stdLoggers[level].Printf(format, v...)
-	if level != Trace {
+	if level != Trace && len(syslogSocket) != 0 {
 		go Syslog(level, format, v...)
 	}
 }
