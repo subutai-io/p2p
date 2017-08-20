@@ -63,9 +63,9 @@ try {
 					find ../ -maxdepth 1 -type f -name subutai-p2p*.tar.gz -delete
 					find ../ -maxdepth 1 -type f -name subutai-p2p*.changes -delete
 					find ../ -maxdepth 1 -type f -name subutai-p2p*.ppa.upload -delete
-					./configure --maintainer='Jenkins Admin' --maintainer-email='jenkins@subut.ai' --debian-release=${codeName} --scheme=${env.BRANCH_NAME} --version-postfix=${env.BUILD_NUMBER}
-					make debian-source
-					dput ppa:subutai-social/subutai \$(ls ../subutai-p2p*changes)
+					#./configure --maintainer='Jenkins Admin' --maintainer-email='jenkins@subut.ai' --debian-release=${codeName} --scheme=${env.BRANCH_NAME} --version-postfix=${env.BUILD_NUMBER}
+					#make debian-source
+					#dput ppa:subutai-social/subutai \$(ls ../subutai-p2p*changes)
 				"""			
 			}
 		}
