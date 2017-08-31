@@ -1,6 +1,7 @@
 CC=go
 PACK=goupx
-VERSION=$(shell git describe)
+#VERSION=$(shell git describe)
+VERSION=$(shell cat VERSION)
 OS=$(shell uname -s)
 ARCH=$(shell uname -m)
 NAME_PREFIX=p2p
