@@ -40,6 +40,7 @@ const (
 // List of commands used in DHT
 const (
 	DhtCmdConn        string = "conn"
+	DhtCmdFrwd        string = "frwd"
 	DhtCmdFind        string = "find"
 	DhtCmdNode        string = "node"
 	DhtCmdPing        string = "ping"
