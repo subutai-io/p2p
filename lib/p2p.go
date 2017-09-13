@@ -23,7 +23,9 @@ type PeerToPeer struct {
 	HardwareAddr    net.HardwareAddr                     // MAC address of network interface
 	Mask            string                               // Network mask in the dot-decimal notation
 	DeviceName      string                               // Name of the network interface
-	IPTool          string                               `yaml:"iptool"` // Network interface configuration tool
+	IPTool          string                               `yaml:"iptool"`  // Network interface configuration tool
+	AddTap          string                               `yaml:"addtap"`  // Path to addtap.bat
+	InfFile         string                               `yaml:"inffile"` // Path to deltap.bat
 	Device          *Interface                           // Network interface
 	NetworkPeers    map[string]*NetworkPeer              // Knows peers
 	UDPSocket       *Network                             // Peer-to-peer interconnection socket
@@ -62,6 +64,8 @@ func (p *PeerToPeer) AssignInterface(ip, mac, mask, device string) error {
 	if err != nil {
 		Log(Warning, "Failed to load config: %v", err)
 		p.IPTool = "/sbin/ip"
+		p.AddTap = "C:\\Program Files\\TAP-Windows\\bin\\tapinstall.exe"
+		p.InfFile = "C:\\Program Files\\TAP-Windows\\driver\\OemVista.inf"
 	}
 	err = yaml.Unmarshal(yamlFile, p)
 	if err != nil {
