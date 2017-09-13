@@ -44,8 +44,8 @@ const (
 	USER_DEVICE_DIR     string         = "\\DosDevices\\Global\\"
 	TAP_SUFFIX          string         = ".tap"
 	INVALID_HANDLE      syscall.Handle = 0
-	ADD_DEV             string         = "addtap.bat"
-	REMOVE_DEV          string         = "deltapall.bat"
+	ADD_DEV                            = "C:\\Program Files\\TAP-Windows\\bin\\tapinstall.exe"
+	DRIVER_INF                         = "C:\\Program Files\\TAP-Windows\\driver\\OemVista.inf"
 	ConfigDir                          = "C:\\"
 )
 
