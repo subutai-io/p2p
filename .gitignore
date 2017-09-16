@@ -12,6 +12,7 @@ tests/*
 *.exe
 *.zip
 *.tmp
+*.msi
 
 # Logs
 *.log
