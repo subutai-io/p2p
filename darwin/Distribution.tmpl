@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-script minSpecVersion="1.000000" authoringTool="com.apple.PackageMaker" authoringToolVersion="3.0.3" authoringToolBuild="174">
+    <title>Subutai P2P {VERSION_PLACEHOLDER}</title>
+    <options customize="never" allow-external-scripts="no"/>
+    <domains enable_anywhere="true"/>
+    <installation-check script="pm_install_check();"/>
+    <script>function pm_install_check() {
+  if(!(system.compareVersions(system.version.ProductVersion,'10.5') >= 0)) {
+    my.result.title = 'Failure';
+    my.result.message = 'You need at least Mac OS X 10.5 to install SimCow.';
+    my.result.type = 'Fatal';
+    return false;
+  }
+  return true;
+}
+</script>
+    <choices-outline>
+        <line choice="choice1"/>
+    </choices-outline>
+    <choice id="choice1" title="base">
+        <pkg-ref id="com.Subutai.P2P"/>
+    </choice>
+    <pkg-ref id="com.Subutai.P2P" installKBytes="{SIZE_PLACEHOLDER}" version="{VERSION_PLACEHOLDER}" auth="Root">#base.pkg</pkg-ref>
+</installer-script>

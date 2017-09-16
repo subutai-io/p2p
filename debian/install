@@ -1,1 +1,1 @@
-debian/p2p etc/init.d/
+debian/p2p.service /etc/systemd/system/
