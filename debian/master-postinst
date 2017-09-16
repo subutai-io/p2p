@@ -1,4 +1,10 @@
 #/bin/sh
 #
 
-service p2p restart
+if [ -e /usr/bin/p2p ]; then
+	rm -f /usr/bin/p2p
+fi
+ln -s /opt/subutai/bin/p2p /usr/bin/p2p
+
+systemctl enable p2p.service
+systemctl restart p2p.service
