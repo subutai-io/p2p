@@ -12,6 +12,7 @@ tests/*
 *.exe
 *.zip
 *.tmp
+*.msi
 
 # Logs
 *.log
@@ -27,3 +28,6 @@ debian/postinst
 debian/changelog
 debian/control
 debian/extra-code
+darwin/*.pkg
+darwin/flat
+darwin/root

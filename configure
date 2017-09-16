@@ -218,8 +218,8 @@ go get gopkg.in/yaml.v2
 
 rm -rf debian/extra-code
 mkdir -p debian/extra-code
-mkdir -p debian/extra-code/src/github.com/subutai-io
-cp -r $GOPATH/src/github.com/subutai-io/p2p debian/extra-code/src/github.com/subutai-io
+#mkdir -p debian/extra-code/src/github.com/subutai-io
+#cp -r $GOPATH/src/github.com/subutai-io/p2p debian/extra-code/src/github.com/subutai-io
 mkdir -p debian/extra-code/src/github.com/mdlayher
 cp -r $GOPATH/src/github.com/mdlayher/ethernet debian/extra-code/src/github.com/mdlayher
 mkdir -p debian/extra-code/src/github.com/jackpal

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+chmod +x /usr/local/share/subutai/bin/p2p
+if [ -e /usr/local/bin/p2p ]; then
+	rm -f /usr/local/bin/p2p
+fi
+mkdir -p /usr/local/bin
+ln -s /usr/local/share/subutai/bin/p2p /usr/local/bin/p2p
+
+chown -R $USER /usr/local/share/subutai
+chown -R $USER /usr/local/bin/p2p
+
+cp /usr/local/share/subutai/Library/LaunchDaemons/io.subutai.p2p.daemon.plist /Library/LaunchDaemons/io.subutai.p2p.daemon.plist
+cp /usr/local/share/subutai/etc/newsyslog.d/p2p.conf /etc/newsyslog.d/p2p.conf
+chmod 0555 /Library/LaunchDaemons/io.subutai.p2p.daemon.plist
+chown root:wheel /Library/LaunchDaemons/io.subutai.p2p.daemon.plist
+launchctl load /Library/LaunchDaemons/io.subutai.p2p.daemon.plist

@@ -1,0 +1,15 @@
+[Unit]
+Description=Service for Subutai p2p daemon
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+ExecStart=/opt/subutai/bin/p2p daemon
+Restart=on-failure
+WorkingDirectory=/opt/subutai/
+
+TimeoutStopSec=30
+Type=simple
+
+[Install]
+WantedBy=multi-user.target

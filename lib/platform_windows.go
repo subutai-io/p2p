@@ -43,9 +43,10 @@ const (
 	SYS_DEVICE_DIR      string         = "\\Device\\"
 	USER_DEVICE_DIR     string         = "\\DosDevices\\Global\\"
 	TAP_SUFFIX          string         = ".tap"
+	TAP_ID              string         = "tap0901"
 	INVALID_HANDLE      syscall.Handle = 0
-	ADD_DEV             string         = "addtap.bat"
-	REMOVE_DEV          string         = "deltapall.bat"
+	TAP_TOOL                           = "C:\\Program Files\\TAP-Windows\\bin\\tapinstall.exe"
+	DRIVER_INF                         = "C:\\Program Files\\TAP-Windows\\driver\\OemVista.inf"
 	ConfigDir                          = "C:\\"
 )
 
@@ -63,20 +64,35 @@ var (
 )
 
 func InitPlatform() {
-	remdev := exec.Command(REMOVE_DEV)
-	err := remdev.Run()
+	// Remove interfaces
+	remove := exec.Command(TAP_TOOL, "remove", TAP_ID)
+	err := remove.Run()
 	if err != nil {
-		Log(Error, "Failed to remove TUN/TAP Devices: %v", err)
+		Log(Error, "Failed to remove TAP interfaces")
 	}
 
 	for i := 0; i < 10; i++ {
-		adddev := exec.Command(ADD_DEV)
+		adddev := exec.Command(TAP_TOOL, "install", DRIVER_INF, TAP_ID)
 		err := adddev.Run()
 		if err != nil {
 			Log(Error, "Failed to add TUN/TAP Device: %v", err)
 		}
 	}
 
+	/*remdev := exec.Command(TAP_TOOL, "")
+	err := remdev.Run()
+	if err != nil {
+		Log(Error, "Failed to remove TUN/TAP Devices: %v", err)
+	}*/
+	/*
+		for i := 0; i < 10; i++ {
+			adddev := exec.Command(ADD_DEV)
+			err := adddev.Run()
+			if err != nil {
+				Log(Error, "Failed to add TUN/TAP Device: %v", err)
+			}
+		}
+	*/
 	for i := 0; i < 10; i++ {
 		key, err := queryNetworkKey()
 		if err != nil {
