@@ -484,18 +484,23 @@ func (p *PeerToPeer) Run() {
 		passed := time.Since(p.Dht.LastDHTPing)
 		interval := time.Duration(time.Second * 45)
 		if passed > interval {
-			lip := p.Dht.IP.To4().String()
-			lnet := p.Dht.Network
-			Log(Error, "Lost connection to DHT")
-			p.Dht.Shutdown = true
-			p.Dht.ID = ""
-			hash := p.Dht.NetworkHash
-			routers := p.Dht.Routers
-			time.Sleep(time.Second * 5)
-			p.StartDHT(hash, routers)
-			lmask := fmt.Sprintf("%d.%d.%d.%d", lnet.Mask[0], lnet.Mask[1], lnet.Mask[2], lnet.Mask[3])
-			p.Dht.SendIP(lip, lmask)
-			go p.Dht.UpdatePeers()
+			// Send ping response after interval
+			p.Dht.LastDHTPing = time.Now()
+			p.Dht.ForcePing()
+			/*
+				lip := p.Dht.IP.To4().String()
+				lnet := p.Dht.Network
+				Log(Error, "Lost connection to DHT")
+				p.Dht.Shutdown = true
+				p.Dht.ID = ""
+				hash := p.Dht.NetworkHash
+				routers := p.Dht.Routers
+				time.Sleep(time.Second * 5)
+				p.StartDHT(hash, routers)
+				lmask := fmt.Sprintf("%d.%d.%d.%d", lnet.Mask[0], lnet.Mask[1], lnet.Mask[2], lnet.Mask[3])
+				p.Dht.SendIP(lip, lmask)
+				go p.Dht.UpdatePeers()
+			*/
 		}
 	}
 	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)
