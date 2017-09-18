@@ -20,6 +20,7 @@ type MessageHandler func(message *P2PMessage, srcAddr *net.UDPAddr)
 type PeerToPeer struct {
 	IP              string                               // Interface IP address
 	Mac             string                               // String representation of a MAC address
+	IPNet           string                               // IP/Mask pair
 	HardwareAddr    net.HardwareAddr                     // MAC address of network interface
 	Mask            string                               // Network mask in the dot-decimal notation
 	DeviceName      string                               // Name of the network interface
@@ -369,6 +370,7 @@ func (p *PeerToPeer) RequestIP(mac, device string) error {
 	}
 	m := p.Dht.Network.Mask
 	mask := fmt.Sprintf("%d.%d.%d.%d", m[0], m[1], m[2], m[3])
+	p.IPNet = p.Dht.Network.String()
 	p.Dht.Mask = mask
 	p.AssignInterface(p.Dht.IP.String(), mac, mask, device)
 	return nil
@@ -390,6 +392,7 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) error {
 	}
 	p.Dht.IP = ip
 	p.Dht.Network = ipnet
+	p.IPNet = ipnet.String()
 	mask := fmt.Sprintf("%d.%d.%d.%d", ipnet.Mask[0], ipnet.Mask[1], ipnet.Mask[2], ipnet.Mask[3])
 	p.Dht.Mask = mask
 	p.Dht.SendIP(ipAddress, mask)
@@ -496,7 +499,7 @@ func (p *PeerToPeer) Run() {
 			routers := p.Dht.Routers
 			time.Sleep(time.Second * 5)
 			p.StartDHT(hash, routers)
-			p.Dht.SendIP(p.IP, p.Mask)
+			p.Dht.SendIP(p.IPNet, p.Mask)
 			go p.Dht.UpdatePeers()
 		}
 	}
