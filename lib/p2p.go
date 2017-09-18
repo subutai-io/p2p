@@ -835,7 +835,7 @@ func (p *PeerToPeer) StopInstance() {
 	if ip != nil {
 		for p.IsDeviceExists(p.DeviceName) {
 			time.Sleep(1 * time.Second)
-			target := fmt.Sprintf("%d.%d.%d.%d:99", ip[0], ip[1], ip[2], ipIt)
+			target := fmt.Sprintf("%d.%d.%d.%d:9922", ip[0], ip[1], ip[2], ipIt)
 			Log(Info, "Dialing %s", target)
 			_, err := net.DialTimeout("tcp", target, 2*time.Second)
 			if err != nil {
@@ -903,7 +903,7 @@ func (p *PeerToPeer) ReadProxies() {
 				}
 
 			} else {
-				Log(Trace, "Clossed channel")
+				Log(Trace, "Closed channel")
 			}
 		default:
 			time.Sleep(100 * time.Millisecond)
