@@ -1,8 +1,13 @@
 # Change Log
 
-## [5.0.2-SNAPSHOT] 09/09/2017
+## [6.0.2-SNAPSHOT] 09/19/2017
+
+* Draft next release
+
+## [6.0.1] 09/19/2017
 
 * Added several fixes related to DHT
+* Fixed issued with reconnect, when IP/Mask information were lost
 
 ## [5.0.1] 08/31/2017
 
