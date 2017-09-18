@@ -53,6 +53,7 @@ type DHTClient struct {
 	State            DHTState
 	IP               net.IP
 	Network          *net.IPNet
+	Mask             string
 	DataChannel      chan []byte
 	CommandChannel   chan []byte
 	Listeners        int
@@ -248,7 +249,7 @@ func (dht *DHTClient) UpdatePeers() {
 		}
 		dht.SendUpdateRequest()
 		// Just in case do an update
-		time.Sleep(5 * time.Minute)
+		time.Sleep(1 * time.Minute)
 	}
 	Log(Info, "Stopped DHT updater")
 }
@@ -329,6 +330,9 @@ func (dht *DHTClient) HandleConn(data DHTMessage, conn *net.UDPConn) {
 		Log(Error, "Empty ID were received. Stopping")
 		return
 	}
+	if dht.State == DHTStateReconnecting {
+		dht.SendIP(dht.IP.To4().String(), dht.Mask)
+	}
 	dht.State = DHTStateOperating
 	dht.ID = data.ID
 	Log(Info, "Received connection confirmation from router %s",
@@ -345,6 +349,11 @@ func (dht *DHTClient) HandlePing(data DHTMessage, conn *net.UDPConn) {
 	if err != nil {
 		Log(Error, "Failed to send 'ping' packet: %v", err)
 	}
+}
+
+func (dht *DHTClient) ForcePing() {
+	msg := dht.Compose(DhtCmdPing, dht.ID, "", "")
+	dht.Send(msg)
 }
 
 // HandleFind - Receives a Find message with a list of peers in this environment
@@ -695,7 +704,7 @@ func (dht *DHTClient) RequestIP() {
 }
 
 // SendIP - Notify DHT about configured IP and netmask
-func (dht *DHTClient) SendIP(ip string, mask string) {
+func (dht *DHTClient) SendIP(ip, mask string) {
 	Log(Info, "Sending DHCP information")
 	req := dht.Compose(DhtCmdDhcp, dht.ID, ip, mask)
 	dht.Send(req)

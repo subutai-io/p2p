@@ -20,6 +20,7 @@ type MessageHandler func(message *P2PMessage, srcAddr *net.UDPAddr)
 type PeerToPeer struct {
 	IP              string                               // Interface IP address
 	Mac             string                               // String representation of a MAC address
+	IPNet           string                               // IP/Mask pair
 	HardwareAddr    net.HardwareAddr                     // MAC address of network interface
 	Mask            string                               // Network mask in the dot-decimal notation
 	DeviceName      string                               // Name of the network interface
@@ -47,6 +48,7 @@ type PeerToPeer struct {
 	BufferLock      sync.Mutex
 	PeersLock       sync.Mutex
 	IPBlacklist     []string // List of IP address that will be ignored
+	IfConfigured    bool
 }
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
@@ -334,48 +336,15 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 			time.Sleep(100 * time.Millisecond)
 		}
 	*/
-	var retries = 0
 	if argIP == "dhcp" {
-		Log(Info, "Requesting IP")
-		p.Dht.RequestIP()
-		time.Sleep(1 * time.Second)
-		for p.Dht.IP == nil && p.Dht.Network == nil {
-			Log(Info, "No IP were received. Requesting again")
-			p.Dht.RequestIP()
-			time.Sleep(3 * time.Second)
-			retries++
-			if retries >= 10 {
-				Log(Error, "Failed to retrieve IP from network after 10 retries")
-				return nil
-			}
+		err := p.RequestIP(argMac, argDev)
+		if err != nil {
+			Log(Error, "%v", err)
 		}
-		m := p.Dht.Network.Mask
-		mask := fmt.Sprintf("%d.%d.%d.%d", m[0], m[1], m[2], m[3])
-		p.AssignInterface(p.Dht.IP.String(), argMac, mask, argDev)
 	} else {
-		ip, ipnet, err := net.ParseCIDR(argIP)
+		err := p.ReportIP(argIP, argMac, argDev)
 		if err != nil {
-			nip := net.ParseIP(argIP)
-			if nip == nil {
-				Log(Error, "Invalid address were provided for network interface. Use -ip \"dhcp\" or specify correct IP address")
-				return nil
-			}
-			argIP += `/24`
-			Log(Warning, "No CIDR mask was provided. Assumming /24")
-			ip, ipnet, err = net.ParseCIDR(argIP)
-			if err != nil {
-				Log(Error, "Failed to setup provided IP address for local device")
-				return nil
-			}
-		}
-		p.Dht.IP = ip
-		p.Dht.Network = ipnet
-		mask := fmt.Sprintf("%d.%d.%d.%d", ipnet.Mask[0], ipnet.Mask[1], ipnet.Mask[2], ipnet.Mask[3])
-		p.Dht.SendIP(argIP, mask)
-		err = p.AssignInterface(p.Dht.IP.String(), argMac, mask, argDev)
-		if err != nil {
-			Log(Error, "Can't configure interface")
-			return nil
+			Log(Error, "%v", err)
 		}
 	}
 
@@ -383,6 +352,55 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 
 	go p.ListenInterface()
 	return p
+}
+
+func (p *PeerToPeer) RequestIP(mac, device string) error {
+	Log(Info, "Requesting IP")
+	p.Dht.RequestIP()
+	time.Sleep(1 * time.Second)
+	retries := 0
+	for p.Dht.IP == nil && p.Dht.Network == nil {
+		Log(Info, "No IP were received. Requesting again")
+		p.Dht.RequestIP()
+		time.Sleep(3 * time.Second)
+		retries++
+		if retries >= 10 {
+			return fmt.Errorf("Failed to retrieve IP from network after 10 retries")
+		}
+	}
+	m := p.Dht.Network.Mask
+	mask := fmt.Sprintf("%d.%d.%d.%d", m[0], m[1], m[2], m[3])
+	p.IPNet = p.Dht.Network.String()
+	p.Dht.Mask = mask
+	p.AssignInterface(p.Dht.IP.String(), mac, mask, device)
+	return nil
+}
+
+func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) error {
+	ip, ipnet, err := net.ParseCIDR(ipAddress)
+	if err != nil {
+		nip := net.ParseIP(ipAddress)
+		if nip == nil {
+			return fmt.Errorf("Invalid address were provided for network interface. Use -ip \"dhcp\" or specify correct IP address")
+		}
+		ipAddress += `/24`
+		Log(Warning, "No CIDR mask was provided. Assumming /24")
+		ip, ipnet, err = net.ParseCIDR(ipAddress)
+		if err != nil {
+			return fmt.Errorf("Failed to setup provided IP address for local device")
+		}
+	}
+	p.Dht.IP = ip
+	p.Dht.Network = ipnet
+	p.IPNet = ipnet.String()
+	mask := fmt.Sprintf("%d.%d.%d.%d", ipnet.Mask[0], ipnet.Mask[1], ipnet.Mask[2], ipnet.Mask[3])
+	p.Dht.Mask = mask
+	p.Dht.SendIP(ipAddress, mask)
+	err = p.AssignInterface(p.Dht.IP.String(), mac, mask, device)
+	if err != nil {
+		return fmt.Errorf("Failed to configure interface")
+	}
+	return nil
 }
 
 // StartDHT starts a DHT client
@@ -471,6 +489,9 @@ func (p *PeerToPeer) Run() {
 		passed := time.Since(p.Dht.LastDHTPing)
 		interval := time.Duration(time.Second * 45)
 		if passed > interval {
+			// Send ping response after interval
+			//p.Dht.LastDHTPing = time.Now()
+			//p.Dht.ForcePing()
 			Log(Error, "Lost connection to DHT")
 			p.Dht.Shutdown = true
 			p.Dht.ID = ""
@@ -478,6 +499,7 @@ func (p *PeerToPeer) Run() {
 			routers := p.Dht.Routers
 			time.Sleep(time.Second * 5)
 			p.StartDHT(hash, routers)
+			p.Dht.SendIP(p.IPNet, p.Mask)
 			go p.Dht.UpdatePeers()
 		}
 	}
@@ -835,7 +857,7 @@ func (p *PeerToPeer) StopInstance() {
 	if ip != nil {
 		for p.IsDeviceExists(p.DeviceName) {
 			time.Sleep(1 * time.Second)
-			target := fmt.Sprintf("%d.%d.%d.%d:99", ip[0], ip[1], ip[2], ipIt)
+			target := fmt.Sprintf("%d.%d.%d.%d:9922", ip[0], ip[1], ip[2], ipIt)
 			Log(Info, "Dialing %s", target)
 			_, err := net.DialTimeout("tcp", target, 2*time.Second)
 			if err != nil {
@@ -903,7 +925,7 @@ func (p *PeerToPeer) ReadProxies() {
 				}
 
 			} else {
-				Log(Trace, "Clossed channel")
+				Log(Trace, "Closed channel")
 			}
 		default:
 			time.Sleep(100 * time.Millisecond)
