@@ -248,7 +248,7 @@ func (dht *DHTClient) UpdatePeers() {
 		}
 		dht.SendUpdateRequest()
 		// Just in case do an update
-		time.Sleep(5 * time.Minute)
+		time.Sleep(1 * time.Minute)
 	}
 	Log(Info, "Stopped DHT updater")
 }
