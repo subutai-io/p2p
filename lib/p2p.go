@@ -369,6 +369,7 @@ func (p *PeerToPeer) RequestIP(mac, device string) error {
 	}
 	m := p.Dht.Network.Mask
 	mask := fmt.Sprintf("%d.%d.%d.%d", m[0], m[1], m[2], m[3])
+	p.Dht.Mask = mask
 	p.AssignInterface(p.Dht.IP.String(), mac, mask, device)
 	return nil
 }
@@ -390,6 +391,7 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) error {
 	p.Dht.IP = ip
 	p.Dht.Network = ipnet
 	mask := fmt.Sprintf("%d.%d.%d.%d", ipnet.Mask[0], ipnet.Mask[1], ipnet.Mask[2], ipnet.Mask[3])
+	p.Dht.Mask = mask
 	p.Dht.SendIP(ipAddress, mask)
 	err = p.AssignInterface(p.Dht.IP.String(), mac, mask, device)
 	if err != nil {
