@@ -347,6 +347,11 @@ func (dht *DHTClient) HandlePing(data DHTMessage, conn *net.UDPConn) {
 	}
 }
 
+func (dht *DHTClient) ForcePing() {
+	msg := dht.Compose(DhtCmdPing, dht.ID, "", "")
+	dht.Send(msg)
+}
+
 // HandleFind - Receives a Find message with a list of peers in this environment
 func (dht *DHTClient) HandleFind(data DHTMessage, conn *net.UDPConn) {
 	// This means we've received a list of nodes we can connect to
