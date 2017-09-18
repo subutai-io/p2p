@@ -53,6 +53,7 @@ type DHTClient struct {
 	State            DHTState
 	IP               net.IP
 	Network          *net.IPNet
+	Mask             string
 	DataChannel      chan []byte
 	CommandChannel   chan []byte
 	Listeners        int
@@ -328,6 +329,9 @@ func (dht *DHTClient) HandleConn(data DHTMessage, conn *net.UDPConn) {
 	if data.ID == "0" {
 		Log(Error, "Empty ID were received. Stopping")
 		return
+	}
+	if dht.State == DHTStateReconnecting {
+		dht.SendIP(dht.IP.To4().String(), dht.Mask)
 	}
 	dht.State = DHTStateOperating
 	dht.ID = data.ID
