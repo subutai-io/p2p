@@ -7,6 +7,13 @@ fi
 mkdir -p /usr/local/bin
 ln -s /usr/local/share/subutai/bin/p2p /usr/local/bin/p2p
 
+mkdir -p /tmp/subutai
+curl -k -o /tmp/subutai/tuntap.pkg https://cdn.subut.ai:8338/kurjun/rest/raw/get\?name=tuntap_20150118_osx.pkg
+installer -pkg /tmp/subutai/tuntap.pkg -target /
+
+mkdir -p /usr/local/etc/p2p
+echo 'iptool: /sbin/ifconfig' > /usr/local/etc/p2p/config.yaml
+
 chown -R $USER /usr/local/share/subutai
 chown -R $USER /usr/local/bin/p2p
 
