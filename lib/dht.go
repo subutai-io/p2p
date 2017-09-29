@@ -3,12 +3,13 @@ package ptp
 import (
 	"bytes"
 	"fmt"
-	bencode "github.com/jackpal/bencode-go"
 	"net"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	bencode "github.com/jackpal/bencode-go"
 )
 
 // OperatingMode - Mode in which DHT client is operating
@@ -184,6 +185,12 @@ func (dht *DHTClient) Compose(command, id, query, arguments string) string {
 	if id != "" {
 		req.ID = id
 	}
+
+	if (req.ID == "0" || req.ID == "") && command != DhtCmdConn {
+		Log(Error, "Failed to compose message, ID is empty")
+		return ""
+	}
+
 	if query != "" {
 		req.Query = query
 	}
@@ -682,6 +689,10 @@ func (dht *DHTClient) ReportControlPeerLoad(amount int) {
 
 // Send - sends a DHT message to a DHT server
 func (dht *DHTClient) Send(msg string) bool {
+	if msg == "" {
+		Log(Error, "Failed to send DHT packet: empty msg")
+		return false
+	}
 	for _, conn := range dht.Connection {
 		if dht.Shutdown {
 			continue
