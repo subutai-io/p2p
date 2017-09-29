@@ -479,7 +479,9 @@ func (p *PeerToPeer) Run() {
 				Log(Info, "Removing peer %s", i)
 				time.Sleep(100 * time.Millisecond)
 				lip := peer.PeerLocalIP.String()
-				delete(p.IPIDTable, lip)
+				if peer.ID == p.IPIDTable[lip] {
+					delete(p.IPIDTable, lip)
+				}
 				delete(p.MACIDTable, peer.PeerHW.String())
 				delete(p.NetworkPeers, i)
 				runtime.Gosched()

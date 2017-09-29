@@ -376,7 +376,7 @@ func (dht *DHTClient) HandleFind(data DHTMessage, conn *net.UDPConn) {
 			for _, id := range ids {
 				var found = false
 				for _, peer := range dht.Peers {
-					if peer.ID == id {
+					if peer.ID == id && len(peer.ID) > 0 {
 						found = true
 					}
 				}
@@ -390,7 +390,7 @@ func (dht *DHTClient) HandleFind(data DHTMessage, conn *net.UDPConn) {
 			for _, peer := range dht.Peers {
 				var found = false
 				for _, id := range ids {
-					if peer.ID == id {
+					if peer.ID == id && len(peer.ID) > 0 {
 						found = true
 					}
 				}
