@@ -482,8 +482,9 @@ func (p *PeerToPeer) Run() {
 				delete(p.IPIDTable, lip)
 				delete(p.MACIDTable, peer.PeerHW.String())
 				delete(p.NetworkPeers, i)
-				runtime.Gosched()
+				//runtime.Gosched()
 				Log(Info, "Remove complete")
+				break
 			}
 		}
 		passed := time.Since(p.Dht.LastDHTPing)
