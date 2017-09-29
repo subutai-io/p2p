@@ -767,3 +767,14 @@ func (dht *DHTClient) CleanForwarderBlacklist() {
 	Log(Debug, "Cleaning forwarders blacklist")
 	dht.ProxyBlacklist = dht.ProxyBlacklist[:0]
 }
+
+// CleanPeer will remove information about peer with specified ID
+func (dht *DHTClient) CleanPeer(id string) error {
+	for i, p := range dht.Peers {
+		if p.ID == id {
+			dht.Peers = append(dht.Peers[:i], dht.Peers[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("Specified peer was not found")
+}
