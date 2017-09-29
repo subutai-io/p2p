@@ -230,13 +230,6 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	// During initialization procedure, DHT Client will send
 	// a introduction packet along with a hash to a DHT bootstrap
 	// nodes that was hardcoded into it's code
-	/*
-		dhtClient := new(DHTClient)
-		config := dhtClient.DHTClientConfig()
-		config.NetworkHash = argHash
-		config.Mode = DHTModeClient
-	*/
-
 	p := new(PeerToPeer)
 	p.FindNetworkAddresses()
 	p.HardwareAddr = hw
@@ -312,30 +305,7 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.UDPSocket.Init("", port)
 	port = p.UDPSocket.GetPort()
 	Log(Info, "Started UDP Listener at port %d", port)
-	/*
-		config.P2PPort = port
-		if argDht != "" {
-			config.Routers = argDht
-		}
-	*/
-	// TODO: Move channels inside DHT
-	//p.DHTPeerChannel = make(chan []PeerIP)
-	//p.ProxyChannel = make(chan Forwarder)
 	p.StartDHT(argHash, argDht)
-	/*
-		p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel, p.ProxyChannel)
-		for p.Dht == nil {
-			Log(Warning, "Failed to connect to DHT. Retrying in 5 seconds")
-			time.Sleep(5 * time.Second)
-			p.LocalIPs = p.LocalIPs[:0]
-			p.FindNetworkAddresses()
-			p.Dht = dhtClient.Initialize(config, p.LocalIPs, p.DHTPeerChannel, p.ProxyChannel)
-		}
-		// Wait for ID
-		for len(p.Dht.ID) < 32 {
-			time.Sleep(100 * time.Millisecond)
-		}
-	*/
 	if argIP == "dhcp" {
 		err := p.RequestIP(argMac, argDev)
 		if err != nil {
@@ -354,6 +324,7 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	return p
 }
 
+// RequestIP asks DHT to get IP from DHCP-like service
 func (p *PeerToPeer) RequestIP(mac, device string) error {
 	Log(Info, "Requesting IP")
 	p.Dht.RequestIP()
@@ -376,6 +347,7 @@ func (p *PeerToPeer) RequestIP(mac, device string) error {
 	return nil
 }
 
+// ReportIP will send IP specified at service start to DHCP-like service
 func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) error {
 	ip, ipnet, err := net.ParseCIDR(ipAddress)
 	if err != nil {
@@ -434,6 +406,7 @@ func (p *PeerToPeer) Run() {
 				break
 			}
 			select {
+			// Handle STOP Command from DHT
 			case rm, r := <-p.Dht.RemovePeerChan:
 				if r {
 					if rm == "DUMMY" || rm == "" {
@@ -479,11 +452,18 @@ func (p *PeerToPeer) Run() {
 				Log(Info, "Removing peer %s", i)
 				time.Sleep(100 * time.Millisecond)
 				lip := peer.PeerLocalIP.String()
-				delete(p.IPIDTable, lip)
+				if peer.ID == p.IPIDTable[lip] {
+					delete(p.IPIDTable, lip)
+				}
 				delete(p.MACIDTable, peer.PeerHW.String())
 				delete(p.NetworkPeers, i)
-				runtime.Gosched()
+				err := p.Dht.CleanPeer(i)
+				if err != nil {
+					Log(Error, "Failed to remove peer from DHT: %s", err)
+				}
+				//runtime.Gosched()
 				Log(Info, "Remove complete")
+				break
 			}
 		}
 		passed := time.Since(p.Dht.LastDHTPing)

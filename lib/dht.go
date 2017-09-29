@@ -3,12 +3,13 @@ package ptp
 import (
 	"bytes"
 	"fmt"
-	bencode "github.com/jackpal/bencode-go"
 	"net"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	bencode "github.com/jackpal/bencode-go"
 )
 
 // OperatingMode - Mode in which DHT client is operating
@@ -184,6 +185,12 @@ func (dht *DHTClient) Compose(command, id, query, arguments string) string {
 	if id != "" {
 		req.ID = id
 	}
+
+	if (req.ID == "0" || req.ID == "") && command != DhtCmdConn {
+		Log(Error, "Failed to compose message, ID is empty")
+		return ""
+	}
+
 	if query != "" {
 		req.Query = query
 	}
@@ -369,7 +376,7 @@ func (dht *DHTClient) HandleFind(data DHTMessage, conn *net.UDPConn) {
 			for _, id := range ids {
 				var found = false
 				for _, peer := range dht.Peers {
-					if peer.ID == id {
+					if peer.ID == id && len(peer.ID) > 0 {
 						found = true
 					}
 				}
@@ -383,7 +390,7 @@ func (dht *DHTClient) HandleFind(data DHTMessage, conn *net.UDPConn) {
 			for _, peer := range dht.Peers {
 				var found = false
 				for _, id := range ids {
-					if peer.ID == id {
+					if peer.ID == id && len(peer.ID) > 0 {
 						found = true
 					}
 				}
@@ -682,6 +689,10 @@ func (dht *DHTClient) ReportControlPeerLoad(amount int) {
 
 // Send - sends a DHT message to a DHT server
 func (dht *DHTClient) Send(msg string) bool {
+	if msg == "" {
+		Log(Error, "Failed to send DHT packet: empty msg")
+		return false
+	}
 	for _, conn := range dht.Connection {
 		if dht.Shutdown {
 			continue
@@ -755,4 +766,15 @@ func (dht *DHTClient) BlacklistForwarder(addr *net.UDPAddr) {
 func (dht *DHTClient) CleanForwarderBlacklist() {
 	Log(Debug, "Cleaning forwarders blacklist")
 	dht.ProxyBlacklist = dht.ProxyBlacklist[:0]
+}
+
+// CleanPeer will remove information about peer with specified ID
+func (dht *DHTClient) CleanPeer(id string) error {
+	for i, p := range dht.Peers {
+		if p.ID == id {
+			dht.Peers = append(dht.Peers[:i], dht.Peers[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("Specified peer was not found")
 }
