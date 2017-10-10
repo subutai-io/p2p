@@ -1,5 +1,9 @@
 # Change Log
 
+## [6.0.3] 10/10/2017
+
+* Added new commands: `show -interfaces` and `show -interfaces -all`
+
 ## [6.0.2] 09/27/2017
 
 * Improved DHT stability
