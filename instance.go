@@ -360,7 +360,7 @@ func (p *Procedures) Show(args *ShowArgs, resp *Response) error {
 			instances_mut.Lock()
 			for _, inst := range instances {
 				if inst.PTP != nil {
-					resp.Output = inst.PTP.DeviceName
+					resp.Output = resp.Output + inst.PTP.DeviceName
 				}
 				resp.Output = resp.Output + "\n"
 			}
@@ -368,7 +368,7 @@ func (p *Procedures) Show(args *ShowArgs, resp *Response) error {
 			runtime.Gosched()
 		} else {
 			for _, inf := range InterfaceNames {
-				resp.Output = inf + "\n"
+				resp.Output = resp.Output + inf + "\n"
 			}
 		}
 	} else {
