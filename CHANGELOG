@@ -1,8 +1,9 @@
 # Change Log
 
-## [6.0.3] 10/10/2017
+## [6.1.0] 10/11/2017
 
 * Added new commands: `show -interfaces` and `show -interfaces -all`
+* Added clean version output with `-h` option
 
 ## [6.0.2] 09/27/2017
 
