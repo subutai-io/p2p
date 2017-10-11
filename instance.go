@@ -27,6 +27,13 @@ type RunArgs struct {
 	Port    int
 }
 
+type ShowArgs struct {
+	Hash       string
+	IP         string
+	Interfaces bool
+	All        bool
+}
+
 type instance struct {
 	PTP  *ptp.PeerToPeer
 	ID   string
@@ -244,6 +251,18 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 			resp.ExitCode = 1
 			return errors.New("Failed to create P2P Instance")
 		}
+
+		// Saving interface name
+		infFound := false
+		for _, inf := range InterfaceNames {
+			if inf == ptpInstance.DeviceName {
+				infFound = true
+			}
+		}
+		if !infFound && ptpInstance.DeviceName != "" {
+			InterfaceNames = append(InterfaceNames, ptpInstance.DeviceName)
+		}
+
 		usedIPs = append(usedIPs, ptpInstance.IP)
 		ptp.Log(ptp.Info, "Instance created")
 		newInst.PTP = ptpInstance
@@ -294,7 +313,7 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 }
 
 // Show is used to output information about instances
-func (p *Procedures) Show(args *RunArgs, resp *Response) error {
+func (p *Procedures) Show(args *ShowArgs, resp *Response) error {
 	if args.Hash != "" {
 		instances_mut.Lock()
 		swarm, exists := instances[args.Hash]
@@ -336,13 +355,29 @@ func (p *Procedures) Show(args *RunArgs, resp *Response) error {
 			resp.Output = "Specified environment was not found: " + args.Hash
 			resp.ExitCode = 1
 		}
+	} else if args.Interfaces {
+		if !args.All {
+			instances_mut.Lock()
+			for _, inst := range instances {
+				if inst.PTP != nil {
+					resp.Output = resp.Output + inst.PTP.DeviceName
+				}
+				resp.Output = resp.Output + "\n"
+			}
+			instances_mut.Unlock()
+			runtime.Gosched()
+		} else {
+			for _, inf := range InterfaceNames {
+				resp.Output = resp.Output + inf + "\n"
+			}
+		}
 	} else {
 		resp.ExitCode = 0
 		instances_mut.Lock()
-		inst_len := len(instances)
+		instLen := len(instances)
 		instances_mut.Unlock()
 		runtime.Gosched()
-		if inst_len == 0 {
+		if instLen == 0 {
 			resp.Output = "No instances was found"
 		}
 		instances_mut.Lock()

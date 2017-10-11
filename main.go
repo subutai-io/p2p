@@ -17,6 +17,9 @@ import (
 // AppVersion is a Version of P2P
 var AppVersion = "Unknown"
 
+// InterfaceNames - List of all interfaces names that was used by p2p historically. These interfaces may not present in the system anymore
+var InterfaceNames []string
+
 // StartProfiling will create a .prof file to analyze p2p app performance
 func StartProfiling(profile string) {
 
@@ -48,22 +51,25 @@ func StartProfiling(profile string) {
 func main() {
 
 	var (
-		argIP       string
-		argMac      string
-		argDev      string
-		argHash     string
-		argDht      string
-		argKeyfile  string
-		argKey      string
-		argTTL      string
-		argLog      string
-		argsaveFile string
-		argFwd      bool
-		argRPCPort  string
-		argProfile  string
-		argSyslog   string
-		argPort     int
-		argType     bool
+		argIP                string
+		argMac               string
+		argDev               string
+		argHash              string
+		argDht               string
+		argKeyfile           string
+		argKey               string
+		argTTL               string
+		argLog               string
+		argsaveFile          string
+		argFwd               bool
+		argRPCPort           string
+		argProfile           string
+		argSyslog            string
+		argPort              int
+		argType              bool
+		argHuman             bool
+		argShowInterfaces    bool
+		argShowInterfacesAll bool
 	)
 
 	var Usage = func() {
@@ -107,6 +113,8 @@ func main() {
 	show := flag.NewFlagSet("Show flagset", flag.ContinueOnError)
 	show.StringVar(&argHash, "hash", "", "Infohash for environment")
 	show.StringVar(&argIP, "check", "", "Check if integration with specified IP is finished")
+	show.BoolVar(&argShowInterfaces, "interfaces", false, "Show interface names")
+	show.BoolVar(&argShowInterfacesAll, "all", false, "Show all interfaces")
 
 	set := flag.NewFlagSet("Option Setting", flag.ContinueOnError)
 	set.StringVar(&argLog, "log", "", "Log level")
@@ -118,6 +126,7 @@ func main() {
 
 	version := flag.NewFlagSet("Version output", flag.ContinueOnError)
 	version.BoolVar(&argType, "n", false, "Prints numeric variant of the version")
+	version.BoolVar(&argHuman, "h", false, "Prints short variant of the version (including snapshot)")
 
 	if len(os.Args) < 2 {
 		os.Args = append(os.Args, "help")
@@ -138,7 +147,7 @@ func main() {
 		Stop(argRPCPort, argHash)
 	case "show":
 		show.Parse(os.Args[2:])
-		Show(argRPCPort, argHash, argIP)
+		Show(argRPCPort, argHash, argIP, argShowInterfaces, argShowInterfacesAll)
 	case "set":
 		set.Parse(os.Args[2:])
 		Set(argRPCPort, argLog, argHash, argKeyfile, argKey, argTTL)
@@ -151,6 +160,8 @@ func main() {
 			var macro, minor, micro int
 			fmt.Sscanf(AppVersion, "%d.%d.%d", &macro, &minor, &micro)
 			fmt.Printf("%d.%d.%d\n", macro, minor, micro)
+		} else if argHuman {
+			fmt.Printf("%s\n", AppVersion)
 		} else {
 			fmt.Printf("p2p Cloud project %s. Packet version: %s\n", AppVersion, ptp.PacketVersion)
 		}
@@ -274,18 +285,19 @@ func Stop(rpcPort, hash string) {
 	os.Exit(response.ExitCode)
 }
 
-// Show outputs information about P2P instances
-func Show(rpcPort, hash, ip string) {
+// Show outputs information about P2P instances and interfaces
+func Show(rpcPort, hash, ip string, interfaces, all bool) {
 	client := Dial(rpcPort)
 	var response Response
-	args := &RunArgs{}
-	//args.Command = ""
+	args := &ShowArgs{}
 	if hash != "" {
 		args.Hash = hash
 	} else {
 		args.Hash = ""
 	}
 	args.IP = ip
+	args.Interfaces = interfaces
+	args.All = all
 	err := client.Call("Procedures.Show", args, &response)
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
