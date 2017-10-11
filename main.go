@@ -161,7 +161,7 @@ func main() {
 			fmt.Sscanf(AppVersion, "%d.%d.%d", &macro, &minor, &micro)
 			fmt.Printf("%d.%d.%d\n", macro, minor, micro)
 		} else if argHuman {
-			fmt.Printf("%s", AppVersion)
+			fmt.Printf("%s\n", AppVersion)
 		} else {
 			fmt.Printf("p2p Cloud project %s. Packet version: %s\n", AppVersion, ptp.PacketVersion)
 		}
