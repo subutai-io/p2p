@@ -67,6 +67,7 @@ func main() {
 		argSyslog            string
 		argPort              int
 		argType              bool
+		argHuman             bool
 		argShowInterfaces    bool
 		argShowInterfacesAll bool
 	)
@@ -125,6 +126,7 @@ func main() {
 
 	version := flag.NewFlagSet("Version output", flag.ContinueOnError)
 	version.BoolVar(&argType, "n", false, "Prints numeric variant of the version")
+	version.BoolVar(&argHuman, "h", false, "Prints short variant of the version (including snapshot)")
 
 	if len(os.Args) < 2 {
 		os.Args = append(os.Args, "help")
@@ -158,6 +160,8 @@ func main() {
 			var macro, minor, micro int
 			fmt.Sscanf(AppVersion, "%d.%d.%d", &macro, &minor, &micro)
 			fmt.Printf("%d.%d.%d\n", macro, minor, micro)
+		} else if argHuman {
+			fmt.Printf("%s", AppVersion)
 		} else {
 			fmt.Printf("p2p Cloud project %s. Packet version: %s\n", AppVersion, ptp.PacketVersion)
 		}
