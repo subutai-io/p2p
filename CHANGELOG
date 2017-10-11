@@ -1,5 +1,9 @@
 # Change Log
 
+## [6.2.0-SNAPSHOT] 10/12/2017
+
+* Draft next version
+
 ## [6.1.0] 10/11/2017
 
 * Added new commands: `show -interfaces` and `show -interfaces -all`
