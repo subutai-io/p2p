@@ -225,10 +225,6 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		Log(Info, "Generate MAC for TAP device: %s", argMac)
 	}
 
-	// Create new DHT Client, configured it and initialize
-	// During initialization procedure, DHT Client will send
-	// a introduction packet along with a hash to a DHT bootstrap
-	// nodes that was hardcoded into it's code
 	p := new(PeerToPeer)
 	p.FindNetworkAddresses()
 	p.HardwareAddr = hw
@@ -303,6 +299,11 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.UDPSocket = new(Network)
 	p.UDPSocket.Init("", port)
 	port = p.UDPSocket.GetPort()
+
+	// Create new DHT Client, configure it and initialize
+	// During initialization procedure, DHT Client will send
+	// a introduction packet along with a hash to a DHT bootstrap
+	// nodes that was hardcoded into it's code
 	Log(Info, "Started UDP Listener at port %d", port)
 	p.StartDHT(argHash, argDht)
 	if argIP == "dhcp" {
@@ -468,14 +469,13 @@ func (p *PeerToPeer) Run() {
 				//runtime.Gosched()
 				Log(Info, "Remove complete")
 				break
+			} else if peer.State == PeerStateConnected && peer.Endpoint == nil {
+				peer.State = PeerStateStop
 			}
 		}
 		passed := time.Since(p.Dht.LastDHTPing)
 		interval := time.Duration(time.Second * 45)
 		if passed > interval {
-			// Send ping response after interval
-			//p.Dht.LastDHTPing = time.Now()
-			//p.Dht.ForcePing()
 			Log(Error, "Lost connection to DHT")
 			p.Dht.Shutdown = true
 			p.Dht.ID = ""
