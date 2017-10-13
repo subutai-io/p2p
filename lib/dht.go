@@ -716,7 +716,7 @@ func (dht *DHTClient) RequestIP() {
 
 // SendIP - Notify DHT about configured IP and netmask
 func (dht *DHTClient) SendIP(ip, mask string) {
-	Log(Info, "Sending DHCP information")
+	Log(Info, "Sending DHCP information. IP: %s, Mask: %s", ip, mask)
 	req := dht.Compose(DhtCmdDhcp, dht.ID, ip, mask)
 	dht.Send(req)
 }
