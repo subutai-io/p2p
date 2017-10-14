@@ -48,6 +48,8 @@ type PeerToPeer struct {
 	BufferLock      sync.Mutex                              // Buffer lock is not used TODO: Should be removed
 	PeersLock       sync.Mutex                              // Lock for peers map
 	IPBlacklist     []string                                // List of IP address that will be ignored
+	Hash            string                                  // Infohash
+	Routers         string                                  // List of Bootstrap nodes
 }
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
@@ -305,7 +307,9 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	// a introduction packet along with a hash to a DHT bootstrap
 	// nodes that was hardcoded into it's code
 	Log(Info, "Started UDP Listener at port %d", port)
-	p.StartDHT(argHash, argDht)
+	p.Hash = argHash
+	p.StartDHT(p.Hash, argDht)
+	p.Routers = p.Dht.Routers
 	if argIP == "dhcp" {
 		err := p.RequestIP(argMac, argDev)
 		if err != nil {
@@ -381,24 +385,71 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) error {
 }
 
 // StartDHT starts a DHT client
-func (p *PeerToPeer) StartDHT(hash, routers string) {
-	dhtClient := new(DHTClient)
-	config := dhtClient.DHTClientConfig()
-	config.NetworkHash = hash
-	config.Mode = DHTModeClient
-	config.P2PPort = p.UDPSocket.GetPort()
-	if routers != "" {
-		config.Routers = routers
+func (p *PeerToPeer) StartDHT(hash, routers string) error {
+	if p.Dht != nil {
+		Log(Info, "Stopping previous DHT instance")
+		p.Dht.Shutdown()
+		p.Dht = nil
 	}
-	p.Dht = dhtClient.Initialize(config, p.LocalIPs, nil, nil)
-	for p.Dht == nil {
-		Log(Warning, "Failed to connect to DHT. Retrying in 5 seconds")
-		time.Sleep(5 * time.Second)
-		p.LocalIPs = p.LocalIPs[:0]
-		p.FindNetworkAddresses()
+	p.Dht = new(DHTClient)
+	err := p.Dht.Init(hash, routers)
+	if err != nil {
+		return fmt.Errorf("Failed to initialize DHT: %s", err)
+	}
+	p.Dht.setupCallbacks()
+	dht.IPList = p.LocalIPs
+	err := p.Dht.Connect()
+	if err != nil {
+		Log(Error, "Failed to establish connection with Bootstrap node: %s")
+		for err != nil {
+			Log(Warning, "Retrying connection")
+			err = p.Dht.Connect()
+			time.Sleep(3 * time.Second)
+		}
+	}
+	return nil
+
+	/*
+		dhtClient := new(DHTClient)
+		config := dhtClient.DHTClientConfig()
+		config.NetworkHash = hash
+		config.Mode = DHTModeClient
+		config.P2PPort = p.UDPSocket.GetPort()
+		if routers != "" {
+			config.Routers = routers
+		}
 		p.Dht = dhtClient.Initialize(config, p.LocalIPs, nil, nil)
+		for p.Dht == nil {
+			Log(Warning, "Failed to connect to DHT. Retrying in 5 seconds")
+			time.Sleep(5 * time.Second)
+			p.LocalIPs = p.LocalIPs[:0]
+			p.FindNetworkAddresses()
+			p.Dht = dhtClient.Initialize(config, p.LocalIPs, nil, nil)
+		}
+		Log(Info, "ID assigned. Continue")
+	*/
+}
+
+func (p *PeerToPeer) ConnectDHT(hash, routers string) error {
+
+}
+
+func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
+	p.PeersLock.Lock()
+	peer, exists := p.NetworkPeers[id]
+	p.PeersLock.Unlock()
+	runtime.Gosched()
+	if exists {
+		Log(Info, "Removing peer %s: Reason %s", id, reason)
+		peer.State = PeerStateDisconnect
+		p.PeersLock.Lock()
+		p.NetworkPeers[id] = peer
+		p.PeersLock.Unlock()
+		runtime.Gosched()
+	} else {
+		return fmt.Errorf("Peer not found")
 	}
-	Log(Info, "ID assigned. Continue")
+	return nil
 }
 
 // Run is a main loop
@@ -417,27 +468,14 @@ func (p *PeerToPeer) Run() {
 					if rm == "DUMMY" || rm == "" {
 						continue
 					}
-					p.PeersLock.Lock()
-					peer, exists := p.NetworkPeers[rm]
-					p.PeersLock.Unlock()
-					runtime.Gosched()
-					if exists {
-						Log(Info, "Stopping %s after STOP command", rm)
-						peer.State = PeerStateDisconnect
-						p.PeersLock.Lock()
-						p.NetworkPeers[rm] = peer
-						p.PeersLock.Unlock()
-						runtime.Gosched()
-					} else {
-						Log(Info, "Can't stop peer. ID not found")
+					err := p.markPeerForRemoval(rm, "Stop")
+					if err != nil {
+						Log(Error, "Failed to remove peer: %s", err)
 					}
-				} else {
-					Log(Trace, "Channel was closed")
 				}
 			default:
 				time.Sleep(100 * time.Millisecond)
 			}
-			//rm := <-p.Dht.RemovePeerChan
 		}
 		Log(Info, "Stopping peer state listener")
 	}()
@@ -477,14 +515,18 @@ func (p *PeerToPeer) Run() {
 		interval := time.Duration(time.Second * 45)
 		if passed > interval {
 			Log(Error, "Lost connection to DHT")
-			p.Dht.Shutdown = true
-			p.Dht.ID = ""
-			hash := p.Dht.NetworkHash
-			routers := p.Dht.Routers
-			time.Sleep(time.Second * 5)
-			p.StartDHT(hash, routers)
-			p.Dht.SendIP(p.IPNet, p.Mask)
-			go p.Dht.UpdatePeers()
+			p.StartDHT(p.Hash, p.Routers)
+
+			/*
+				p.Dht.Shutdown = true
+				p.Dht.ID = ""
+				hash := p.Dht.NetworkHash
+				routers := p.Dht.Routers
+				time.Sleep(time.Second * 5)
+				StartDHT(hash, routers)
+				p.Dht.SendIP(p.IPNet, p.Mask)
+				go p.Dht.UpdatePeers()
+			*/
 		}
 	}
 	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)

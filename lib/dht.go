@@ -32,6 +32,7 @@ const (
 	DHTStateConnecting   DHTState = 0 + iota
 	DHTStateReconnecting DHTState = 1
 	DHTStateOperating    DHTState = 2
+	DHTStateInitializing DHTState = 3
 )
 
 // DHTClient is a main structure of a DHT client
@@ -546,6 +547,94 @@ func (dht *DHTClient) HandleError(data DHTMessage, conn *net.UDPConn) {
 	}
 }
 
+// Init initialized DHT
+func (dht *DHTClient) Init(hash, routers string) error {
+	dht.State = DHTStateInitializing
+	dht.RemovePeerChan = make(chan string)
+	dht.PeerChannel = make(chan []PeerIP)
+	dht.ProxyChannel = make(chan Forwarder)
+	dht.NetworkHash = hash
+	dht.Routers = routers
+	if dht.Routers == "" {
+		dht.Routers = "dht1.subut.ai:6881"
+	}
+	dht.setupCallbacks()
+}
+
+func (dht *DHTClient) setupCallbacks() {
+	// Fallback to default working mode
+	if dht.Mode != DHTModeProxy {
+		dht.Mode = DHTModeClient
+	}
+	dht.ResponseHandlers = make(map[string]DHTResponseCallback)
+	if dht.Mode != DHTModeProxy && dht.Mode != DHTModeClient {
+		dht.Mode = DHTModeClient
+	}
+	if dht.Mode == DHTModeClient {
+		Log(Info, "DHT operating in CLIENT mode")
+		dht.ResponseHandlers[DhtCmdNode] = dht.HandleNode
+		dht.ResponseHandlers[DhtCmdProxy] = dht.HandleCp
+		dht.ResponseHandlers[DhtCmdNotify] = dht.HandleNotify
+		dht.ResponseHandlers[DhtCmdStop] = dht.HandleStop
+	} else {
+		Log(Info, "DHT operating in CONTROL PEER mode")
+		dht.ResponseHandlers[DhtCmdRegProxy] = dht.HandleRegCp
+	}
+	dht.ResponseHandlers[DhtCmdDhcp] = dht.HandleDHCP
+	dht.ResponseHandlers[DhtCmdFind] = dht.HandleFind
+	dht.ResponseHandlers[DhtCmdConn] = dht.HandleConn
+	dht.ResponseHandlers[DhtCmdPing] = dht.HandlePing
+	dht.ResponseHandlers[DhtCmdUnknown] = dht.HandleUnknown
+	dht.ResponseHandlers[DhtCmdError] = dht.HandleError
+}
+
+func (dht *DHTClient) Connect() error {
+	if len(dht.IPList) == 0 {
+		return fmt.Errorf("IP List is empty. Can't proceed with connection")
+	}
+	// Close every open connection
+	for _, con := range dht.Connection {
+		con.Close()
+	}
+	dht.Connection = dht.Connection[:0]
+	dht.FailedRouters = dht.FailedRouters[:0]
+	routers := strings.Split(dht.Routers, ",")
+	for _, router := range routers {
+		conn, err := dht.ConnectAndHandshake(router, dht.IPList)
+		if err != nil || conn == nil {
+			Log(Error, "Failed to handshake with a DHT Server: %v", err)
+			dht.FailedRouters[0] = router
+		} else {
+			Log(Info, "Handshaked. Starting listener")
+			dht.Connection = append(dht.Connection, conn)
+			go dht.ListenDHT(conn)
+		}
+	}
+	if len(dht.Connection) == 0 {
+		return fmt.Errorf("Failed to establish connection with bootstrap node(s)")
+	}
+	dht.LastDHTPing = time.Now()
+	return nil
+}
+
+// WaitForID will wait for ID from bootstrap node
+func (dht *DHTClient) WaitForID() error {
+	started := time.Now()
+	period := time.Duration(time.Second * 3)
+	for len(dht.ID) != 36 {
+		time.Sleep(time.Millisecond * 100)
+		passed := time.Since(started)
+		if passed > period {
+			break
+		}
+	}
+	if len(dht.ID) != 36 {
+		return fmt.Errorf("Didn't received ID from bootstrap node")
+	}
+	dht.LastDHTPing = time.Now()
+	return nil
+}
+
 // Initialize - This method initializes DHT by splitting list of routers and connect to each one
 func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan []PeerIP, proxyChan chan Forwarder) *DHTClient {
 	dht.RemovePeerChan = make(chan string)
@@ -777,4 +866,8 @@ func (dht *DHTClient) CleanPeer(id string) error {
 		}
 	}
 	return fmt.Errorf("Specified peer was not found")
+}
+
+func (dht *DHTClient) Shutdown() {
+	dht.Shutdown = true
 }
