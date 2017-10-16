@@ -16,6 +16,12 @@ import (
 // MessageHandler is a messages callback
 type MessageHandler func(message *P2PMessage, srcAddr *net.UDPAddr)
 
+// NetworkInterface keeps information about P2P network interface
+type NetworkInterface struct {
+	IP   net.IP // IP
+	Mask net.IPMask
+}
+
 // PeerToPeer - Main structure
 type PeerToPeer struct {
 	IP              string                                  // Interface IP address
@@ -48,6 +54,10 @@ type PeerToPeer struct {
 	BufferLock      sync.Mutex                              // Buffer lock is not used TODO: Should be removed
 	PeersLock       sync.Mutex                              // Lock for peers map
 	IPBlacklist     []string                                // List of IP address that will be ignored
+	Hash            string                                  // Infohash
+	Routers         string                                  // List of Bootstrap nodes
+	// 6.2.0
+	Interface NetworkInterface
 }
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
@@ -305,19 +315,25 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	// a introduction packet along with a hash to a DHT bootstrap
 	// nodes that was hardcoded into it's code
 	Log(Info, "Started UDP Listener at port %d", port)
-	p.StartDHT(argHash, argDht)
+	p.Hash = argHash
+	p.StartDHT(p.Hash, argDht)
+	p.Routers = p.Dht.Routers
 	if argIP == "dhcp" {
-		err := p.RequestIP(argMac, argDev)
+		ipn, maskn, err := p.RequestIP(argMac, argDev)
 		if err != nil {
 			Log(Error, "%v", err)
 			return nil
 		}
+		p.Interface.IP = ipn
+		p.Interface.Mask = maskn
 	} else {
-		err := p.ReportIP(argIP, argMac, argDev)
+		ipn, maskn, err := p.ReportIP(argIP, argMac, argDev)
 		if err != nil {
 			Log(Error, "%v", err)
 			return nil
 		}
+		p.Interface.IP = ipn
+		p.Interface.Mask = maskn
 	}
 
 	go p.UDPSocket.Listen(p.HandleP2PMessage)
@@ -327,7 +343,7 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 }
 
 // RequestIP asks DHT to get IP from DHCP-like service
-func (p *PeerToPeer) RequestIP(mac, device string) error {
+func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 	Log(Info, "Requesting IP")
 	p.Dht.RequestIP()
 	time.Sleep(1 * time.Second)
@@ -338,67 +354,117 @@ func (p *PeerToPeer) RequestIP(mac, device string) error {
 		time.Sleep(3 * time.Second)
 		retries++
 		if retries >= 10 {
-			return fmt.Errorf("Failed to retrieve IP from network after 10 retries")
+			return nil, nil, fmt.Errorf("Failed to retrieve IP from network after 10 retries")
 		}
 	}
 	m := p.Dht.Network.Mask
 	mask := fmt.Sprintf("%d.%d.%d.%d", m[0], m[1], m[2], m[3])
 	p.IPNet = p.Dht.Network.String()
-	p.Dht.Mask = mask
 	err := p.AssignInterface(p.Dht.IP.String(), mac, mask, device)
 	if err != nil {
-		return fmt.Errorf("Failed to configure interface: %s", err)
+		return nil, nil, fmt.Errorf("Failed to configure interface: %s", err)
 	}
-	return nil
+	return p.Dht.IP, p.Dht.Network.Mask, nil
 }
 
 // ReportIP will send IP specified at service start to DHCP-like service
-func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) error {
+func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask, error) {
 	ip, ipnet, err := net.ParseCIDR(ipAddress)
 	if err != nil {
 		nip := net.ParseIP(ipAddress)
 		if nip == nil {
-			return fmt.Errorf("Invalid address were provided for network interface. Use -ip \"dhcp\" or specify correct IP address")
+			return nil, nil, fmt.Errorf("Invalid address were provided for network interface. Use -ip \"dhcp\" or specify correct IP address")
 		}
 		ipAddress += `/24`
 		Log(Warning, "No CIDR mask was provided. Assumming /24")
 		ip, ipnet, err = net.ParseCIDR(ipAddress)
 		if err != nil {
-			return fmt.Errorf("Failed to setup provided IP address for local device")
+			return nil, nil, fmt.Errorf("Failed to setup provided IP address for local device")
 		}
 	}
 	p.Dht.IP = ip
 	p.Dht.Network = ipnet
 	p.IPNet = ipnet.String()
 	mask := fmt.Sprintf("%d.%d.%d.%d", ipnet.Mask[0], ipnet.Mask[1], ipnet.Mask[2], ipnet.Mask[3])
-	p.Dht.Mask = mask
+	//p.Dht.Mask = mask
 	p.Dht.SendIP(ipAddress, mask)
 	err = p.AssignInterface(p.Dht.IP.String(), mac, mask, device)
 	if err != nil {
-		return fmt.Errorf("Failed to configure interface", err)
+		return nil, nil, fmt.Errorf("Failed to configure interface", err)
 	}
-	return nil
+	return ip, ipnet.Mask, nil
 }
 
 // StartDHT starts a DHT client
-func (p *PeerToPeer) StartDHT(hash, routers string) {
-	dhtClient := new(DHTClient)
-	config := dhtClient.DHTClientConfig()
-	config.NetworkHash = hash
-	config.Mode = DHTModeClient
-	config.P2PPort = p.UDPSocket.GetPort()
-	if routers != "" {
-		config.Routers = routers
+func (p *PeerToPeer) StartDHT(hash, routers string) error {
+	if p.Dht != nil {
+		Log(Info, "Stopping previous DHT instance")
+		p.Dht.Shutdown()
+		p.Dht = nil
 	}
-	p.Dht = dhtClient.Initialize(config, p.LocalIPs, nil, nil)
-	for p.Dht == nil {
-		Log(Warning, "Failed to connect to DHT. Retrying in 5 seconds")
-		time.Sleep(5 * time.Second)
-		p.LocalIPs = p.LocalIPs[:0]
-		p.FindNetworkAddresses()
+	p.Dht = new(DHTClient)
+	err := p.Dht.Init(hash, routers)
+	if err != nil {
+		return fmt.Errorf("Failed to initialize DHT: %s", err)
+	}
+	p.Dht.setupCallbacks()
+	p.Dht.IPList = p.LocalIPs
+	err = p.Dht.Connect()
+	if err != nil {
+		Log(Error, "Failed to establish connection with Bootstrap node: %s")
+		for err != nil {
+			Log(Warning, "Retrying connection")
+			err = p.Dht.Connect()
+			time.Sleep(3 * time.Second)
+		}
+	}
+	err = p.Dht.WaitForID()
+	if err != nil {
+		Log(Error, "Failed to retrieve ID from bootstrap node: %s", err)
+	}
+	return nil
+
+	/*
+		dhtClient := new(DHTClient)
+		config := dhtClient.DHTClientConfig()
+		config.NetworkHash = hash
+		config.Mode = DHTModeClient
+		config.P2PPort = p.UDPSocket.GetPort()
+		if routers != "" {
+			config.Routers = routers
+		}
 		p.Dht = dhtClient.Initialize(config, p.LocalIPs, nil, nil)
+		for p.Dht == nil {
+			Log(Warning, "Failed to connect to DHT. Retrying in 5 seconds")
+			time.Sleep(5 * time.Second)
+			p.LocalIPs = p.LocalIPs[:0]
+			p.FindNetworkAddresses()
+			p.Dht = dhtClient.Initialize(config, p.LocalIPs, nil, nil)
+		}
+		Log(Info, "ID assigned. Continue")
+	*/
+}
+
+func (p *PeerToPeer) ConnectDHT(hash, routers string) error {
+	return nil
+}
+
+func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
+	p.PeersLock.Lock()
+	peer, exists := p.NetworkPeers[id]
+	p.PeersLock.Unlock()
+	runtime.Gosched()
+	if exists {
+		Log(Info, "Removing peer %s: Reason %s", id, reason)
+		peer.State = PeerStateDisconnect
+		p.PeersLock.Lock()
+		p.NetworkPeers[id] = peer
+		p.PeersLock.Unlock()
+		runtime.Gosched()
+	} else {
+		return fmt.Errorf("Peer not found")
 	}
-	Log(Info, "ID assigned. Continue")
+	return nil
 }
 
 // Run is a main loop
@@ -417,27 +483,14 @@ func (p *PeerToPeer) Run() {
 					if rm == "DUMMY" || rm == "" {
 						continue
 					}
-					p.PeersLock.Lock()
-					peer, exists := p.NetworkPeers[rm]
-					p.PeersLock.Unlock()
-					runtime.Gosched()
-					if exists {
-						Log(Info, "Stopping %s after STOP command", rm)
-						peer.State = PeerStateDisconnect
-						p.PeersLock.Lock()
-						p.NetworkPeers[rm] = peer
-						p.PeersLock.Unlock()
-						runtime.Gosched()
-					} else {
-						Log(Info, "Can't stop peer. ID not found")
+					err := p.markPeerForRemoval(rm, "Stop")
+					if err != nil {
+						Log(Error, "Failed to remove peer: %s", err)
 					}
-				} else {
-					Log(Trace, "Channel was closed")
 				}
 			default:
 				time.Sleep(100 * time.Millisecond)
 			}
-			//rm := <-p.Dht.RemovePeerChan
 		}
 		Log(Info, "Stopping peer state listener")
 	}()
@@ -477,13 +530,9 @@ func (p *PeerToPeer) Run() {
 		interval := time.Duration(time.Second * 45)
 		if passed > interval {
 			Log(Error, "Lost connection to DHT")
-			p.Dht.Shutdown = true
-			p.Dht.ID = ""
-			hash := p.Dht.NetworkHash
-			routers := p.Dht.Routers
-			time.Sleep(time.Second * 5)
-			p.StartDHT(hash, routers)
-			p.Dht.SendIP(p.IPNet, p.Mask)
+			time.Sleep(time.Second * 3)
+			p.StartDHT(p.Hash, p.Routers)
+			p.Dht.SendIP(p.Interface.IP.To4().String(), p.Interface.Mask.String())
 			go p.Dht.UpdatePeers()
 		}
 	}

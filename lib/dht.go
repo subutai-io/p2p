@@ -32,15 +32,15 @@ const (
 	DHTStateConnecting   DHTState = 0 + iota
 	DHTStateReconnecting DHTState = 1
 	DHTStateOperating    DHTState = 2
+	DHTStateInitializing DHTState = 3
 )
 
 // DHTClient is a main structure of a DHT client
 type DHTClient struct {
-	Routers          string
-	FailedRouters    []string
-	Connection       []*net.UDPConn
-	NetworkHash      string
-	NetworkPeers     []string
+	Routers          string         // Comma separated list of bootstrap nodes
+	FailedRouters    []string       // List of routes that we failed to connect to
+	Connection       []*net.UDPConn // List of connection objects
+	NetworkHash      string         // Saved network hash
 	P2PPort          int
 	LastCatch        []string
 	ID               string
@@ -49,12 +49,10 @@ type DHTClient struct {
 	ProxyBlacklist   []*net.UDPAddr
 	ResponseHandlers map[string]DHTResponseCallback
 	Mode             OperatingMode
-	Shutdown         bool
 	IPList           []net.IP
 	State            DHTState
-	IP               net.IP
-	Network          *net.IPNet
-	Mask             string
+	IP               net.IP     // IP of local interface received from DHCP or specified manually
+	Network          *net.IPNet // Network information about current network. Used to inform p2p about mask for interface
 	DataChannel      chan []byte
 	CommandChannel   chan []byte
 	Listeners        int
@@ -63,6 +61,8 @@ type DHTClient struct {
 	LastDHTPing      time.Time
 	RemovePeerChan   chan string
 	ForwardersLock   sync.Mutex // To avoid multiple read-write
+	isShutdown       bool       // Whether DHT shutting down or not
+	//NetworkPeers     []string       // List of peers
 }
 
 // Forwarder structure represents a Proxy received from DHT server
@@ -123,7 +123,7 @@ func (dht *DHTClient) Handshake(conn *net.UDPConn) error {
 	}
 	// TODO: Optimize types here
 	msg := b.String()
-	if dht.Shutdown {
+	if dht.isShutdown {
 		return nil
 	}
 	_, err := conn.Write([]byte(msg))
@@ -236,7 +236,7 @@ func (dht *DHTClient) UpdateLastCatch(catch string) {
 func (dht *DHTClient) RequestPeerIPs(id string) {
 	msg := dht.Compose(DhtCmdNode, dht.ID, id, "")
 	for _, conn := range dht.Connection {
-		if dht.Shutdown {
+		if dht.isShutdown {
 			continue
 		}
 		_, err := conn.Write([]byte(msg))
@@ -251,7 +251,7 @@ func (dht *DHTClient) RequestPeerIPs(id string) {
 // This method should be called periodically in case any new peers was discovered
 func (dht *DHTClient) UpdatePeers() {
 	for {
-		if dht.Shutdown {
+		if dht.isShutdown {
 			break
 		}
 		dht.SendUpdateRequest()
@@ -265,7 +265,7 @@ func (dht *DHTClient) UpdatePeers() {
 func (dht *DHTClient) SendUpdateRequest() {
 	msg := dht.Compose(DhtCmdFind, dht.ID, dht.NetworkHash, "")
 	for _, conn := range dht.Connection {
-		if dht.Shutdown {
+		if dht.isShutdown {
 			continue
 		}
 		Log(Debug, "Updating peers from %s", conn.RemoteAddr().String())
@@ -285,7 +285,7 @@ func (dht *DHTClient) ListenDHT(conn *net.UDPConn) {
 	dht.Listeners++
 	var failCounter = 0
 	for {
-		if dht.Shutdown {
+		if dht.isShutdown {
 			Log(Info, "Closing DHT Connection to %s", conn.RemoteAddr().String())
 			conn.Close()
 			for i, c := range dht.Connection {
@@ -336,9 +336,6 @@ func (dht *DHTClient) HandleConn(data DHTMessage, conn *net.UDPConn) {
 	if data.ID == "0" {
 		Log(Error, "Empty ID were received. Stopping")
 		return
-	}
-	if dht.State == DHTStateReconnecting {
-		dht.SendIP(dht.IP.To4().String(), dht.Mask)
 	}
 	dht.State = DHTStateOperating
 	dht.ID = data.ID
@@ -508,13 +505,13 @@ func (dht *DHTClient) HandleDHCP(data DHTMessage, conn *net.UDPConn) {
 		Log(Info, "DHCP Registration confirmed")
 		return
 	}
-	Log(Info, "Received DHCP Information")
+	Log(Info, "Received DHCP Information: %v", data.Arguments)
 	ip, ipnet, err := net.ParseCIDR(data.Arguments)
 	if err != nil {
 		Log(Error, "Failed to parse received DHCP packet: %v", err)
 		return
 	}
-	Log(Info, "Saving IP/Net data: %s", ip)
+	Log(Info, "Saving IP/Net data: %v", ip)
 	dht.IP = ip
 	dht.Network = ipnet
 }
@@ -544,6 +541,95 @@ func (dht *DHTClient) HandleError(data DHTMessage, conn *net.UDPConn) {
 	} else {
 		Log(Error, "DHT returned error: %s", e.Error())
 	}
+}
+
+// Init initialized DHT
+func (dht *DHTClient) Init(hash, routers string) error {
+	dht.State = DHTStateInitializing
+	dht.RemovePeerChan = make(chan string)
+	dht.PeerChannel = make(chan []PeerIP)
+	dht.ProxyChannel = make(chan Forwarder)
+	dht.NetworkHash = hash
+	dht.Routers = routers
+	if dht.Routers == "" {
+		dht.Routers = "dht1.subut.ai:6881"
+	}
+	dht.setupCallbacks()
+	return nil
+}
+
+func (dht *DHTClient) setupCallbacks() {
+	// Fallback to default working mode
+	if dht.Mode != DHTModeProxy {
+		dht.Mode = DHTModeClient
+	}
+	dht.ResponseHandlers = make(map[string]DHTResponseCallback)
+	if dht.Mode != DHTModeProxy && dht.Mode != DHTModeClient {
+		dht.Mode = DHTModeClient
+	}
+	if dht.Mode == DHTModeClient {
+		Log(Info, "DHT operating in CLIENT mode")
+		dht.ResponseHandlers[DhtCmdNode] = dht.HandleNode
+		dht.ResponseHandlers[DhtCmdProxy] = dht.HandleCp
+		dht.ResponseHandlers[DhtCmdNotify] = dht.HandleNotify
+		dht.ResponseHandlers[DhtCmdStop] = dht.HandleStop
+	} else {
+		Log(Info, "DHT operating in CONTROL PEER mode")
+		dht.ResponseHandlers[DhtCmdRegProxy] = dht.HandleRegCp
+	}
+	dht.ResponseHandlers[DhtCmdDhcp] = dht.HandleDHCP
+	dht.ResponseHandlers[DhtCmdFind] = dht.HandleFind
+	dht.ResponseHandlers[DhtCmdConn] = dht.HandleConn
+	dht.ResponseHandlers[DhtCmdPing] = dht.HandlePing
+	dht.ResponseHandlers[DhtCmdUnknown] = dht.HandleUnknown
+	dht.ResponseHandlers[DhtCmdError] = dht.HandleError
+}
+
+func (dht *DHTClient) Connect() error {
+	if len(dht.IPList) == 0 {
+		return fmt.Errorf("IP List is empty. Can't proceed with connection")
+	}
+	// Close every open connection
+	for _, con := range dht.Connection {
+		con.Close()
+	}
+	dht.Connection = dht.Connection[:0]
+	dht.FailedRouters = dht.FailedRouters[:0]
+	routers := strings.Split(dht.Routers, ",")
+	for _, router := range routers {
+		conn, err := dht.ConnectAndHandshake(router, dht.IPList)
+		if err != nil || conn == nil {
+			Log(Error, "Failed to handshake with a DHT Server: %v", err)
+			dht.FailedRouters[0] = router
+		} else {
+			Log(Info, "Handshaked. Starting listener")
+			dht.Connection = append(dht.Connection, conn)
+			go dht.ListenDHT(conn)
+		}
+	}
+	if len(dht.Connection) == 0 {
+		return fmt.Errorf("Failed to establish connection with bootstrap node(s)")
+	}
+	dht.LastDHTPing = time.Now()
+	return nil
+}
+
+// WaitForID will wait for ID from bootstrap node
+func (dht *DHTClient) WaitForID() error {
+	started := time.Now()
+	period := time.Duration(time.Second * 3)
+	for len(dht.ID) != 36 {
+		time.Sleep(time.Millisecond * 100)
+		passed := time.Since(started)
+		if passed > period {
+			break
+		}
+	}
+	if len(dht.ID) != 36 {
+		return fmt.Errorf("Didn't received ID from bootstrap node")
+	}
+	dht.LastDHTPing = time.Now()
+	return nil
 }
 
 // Initialize - This method initializes DHT by splitting list of routers and connect to each one
@@ -629,7 +715,7 @@ func (dht *DHTClient) RegisterControlPeer() {
 	// TODO: Optimize types here
 	msg := b.String()
 	for _, conn := range dht.Connection {
-		if dht.Shutdown {
+		if dht.isShutdown {
 			continue
 		}
 		_, err = conn.Write([]byte(msg))
@@ -661,7 +747,7 @@ func (dht *DHTClient) RequestControlPeer(id string, omit []*net.UDPAddr) {
 	msg := b.String()
 	// TODO: Move sending to a separate method
 	for _, conn := range dht.Connection {
-		if dht.Shutdown {
+		if dht.isShutdown {
 			continue
 		}
 		_, err = conn.Write([]byte(msg))
@@ -694,7 +780,7 @@ func (dht *DHTClient) Send(msg string) bool {
 		return false
 	}
 	for _, conn := range dht.Connection {
-		if dht.Shutdown {
+		if dht.isShutdown {
 			continue
 		}
 		_, err := conn.Write([]byte(msg))
@@ -723,7 +809,7 @@ func (dht *DHTClient) SendIP(ip, mask string) {
 
 // Stop - sends a STOP message about current peer
 func (dht *DHTClient) Stop() {
-	dht.Shutdown = true
+	dht.Shutdown()
 	var req DHTMessage
 	req.ID = dht.ID
 	req.Command = DhtCmdStop
@@ -777,4 +863,8 @@ func (dht *DHTClient) CleanPeer(id string) error {
 		}
 	}
 	return fmt.Errorf("Specified peer was not found")
+}
+
+func (dht *DHTClient) Shutdown() {
+	dht.isShutdown = true
 }
