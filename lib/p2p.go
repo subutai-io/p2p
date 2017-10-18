@@ -24,38 +24,34 @@ type NetworkInterface struct {
 
 // PeerToPeer - Main structure
 type PeerToPeer struct {
-	IP              string                                  // Interface IP address
-	Mac             string                                  // String representation of a MAC address
-	IPNet           string                                  // IP/Mask pair
-	HardwareAddr    net.HardwareAddr                        // MAC address of network interface
-	Mask            string                                  // Network mask in the dot-decimal notation
-	DeviceName      string                                  // Name of the network interface
-	IPTool          string                                  `yaml:"iptool"`  // Network interface configuration tool
-	AddTap          string                                  `yaml:"addtap"`  // Path to addtap.bat
-	InfFile         string                                  `yaml:"inffile"` // Path to deltap.bat
-	Device          *Interface                              // Network interface
-	NetworkPeers    map[string]*NetworkPeer                 // Knows peers
-	UDPSocket       *Network                                // Peer-to-peer interconnection socket
-	LocalIPs        []net.IP                                // List of IPs available in the system
-	Dht             *DHTClient                              // DHT Client
-	Crypter         Crypto                                  // Instance of crypto
-	Shutdown        bool                                    // Set to true when instance in shutdown mode
-	Restart         bool                                    // Instance will be restarted
-	ForwardMode     bool                                    // Skip local peer discovery
-	ReadyToStop     bool                                    // Set to true when instance is ready to stop
-	IPIDTable       map[string]string                       // Mapping for IP->ID
-	MACIDTable      map[string]string                       // Mapping for MAC->ID
-	MessageHandlers map[uint16]MessageHandler               // Callbacks
-	PacketHandlers  map[PacketType]PacketHandlerCallback    // Callbacks for network packet handlers
-	RemovePeer      chan string                             // Channel accepts peers that needs to be removed
-	MessageBuffer   map[string]map[uint16]map[uint16][]byte // MessagesBuffer is a single buffer for multipart packets TODO: Not used and must be moreved
-	MessageLifetime map[string]map[uint16]time.Time         // Used as a packet lifetime for multipackets TODO: Not used and must be removed
-	MessagePacket   map[string][]byte                       // MessagePacket is used to build a single packet from multiple parts to avoid MTU issues TODO: Not used and must be removed
-	BufferLock      sync.Mutex                              // Buffer lock is not used TODO: Should be removed
-	PeersLock       sync.Mutex                              // Lock for peers map
-	IPBlacklist     []string                                // List of IP address that will be ignored
-	Hash            string                                  // Infohash
-	Routers         string                                  // List of Bootstrap nodes
+	IP              string                               // Interface IP address
+	Mac             string                               // String representation of a MAC address
+	IPNet           string                               // IP/Mask pair
+	HardwareAddr    net.HardwareAddr                     // MAC address of network interface
+	Mask            string                               // Network mask in the dot-decimal notation
+	DeviceName      string                               // Name of the network interface
+	IPTool          string                               `yaml:"iptool"`  // Network interface configuration tool
+	AddTap          string                               `yaml:"addtap"`  // Path to addtap.bat
+	InfFile         string                               `yaml:"inffile"` // Path to deltap.bat
+	Device          *Interface                           // Network interface
+	NetworkPeers    map[string]*NetworkPeer              // Knows peers
+	UDPSocket       *Network                             // Peer-to-peer interconnection socket
+	LocalIPs        []net.IP                             // List of IPs available in the system
+	Dht             *DHTClient                           // DHT Client
+	Crypter         Crypto                               // Instance of crypto
+	Shutdown        bool                                 // Set to true when instance in shutdown mode
+	Restart         bool                                 // Instance will be restarted
+	ForwardMode     bool                                 // Skip local peer discovery
+	ReadyToStop     bool                                 // Set to true when instance is ready to stop
+	IPIDTable       map[string]string                    // Mapping for IP->ID
+	MACIDTable      map[string]string                    // Mapping for MAC->ID
+	MessageHandlers map[uint16]MessageHandler            // Callbacks
+	PacketHandlers  map[PacketType]PacketHandlerCallback // Callbacks for network packet handlers
+	RemovePeer      chan string                          // Channel accepts peers that needs to be removed
+	PeersLock       sync.Mutex                           // Lock for peers map
+	IPBlacklist     []string                             // List of IP address that will be ignored
+	Hash            string                               // Infohash
+	Routers         string                               // List of Bootstrap nodes
 	// 6.2.0
 	Interface NetworkInterface
 }
@@ -241,9 +237,6 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	p.NetworkPeers = make(map[string]*NetworkPeer)
 	p.IPIDTable = make(map[string]string)
 	p.MACIDTable = make(map[string]string)
-	p.MessageBuffer = make(map[string]map[uint16]map[uint16][]byte)
-	p.MessageLifetime = make(map[string]map[uint16]time.Time)
-	p.MessagePacket = make(map[string][]byte)
 
 	if fwd {
 		p.ForwardMode = true
@@ -485,7 +478,7 @@ func (p *PeerToPeer) Run() {
 					}
 					err := p.markPeerForRemoval(rm, "Stop")
 					if err != nil {
-						Log(Error, "Failed to remove peer: %s", err)
+						Log(Error, "Failed to mark peer for removal: %s", err)
 					}
 				}
 			default:
@@ -522,8 +515,6 @@ func (p *PeerToPeer) Run() {
 				//runtime.Gosched()
 				Log(Info, "Remove complete")
 				break
-			} else if peer.State == PeerStateConnected && peer.Endpoint == nil {
-				peer.State = PeerStateStop
 			}
 		}
 		passed := time.Since(p.Dht.LastDHTPing)
