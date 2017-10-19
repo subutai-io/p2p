@@ -52,6 +52,14 @@ type PeerToPeer struct {
 func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	var err error
 	p.Interface.Name = interfaceName
+
+	if p.Interface.IP == nil {
+		return fmt.Errorf("No IP provided")
+	}
+	if p.Interface.Mac == nil {
+		return fmt.Errorf("No Hardware address provided")
+	}
+
 	// Extract necessary information from config file
 	// TODO: Remove hard-coded path
 	yamlFile, err := ioutil.ReadFile(ConfigDir + "/p2p/config.yaml")
@@ -350,6 +358,8 @@ func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 			return nil, nil, fmt.Errorf("Failed to retrieve IP from network after 10 retries")
 		}
 	}
+	p.Interface.IP = p.Dht.IP
+	p.Interface.Mask = p.Dht.Network.Mask
 	err := p.AssignInterface(device)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to configure interface: %s", err)
@@ -833,6 +843,7 @@ func (p *PeerToPeer) HandleProxyMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 		if peer.PeerAddr.String() == ip {
 			peer.ProxyID = int(msg.Header.ProxyID)
 			p.Peers.Update(i, peer)
+			return
 		}
 	}
 	/*
