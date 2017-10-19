@@ -22,7 +22,13 @@ func (l *PeerList) Init() {
 // Update will append/edit peer in list
 func (l *PeerList) Update(id string, peer *NetworkPeer) error {
 	l.lock.Lock()
-	defer l.lock.Unlock()
 	l.peers[id] = peer
+	l.lock.Unlock()
+	return nil
+}
+
+// Get returns map with all peers
+func (l *PeerList) Get() map[string]*NetworkPeer {
+
 	return nil
 }
