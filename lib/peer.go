@@ -188,7 +188,7 @@ func (np *NetworkPeer) StateConnected(ptpc *PeerToPeer) error {
 	if passed > PeerPingTimeout {
 		np.LastError = ""
 		Log(Trace, "Sending ping")
-		msg := CreateXpeerPingMessage(PingReq, ptpc.HardwareAddr.String())
+		msg := CreateXpeerPingMessage(PingReq, ptpc.Interface.Mac.String())
 		ptpc.SendTo(np.PeerHW, msg)
 		np.PingCount++
 	}
@@ -402,7 +402,7 @@ func (np *NetworkPeer) ProbeLocalConnection(ptpc *PeerToPeer) bool {
 			Log(Info, "Endpoint already set")
 			break
 		}
-		if inf.Name == ptpc.DeviceName {
+		if inf.Name == ptpc.Interface.Name {
 			continue
 		}
 		addrs, _ := inf.Addrs()
