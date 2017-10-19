@@ -401,6 +401,7 @@ func (p *PeerToPeer) StartDHT(hash, routers string) error {
 		p.Dht = nil
 	}
 	p.Dht = new(DHTClient)
+	p.Dht.P2PPort = p.UDPSocket.GetPort()
 	err := p.Dht.Init(hash, routers)
 	if err != nil {
 		return fmt.Errorf("Failed to initialize DHT: %s", err)
