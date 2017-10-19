@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -27,25 +26,26 @@ type NetworkInterface struct {
 
 // PeerToPeer - Main structure
 type PeerToPeer struct {
-	IPTool          string                               `yaml:"iptool"`  // Network interface configuration tool
-	AddTap          string                               `yaml:"addtap"`  // Path to addtap.bat
-	InfFile         string                               `yaml:"inffile"` // Path to deltap.bat
-	NetworkPeers    map[string]*NetworkPeer              // Knows peers
-	UDPSocket       *Network                             // Peer-to-peer interconnection socket
-	LocalIPs        []net.IP                             // List of IPs available in the system
-	Dht             *DHTClient                           // DHT Client
-	Crypter         Crypto                               // Cryptography subsystem
-	Shutdown        bool                                 // Set to true when instance in shutdown mode
-	ForwardMode     bool                                 // Skip local peer discovery
-	ReadyToStop     bool                                 // Set to true when instance is ready to stop
-	IPIDTable       map[string]string                    // Mapping for IP->ID
-	MACIDTable      map[string]string                    // Mapping for MAC->ID
+	IPTool  string `yaml:"iptool"`  // Network interface configuration tool
+	AddTap  string `yaml:"addtap"`  // Path to addtap.bat
+	InfFile string `yaml:"inffile"` // Path to deltap.bat
+	//NetworkPeers    map[string]*NetworkPeer              // Knows peers
+	UDPSocket   *Network   // Peer-to-peer interconnection socket
+	LocalIPs    []net.IP   // List of IPs available in the system
+	Dht         *DHTClient // DHT Client
+	Crypter     Crypto     // Cryptography subsystem
+	Shutdown    bool       // Set to true when instance in shutdown mode
+	ForwardMode bool       // Skip local peer discovery
+	ReadyToStop bool       // Set to true when instance is ready to stop
+	//IPIDTable       map[string]string                    // Mapping for IP->ID
+	//MACIDTable      map[string]string                    // Mapping for MAC->ID
 	MessageHandlers map[uint16]MessageHandler            // Callbacks for network packets
 	PacketHandlers  map[PacketType]PacketHandlerCallback // Callbacks for packets received by TAP interface
 	PeersLock       sync.Mutex                           // Lock for peers map
 	Hash            string                               // Infohash for this instance
 	Routers         string                               // Comma-separated list of Bootstrap nodes
 	Interface       NetworkInterface                     // TAP Interface
+	Peers           *PeerList
 }
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
@@ -275,9 +275,11 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 
 // Init will initialize PeerToPeer
 func (p *PeerToPeer) Init() {
-	p.NetworkPeers = make(map[string]*NetworkPeer)
-	p.IPIDTable = make(map[string]string)
-	p.MACIDTable = make(map[string]string)
+	p.Peers = new(PeerList)
+	p.Peers.Init()
+	//p.NetworkPeers = make(map[string]*NetworkPeer)
+	//p.IPIDTable = make(map[string]string)
+	//p.MACIDTable = make(map[string]string)
 }
 
 func (p *PeerToPeer) validateMac(mac string) net.HardwareAddr {
@@ -412,7 +414,15 @@ func (p *PeerToPeer) StartDHT(hash, routers string) error {
 }
 
 func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
-	p.PeersLock.Lock()
+	peer := p.Peers.GetPeer(id)
+	if peer == nil {
+		return fmt.Errorf("Peer was not found")
+	}
+	Log(Info, "Removing peer %s: Reason %s", id, reason)
+	peer.State = PeerStateDisconnect
+	p.Peers.Update(id, peer)
+	return nil
+	/*p.PeersLock.Lock()
 	peer, exists := p.NetworkPeers[id]
 	p.PeersLock.Unlock()
 	runtime.Gosched()
@@ -426,7 +436,7 @@ func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
 	} else {
 		return fmt.Errorf("Peer not found")
 	}
-	return nil
+	return nil*/
 }
 
 // Run is a main loop
@@ -467,25 +477,39 @@ func (p *PeerToPeer) Run() {
 			continue
 		}
 		time.Sleep(time.Second * 1)
-		for i, peer := range p.NetworkPeers {
+		peers := p.Peers.Get()
+		for i, peer := range peers {
 			if peer.State == PeerStateStop {
 				Log(Info, "Removing peer %s", i)
-				time.Sleep(100 * time.Millisecond)
-				lip := peer.PeerLocalIP.String()
-				if peer.ID == p.IPIDTable[lip] {
-					delete(p.IPIDTable, lip)
-				}
-				delete(p.MACIDTable, peer.PeerHW.String())
-				delete(p.NetworkPeers, i)
+				p.Peers.Delete(i)
 				err := p.Dht.CleanPeer(i)
 				if err != nil {
 					Log(Error, "Failed to remove peer from DHT: %s", err)
 				}
-				//runtime.Gosched()
-				Log(Info, "Remove complete")
+				Log(Info, "Peer removed")
 				break
 			}
 		}
+		/*
+			for i, peer := range p.NetworkPeers {
+				if peer.State == PeerStateStop {
+					Log(Info, "Removing peer %s", i)
+					time.Sleep(100 * time.Millisecond)
+					lip := peer.PeerLocalIP.String()
+					if peer.ID == p.IPIDTable[lip] {
+						delete(p.IPIDTable, lip)
+					}
+					delete(p.MACIDTable, peer.PeerHW.String())
+					delete(p.NetworkPeers, i)
+					err := p.Dht.CleanPeer(i)
+					if err != nil {
+						Log(Error, "Failed to remove peer from DHT: %s", err)
+					}
+					//runtime.Gosched()
+					Log(Info, "Remove complete")
+					break
+				}
+			}*/
 		passed := time.Since(p.Dht.LastDHTPing)
 		interval := time.Duration(time.Second * 45)
 		if passed > interval {
@@ -510,43 +534,70 @@ func (p *PeerToPeer) PrepareIntroductionMessage(id string) *P2PMessage {
 // PurgePeers method goes over peers and removes obsolete ones
 // Peer becomes obsolete when it goes out of DHT
 func (p *PeerToPeer) PurgePeers() {
-	for i, peer := range p.NetworkPeers {
-		var f = false
+	peers := p.Peers.Get()
+	for i, peer := range peers {
+		found := false
 		for _, newPeer := range p.Dht.Peers {
 			if newPeer.ID == peer.ID {
-				f = true
+				found = true
 			}
 		}
-		if !f {
-			Log(Info, ("Removing outdated peer"))
-			delete(p.IPIDTable, peer.PeerLocalIP.String())
-			delete(p.MACIDTable, peer.PeerHW.String())
-			p.PeersLock.Lock()
-			delete(p.NetworkPeers, i)
-			p.PeersLock.Unlock()
-			runtime.Gosched()
+		if !found {
+			Log(Info, "Removing outdated peer")
+			p.Peers.Delete(i)
 		}
 	}
+	/*
+		for i, peer := range p.NetworkPeers {
+			var f = false
+			for _, newPeer := range p.Dht.Peers {
+				if newPeer.ID == peer.ID {
+					f = true
+				}
+			}
+			if !f {
+				Log(Info, ("Removing outdated peer"))
+				delete(p.IPIDTable, peer.PeerLocalIP.String())
+				delete(p.MACIDTable, peer.PeerHW.String())
+				p.PeersLock.Lock()
+				delete(p.NetworkPeers, i)
+				p.PeersLock.Unlock()
+				runtime.Gosched()
+			}
+		}
+	*/
 	return
 }
 
 // SyncForwarders extracts proxies from DHT and assign them to target peers
 func (p *PeerToPeer) SyncForwarders() int {
-	var count = 0
+	count := 0
 	for _, fwd := range p.Dht.Forwarders {
-		for key, peer := range p.NetworkPeers {
+		peers := p.Peers.Get()
+		for i, peer := range peers {
 			if peer.Endpoint == nil && fwd.DestinationID == peer.ID && peer.Forwarder == nil {
 				Log(Info, "Saving control peer as a proxy destination for %s", peer.ID)
 				peer.Endpoint = fwd.Addr
 				peer.Forwarder = fwd.Addr
 				peer.State = PeerStateHandshakingForwarder
-				p.PeersLock.Lock()
-				p.NetworkPeers[key] = peer
-				p.PeersLock.Unlock()
-				runtime.Gosched()
-				count = count + 1
+				p.Peers.Update(i, peer)
+				count++
 			}
 		}
+		/*
+			for key, peer := range p.NetworkPeers {
+				if peer.Endpoint == nil && fwd.DestinationID == peer.ID && peer.Forwarder == nil {
+					Log(Info, "Saving control peer as a proxy destination for %s", peer.ID)
+					peer.Endpoint = fwd.Addr
+					peer.Forwarder = fwd.Addr
+					peer.State = PeerStateHandshakingForwarder
+					p.PeersLock.Lock()
+					p.NetworkPeers[key] = peer
+					p.PeersLock.Unlock()
+					runtime.Gosched()
+					count = count + 1
+				}
+			}*/
 	}
 	p.Dht.Forwarders = p.Dht.Forwarders[:0]
 	return count
@@ -673,16 +724,25 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 	} else {
 		Log(Debug, "Ping response received")
 		// Handle PING response
-		for i, peer := range p.NetworkPeers {
+		peers := p.Peers.Get()
+		for i, peer := range peers {
 			if peer.PeerHW.String() == string(msg.Data) {
 				peer.PingCount = 0
 				peer.LastContact = time.Now()
-				p.PeersLock.Lock()
-				p.NetworkPeers[i] = peer
-				p.PeersLock.Unlock()
-				runtime.Gosched()
+				p.Peers.Update(i, peer)
 			}
 		}
+		/*
+			for i, peer := range p.NetworkPeers {
+				if peer.PeerHW.String() == string(msg.Data) {
+					peer.PingCount = 0
+					peer.LastContact = time.Now()
+					p.PeersLock.Lock()
+					p.NetworkPeers[i] = peer
+					p.PeersLock.Unlock()
+					runtime.Gosched()
+				}
+			}*/
 	}
 }
 
@@ -690,48 +750,64 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	Log(Info, "Introduction string from %s[%d]", srcAddr, msg.Header.ProxyID)
 	id, mac, ip := p.ParseIntroString(string(msg.Data))
-	p.PeersLock.Lock()
-	peer, exists := p.NetworkPeers[id]
-	p.PeersLock.Unlock()
-	runtime.Gosched()
-	if !exists {
+	peer := p.Peers.GetPeer(id)
+	if peer == nil {
 		Log(Debug, "Received introduction confirmation from unknown peer: %s", id)
 		p.Dht.SendUpdateRequest()
 		return
 	}
+	/*
+		p.PeersLock.Lock()
+		peer, exists := p.NetworkPeers[id]
+		p.PeersLock.Unlock()
+		runtime.Gosched()
+
+		if !exists {
+			Log(Debug, "Received introduction confirmation from unknown peer: %s", id)
+			p.Dht.SendUpdateRequest()
+			return
+		}*/
 	if msg.Header.ProxyID > 0 && peer.ProxyID == 0 {
 		peer.ForceProxy = true
 		peer.PeerAddr = nil
 		peer.Endpoint = nil
 		peer.State = PeerStateInit
 		peer.KnownIPs = peer.KnownIPs[:0]
-		p.PeersLock.Lock()
-		p.NetworkPeers[id] = peer
-		p.PeersLock.Unlock()
-		runtime.Gosched()
+		p.Peers.Update(id, peer)
+		/*
+			p.PeersLock.Lock()
+			p.NetworkPeers[id] = peer
+			p.PeersLock.Unlock()
+			runtime.Gosched()*/
 		return
 	}
 	peer.PeerHW = mac
 	peer.PeerLocalIP = ip
 	peer.State = PeerStateConnected
 	peer.LastContact = time.Now()
-	p.PeersLock.Lock()
-	p.IPIDTable[ip.String()] = id
-	p.MACIDTable[mac.String()] = id
-	p.NetworkPeers[id] = peer
-	p.PeersLock.Unlock()
-	runtime.Gosched()
+	p.Peers.Update(id, peer)
+	/*
+		p.PeersLock.Lock()
+		p.IPIDTable[ip.String()] = id
+		p.MACIDTable[mac.String()] = id
+		p.NetworkPeers[id] = peer
+		p.PeersLock.Unlock()
+		runtime.Gosched()
+	*/
 	Log(Info, "Connection with peer %s has been established", id)
 }
 
 // HandleIntroRequestMessage is a handshake request from another peer
 func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	id := string(msg.Data)
-	p.PeersLock.Lock()
-	peer, exists := p.NetworkPeers[id]
-	p.PeersLock.Unlock()
-	runtime.Gosched()
-	if !exists {
+	peer := p.Peers.GetPeer(id)
+	/*
+		p.PeersLock.Lock()
+		peer, exists := p.NetworkPeers[id]
+		p.PeersLock.Unlock()
+		runtime.Gosched()*/
+	//if !exists {
+	if peer == nil {
 		Log(Debug, "Introduction request came from unknown peer: %s", id)
 		p.Dht.SendUpdateRequest()
 		return
@@ -752,22 +828,32 @@ func (p *PeerToPeer) HandleProxyMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	}
 	ip := string(msg.Data)
 	Log(Info, "Proxy confirmation received from %s. Tunnel ID %d", ip, int(msg.Header.ProxyID))
-	for key, peer := range p.NetworkPeers {
+	peers := p.Peers.Get()
+	for i, peer := range peers {
 		if peer.PeerAddr.String() == ip {
 			peer.ProxyID = int(msg.Header.ProxyID)
-			p.PeersLock.Lock()
-			p.NetworkPeers[key] = peer
-			p.PeersLock.Unlock()
-			runtime.Gosched()
-			return
+			p.Peers.Update(i, peer)
 		}
 	}
+	/*
+		for key, peer := range p.NetworkPeers {
+			if peer.PeerAddr.String() == ip {
+				peer.ProxyID = int(msg.Header.ProxyID)
+				p.PeersLock.Lock()
+				p.NetworkPeers[key] = peer
+				p.PeersLock.Unlock()
+				runtime.Gosched()
+				return
+			}
+		}
+	*/
 	Log(Warning, "Can't set Tunnel#%d for %s: Can't find address", int(msg.Header.ProxyID), ip)
 }
 
 // HandleBadTun notified peer about proxy being malfunction
 func (p *PeerToPeer) HandleBadTun(msg *P2PMessage, srcAddr *net.UDPAddr) {
-	for key, peer := range p.NetworkPeers {
+	peers := p.Peers.Get()
+	for i, peer := range peers {
 		if peer.ProxyID == int(msg.Header.ProxyID) && peer.Endpoint.String() == srcAddr.String() {
 			Log(Debug, "Cleaning bad tunnel %d from %s", msg.Header.ProxyID, srcAddr.String())
 			peer.ProxyID = 0
@@ -775,12 +861,26 @@ func (p *PeerToPeer) HandleBadTun(msg *P2PMessage, srcAddr *net.UDPAddr) {
 			peer.Forwarder = nil
 			peer.PeerAddr = nil
 			peer.State = PeerStateInit
-			p.PeersLock.Lock()
-			p.NetworkPeers[key] = peer
-			p.PeersLock.Unlock()
-			runtime.Gosched()
+			p.Peers.Update(i, peer)
 		}
 	}
+
+	/*
+		for key, peer := range p.NetworkPeers {
+			if peer.ProxyID == int(msg.Header.ProxyID) && peer.Endpoint.String() == srcAddr.String() {
+				Log(Debug, "Cleaning bad tunnel %d from %s", msg.Header.ProxyID, srcAddr.String())
+				peer.ProxyID = 0
+				peer.Endpoint = nil
+				peer.Forwarder = nil
+				peer.PeerAddr = nil
+				peer.State = PeerStateInit
+				p.PeersLock.Lock()
+				p.NetworkPeers[key] = peer
+				p.PeersLock.Unlock()
+				runtime.Gosched()
+			}
+		}
+	*/
 }
 
 // HandleTestMessage responses with a test message when another peer trying to
@@ -798,8 +898,15 @@ func (p *PeerToPeer) HandleTestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
 	// TODO: Speed up this by switching to map
 	Log(Trace, "Requested Send to %s", dst.String())
-	id, exists := p.MACIDTable[dst.String()]
-	if exists {
+	//id, exists := p.MACIDTable[dst.String()]
+	endpoint, proxy, err := p.Peers.GetEndpointAndProxy(dst.String())
+	if err == nil {
+		Log(Debug, "Sending to %s via proxy id %d", dst.String(), proxy)
+		msg.Header.ProxyID = uint16(proxy)
+		size, err := p.UDPSocket.SendMessage(msg, endpoint)
+		return size, err
+	}
+	/*if exists {
 		p.PeersLock.Lock()
 		peer, exists := p.NetworkPeers[id]
 		p.PeersLock.Unlock()
@@ -810,21 +917,31 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 			size, err := p.UDPSocket.SendMessage(msg, peer.Endpoint)
 			return size, err
 		}
-	}
+
+	}*/
 	return 0, nil
 }
 
 // StopInstance stops current instance
 func (p *PeerToPeer) StopInstance() {
-	p.PeersLock.Lock()
-	for i, peer := range p.NetworkPeers {
+	/*
+		p.PeersLock.Lock()
+	*/
+	peers := p.Peers.Get()
+	for i, peer := range peers {
+		peer.State = PeerStateDisconnect
+		p.Peers.Update(i, peer)
+	}
+	/*for i, peer := range p.NetworkPeers {
 		peer.State = PeerStateDisconnect
 		p.NetworkPeers[i] = peer
-	}
-	p.PeersLock.Unlock()
-	runtime.Gosched()
+	}*/
+	/*
+		p.PeersLock.Unlock()
+		runtime.Gosched()
+	*/
 	stopStarted := time.Now()
-	for len(p.NetworkPeers) > 0 {
+	for p.Peers.Length() > 0 {
 		if time.Since(stopStarted) > time.Duration(time.Second*5) {
 			break
 		}
@@ -900,18 +1017,29 @@ func (p *PeerToPeer) ReadProxies() {
 		case proxy, hasData := <-p.Dht.ProxyChannel:
 			if hasData {
 				exists := false
-				for i, peer := range p.NetworkPeers {
+				peers := p.Peers.Get()
+				for i, peer := range peers {
 					if i == proxy.DestinationID {
 						peer.State = PeerStateHandshakingForwarder
 						peer.Forwarder = proxy.Addr
 						peer.Endpoint = proxy.Addr
-						p.PeersLock.Lock()
-						p.NetworkPeers[i] = peer
-						p.PeersLock.Unlock()
-						runtime.Gosched()
-						exists = true
+						p.Peers.Update(i, peer)
 					}
 				}
+				/*
+					for i, peer := range p.NetworkPeers {
+						if i == proxy.DestinationID {
+							peer.State = PeerStateHandshakingForwarder
+							peer.Forwarder = proxy.Addr
+							peer.Endpoint = proxy.Addr
+							p.PeersLock.Lock()
+							p.NetworkPeers[i] = peer
+							p.PeersLock.Unlock()
+							runtime.Gosched()
+							exists = true
+						}
+					}
+				*/
 				if !exists {
 					Log(Info, "Received forwarder for unknown peer")
 					p.Dht.SendUpdateRequest()
@@ -934,7 +1062,9 @@ func (p *PeerToPeer) UpdatePeers(peers []PeerIP) {
 			continue
 		}
 		found := false
-		for _, peer := range p.NetworkPeers {
+
+		peers := p.Peers.Get()
+		for _, peer := range peers {
 			if peer.ID == newPeer.ID {
 				found = true
 			}
@@ -944,11 +1074,26 @@ func (p *PeerToPeer) UpdatePeers(peers []PeerIP) {
 			peer.ID = newPeer.ID
 			peer.KnownIPs = newPeer.Ips
 			peer.State = PeerStateInit
-			p.PeersLock.Lock()
-			p.NetworkPeers[newPeer.ID] = peer
-			p.PeersLock.Unlock()
-			runtime.Gosched()
-			go p.NetworkPeers[newPeer.ID].Run(p)
+			p.Peers.Update(peer.ID, peer)
+			p.Peers.RunPeer(peer.ID, p)
 		}
+		/*
+			for _, peer := range p.NetworkPeers {
+				if peer.ID == newPeer.ID {
+					found = true
+				}
+			}
+			if !found && newPeer.ID != p.Dht.ID {
+				peer := new(NetworkPeer)
+				peer.ID = newPeer.ID
+				peer.KnownIPs = newPeer.Ips
+				peer.State = PeerStateInit
+				p.PeersLock.Lock()
+				p.NetworkPeers[newPeer.ID] = peer
+				p.PeersLock.Unlock()
+				runtime.Gosched()
+				go p.NetworkPeers[newPeer.ID].Run(p)
+			}
+		*/
 	}
 }

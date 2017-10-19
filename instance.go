@@ -321,16 +321,18 @@ func (p *Procedures) Show(args *ShowArgs, resp *Response) error {
 		runtime.Gosched()
 		resp.ExitCode = 0
 		if exists {
+			peers := swarm.PTP.Peers.Get()
 			if args.IP != "" {
 				//swarm.PTP.PeersLock.Lock()
-				for _, peer := range swarm.PTP.NetworkPeers {
+				/*for _, peer := range swarm.PTP.NetworkPeers {*/
+				for _, peer := range peers {
 					if peer.PeerLocalIP.String() == args.IP {
 						if peer.State == ptp.PeerStateConnected {
 							resp.ExitCode = 0
 							resp.Output = "Integrated with " + args.IP
 							//swarm.PTP.PeersLock.Unlock()
 							//instances_mut.Unlock()
-							runtime.Gosched()
+							//runtime.Gosched()
 							return nil
 						}
 					}
@@ -343,7 +345,7 @@ func (p *Procedures) Show(args *ShowArgs, resp *Response) error {
 			}
 			resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
 			//swarm.PTP.PeersLock.Lock()
-			for _, peer := range swarm.PTP.NetworkPeers {
+			for _, peer := range peers {
 				resp.Output = resp.Output + peer.ID + "\t"
 				resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
 				resp.Output = resp.Output + peer.Endpoint.String() + "\t"
@@ -407,7 +409,17 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", ins.PTP.Interface.Name, ins.PTP.Interface.Mac.String(), ins.PTP.Interface.IP.String())
 		resp.Output += fmt.Sprintf("Peers:\n")
 		// TODO: Rewrite this part
-		for _, id := range ins.PTP.IPIDTable {
+		peers := ins.PTP.Peers.Get()
+		for _, peer := range peers {
+			resp.Output += fmt.Sprintf("\t--- %s ---\n", peer.ID)
+			resp.Output += fmt.Sprintf("\t\tHWAddr: %s\n", peer.PeerHW.String())
+			resp.Output += fmt.Sprintf("\t\tIP: %s\n", peer.PeerLocalIP.String())
+			resp.Output += fmt.Sprintf("\t\tEndpoint: %s\n", peer.Endpoint)
+			resp.Output += fmt.Sprintf("\t\tPeer Address: %s\n", peer.PeerAddr.String())
+			resp.Output += fmt.Sprintf("\t\tProxy ID: %d\n", peer.ProxyID)
+			resp.Output += fmt.Sprintf("\t--- End of %s ---\n", peer.ID)
+		}
+		/*for _, id := range ins.PTP.IPIDTable {
 			resp.Output += fmt.Sprintf("\t--- %s ---\n", id)
 			peer, exists := ins.PTP.NetworkPeers[id]
 			if !exists {
@@ -420,7 +432,7 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 				resp.Output += fmt.Sprintf("\t\tProxy ID: %d\n", peer.ProxyID)
 			}
 			resp.Output += fmt.Sprintf("\t--- End of %s ---\n", id)
-		}
+		}*/
 	}
 	instances_mut.Unlock()
 	runtime.Gosched()
@@ -432,7 +444,8 @@ func (p *Procedures) Status(args *RunArgs, resp *Response) error {
 	instances_mut.Lock()
 	for _, ins := range instances {
 		resp.Output += ins.ID + " | " + ins.PTP.Interface.IP.String() + "\n"
-		for _, peer := range ins.PTP.NetworkPeers {
+		peers := ins.PTP.Peers.Get()
+		for _, peer := range peers {
 			resp.Output += peer.ID + "|"
 			resp.Output += peer.PeerLocalIP.String() + "|"
 			resp.Output += "State:" + StringifyState(peer.State) + "|"
@@ -441,6 +454,16 @@ func (p *Procedures) Status(args *RunArgs, resp *Response) error {
 			}
 			resp.Output += "\n"
 		}
+		/*for _, peer := range ins.PTP.NetworkPeers {
+			resp.Output += peer.ID + "|"
+			resp.Output += peer.PeerLocalIP.String() + "|"
+			resp.Output += "State:" + StringifyState(peer.State) + "|"
+			if peer.LastError != "" {
+				resp.Output += "LastError:" + peer.LastError
+			}
+			resp.Output += "\n"
+		}
+		*/
 	}
 	instances_mut.Unlock()
 	runtime.Gosched()
