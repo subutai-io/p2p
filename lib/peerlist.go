@@ -1,7 +1,16 @@
 package ptp
 
 import (
+	"fmt"
+	"net"
 	"sync"
+)
+
+type ListOperation int
+
+const (
+	PeersDelete ListOperation = 0
+	PeersUpdate ListOperation = 1
 )
 
 // PeerList is for handling list of peers with all mappings
@@ -19,16 +28,114 @@ func (l *PeerList) Init() {
 	l.tableMacID = make(map[string]string)
 }
 
-// Update will append/edit peer in list
-func (l *PeerList) Update(id string, peer *NetworkPeer) error {
+func (l *PeerList) operate(action ListOperation, id string, peer *NetworkPeer) {
 	l.lock.Lock()
-	l.peers[id] = peer
-	l.lock.Unlock()
+	defer l.lock.Unlock()
+	if action == PeersUpdate {
+		l.peers[id] = peer
+		ip := ""
+		mac := ""
+		if peer.PeerLocalIP != nil {
+			ip = peer.PeerLocalIP.String()
+		}
+		if peer.PeerHW != nil {
+			mac = peer.PeerHW.String()
+		}
+		l.updateTables(id, ip, mac)
+	} else if action == PeersDelete {
+		peer, exists := l.peers[id]
+		if !exists {
+			return
+		}
+		l.deleteTables(peer.PeerLocalIP.String(), peer.PeerHW.String())
+		delete(l.peers, id)
+		return
+	}
+}
+
+func (l *PeerList) updateTables(id, ip, mac string) {
+	if ip != "" {
+		l.tableIPID[ip] = id
+	}
+	if mac != "" {
+		l.tableMacID[mac] = id
+	}
+}
+
+func (l *PeerList) deleteTables(ip, mac string) {
+	if ip != "" {
+		_, exists := l.tableIPID[ip]
+		if exists {
+			delete(l.tableIPID, ip)
+		}
+	}
+	if mac != "" {
+		_, exists := l.tableMacID[mac]
+		if exists {
+			delete(l.tableMacID, mac)
+		}
+	}
+}
+
+func (l *PeerList) Delete(id string) {
+	l.operate(PeersDelete, id, nil)
+}
+
+// Update will append/edit peer in list
+func (l *PeerList) Update(id string, peer *NetworkPeer) {
+	l.operate(PeersUpdate, id, peer)
+}
+
+// Get returns copy of map with all peers
+func (l *PeerList) Get() map[string]*NetworkPeer {
+	result := make(map[string]*NetworkPeer)
+	l.lock.RLock()
+	for id, peer := range l.peers {
+		result[id] = peer
+	}
+	l.lock.RUnlock()
+	return result
+}
+
+// GetPeer returns single peer by id
+func (l *PeerList) GetPeer(id string) *NetworkPeer {
+	l.lock.RLock()
+	peer, exists := l.peers[id]
+	l.lock.RUnlock()
+	if exists {
+		return peer
+	}
 	return nil
 }
 
-// Get returns map with all peers
-func (l *PeerList) Get() map[string]*NetworkPeer {
+// GetEndpointAndProxy returns endpoint address and proxy id
+func (l *PeerList) GetEndpointAndProxy(mac string) (*net.UDPAddr, uint16, error) {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+	id, exists := l.tableMacID[mac]
+	if exists {
+		return l.peers[id].Endpoint, uint16(l.peers[id].ProxyID), nil
+	}
+	return nil, 0, fmt.Errorf("Specified hardware address was not found in table")
+}
 
-	return nil
+// GetID returns ID by specified IP
+func (l *PeerList) GetID(ip string) (string, error) {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+	id, exists := l.tableIPID[ip]
+	if exists {
+		return id, nil
+	}
+	return "", fmt.Errorf("Specified IP was not found in table")
+}
+
+func (l *PeerList) Length() int {
+	return len(l.peers)
+}
+
+func (l *PeerList) RunPeer(id string, p *PeerToPeer) {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+	go l.peers[id].Run(p)
 }
