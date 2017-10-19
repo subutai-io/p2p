@@ -600,7 +600,7 @@ func (dht *DHTClient) Connect() error {
 		conn, err := dht.ConnectAndHandshake(router, dht.IPList)
 		if err != nil || conn == nil {
 			Log(Error, "Failed to handshake with a DHT Server: %v", err)
-			dht.FailedRouters[0] = router
+			dht.FailedRouters = append(dht.FailedRouters, router)
 		} else {
 			Log(Info, "Handshaked. Starting listener")
 			dht.Connection = append(dht.Connection, conn)
