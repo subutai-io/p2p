@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	upnp "github.com/NebulousLabs/go-upnp"
 	"gopkg.in/yaml.v2"
 )
 
@@ -254,6 +255,10 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	// a introduction packet along with a hash to a DHT bootstrap
 	// nodes that was hardcoded into it's code
 	Log(Info, "Started UDP Listener at port %d", p.UDPSocket.GetPort())
+	err = p.attemptPortForward(uint16(p.UDPSocket.GetPort()), interfaceName)
+	if err != nil {
+		Log(Error, "UPnP Failed: %s", err)
+	}
 	p.Hash = argHash
 	p.StartDHT(p.Hash, argDht)
 	p.Routers = p.Dht.Routers
@@ -279,6 +284,20 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	go p.UDPSocket.Listen(p.HandleP2PMessage)
 	go p.ListenInterface()
 	return p
+}
+
+func (p *PeerToPeer) attemptPortForward(port uint16, name string) error {
+	Log(Info, "Trying to forward port %d", port)
+	d, err := upnp.Discover()
+	if err != nil {
+		return err
+	}
+	err = d.Forward(port, "subutai-"+name)
+	if err != nil {
+		return err
+	}
+	Log(Info, "Port %d has been forwarded", port)
+	return nil
 }
 
 // Init will initialize PeerToPeer
