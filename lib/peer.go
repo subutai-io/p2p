@@ -155,12 +155,20 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PeerToPeer) error {
 	// behind NAT we should connect to it successfully
 	// Otherwise we will failback to proxy
 	addr := np.KnownIPs[0]
-	conn := np.TestConnection(ptpc, addr)
-	if conn {
-		np.PeerAddr = np.Endpoint
-		Log(Info, "Connected with %s over Internet", np.ID)
-		np.State = PeerStateHandshaking
-		return nil
+	punchStarted := time.Now()
+	for {
+		conn := np.TestConnection(ptpc, addr)
+		if conn {
+			np.PeerAddr = np.Endpoint
+			Log(Info, "Connected with %s over Internet", np.ID)
+			np.State = PeerStateHandshaking
+			return nil
+		}
+		time.Sleep(200 * time.Millisecond)
+		passed := time.Since(punchStarted)
+		if passed > time.Duration(5*time.Second) {
+			break
+		}
 	}
 	Log(Info, "Direct connection with %s failed", np.ID)
 	np.SetPeerAddr()
@@ -349,6 +357,7 @@ func (np *NetworkPeer) BlacklistCurrentProxy(ptpc *PeerToPeer) {
 
 // TestConnection method tests connection with specified endpoint
 func (np *NetworkPeer) TestConnection(ptpc *PeerToPeer, endpoint *net.UDPAddr) bool {
+	// Give it a try for 5 seconds
 	msg := CreateTestP2PMessage(ptpc.Crypter, "TEST", 0)
 	conn, err := net.DialUDP("udp4", nil, endpoint)
 	if err != nil {
@@ -362,7 +371,7 @@ func (np *NetworkPeer) TestConnection(ptpc *PeerToPeer, endpoint *net.UDPAddr) b
 		return false
 	}
 	t := time.Now()
-	t = t.Add(3 * time.Second)
+	t = t.Add(300 * time.Millisecond)
 	conn.SetReadDeadline(t)
 	// TODO: Check if it was real TEST message
 	for {
