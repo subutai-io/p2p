@@ -9,6 +9,6 @@ enum ProxyPacketType {
 
 message ProxyPacket {
 	ProxyPacketType type = 1;
-    int32 id = 2;
+    uint32 id = 2;
 	string data = 3;
 }
