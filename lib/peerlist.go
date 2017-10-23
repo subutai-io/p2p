@@ -9,8 +9,8 @@ import (
 type ListOperation int
 
 const (
-	PeersDelete ListOperation = 0
-	PeersUpdate ListOperation = 1
+	OperateDelete ListOperation = 0
+	OperateUpdate ListOperation = 1
 )
 
 // PeerList is for handling list of peers with all mappings
@@ -31,7 +31,7 @@ func (l *PeerList) Init() {
 func (l *PeerList) operate(action ListOperation, id string, peer *NetworkPeer) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
-	if action == PeersUpdate {
+	if action == OperateUpdate {
 		l.peers[id] = peer
 		ip := ""
 		mac := ""
@@ -42,7 +42,7 @@ func (l *PeerList) operate(action ListOperation, id string, peer *NetworkPeer) {
 			mac = peer.PeerHW.String()
 		}
 		l.updateTables(id, ip, mac)
-	} else if action == PeersDelete {
+	} else if action == OperateDelete {
 		peer, exists := l.peers[id]
 		if !exists {
 			return
@@ -78,12 +78,12 @@ func (l *PeerList) deleteTables(ip, mac string) {
 }
 
 func (l *PeerList) Delete(id string) {
-	l.operate(PeersDelete, id, nil)
+	l.operate(OperateDelete, id, nil)
 }
 
 // Update will append/edit peer in list
 func (l *PeerList) Update(id string, peer *NetworkPeer) {
-	l.operate(PeersUpdate, id, peer)
+	l.operate(OperateUpdate, id, peer)
 }
 
 // Get returns copy of map with all peers
