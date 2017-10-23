@@ -1,0 +1,14 @@
+syntax = "proto3";
+package main;
+
+enum PacketType { 
+	Ping = 0; 
+    Register = 1;
+    Discover = 2;
+};
+
+message ServerPacket {
+	PacketType type = 1;
+    int32 id = 2;
+	string data = 3;
+}
