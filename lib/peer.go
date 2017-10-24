@@ -150,10 +150,12 @@ func (np *NetworkPeer) SetPeerAddr() bool {
 
 // StateConnectingDirectlyWait - Wait for other peer to synchronize connection with us
 func (np *NetworkPeer) StateConnectingDirectlyWait(ptpc *PeerToPeer) error {
-	// We don't want to do this for more than 3 minutes
+	// We don't want to do this for more than 5 minutes
+	Log(Info, "Waiting for other peer to start connecting directly")
 	started := time.Now()
 	for {
 		if np.RemoteState == PeerStateConnectingDirectlyWait || np.RemoteState == PeerStateConnectingDirectly {
+			Log(Info, "Second peer has joined required state")
 			np.SetState(PeerStateConnectingDirectly, ptpc)
 			break
 		}
@@ -201,10 +203,12 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PeerToPeer) error {
 }
 
 func (np *NetworkPeer) StateConnectingInternetWait(ptpc *PeerToPeer) error {
-	// We don't want to do this for more than 3 minutes
+	// We don't want to do this for more than 5 minutes
+	Log(Info, "Waiting for other peer to start connecting over Internet")
 	started := time.Now()
 	for {
 		if np.RemoteState == PeerStateConnectingInternetWait || np.RemoteState == PeerStateConnectingInternet {
+			Log(Info, "Second peer joined required state")
 			np.SetState(PeerStateConnectingInternet, ptpc)
 			break
 		}
