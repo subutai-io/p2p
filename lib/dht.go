@@ -606,6 +606,7 @@ func (dht *DHTClient) setupCallbacks() {
 		dht.ResponseHandlers[DhtCmdProxy] = dht.HandleCp
 		dht.ResponseHandlers[DhtCmdNotify] = dht.HandleNotify
 		dht.ResponseHandlers[DhtCmdStop] = dht.HandleStop
+		dht.ResponseHandlers[DhtCmdState] = dht.HandleState
 	} else {
 		Log(Info, "DHT operating in CONTROL PEER mode")
 		dht.ResponseHandlers[DhtCmdRegProxy] = dht.HandleRegCp
