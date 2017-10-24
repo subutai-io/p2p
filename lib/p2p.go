@@ -456,7 +456,7 @@ func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
 
 // Run is a main loop
 func (p *PeerToPeer) Run() {
-	go p.ReadDHTPeers()
+	go p.ReadDHTChannels()
 	//go p.ReadProxies()
 	/*
 		go func() {
@@ -945,8 +945,8 @@ func (p *PeerToPeer) StopInstance() {
 	p.ReadyToStop = true
 }
 
-// ReadDHTPeers - reads a list of peers received by DHT client
-func (p *PeerToPeer) ReadDHTPeers() {
+// ReadDHTChannels - reads a list of peers received by DHT client
+func (p *PeerToPeer) ReadDHTChannels() {
 	for {
 		if p.Shutdown {
 			break
