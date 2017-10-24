@@ -41,6 +41,7 @@ func createInterface(file *os.File, ifPattern string, kind DevKind) (string, err
 
 // ConfigureInterface performs a configuration of an existing interface
 func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
+	Log(Info, "Configuring %s. IP: %s, Mac: %s", device, ip, mac)
 	err := LinkUp(device, tool)
 	if err != nil {
 		return err

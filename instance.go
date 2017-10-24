@@ -211,7 +211,7 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 	if args.Dev != "" {
 		instances_mut.Lock()
 		for _, inst := range instances {
-			if inst.PTP.DeviceName == args.Dev {
+			if inst.PTP.Interface.Name == args.Dev {
 				resp.ExitCode = 1
 				resp.Output = "Device name is already in use"
 				instances_mut.Unlock()
@@ -255,15 +255,15 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 		// Saving interface name
 		infFound := false
 		for _, inf := range InterfaceNames {
-			if inf == ptpInstance.DeviceName {
+			if inf == ptpInstance.Interface.Name {
 				infFound = true
 			}
 		}
-		if !infFound && ptpInstance.DeviceName != "" {
-			InterfaceNames = append(InterfaceNames, ptpInstance.DeviceName)
+		if !infFound && ptpInstance.Interface.Name != "" {
+			InterfaceNames = append(InterfaceNames, ptpInstance.Interface.Name)
 		}
 
-		usedIPs = append(usedIPs, ptpInstance.IP)
+		usedIPs = append(usedIPs, ptpInstance.Interface.IP.String())
 		ptp.Log(ptp.Info, "Instance created")
 		newInst.PTP = ptpInstance
 		instances_mut.Lock()
@@ -293,7 +293,7 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 		instances_mut.Unlock()
 		runtime.Gosched()
 	} else {
-		ip := instances[args.Hash].PTP.IP
+		ip := instances[args.Hash].PTP.Interface.IP.String()
 		resp.Output = "Shutting down " + args.Hash
 		instances[args.Hash].PTP.StopInstance()
 		delete(instances, args.Hash)
@@ -321,16 +321,18 @@ func (p *Procedures) Show(args *ShowArgs, resp *Response) error {
 		runtime.Gosched()
 		resp.ExitCode = 0
 		if exists {
+			peers := swarm.PTP.Peers.Get()
 			if args.IP != "" {
 				//swarm.PTP.PeersLock.Lock()
-				for _, peer := range swarm.PTP.NetworkPeers {
+				/*for _, peer := range swarm.PTP.NetworkPeers {*/
+				for _, peer := range peers {
 					if peer.PeerLocalIP.String() == args.IP {
 						if peer.State == ptp.PeerStateConnected {
 							resp.ExitCode = 0
 							resp.Output = "Integrated with " + args.IP
 							//swarm.PTP.PeersLock.Unlock()
 							//instances_mut.Unlock()
-							runtime.Gosched()
+							//runtime.Gosched()
 							return nil
 						}
 					}
@@ -343,7 +345,7 @@ func (p *Procedures) Show(args *ShowArgs, resp *Response) error {
 			}
 			resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
 			//swarm.PTP.PeersLock.Lock()
-			for _, peer := range swarm.PTP.NetworkPeers {
+			for _, peer := range peers {
 				resp.Output = resp.Output + peer.ID + "\t"
 				resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
 				resp.Output = resp.Output + peer.Endpoint.String() + "\t"
@@ -360,7 +362,7 @@ func (p *Procedures) Show(args *ShowArgs, resp *Response) error {
 			instances_mut.Lock()
 			for _, inst := range instances {
 				if inst.PTP != nil {
-					resp.Output = resp.Output + inst.PTP.DeviceName
+					resp.Output = resp.Output + inst.PTP.Interface.Name
 				}
 				resp.Output = resp.Output + "\n"
 			}
@@ -383,7 +385,7 @@ func (p *Procedures) Show(args *ShowArgs, resp *Response) error {
 		instances_mut.Lock()
 		for key, inst := range instances {
 			if inst.PTP != nil {
-				resp.Output = resp.Output + "\t" + inst.PTP.Mac + "\t" + inst.PTP.IP + "\t" + key
+				resp.Output = resp.Output + "\t" + inst.PTP.Interface.Mac.String() + "\t" + inst.PTP.Interface.IP.String() + "\t" + key
 			} else {
 				resp.Output = resp.Output + "\tUnknown\tUnknown\t" + key
 			}
@@ -404,10 +406,20 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 	for _, ins := range instances {
 		resp.Output += fmt.Sprintf("Hash: %s\n", ins.ID)
 		resp.Output += fmt.Sprintf("ID: %s\n", ins.PTP.Dht.ID)
-		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", ins.PTP.DeviceName, ins.PTP.Mac, ins.PTP.IP)
+		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", ins.PTP.Interface.Name, ins.PTP.Interface.Mac.String(), ins.PTP.Interface.IP.String())
 		resp.Output += fmt.Sprintf("Peers:\n")
 		// TODO: Rewrite this part
-		for _, id := range ins.PTP.IPIDTable {
+		peers := ins.PTP.Peers.Get()
+		for _, peer := range peers {
+			resp.Output += fmt.Sprintf("\t--- %s ---\n", peer.ID)
+			resp.Output += fmt.Sprintf("\t\tHWAddr: %s\n", peer.PeerHW.String())
+			resp.Output += fmt.Sprintf("\t\tIP: %s\n", peer.PeerLocalIP.String())
+			resp.Output += fmt.Sprintf("\t\tEndpoint: %s\n", peer.Endpoint)
+			resp.Output += fmt.Sprintf("\t\tPeer Address: %s\n", peer.PeerAddr.String())
+			resp.Output += fmt.Sprintf("\t\tProxy ID: %d\n", peer.ProxyID)
+			resp.Output += fmt.Sprintf("\t--- End of %s ---\n", peer.ID)
+		}
+		/*for _, id := range ins.PTP.IPIDTable {
 			resp.Output += fmt.Sprintf("\t--- %s ---\n", id)
 			peer, exists := ins.PTP.NetworkPeers[id]
 			if !exists {
@@ -420,7 +432,7 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 				resp.Output += fmt.Sprintf("\t\tProxy ID: %d\n", peer.ProxyID)
 			}
 			resp.Output += fmt.Sprintf("\t--- End of %s ---\n", id)
-		}
+		}*/
 	}
 	instances_mut.Unlock()
 	runtime.Gosched()
@@ -431,8 +443,9 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 func (p *Procedures) Status(args *RunArgs, resp *Response) error {
 	instances_mut.Lock()
 	for _, ins := range instances {
-		resp.Output += ins.ID + " | " + ins.PTP.IP + "\n"
-		for _, peer := range ins.PTP.NetworkPeers {
+		resp.Output += ins.ID + " | " + ins.PTP.Interface.IP.String() + "\n"
+		peers := ins.PTP.Peers.Get()
+		for _, peer := range peers {
 			resp.Output += peer.ID + "|"
 			resp.Output += peer.PeerLocalIP.String() + "|"
 			resp.Output += "State:" + StringifyState(peer.State) + "|"
@@ -441,6 +454,16 @@ func (p *Procedures) Status(args *RunArgs, resp *Response) error {
 			}
 			resp.Output += "\n"
 		}
+		/*for _, peer := range ins.PTP.NetworkPeers {
+			resp.Output += peer.ID + "|"
+			resp.Output += peer.PeerLocalIP.String() + "|"
+			resp.Output += "State:" + StringifyState(peer.State) + "|"
+			if peer.LastError != "" {
+				resp.Output += "LastError:" + peer.LastError
+			}
+			resp.Output += "\n"
+		}
+		*/
 	}
 	instances_mut.Unlock()
 	runtime.Gosched()

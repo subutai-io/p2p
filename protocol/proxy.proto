@@ -1,0 +1,14 @@
+syntax = "proto3";
+package main;
+
+enum ProxyPacketType { 
+	Ping = 0; 
+    Register = 1;
+    Discover = 2;
+};
+
+message ProxyPacket {
+	ProxyPacketType type = 1;
+    uint32 id = 2;
+	string data = 3;
+}
