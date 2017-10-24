@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +36,12 @@ const (
 	DHTStateInitializing DHTState = 3
 )
 
+// RemotePeerState is a state information of another peer received from DHT
+type RemotePeerState struct {
+	ID    string
+	State PeerState
+}
+
 // DHTClient is a main structure of a DHT client
 type DHTClient struct {
 	Routers          string         // Comma separated list of bootstrap nodes
@@ -55,6 +62,7 @@ type DHTClient struct {
 	Network          *net.IPNet // Network information about current network. Used to inform p2p about mask for interface
 	DataChannel      chan []byte
 	CommandChannel   chan []byte
+	StateChannel     chan RemotePeerState
 	Listeners        int
 	PeerChannel      chan []PeerIP
 	ProxyChannel     chan Forwarder
@@ -473,6 +481,30 @@ func (dht *DHTClient) HandleCp(data DHTMessage, conn *net.UDPConn) {
 	if !found {
 		dht.Forwarders = append(dht.Forwarders, fwd)
 	}
+}
+
+// HandleState will accept state message from DHT server sent by other network
+// participants that we should be aware of already.
+func (dht *DHTClient) HandleState(data DHTMessage, conn *net.UDPConn) {
+	// We have received some state from another peer
+	if dht.StateChannel == nil {
+		dht.StateChannel = make(chan RemotePeerState)
+	}
+	var state RemotePeerState
+	state.ID = data.Arguments
+	numericState, err := strconv.Atoi(data.Query)
+	if err != nil {
+		Log(Error, "Failed to parse remote state: %s", err)
+		return
+	}
+	state.State = PeerState(numericState)
+	dht.StateChannel <- state
+}
+
+// ReportState will send specified state to DHT
+func (dht *DHTClient) ReportState(targetID, state string) {
+	msg := dht.Compose(DhtCmdState, dht.ID, state, targetID)
+	dht.Send(msg)
 }
 
 // HandleNotify - we've received a proxy from another peer that is tries to reach us

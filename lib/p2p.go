@@ -449,24 +449,9 @@ func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
 		return fmt.Errorf("Peer was not found")
 	}
 	Log(Info, "Removing peer %s: Reason %s", id, reason)
-	peer.State = PeerStateDisconnect
+	peer.SetState(PeerStateDisconnect, p)
 	p.Peers.Update(id, peer)
 	return nil
-	/*p.PeersLock.Lock()
-	peer, exists := p.NetworkPeers[id]
-	p.PeersLock.Unlock()
-	runtime.Gosched()
-	if exists {
-		Log(Info, "Removing peer %s: Reason %s", id, reason)
-		peer.State = PeerStateDisconnect
-		p.PeersLock.Lock()
-		p.NetworkPeers[id] = peer
-		p.PeersLock.Unlock()
-		runtime.Gosched()
-	} else {
-		return fmt.Errorf("Peer not found")
-	}
-	return nil*/
 }
 
 // Run is a main loop
@@ -609,25 +594,11 @@ func (p *PeerToPeer) SyncForwarders() int {
 				Log(Info, "Saving control peer as a proxy destination for %s", peer.ID)
 				peer.Endpoint = fwd.Addr
 				peer.Forwarder = fwd.Addr
-				peer.State = PeerStateHandshakingForwarder
+				peer.SetState(PeerStateHandshakingForwarder, p)
 				p.Peers.Update(i, peer)
 				count++
 			}
 		}
-		/*
-			for key, peer := range p.NetworkPeers {
-				if peer.Endpoint == nil && fwd.DestinationID == peer.ID && peer.Forwarder == nil {
-					Log(Info, "Saving control peer as a proxy destination for %s", peer.ID)
-					peer.Endpoint = fwd.Addr
-					peer.Forwarder = fwd.Addr
-					peer.State = PeerStateHandshakingForwarder
-					p.PeersLock.Lock()
-					p.NetworkPeers[key] = peer
-					p.PeersLock.Unlock()
-					runtime.Gosched()
-					count = count + 1
-				}
-			}*/
 	}
 	p.Dht.Forwarders = p.Dht.Forwarders[:0]
 	return count
@@ -801,7 +772,7 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 		peer.ForceProxy = true
 		peer.PeerAddr = nil
 		peer.Endpoint = nil
-		peer.State = PeerStateInit
+		peer.SetState(PeerStateInit, p)
 		peer.KnownIPs = peer.KnownIPs[:0]
 		p.Peers.Update(id, peer)
 		/*
@@ -813,7 +784,7 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	}
 	peer.PeerHW = mac
 	peer.PeerLocalIP = ip
-	peer.State = PeerStateConnected
+	peer.SetState(PeerStateConnected, p)
 	peer.LastContact = time.Now()
 	p.Peers.Update(id, peer)
 	/*
@@ -891,27 +862,10 @@ func (p *PeerToPeer) HandleBadTun(msg *P2PMessage, srcAddr *net.UDPAddr) {
 			peer.Endpoint = nil
 			peer.Forwarder = nil
 			peer.PeerAddr = nil
-			peer.State = PeerStateInit
+			peer.SetState(PeerStateInit, p)
 			p.Peers.Update(i, peer)
 		}
 	}
-
-	/*
-		for key, peer := range p.NetworkPeers {
-			if peer.ProxyID == int(msg.Header.ProxyID) && peer.Endpoint.String() == srcAddr.String() {
-				Log(Debug, "Cleaning bad tunnel %d from %s", msg.Header.ProxyID, srcAddr.String())
-				peer.ProxyID = 0
-				peer.Endpoint = nil
-				peer.Forwarder = nil
-				peer.PeerAddr = nil
-				peer.State = PeerStateInit
-				p.PeersLock.Lock()
-				p.NetworkPeers[key] = peer
-				p.PeersLock.Unlock()
-				runtime.Gosched()
-			}
-		}
-	*/
 }
 
 // HandleTestMessage responses with a test message when another peer trying to
@@ -937,40 +891,16 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 		size, err := p.UDPSocket.SendMessage(msg, endpoint)
 		return size, err
 	}
-	/*if exists {
-		p.PeersLock.Lock()
-		peer, exists := p.NetworkPeers[id]
-		p.PeersLock.Unlock()
-		runtime.Gosched()
-		if exists {
-			msg.Header.ProxyID = uint16(peer.ProxyID)
-			Log(Debug, "Sending to %s via proxy id %d", dst.String(), msg.Header.ProxyID)
-			size, err := p.UDPSocket.SendMessage(msg, peer.Endpoint)
-			return size, err
-		}
-
-	}*/
 	return 0, nil
 }
 
 // StopInstance stops current instance
 func (p *PeerToPeer) StopInstance() {
-	/*
-		p.PeersLock.Lock()
-	*/
 	peers := p.Peers.Get()
 	for i, peer := range peers {
-		peer.State = PeerStateDisconnect
+		peer.SetState(PeerStateDisconnect, p)
 		p.Peers.Update(i, peer)
 	}
-	/*for i, peer := range p.NetworkPeers {
-		peer.State = PeerStateDisconnect
-		p.NetworkPeers[i] = peer
-	}*/
-	/*
-		p.PeersLock.Unlock()
-		runtime.Gosched()
-	*/
 	stopStarted := time.Now()
 	for p.Peers.Length() > 0 {
 		if time.Since(stopStarted) > time.Duration(time.Second*5) {
@@ -1024,8 +954,15 @@ func (p *PeerToPeer) ReadDHTPeers() {
 		case peers, hasData := <-p.Dht.PeerChannel:
 			if hasData {
 				p.UpdatePeers(peers)
-			} else {
-				Log(Trace, "Clossed channel")
+			}
+		case state, s := <-p.Dht.StateChannel:
+			if s {
+				Log(Info, "Received remote state")
+				peer := p.Peers.GetPeer(state.ID)
+				if peer != nil {
+					peer.RemoteState = state.State
+					p.Peers.Update(state.ID, peer)
+				}
 			}
 		default:
 			time.Sleep(100 * time.Millisecond)
@@ -1051,26 +988,12 @@ func (p *PeerToPeer) ReadProxies() {
 				peers := p.Peers.Get()
 				for i, peer := range peers {
 					if i == proxy.DestinationID {
-						peer.State = PeerStateHandshakingForwarder
+						peer.SetState(PeerStateHandshakingForwarder, p)
 						peer.Forwarder = proxy.Addr
 						peer.Endpoint = proxy.Addr
 						p.Peers.Update(i, peer)
 					}
 				}
-				/*
-					for i, peer := range p.NetworkPeers {
-						if i == proxy.DestinationID {
-							peer.State = PeerStateHandshakingForwarder
-							peer.Forwarder = proxy.Addr
-							peer.Endpoint = proxy.Addr
-							p.PeersLock.Lock()
-							p.NetworkPeers[i] = peer
-							p.PeersLock.Unlock()
-							runtime.Gosched()
-							exists = true
-						}
-					}
-				*/
 				if !exists {
 					Log(Info, "Received forwarder for unknown peer")
 					p.Dht.SendUpdateRequest()
@@ -1104,27 +1027,9 @@ func (p *PeerToPeer) UpdatePeers(peers []PeerIP) {
 			peer := new(NetworkPeer)
 			peer.ID = newPeer.ID
 			peer.KnownIPs = newPeer.Ips
-			peer.State = PeerStateInit
+			peer.SetState(PeerStateInit, p)
 			p.Peers.Update(peer.ID, peer)
 			p.Peers.RunPeer(peer.ID, p)
 		}
-		/*
-			for _, peer := range p.NetworkPeers {
-				if peer.ID == newPeer.ID {
-					found = true
-				}
-			}
-			if !found && newPeer.ID != p.Dht.ID {
-				peer := new(NetworkPeer)
-				peer.ID = newPeer.ID
-				peer.KnownIPs = newPeer.Ips
-				peer.State = PeerStateInit
-				p.PeersLock.Lock()
-				p.NetworkPeers[newPeer.ID] = peer
-				p.PeersLock.Unlock()
-				runtime.Gosched()
-				go p.NetworkPeers[newPeer.ID].Run(p)
-			}
-		*/
 	}
 }

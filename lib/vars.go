@@ -54,6 +54,7 @@ const (
 	DhtCmdDhcp        string = "dhcp"
 	DhtCmdError       string = "error"
 	DhtCmdUnsupported string = "unsupported"
+	DhtCmdState       string = "state"
 )
 
 const (
@@ -70,16 +71,20 @@ type (
 
 // Peer state
 const (
-	PeerStateInit                 PeerState = iota // Peer has been added recently.
-	PeerStateRequestedIP                    = iota // We know ID of a peer, but don't know it's IPs
-	PeerStateConnectingDirectly             = iota // Trying to establish a direct connection
-	PeerStateConnected                      = iota // Connected, handshaked and operating normally
-	PeerStateHandshaking                    = iota // Handshake requsted
-	PeerStateHandshakingFailed              = iota // Handshake procedure failed
-	PeerStateWaitingForwarder               = iota // Forwarder was requested
-	PeerStateHandshakingForwarder           = iota // Forwarder has been received and we're trying to handshake it
-	PeerStateDisconnect                     = iota // We're disconnecting
-	PeerStateStop                           = iota // Peer has been stopped and now can be removed from list of peers
+	PeerStateInit                   PeerState = iota // Peer has been added recently.
+	PeerStateRequestedIP                      = iota // We know ID of a peer, but don't know it's IPs
+	PeerStateConnectingDirectlyWait           = iota // Wait for other peer to start connecting directly over LAN
+	PeerStateConnectingDirectly               = iota // Trying to establish a direct connection over LAN
+	PeerStateConnectingInternetWait           = iota // Wait for other peer to start connecting over Internet
+	PeerStateConnectingInternet               = iota // Connect over internet or do Holepunching
+	PeerStateConnected                        = iota // Connected, handshaked and operating normally
+	PeerStateHandshaking                      = iota // Handshake requsted
+	PeerStateHandshakingFailed                = iota // Handshake procedure failed
+	PeerStateWaitingForwarder                 = iota // Forwarder was requested
+	PeerStateHandshakingForwarder             = iota // Forwarder has been received and we're trying to handshake it
+	PeerStateDisconnect                       = iota // We're disconnecting
+	PeerStateStop                             = iota // Peer has been stopped and now can be removed from list of peers
+	PeerStateHolePunching                     = iota // Peer is in a hole punching state
 )
 
 // Ping types
