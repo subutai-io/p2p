@@ -457,30 +457,31 @@ func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
 // Run is a main loop
 func (p *PeerToPeer) Run() {
 	go p.ReadDHTPeers()
-	go p.ReadProxies()
-	go func() {
-		for {
-			if p.Shutdown {
-				break
-			}
-			select {
-			// Handle STOP Command from DHT
-			case rm, r := <-p.Dht.RemovePeerChan:
-				if r {
-					if rm == "DUMMY" || rm == "" {
-						continue
-					}
-					err := p.markPeerForRemoval(rm, "Stop")
-					if err != nil {
-						Log(Error, "Failed to mark peer for removal: %s", err)
-					}
+	//go p.ReadProxies()
+	/*
+		go func() {
+			for {
+				if p.Shutdown {
+					break
 				}
-			default:
-				time.Sleep(100 * time.Millisecond)
+				select {
+				// Handle STOP Command from DHT
+				case rm, r := <-p.Dht.RemovePeerChan:
+					if r {
+						if rm == "DUMMY" || rm == "" {
+							continue
+						}
+						err := p.markPeerForRemoval(rm, "Stop")
+						if err != nil {
+							Log(Error, "Failed to mark peer for removal: %s", err)
+						}
+					}
+				default:
+					time.Sleep(100 * time.Millisecond)
+				}
 			}
-		}
-		Log(Info, "Stopping peer state listener")
-	}()
+			Log(Info, "Stopping peer state listener")
+		}()*/
 	go p.Dht.UpdatePeers()
 	for {
 		if p.Shutdown {
@@ -950,6 +951,10 @@ func (p *PeerToPeer) ReadDHTPeers() {
 		if p.Shutdown {
 			break
 		}
+		if p.Dht == nil {
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
 		select {
 		case peers, hasData := <-p.Dht.PeerChannel:
 			if hasData {
@@ -962,6 +967,36 @@ func (p *PeerToPeer) ReadDHTPeers() {
 				if peer != nil {
 					peer.RemoteState = state.State
 					p.Peers.Update(state.ID, peer)
+				}
+			}
+		case proxy, pr := <-p.Dht.ProxyChannel:
+			if pr {
+				exists := false
+				peers := p.Peers.Get()
+				for i, peer := range peers {
+					if i == proxy.DestinationID {
+						peer.SetState(PeerStateHandshakingForwarder, p)
+						peer.Forwarder = proxy.Addr
+						peer.Endpoint = proxy.Addr
+						p.Peers.Update(i, peer)
+					}
+				}
+				if !exists {
+					Log(Info, "Received forwarder for unknown peer")
+					p.Dht.SendUpdateRequest()
+				}
+
+			} else {
+				Log(Trace, "Closed channel")
+			}
+		case rm, r := <-p.Dht.RemovePeerChan:
+			if r {
+				if rm == "DUMMY" || rm == "" {
+					continue
+				}
+				err := p.markPeerForRemoval(rm, "Stop")
+				if err != nil {
+					Log(Error, "Failed to mark peer for removal: %s", err)
 				}
 			}
 		default:
