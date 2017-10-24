@@ -27,8 +27,8 @@ type NetworkPeer struct {
 	StateHandlers  map[PeerState]StateHandlerCallback // List of callbacks for different peer states
 	ProxyBlacklist []*net.UDPAddr                     // Blacklist of proxies
 	ProxyRequests  int                                // Number of requests sent
-	LastError      string
-	ForceProxy     bool
+	LastError      string                             // Test of last error occured during state execution
+	ForceProxy     bool                               // Whether we are forced to use proxy or not
 }
 
 // Run is main loop for a peer
@@ -156,6 +156,7 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PeerToPeer) error {
 	// Otherwise we will failback to proxy
 	addr := np.KnownIPs[0]
 	punchStarted := time.Now()
+	np.Endpoint = addr
 	for {
 		isConnected := np.TestConnection(ptpc, addr)
 		if isConnected {
