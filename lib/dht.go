@@ -580,6 +580,7 @@ func (dht *DHTClient) Init(hash, routers string) error {
 	dht.State = DHTStateInitializing
 	dht.RemovePeerChan = make(chan string)
 	dht.PeerChannel = make(chan []PeerIP)
+	dht.StateChannel = make(chan RemotePeerState)
 	dht.ProxyChannel = make(chan Forwarder)
 	dht.NetworkHash = hash
 	dht.Routers = routers
@@ -669,6 +670,7 @@ func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan 
 	dht.RemovePeerChan = make(chan string)
 	dht.PeerChannel = make(chan []PeerIP)
 	dht.ProxyChannel = make(chan Forwarder)
+	dht.StateChannel = make(chan RemotePeerState)
 	dht = config
 	//dht.PeerChannel = peerChan
 	//dht.ProxyChannel = proxyChan
