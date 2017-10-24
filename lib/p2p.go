@@ -957,7 +957,7 @@ func (p *PeerToPeer) ReadDHTPeers() {
 			}
 		case state, s := <-p.Dht.StateChannel:
 			if s {
-				Log(Info, "Received remote state")
+				Log(Info, "Received remote state: %d", int(state.State))
 				peer := p.Peers.GetPeer(state.ID)
 				if peer != nil {
 					peer.RemoteState = state.State
