@@ -13,24 +13,25 @@ type StateHandlerCallback func(ptpc *PeerToPeer) error
 
 // NetworkPeer represents a peer
 type NetworkPeer struct {
-	ID             string                             // ID of a peer
-	ProxyID        int                                // ID of the proxy
-	Forwarder      *net.UDPAddr                       // Forwarder address
-	PeerAddr       *net.UDPAddr                       // Address of peer
-	PeerLocalIP    net.IP                             // IP of peers interface. TODO: Rename to IP
-	PeerHW         net.HardwareAddr                   // Hardware address of peer interface. TODO: Rename to Mac
-	Endpoint       *net.UDPAddr                       // Endpoint address of a peer. TODO: Make this net.UDPAddr
-	KnownIPs       []*net.UDPAddr                     // List of IP addresses that accepts connection on peer
-	Retries        int                                // Number of introduction retries
-	State          PeerState                          // State of a peer
-	RemoteState    PeerState                          // State of remote peer
-	LastContact    time.Time                          // Last ping with this peer
-	PingCount      int                                // Number of pings messages sent without response
-	StateHandlers  map[PeerState]StateHandlerCallback // List of callbacks for different peer states
-	ProxyBlacklist []*net.UDPAddr                     // Blacklist of proxies
-	ProxyRequests  int                                // Number of requests sent
-	LastError      string                             // Test of last error occured during state execution
-	ForceProxy     bool                               // Whether we are forced to use proxy or not
+	ID                 string                             // ID of a peer
+	ProxyID            int                                // ID of the proxy
+	Forwarder          *net.UDPAddr                       // Forwarder address
+	PeerAddr           *net.UDPAddr                       // Address of peer
+	PeerLocalIP        net.IP                             // IP of peers interface. TODO: Rename to IP
+	PeerHW             net.HardwareAddr                   // Hardware address of peer interface. TODO: Rename to Mac
+	Endpoint           *net.UDPAddr                       // Endpoint address of a peer. TODO: Make this net.UDPAddr
+	KnownIPs           []*net.UDPAddr                     // List of IP addresses that accepts connection on peer
+	Retries            int                                // Number of introduction retries
+	State              PeerState                          // State of a peer
+	RemoteState        PeerState                          // State of remote peer
+	LastContact        time.Time                          // Last ping with this peer
+	PingCount          int                                // Number of pings messages sent without response
+	StateHandlers      map[PeerState]StateHandlerCallback // List of callbacks for different peer states
+	ProxyBlacklist     []*net.UDPAddr                     // Blacklist of proxies
+	ProxyRequests      int                                // Number of requests sent
+	LastError          string                             // Test of last error occured during state execution
+	ForceProxy         bool                               // Whether we are forced to use proxy or not
+	TestPacketReceived bool                               // Whether or not test packet were received
 }
 
 func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
@@ -102,6 +103,7 @@ func (np *NetworkPeer) StateInit(ptpc *PeerToPeer) error {
 	// Send request about IPs of a peer
 	Log(Info, "Initializing new peer: %s", np.ID)
 	ptpc.Dht.RequestPeerIPs(np.ID)
+	np.TestPacketReceived = false
 	np.SetState(PeerStateRequestedIP, ptpc)
 	return nil
 }
@@ -188,6 +190,7 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PeerToPeer) error {
 	}
 	// If forward mode was activated - skip direct connection attempts
 	if ptpc.ForwardMode || np.ForceProxy {
+		Log(Info, "Forcing switch to proxy usage")
 		np.SetPeerAddr()
 		np.SetState(PeerStateWaitingForwarder, ptpc)
 		return nil
@@ -216,7 +219,11 @@ func (np *NetworkPeer) StateConnectingInternetWait(ptpc *PeerToPeer) error {
 			return nil
 		}
 		if np.RemoteState == PeerStateConnectingInternetWait || np.RemoteState == PeerStateConnectingInternet {
-			Log(Info, "Second peer joined required state")
+			newState := "Waiting for internet connection"
+			if np.RemoteState == PeerStateConnectingInternet {
+				newState = "Connecting over internet"
+			}
+			Log(Info, "Second peer joined required state: %s", newState)
 			np.SetState(PeerStateConnectingInternet, ptpc)
 			break
 		}
@@ -238,25 +245,48 @@ func (np *NetworkPeer) StateConnectingInternet(ptpc *PeerToPeer) error {
 	// behind NAT we should connect to it successfully
 	// Otherwise we will failback to proxy
 	addr := np.KnownIPs[0]
-	punchStarted := time.Now()
 	np.Endpoint = addr
-	for {
-		isConnected := np.TestConnection(ptpc, addr)
-		if isConnected {
-			np.PeerAddr = np.Endpoint
-			Log(Info, "Connected with %s over Internet", np.ID)
-			np.SetState(PeerStateHandshaking, ptpc)
-			return nil
-		}
-		time.Sleep(100 * time.Millisecond)
-		passed := time.Since(punchStarted)
-		if passed > time.Duration(15*time.Second) {
-			break
-		}
+	Log(Info, "Attempting to connect with %s over Internet", np.ID)
+	//isConnected := np.TestConnection(ptpc, addr)
+	success := np.holePunch(addr, ptpc)
+	if success {
+		np.PeerAddr = np.Endpoint
+		Log(Info, "Connected with %s over Internet", np.ID)
+		np.SetState(PeerStateHandshaking, ptpc)
+		return nil
 	}
 	np.SetPeerAddr()
 	np.SetState(PeerStateWaitingForwarder, ptpc)
-	return fmt.Errorf("Direct connection with %s failed", np.ID)
+	return fmt.Errorf("Internet connection with %s failed", np.ID)
+}
+
+func (np *NetworkPeer) holePunch(endpoint *net.UDPAddr, ptpc *PeerToPeer) bool {
+	Log(Info, "Starting UDP hole punching to %s", endpoint.String())
+	if endpoint == nil {
+		Log(Error, "Endpoint is not set")
+		return false
+	}
+	msg := CreateTestP2PMessage(ptpc.Crypter, ptpc.Dht.ID, 0)
+	packet := msg.Serialize()
+
+	punchStarted := time.Now()
+	for {
+		if np.TestPacketReceived {
+			np.TestPacketReceived = false
+			return true
+		}
+		_, err := ptpc.UDPSocket.SendRawBytes(packet, endpoint)
+		if err != nil {
+			Log(Error, "Failed to send data: %s", err)
+		}
+		passed := time.Since(punchStarted)
+		if passed > time.Duration(15*time.Second) {
+			Log(Warning, "Stopping UDP hole punching to %s after timeout", endpoint.String())
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return false
 }
 
 // StateConnected is executed when connection was established and peer is operating normally
@@ -446,7 +476,10 @@ func (np *NetworkPeer) BlacklistCurrentProxy(ptpc *PeerToPeer) {
 
 // TestConnection method tests connection with specified endpoint
 func (np *NetworkPeer) TestConnection(ptpc *PeerToPeer, endpoint *net.UDPAddr) bool {
-	msg := CreateTestP2PMessage(ptpc.Crypter, "TEST", 0)
+	if endpoint == nil || ptpc == nil {
+		return false
+	}
+	msg := CreateTestP2PMessage(ptpc.Crypter, ptpc.Dht.ID, 0)
 	conn, err := net.DialUDP("udp4", nil, endpoint)
 	defer conn.Close()
 	if err != nil {
@@ -459,7 +492,7 @@ func (np *NetworkPeer) TestConnection(ptpc *PeerToPeer, endpoint *net.UDPAddr) b
 		return false
 	}
 	t := time.Now()
-	t = t.Add(500 * time.Millisecond)
+	t = t.Add(1500 * time.Millisecond)
 	conn.SetReadDeadline(t)
 	// TODO: Check if it was real TEST message
 	for {

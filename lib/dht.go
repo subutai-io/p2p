@@ -499,7 +499,6 @@ func (dht *DHTClient) HandleState(data DHTMessage, conn *net.UDPConn) {
 		return
 	}
 	state.State = PeerState(numericState)
-	Log(Info, "Received state from %s: %s", state.ID, data.Query)
 	dht.StateChannel <- state
 }
 
