@@ -499,11 +499,13 @@ func (dht *DHTClient) HandleState(data DHTMessage, conn *net.UDPConn) {
 		return
 	}
 	state.State = PeerState(numericState)
+	Log(Info, "Received state from %s: %s", state.ID, data.Query)
 	dht.StateChannel <- state
 }
 
 // ReportState will send specified state to DHT
 func (dht *DHTClient) ReportState(targetID, state string) {
+	Log(Info, "Reporting state %s to %s", state, targetID)
 	msg := dht.Compose(DhtCmdState, dht.ID, state, targetID)
 	dht.Send(msg)
 }

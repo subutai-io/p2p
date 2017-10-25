@@ -155,6 +155,9 @@ func (np *NetworkPeer) StateConnectingDirectlyWait(ptpc *PeerToPeer) error {
 	Log(Info, "Waiting for other peer to start connecting directly")
 	started := time.Now()
 	for {
+		if np.State != PeerStateConnectingDirectlyWait {
+			return nil
+		}
 		if np.RemoteState == PeerStateConnectingDirectlyWait || np.RemoteState == PeerStateConnectingDirectly {
 			Log(Info, "Second peer has joined required state")
 			np.SetState(PeerStateConnectingDirectly, ptpc)
@@ -209,6 +212,9 @@ func (np *NetworkPeer) StateConnectingInternetWait(ptpc *PeerToPeer) error {
 	Log(Info, "Waiting for other peer to start connecting over Internet")
 	started := time.Now()
 	for {
+		if np.State != PeerStateConnectingInternetWait {
+			return nil
+		}
 		if np.RemoteState == PeerStateConnectingInternetWait || np.RemoteState == PeerStateConnectingInternet {
 			Log(Info, "Second peer joined required state")
 			np.SetState(PeerStateConnectingInternet, ptpc)
