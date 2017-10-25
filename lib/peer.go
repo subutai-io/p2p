@@ -41,6 +41,7 @@ func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
 	ptpc.Dht.ReportState(np.ID, stateStr)
 }
 
+// SetState modify local state of peer
 func (np *NetworkPeer) SetState(state PeerState, ptpc *PeerToPeer) {
 	np.State = state
 	np.reportState(ptpc)
@@ -154,6 +155,9 @@ func (np *NetworkPeer) StateConnectingDirectlyWait(ptpc *PeerToPeer) error {
 	Log(Info, "Waiting for other peer to start connecting directly")
 	started := time.Now()
 	for {
+		if np.State != PeerStateConnectingDirectlyWait {
+			return nil
+		}
 		if np.RemoteState == PeerStateConnectingDirectlyWait || np.RemoteState == PeerStateConnectingDirectly {
 			Log(Info, "Second peer has joined required state")
 			np.SetState(PeerStateConnectingDirectly, ptpc)
@@ -202,11 +206,15 @@ func (np *NetworkPeer) StateConnectingDirectly(ptpc *PeerToPeer) error {
 	return nil
 }
 
+// StateConnectingInternetWait will wait for this peer to join the same state
 func (np *NetworkPeer) StateConnectingInternetWait(ptpc *PeerToPeer) error {
 	// We don't want to do this for more than 5 minutes
 	Log(Info, "Waiting for other peer to start connecting over Internet")
 	started := time.Now()
 	for {
+		if np.State != PeerStateConnectingInternetWait {
+			return nil
+		}
 		if np.RemoteState == PeerStateConnectingInternetWait || np.RemoteState == PeerStateConnectingInternet {
 			Log(Info, "Second peer joined required state")
 			np.SetState(PeerStateConnectingInternet, ptpc)
@@ -222,6 +230,9 @@ func (np *NetworkPeer) StateConnectingInternetWait(ptpc *PeerToPeer) error {
 	return nil
 }
 
+// StateConnectingInternet will try to establish connection with peer over internet
+// and in case if direct connection is not possible (peer is behind NAT) it
+// will continue to send requests in a cycle (UDP Hole punching)
 func (np *NetworkPeer) StateConnectingInternet(ptpc *PeerToPeer) error {
 	// Try direct connection over the internet. If target host is not
 	// behind NAT we should connect to it successfully

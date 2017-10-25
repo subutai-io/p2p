@@ -363,6 +363,7 @@ func (dht *DHTClient) HandlePing(data DHTMessage, conn *net.UDPConn) {
 	}
 }
 
+// ForcePing will send ping response to DHT without any requests
 func (dht *DHTClient) ForcePing() {
 	msg := dht.Compose(DhtCmdPing, dht.ID, "", "")
 	dht.Send(msg)
@@ -498,11 +499,13 @@ func (dht *DHTClient) HandleState(data DHTMessage, conn *net.UDPConn) {
 		return
 	}
 	state.State = PeerState(numericState)
+	Log(Info, "Received state from %s: %s", state.ID, data.Query)
 	dht.StateChannel <- state
 }
 
 // ReportState will send specified state to DHT
 func (dht *DHTClient) ReportState(targetID, state string) {
+	Log(Info, "Reporting state %s to %s", state, targetID)
 	msg := dht.Compose(DhtCmdState, dht.ID, state, targetID)
 	dht.Send(msg)
 }
@@ -619,6 +622,7 @@ func (dht *DHTClient) setupCallbacks() {
 	dht.ResponseHandlers[DhtCmdError] = dht.HandleError
 }
 
+// Connect will establish connection to bootstrap nodes
 func (dht *DHTClient) Connect() error {
 	if len(dht.IPList) == 0 {
 		return fmt.Errorf("IP List is empty. Can't proceed with connection")
@@ -900,6 +904,7 @@ func (dht *DHTClient) CleanPeer(id string) error {
 	return fmt.Errorf("Specified peer was not found")
 }
 
+// Shutdown will turn DHT to shutdown state
 func (dht *DHTClient) Shutdown() {
 	dht.isShutdown = true
 }
