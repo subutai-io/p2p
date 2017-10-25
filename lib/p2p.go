@@ -533,6 +533,7 @@ func (p *PeerToPeer) Run() {
 			time.Sleep(time.Second * 3)
 			p.StartDHT(p.Hash, p.Routers)
 			p.Dht.SendIP(p.Interface.IP.To4().String(), p.Interface.Mask.String())
+			p.ReportIP(p.Interface.IP.To4().String(), p.Interface.Mask.String(), p.Interface.Name)
 			go p.Dht.UpdatePeers()
 		}
 	}
@@ -682,7 +683,7 @@ func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error
 	}
 	//var msgType MSG_TYPE = MSG_TYPE(msg.Header.Type)
 	// Decrypt message if crypter is active
-	if p.Crypter.Active && (msg.Header.Type == MsgTypeIntro || msg.Header.Type == MsgTypeNenc || msg.Header.Type == MsgTypeIntroReq) {
+	if p.Crypter.Active && (msg.Header.Type == MsgTypeIntro || msg.Header.Type == MsgTypeNenc || msg.Header.Type == MsgTypeIntroReq || msg.Header.Type == MsgTypeTest) {
 		var decErr error
 		msg.Data, decErr = p.Crypter.Decrypt(p.Crypter.ActiveKey.Key, msg.Data)
 		if decErr != nil {
@@ -872,12 +873,22 @@ func (p *PeerToPeer) HandleBadTun(msg *P2PMessage, srcAddr *net.UDPAddr) {
 // HandleTestMessage responses with a test message when another peer trying to
 // establish direct connection
 func (p *PeerToPeer) HandleTestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
-	response := CreateTestP2PMessage(p.Crypter, "TEST", 0)
+	response := CreateTestP2PMessage(p.Crypter, p.Dht.ID, 0)
 	_, err := p.UDPSocket.SendMessage(response, srcAddr)
 	if err != nil {
 		Log(Error, "Failed to respond to test message: %v", err)
 	}
-
+	// See if we have peer with this ID
+	id := string(msg.Data)
+	if len(id) != 36 {
+		Log(Error, "Malformed ID received during test: %s", id)
+		return
+	}
+	peer := p.Peers.GetPeer(id)
+	if peer != nil && (peer.State == PeerStateConnectingDirectly || peer.State == PeerStateConnectingInternet) {
+		peer.TestPacketReceived = true
+		p.Peers.Update(id, peer)
+	}
 }
 
 // SendTo sends a p2p packet by MAC address
@@ -962,11 +973,13 @@ func (p *PeerToPeer) ReadDHTChannels() {
 			}
 		case state, s := <-p.Dht.StateChannel:
 			if s {
-				Log(Info, "Received remote state: %d", int(state.State))
 				peer := p.Peers.GetPeer(state.ID)
 				if peer != nil {
 					peer.RemoteState = state.State
 					p.Peers.Update(state.ID, peer)
+				} else {
+					Log(Warning, "Received state of unknown peer. Updating peers")
+					p.Dht.SendUpdateRequest()
 				}
 			}
 		case proxy, pr := <-p.Dht.ProxyChannel:

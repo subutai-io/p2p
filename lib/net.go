@@ -342,6 +342,7 @@ type UDPReceivedCallback func(count int, src_addr *net.UDPAddr, err error, buff 
 
 // Listen is a main listener of a network traffic
 func (uc *Network) Listen(receivedCallback UDPReceivedCallback) {
+	Log(Info, "Started UDP listener")
 	for !uc.Disposed() {
 		n, src, err := uc.conn.ReadFromUDP(uc.inBuffer[:])
 		receivedCallback(n, src, err, uc.inBuffer[:])
