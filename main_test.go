@@ -6,23 +6,23 @@ import (
 )
 
 func TestStateRestore(t *testing.T) {
-	instances = make(map[string]instance)
-	var (
-		i1 instance
-		i2 instance
-	)
+	instances := make(map[string]*P2PInstance)
+	i1 := new(P2PInstance)
+	i2 := new(P2PInstance)
 	i1.Args.IP = "10.10.10.10"
 	i1.Args.Dev = "vptp1"
 	instances["1"] = i1
 	i2.Args.IP = "127.0.0.1"
 	i2.Args.Dev = "vptp2"
 	instances["2"] = i2
-	_, err := saveInstances("t.file")
+	daemon := new(Daemon)
+	daemon.Init("t.file")
+	_, err := daemon.Instances.SaveInstances("t.file")
 	if err != nil {
 		t.Errorf("%v", err)
 	}
 
-	loaded, err := loadInstances("t.file")
+	loaded, err := daemon.Instances.LoadInstances("t.file")
 	if err != nil {
 		t.Errorf("Failed to load instances: %v", err)
 	}
