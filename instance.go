@@ -99,7 +99,7 @@ func (p *InstanceList) Get() map[string]*P2PInstance {
 func (p *InstanceList) GetInstance(id string) *P2PInstance {
 	p.lock.RLock()
 	inst, exists := p.instances[id]
-	p.lock.Unlock()
+	p.lock.RUnlock()
 	if !exists {
 		return nil
 	}
