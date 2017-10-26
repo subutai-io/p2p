@@ -754,22 +754,15 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	Log(Info, "Introduction string from %s[%d]", srcAddr, msg.Header.ProxyID)
 	id, mac, ip := p.ParseIntroString(string(msg.Data))
 	peer := p.Peers.GetPeer(id)
+	// Do nothing when handshaking already done
+	if peer.State == PeerStateConnected {
+		return
+	}
 	if peer == nil {
 		Log(Debug, "Received introduction confirmation from unknown peer: %s", id)
 		p.Dht.SendUpdateRequest()
 		return
 	}
-	/*
-		p.PeersLock.Lock()
-		peer, exists := p.NetworkPeers[id]
-		p.PeersLock.Unlock()
-		runtime.Gosched()
-
-		if !exists {
-			Log(Debug, "Received introduction confirmation from unknown peer: %s", id)
-			p.Dht.SendUpdateRequest()
-			return
-		}*/
 	if msg.Header.ProxyID > 0 && peer.ProxyID == 0 {
 		peer.ForceProxy = true
 		peer.PeerAddr = nil
@@ -777,26 +770,13 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 		peer.SetState(PeerStateInit, p)
 		peer.KnownIPs = peer.KnownIPs[:0]
 		p.Peers.Update(id, peer)
-		/*
-			p.PeersLock.Lock()
-			p.NetworkPeers[id] = peer
-			p.PeersLock.Unlock()
-			runtime.Gosched()*/
 		return
 	}
 	peer.PeerHW = mac
 	peer.PeerLocalIP = ip
-	peer.SetState(PeerStateConnected, p)
 	peer.LastContact = time.Now()
+	peer.SetState(PeerStateConnected, p)
 	p.Peers.Update(id, peer)
-	/*
-		p.PeersLock.Lock()
-		p.IPIDTable[ip.String()] = id
-		p.MACIDTable[mac.String()] = id
-		p.NetworkPeers[id] = peer
-		p.PeersLock.Unlock()
-		runtime.Gosched()
-	*/
 	Log(Info, "Connection with peer %s has been established", id)
 }
 
