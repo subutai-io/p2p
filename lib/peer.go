@@ -81,7 +81,6 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 			np.StateHandlers[PeerStateHandshakingFailed] = np.StateHandshakingFailed
 			np.StateHandlers[PeerStateDisconnect] = np.StateDisconnect
 			np.StateHandlers[PeerStateStop] = np.StateStop
-			np.StateHandlers[PeerStateHolePunching] = np.StateHolePunching
 		}
 		callback, exists := np.StateHandlers[np.State]
 		if !exists {
@@ -291,7 +290,22 @@ func (np *NetworkPeer) holePunch(endpoint *net.UDPAddr, ptpc *PeerToPeer) bool {
 
 // StateConnected is executed when connection was established and peer is operating normally
 func (np *NetworkPeer) StateConnected(ptpc *PeerToPeer) error {
-	if np.PingCount > 3 {
+	if np.RemoteState == PeerStateDisconnect {
+		Log(Info, "Peer %s started disconnect procedure", np.ID)
+		np.SetState(PeerStateDisconnect, ptpc)
+		return nil
+	}
+	if np.RemoteState == PeerStateStop {
+		Log(Info, "Peer %s has been stopped", np.ID)
+		np.SetState(PeerStateDisconnect, ptpc)
+		return nil
+	}
+	if np.RemoteState == PeerStateInit {
+		Log(Info, "Remote peer decided to reconnect", np.ID)
+		np.SetState(PeerStateInit, ptpc)
+		return nil
+	}
+	if np.PingCount > 15 {
 		np.LastError = "Disconnected by timeout"
 		np.SetState(PeerStateInit, ptpc)
 		np.PeerAddr = nil
@@ -313,31 +327,21 @@ func (np *NetworkPeer) StateConnected(ptpc *PeerToPeer) error {
 		ptpc.SendTo(np.PeerHW, msg)
 		np.PingCount++
 	}
-	time.Sleep(1 * time.Second)
 	return nil
 }
 
 // StateHandshaking is executed when we're waiting for handshake to complete
 func (np *NetworkPeer) StateHandshaking(ptpc *PeerToPeer) error {
 	Log(Info, "Sending handshake to %s", np.ID)
-	np.SendHandshake(ptpc)
 	handshakeSentAt := time.Now()
-	interval := time.Duration(time.Second * 3)
-	retries := 0
 	for np.State == PeerStateHandshaking {
 		passed := time.Since(handshakeSentAt)
-		if passed > interval {
-			if retries >= 3 {
-				np.LastError = "Failed to handshake"
-				Log(Error, "Failed to handshake with %s", np.ID)
-				np.SetState(PeerStateHandshakingFailed, ptpc)
-				return fmt.Errorf("Failed to handshake with %s", np.ID)
-			}
-			handshakeSentAt = time.Now()
-			np.SendHandshake(ptpc)
-			retries++
+		if passed > time.Duration(time.Second*14) {
+			np.SetState(PeerStateHandshakingFailed, ptpc)
+			return fmt.Errorf("Failed to handshake with peer %s", np.ID)
 		}
-		time.Sleep(time.Millisecond * 200)
+		np.SendHandshake(ptpc)
+		time.Sleep(time.Millisecond * 500)
 	}
 	return nil
 }
@@ -347,6 +351,7 @@ func (np *NetworkPeer) StateHandshaking(ptpc *PeerToPeer) error {
 // address
 func (np *NetworkPeer) StateWaitingForwarder(ptpc *PeerToPeer) error {
 	Log(Info, "Looking in a list of cached proxies")
+
 	for _, fwd := range ptpc.Dht.Forwarders {
 		if fwd.DestinationID == np.ID {
 			np.Forwarder = fwd.Addr
@@ -446,12 +451,6 @@ func (np *NetworkPeer) StateDisconnect(ptpc *PeerToPeer) error {
 
 // StateStop is executed when we've terminated connection with a peer
 func (np *NetworkPeer) StateStop(ptpc *PeerToPeer) error {
-	return nil
-}
-
-// StateHolePunching will try to do UDP hole punching
-func (np *NetworkPeer) StateHolePunching(ptpc *PeerToPeer) error {
-
 	return nil
 }
 

@@ -84,7 +84,6 @@ const (
 	PeerStateHandshakingForwarder             = iota // Forwarder has been received and we're trying to handshake it
 	PeerStateDisconnect                       = iota // We're disconnecting
 	PeerStateStop                             = iota // Peer has been stopped and now can be removed from list of peers
-	PeerStateHolePunching                     = iota // Peer is in a hole punching state
 )
 
 // Ping types
@@ -97,7 +96,7 @@ const (
 const (
 	DHTMaxRetries         int           = 10
 	DHCPMaxRetries        int           = 10
-	PeerPingTimeout       time.Duration = time.Second * 15
+	PeerPingTimeout       time.Duration = time.Second * 1
 	WaitProxyTimeout      time.Duration = time.Second * 5
 	HandshakeProxyTimeout time.Duration = time.Second * 3
 )
