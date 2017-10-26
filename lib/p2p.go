@@ -304,9 +304,6 @@ func (p *PeerToPeer) attemptPortForward(port uint16, name string) error {
 func (p *PeerToPeer) Init() {
 	p.Peers = new(PeerList)
 	p.Peers.Init()
-	//p.NetworkPeers = make(map[string]*NetworkPeer)
-	//p.IPIDTable = make(map[string]string)
-	//p.MACIDTable = make(map[string]string)
 }
 
 func (p *PeerToPeer) validateMac(mac string) net.HardwareAddr {
@@ -457,31 +454,6 @@ func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
 // Run is a main loop
 func (p *PeerToPeer) Run() {
 	go p.ReadDHTChannels()
-	//go p.ReadProxies()
-	/*
-		go func() {
-			for {
-				if p.Shutdown {
-					break
-				}
-				select {
-				// Handle STOP Command from DHT
-				case rm, r := <-p.Dht.RemovePeerChan:
-					if r {
-						if rm == "DUMMY" || rm == "" {
-							continue
-						}
-						err := p.markPeerForRemoval(rm, "Stop")
-						if err != nil {
-							Log(Error, "Failed to mark peer for removal: %s", err)
-						}
-					}
-				default:
-					time.Sleep(100 * time.Millisecond)
-				}
-			}
-			Log(Info, "Stopping peer state listener")
-		}()*/
 	go p.Dht.UpdatePeers()
 	for {
 		if p.Shutdown {
@@ -506,29 +478,10 @@ func (p *PeerToPeer) Run() {
 				break
 			}
 		}
-		/*
-			for i, peer := range p.NetworkPeers {
-				if peer.State == PeerStateStop {
-					Log(Info, "Removing peer %s", i)
-					time.Sleep(100 * time.Millisecond)
-					lip := peer.PeerLocalIP.String()
-					if peer.ID == p.IPIDTable[lip] {
-						delete(p.IPIDTable, lip)
-					}
-					delete(p.MACIDTable, peer.PeerHW.String())
-					delete(p.NetworkPeers, i)
-					err := p.Dht.CleanPeer(i)
-					if err != nil {
-						Log(Error, "Failed to remove peer from DHT: %s", err)
-					}
-					//runtime.Gosched()
-					Log(Info, "Remove complete")
-					break
-				}
-			}*/
 		passed := time.Since(p.Dht.LastDHTPing)
 		interval := time.Duration(time.Second * 45)
 		if passed > interval {
+			p.Dht.Shutdown()
 			Log(Error, "Lost connection to DHT")
 			time.Sleep(time.Second * 3)
 			p.StartDHT(p.Hash, p.Routers)
@@ -735,17 +688,6 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 				p.Peers.Update(i, peer)
 			}
 		}
-		/*
-			for i, peer := range p.NetworkPeers {
-				if peer.PeerHW.String() == string(msg.Data) {
-					peer.PingCount = 0
-					peer.LastContact = time.Now()
-					p.PeersLock.Lock()
-					p.NetworkPeers[i] = peer
-					p.PeersLock.Unlock()
-					runtime.Gosched()
-				}
-			}*/
 	}
 }
 
@@ -755,7 +697,7 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	id, mac, ip := p.ParseIntroString(string(msg.Data))
 	peer := p.Peers.GetPeer(id)
 	// Do nothing when handshaking already done
-	if peer.State == PeerStateConnected {
+	if peer.State != PeerStateHandshaking {
 		return
 	}
 	if peer == nil {
@@ -784,12 +726,6 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	id := string(msg.Data)
 	peer := p.Peers.GetPeer(id)
-	/*
-		p.PeersLock.Lock()
-		peer, exists := p.NetworkPeers[id]
-		p.PeersLock.Unlock()
-		runtime.Gosched()*/
-	//if !exists {
 	if peer == nil {
 		Log(Debug, "Introduction request came from unknown peer: %s", id)
 		p.Dht.SendUpdateRequest()
@@ -814,23 +750,11 @@ func (p *PeerToPeer) HandleProxyMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	peers := p.Peers.Get()
 	for i, peer := range peers {
 		if peer.PeerAddr.String() == ip {
-			peer.ProxyID = int(msg.Header.ProxyID)
+			peer.ProxyID = msg.Header.ProxyID
 			p.Peers.Update(i, peer)
 			return
 		}
 	}
-	/*
-		for key, peer := range p.NetworkPeers {
-			if peer.PeerAddr.String() == ip {
-				peer.ProxyID = int(msg.Header.ProxyID)
-				p.PeersLock.Lock()
-				p.NetworkPeers[key] = peer
-				p.PeersLock.Unlock()
-				runtime.Gosched()
-				return
-			}
-		}
-	*/
 	Log(Warning, "Can't set Tunnel#%d for %s: Can't find address", int(msg.Header.ProxyID), ip)
 }
 
@@ -838,7 +762,7 @@ func (p *PeerToPeer) HandleProxyMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 func (p *PeerToPeer) HandleBadTun(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	peers := p.Peers.Get()
 	for i, peer := range peers {
-		if peer.ProxyID == int(msg.Header.ProxyID) && peer.Endpoint.String() == srcAddr.String() {
+		if peer.ProxyID == msg.Header.ProxyID && peer.Endpoint.String() == srcAddr.String() {
 			Log(Debug, "Cleaning bad tunnel %d from %s", msg.Header.ProxyID, srcAddr.String())
 			peer.ProxyID = 0
 			peer.Endpoint = nil
