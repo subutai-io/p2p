@@ -249,7 +249,7 @@ func Start(rpcPort, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool,
 	args.TTL = ttl
 	args.Fwd = fwd
 	args.Port = port
-	err := client.Call("Procedures.Run", args, &response)
+	err := client.Call("Daemon.Run", args, &response)
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
@@ -272,7 +272,7 @@ func Stop(rpcPort, hash string) {
 		return
 	}
 	args.Hash = hash
-	err := client.Call("Procedures.Stop", args, &response)
+	err := client.Call("Daemon.Stop", args, &response)
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
@@ -298,7 +298,7 @@ func Show(rpcPort, hash, ip string, interfaces, all bool) {
 	args.IP = ip
 	args.Interfaces = interfaces
 	args.All = all
-	err := client.Call("Procedures.Show", args, &response)
+	err := client.Call("Daemon.Show", args, &response)
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
@@ -316,7 +316,7 @@ func ShowStatus(rpcPort string) {
 	client := Dial(rpcPort)
 	var response Response
 	args := &RunArgs{}
-	err := client.Call("Procedures.Status", args, &response)
+	err := client.Call("Daemon.Status", args, &response)
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
@@ -336,13 +336,13 @@ func Set(rpcPort, log, hash, keyfile, key, ttl string) {
 	var err error
 	if log != "" {
 		args := &NameValueArg{"log", log}
-		err = client.Call("Procedures.SetLog", args, &response)
+		err = client.Call("Daemon.SetLog", args, &response)
 	} else if key != "" {
 		args := &RunArgs{}
 		args.Key = key
 		args.TTL = ttl
 		args.Hash = hash
-		err = client.Call("Procedures.AddKey", args, &response)
+		err = client.Call("Daemon.AddKey", args, &response)
 	}
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
@@ -361,7 +361,7 @@ func Debug(rpcPort string) {
 	client := Dial(rpcPort)
 	var response Response
 	args := &Args{}
-	err := client.Call("Procedures.Debug", args, &response)
+	err := client.Call("Daemon.Debug", args, &response)
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
