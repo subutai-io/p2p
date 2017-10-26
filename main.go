@@ -138,7 +138,7 @@ func main() {
 		if argSyslog != "" {
 			ptp.SetSyslogSocket(argSyslog)
 		}
-		Daemon(argRPCPort, argsaveFile, argProfile)
+		ExecDaemon(argRPCPort, argsaveFile, argProfile)
 	case "start":
 		start.Parse(os.Args[2:])
 		Start(argRPCPort, argIP, argHash, argMac, argDev, argDht, argKeyfile, argKey, argTTL, argFwd, argPort)
@@ -371,17 +371,17 @@ func Debug(rpcPort string) {
 }
 
 // Daemon starts P2P daemon
-func Daemon(port, sFile, profiling string) {
+func ExecDaemon(port, sFile, profiling string) {
 	StartProfiling(profiling)
 	ptp.InitPlatform()
-	instances = make(map[string]instance)
 	ptp.InitErrors()
 
 	if !ptp.CheckPermissions() {
 		os.Exit(1)
 	}
 
-	proc := new(Procedures)
+	proc := new(Daemon)
+	proc.Init(sFile)
 	rpc.Register(proc)
 	rpc.HandleHTTP()
 	listen, err := net.Listen("tcp", "localhost:"+port)
@@ -391,10 +391,9 @@ func Daemon(port, sFile, profiling string) {
 	}
 
 	if sFile != "" {
-		saveFile = sFile
 		ptp.Log(ptp.Info, "Restore file provided")
 		// Try to restore from provided file
-		instances, err := loadInstances(saveFile)
+		instances, err := proc.Instances.LoadInstances(saveFile)
 		if err != nil {
 			ptp.Log(ptp.Error, "Failed to load instances: %v", err)
 		} else {
