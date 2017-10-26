@@ -22,7 +22,6 @@ var InterfaceNames []string
 
 // StartProfiling will create a .prof file to analyze p2p app performance
 func StartProfiling(profile string) {
-
 	pwd, err := os.Getwd()
 	if err != nil {
 		ptp.Log(ptp.Error, "Getwd() error : %v", err)
