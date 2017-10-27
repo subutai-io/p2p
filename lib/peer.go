@@ -270,6 +270,10 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 		np.SetState(PeerStateInit, ptpc)
 		return nil
 	}
+	if np.PeerHW == nil || np.PeerLocalIP == nil {
+		np.SetState(PeerStateHandshaking, ptpc)
+		return nil
+	}
 	if np.PingCount > 15 {
 		np.LastError = "Disconnected by timeout"
 		np.SetState(PeerStateInit, ptpc)
