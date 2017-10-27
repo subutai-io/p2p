@@ -714,6 +714,14 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 		p.Peers.Update(id, peer)
 		return
 	}
+	if mac == nil {
+		Log(Error, "Received empty MAC address. Skipping")
+		return
+	}
+	if ip == nil {
+		Log(Error, "No IP received. Skipping")
+		return
+	}
 	peer.PeerHW = mac
 	peer.PeerLocalIP = ip
 	peer.LastContact = time.Now()
