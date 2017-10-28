@@ -77,6 +77,7 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 			np.stateHandlers[PeerStateConnected] = np.stateConnected
 			np.stateHandlers[PeerStateHandshaking] = np.stateHandshaking
 			np.stateHandlers[PeerStateWaitingForwarder] = np.stateWaitingForwarder
+			np.stateHandlers[PeerStateWaitingForwarderFailed] = np.stateWaitingForwarderFailed
 			np.stateHandlers[PeerStateHandshakingForwarder] = np.stateHandshakingForwarder
 			np.stateHandlers[PeerStateHandshakingFailed] = np.stateHandshakingFailed
 			np.stateHandlers[PeerStateDisconnect] = np.stateDisconnect
@@ -102,6 +103,12 @@ func (np *NetworkPeer) stateInit(ptpc *PeerToPeer) error {
 	// Send request about IPs of a peer
 	Log(Info, "Initializing new peer: %s", np.ID)
 	ptpc.Dht.RequestPeerIPs(np.ID)
+	np.KnownIPs = np.KnownIPs[:0]
+	// Do some variables cleanup
+	np.Endpoint = nil
+	np.PeerAddr = nil
+	np.PeerHW = nil
+	np.PeerLocalIP = nil
 	np.TestPacketReceived = false
 	np.SetState(PeerStateRequestedIP, ptpc)
 	np.ConnectionAttempts++
@@ -346,15 +353,7 @@ func (np *NetworkPeer) stateWaitingForwarder(ptpc *PeerToPeer) error {
 			return nil
 		}
 	}
-	if np.ProxyRequests >= 3 {
-		np.LastError = "No more proxies for this peer"
-		Log(Info, "We've failed to receive any proxies within this period")
-		np.SetState(PeerStateInit, ptpc)
-		ptpc.Dht.CleanForwarderBlacklist()
-		np.ProxyBlacklist = np.ProxyBlacklist[:0]
-		np.ProxyRequests = 0
-		return nil
-	}
+
 	Log(Info, "Requesting proxy for %s", np.ID)
 	np.RequestForwarder(ptpc)
 	waitStart := time.Now()
@@ -362,12 +361,20 @@ func (np *NetworkPeer) stateWaitingForwarder(ptpc *PeerToPeer) error {
 		time.Sleep(time.Millisecond * 100)
 		passed := time.Since(waitStart)
 		if passed > WaitProxyTimeout {
-			np.ProxyRequests++
+			np.SetState(PeerStateWaitingForwarderFailed, ptpc)
 			np.LastError = "No forwarders received"
 			return fmt.Errorf("No proxy were received for %s", np.ID)
 		}
 	}
 	np.SetState(PeerStateHandshakingForwarder, ptpc)
+	return nil
+}
+
+func (np *NetworkPeer) stateWaitingForwarderFailed(ptpc *PeerToPeer) error {
+	Log(Info, "Didn't received any proxies")
+	np.SetState(PeerStateInit, ptpc)
+	ptpc.Dht.CleanForwarderBlacklist()
+	np.ProxyBlacklist = np.ProxyBlacklist[:0]
 	return nil
 }
 

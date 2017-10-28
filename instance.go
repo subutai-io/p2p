@@ -432,17 +432,25 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 	for _, inst := range instances {
 		resp.Output += fmt.Sprintf("Hash: %s\n", inst.ID)
 		resp.Output += fmt.Sprintf("ID: %s\n", inst.PTP.Dht.ID)
+		resp.Output += fmt.Sprintf("UDP Port: %d\n", inst.PTP.UDPSocket.GetPort())
 		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", inst.PTP.Interface.Name, inst.PTP.Interface.Mac.String(), inst.PTP.Interface.IP.String())
 		resp.Output += fmt.Sprintf("Peers:\n")
 
 		peers := inst.PTP.Peers.Get()
 		for _, peer := range peers {
 			resp.Output += fmt.Sprintf("\t--- %s ---\n", peer.ID)
-			resp.Output += fmt.Sprintf("\t\tHWAddr: %s\n", peer.PeerHW.String())
-			resp.Output += fmt.Sprintf("\t\tIP: %s\n", peer.PeerLocalIP.String())
-			resp.Output += fmt.Sprintf("\t\tEndpoint: %s\n", peer.Endpoint)
-			resp.Output += fmt.Sprintf("\t\tPeer Address: %s\n", peer.PeerAddr.String())
-			resp.Output += fmt.Sprintf("\t\tProxy ID: %d\n", peer.ProxyID)
+			if peer.PeerLocalIP == nil {
+				resp.Output += "\t\tNo IP assigned\n"
+
+			} else if peer.PeerHW == nil {
+				resp.Output += "\t\tNo MAC assigned\n"
+			} else {
+				resp.Output += fmt.Sprintf("\t\tHWAddr: %s\n", peer.PeerHW.String())
+				resp.Output += fmt.Sprintf("\t\tIP: %s\n", peer.PeerLocalIP.String())
+				resp.Output += fmt.Sprintf("\t\tEndpoint: %s\n", peer.Endpoint)
+				resp.Output += fmt.Sprintf("\t\tPeer Address: %s\n", peer.PeerAddr.String())
+				resp.Output += fmt.Sprintf("\t\tProxy ID: %d\n", peer.ProxyID)
+			}
 			resp.Output += fmt.Sprintf("\t--- End of %s ---\n", peer.ID)
 		}
 	}
