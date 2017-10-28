@@ -81,6 +81,7 @@ const (
 	PeerStateHandshaking                      = iota // Handshake requsted
 	PeerStateHandshakingFailed                = iota // Handshake procedure failed
 	PeerStateWaitingForwarder                 = iota // Forwarder was requested
+	PeerStateWaitingForwarderFailed           = iota // Didn't received any forwarders
 	PeerStateHandshakingForwarder             = iota // Forwarder has been received and we're trying to handshake it
 	PeerStateDisconnect                       = iota // We're disconnecting
 	PeerStateStop                             = iota // Peer has been stopped and now can be removed from list of peers

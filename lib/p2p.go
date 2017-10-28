@@ -682,10 +682,11 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 		// Handle PING response
 		peers := p.Peers.Get()
 		for i, peer := range peers {
-			if peer.PeerHW.String() == string(msg.Data) {
+			if peer.PeerHW != nil && peer.PeerHW.String() == string(msg.Data) {
 				peer.PingCount = 0
 				peer.LastContact = time.Now()
 				p.Peers.Update(i, peer)
+				break
 			}
 		}
 	}
