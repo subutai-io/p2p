@@ -2,6 +2,10 @@
 *.swp
 *.swo
 
+# vscode
+.vscode
+debug
+
 # Build
 config.make
 main

@@ -57,6 +57,7 @@ type NetworkPeerState struct {
 // Run is main loop for a peer
 func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 	var initialize = false
+	np.ConnectionAttempts = 0
 	for {
 		if np.State == PeerStateStop {
 			Log(Info, "Stopping peer %s", np.ID)
@@ -568,6 +569,8 @@ func (np *NetworkPeer) SendProxyHandshake(ptpc *PeerToPeer) error {
 }
 
 func (np *NetworkPeer) holePunch(endpoint *net.UDPAddr, ptpc *PeerToPeer) bool {
+	ptpc.HolePunching.Lock()
+	defer ptpc.HolePunching.Unlock()
 	Log(Info, "Starting UDP hole punching to %s", endpoint.String())
 	if endpoint == nil {
 		Log(Error, "Endpoint is not set")
