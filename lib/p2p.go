@@ -27,26 +27,24 @@ type NetworkInterface struct {
 
 // PeerToPeer - Main structure
 type PeerToPeer struct {
-	IPTool  string `yaml:"iptool"`  // Network interface configuration tool
-	AddTap  string `yaml:"addtap"`  // Path to addtap.bat
-	InfFile string `yaml:"inffile"` // Path to deltap.bat
-	//NetworkPeers    map[string]*NetworkPeer              // Knows peers
-	UDPSocket   *Network   // Peer-to-peer interconnection socket
-	LocalIPs    []net.IP   // List of IPs available in the system
-	Dht         *DHTClient // DHT Client
-	Crypter     Crypto     // Cryptography subsystem
-	Shutdown    bool       // Set to true when instance in shutdown mode
-	ForwardMode bool       // Skip local peer discovery
-	ReadyToStop bool       // Set to true when instance is ready to stop
-	//IPIDTable       map[string]string                    // Mapping for IP->ID
-	//MACIDTable      map[string]string                    // Mapping for MAC->ID
+	IPTool          string                               `yaml:"iptool"`  // Network interface configuration tool
+	AddTap          string                               `yaml:"addtap"`  // Path to addtap.bat
+	InfFile         string                               `yaml:"inffile"` // Path to deltap.bat
+	UDPSocket       *Network                             // Peer-to-peer interconnection socket
+	LocalIPs        []net.IP                             // List of IPs available in the system
+	Dht             *DHTClient                           // DHT Client
+	Crypter         Crypto                               // Cryptography subsystem
+	Shutdown        bool                                 // Set to true when instance in shutdown mode
+	ForwardMode     bool                                 // Skip local peer discovery
+	ReadyToStop     bool                                 // Set to true when instance is ready to stop
 	MessageHandlers map[uint16]MessageHandler            // Callbacks for network packets
 	PacketHandlers  map[PacketType]PacketHandlerCallback // Callbacks for packets received by TAP interface
 	PeersLock       sync.Mutex                           // Lock for peers map
 	Hash            string                               // Infohash for this instance
 	Routers         string                               // Comma-separated list of Bootstrap nodes
 	Interface       NetworkInterface                     // TAP Interface
-	Peers           *PeerList
+	Peers           *PeerList                            // Known peers
+	HolePunching    sync.Mutex                           // Mutex for hole punching sync
 }
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
