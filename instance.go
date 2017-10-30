@@ -34,27 +34,84 @@ type ShowArgs struct {
 	All        bool
 }
 
-type instance struct {
+// P2PInstance is a holder for P2P instances started by daemon
+type P2PInstance struct {
 	PTP  *ptp.PeerToPeer
 	ID   string
 	Args RunArgs
 }
 
 var (
-	instances     map[string]instance
-	saveFile      string
-	instances_mut sync.Mutex
-	usedIPs       []string
+	saveFile string
+	usedIPs  []string
 )
 
-func encodeInstances() ([]byte, error) {
+type InstOperation int
+
+// Type of instance operations
+const (
+	InstWrite  InstOperation = 0
+	InstDelete InstOperation = 1
+)
+
+type InstanceList struct {
+	instances map[string]*P2PInstance
+	lock      sync.RWMutex
+}
+
+func (p *InstanceList) operate(action InstOperation, id string, inst *P2PInstance) error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	if action == InstWrite {
+		p.instances[id] = inst
+	} else if action == InstDelete {
+		_, exists := p.instances[id]
+		if !exists {
+			return fmt.Errorf("Specified instance has not been found")
+		}
+		delete(p.instances, id)
+	}
+	return nil
+}
+
+func (p *InstanceList) Init() {
+	p.instances = make(map[string]*P2PInstance)
+}
+
+func (p *InstanceList) Update(id string, inst *P2PInstance) error {
+	return p.operate(InstWrite, id, inst)
+}
+
+func (p *InstanceList) Delete(id string) error {
+	return p.operate(InstDelete, id, nil)
+}
+
+func (p *InstanceList) Get() map[string]*P2PInstance {
+	result := make(map[string]*P2PInstance)
+	p.lock.RLock()
+	for id, inst := range p.instances {
+		result[id] = inst
+	}
+	p.lock.RUnlock()
+	return result
+}
+
+func (p *InstanceList) GetInstance(id string) *P2PInstance {
+	p.lock.RLock()
+	inst, exists := p.instances[id]
+	p.lock.RUnlock()
+	if !exists {
+		return nil
+	}
+	return inst
+}
+
+func (p *InstanceList) EncodeInstances() ([]byte, error) {
 	var savedInstances []RunArgs
-	instances_mut.Lock()
+	instances := p.Get()
 	for _, inst := range instances {
 		savedInstances = append(savedInstances, inst.Args)
 	}
-	instances_mut.Unlock()
-	runtime.Gosched()
 	b := bytes.Buffer{}
 	e := gob.NewEncoder(&b)
 	err := e.Encode(savedInstances)
@@ -65,7 +122,7 @@ func encodeInstances() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func decodeInstances(data []byte) ([]RunArgs, error) {
+func (p *InstanceList) DecodeInstances(data []byte) ([]RunArgs, error) {
 	var args []RunArgs
 	b := bytes.Buffer{}
 	b.Write(data)
@@ -76,18 +133,16 @@ func decodeInstances(data []byte) ([]RunArgs, error) {
 
 // Calls encodeInstances() and saves results into specified file
 // Return number of bytes written and error if any
-func saveInstances(filename string) (int, error) {
+func (p *InstanceList) SaveInstances(filename string) (int, error) {
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0700)
 	if err != nil {
 		return 0, err
 	}
 	defer file.Close()
-
-	data, err := encodeInstances()
+	data, err := p.EncodeInstances()
 	if err != nil {
 		return 0, err
 	}
-
 	s, err := file.Write(data)
 	if err != nil {
 		return s, err
@@ -95,7 +150,7 @@ func saveInstances(filename string) (int, error) {
 	return s, nil
 }
 
-func loadInstances(filename string) ([]RunArgs, error) {
+func (p *InstanceList) LoadInstances(filename string) ([]RunArgs, error) {
 	var loadedInstances []RunArgs
 	file, err := os.Open(filename)
 	if err != nil {
@@ -108,7 +163,7 @@ func loadInstances(filename string) ([]RunArgs, error) {
 		return loadedInstances, err
 	}
 
-	loadedInstances, err = decodeInstances(data)
+	loadedInstances, err = p.DecodeInstances(data)
 	return loadedInstances, err
 }
 
@@ -136,10 +191,19 @@ type Response struct {
 }
 
 // Procedures is an object of RPC procedures
-type Procedures int
+type Daemon struct {
+	Instances *InstanceList
+	SaveFile  string
+}
+
+func (p *Daemon) Init(saveFile string) {
+	p.Instances = new(InstanceList)
+	p.Instances.Init()
+	p.SaveFile = saveFile
+}
 
 // SetLog modifies specific option
-func (p *Procedures) SetLog(args *NameValueArg, resp *Response) error {
+func (p *Daemon) SetLog(args *NameValueArg, resp *Response) error {
 	ptp.Log(ptp.Info, "Setting option %s to %s", args.Name, args.Value)
 	resp.ExitCode = 0
 	if args.Name == "log" {
@@ -168,7 +232,7 @@ func (p *Procedures) SetLog(args *NameValueArg, resp *Response) error {
 }
 
 // AddKey adds a new crypto-key
-func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
+func (p *Daemon) AddKey(args *RunArgs, resp *Response) error {
 	resp.ExitCode = 0
 	if args.Hash == "" {
 		resp.ExitCode = 1
@@ -178,57 +242,48 @@ func (p *Procedures) AddKey(args *RunArgs, resp *Response) error {
 		resp.ExitCode = 1
 		resp.Output = "You have not specified key"
 	}
-	instances_mut.Lock()
-	_, exists := instances[args.Hash]
-	if !exists {
+	inst := p.Instances.GetInstance(args.Hash)
+	if inst == nil {
 		resp.ExitCode = 1
 		resp.Output = "No instances with specified hash were found"
 	}
 	if resp.ExitCode == 0 {
 		resp.Output = "New key added"
 		var newKey ptp.CryptoKey
-		newKey = instances[args.Hash].PTP.Crypter.EnrichKeyValues(newKey, args.Key, args.TTL)
-		instances[args.Hash].PTP.Crypter.Keys = append(instances[args.Hash].PTP.Crypter.Keys, newKey)
+
+		newKey = inst.PTP.Crypter.EnrichKeyValues(newKey, args.Key, args.TTL)
+		inst.PTP.Crypter.Keys = append(inst.PTP.Crypter.Keys, newKey)
+		p.Instances.Update(args.Hash, inst)
 	}
-	instances_mut.Unlock()
-	runtime.Gosched()
 	return nil
 }
 
 // Execute is a dummy method used for tests
-func (p *Procedures) Execute(args *Args, resp *Response) error {
+func (p *Daemon) Execute(args *Args, resp *Response) error {
 	resp.ExitCode = 0
 	resp.Output = ""
 	return nil
 }
 
 // Run starts a P2P instance
-func (p *Procedures) Run(args *RunArgs, resp *Response) error {
+func (p *Daemon) Run(args *RunArgs, resp *Response) error {
 	resp.ExitCode = 0
 	resp.Output = "Running new P2P instance for " + args.Hash + "\n"
 
 	// Validate if interface name is unique
 	if args.Dev != "" {
-		instances_mut.Lock()
+		instances := p.Instances.Get()
 		for _, inst := range instances {
 			if inst.PTP.Interface.Name == args.Dev {
 				resp.ExitCode = 1
 				resp.Output = "Device name is already in use"
-				instances_mut.Unlock()
-				runtime.Gosched()
 				return errors.New(resp.Output)
 			}
 		}
-		instances_mut.Unlock()
-		runtime.Gosched()
 	}
 
-	var exists bool
-	instances_mut.Lock()
-	_, exists = instances[args.Hash]
-	instances_mut.Unlock()
-	runtime.Gosched()
-	if !exists {
+	inst := p.Instances.GetInstance(args.Hash)
+	if inst == nil {
 		resp.Output = resp.Output + "Lookup finished\n"
 		if args.Key != "" {
 			if len(args.Key) < 16 {
@@ -242,11 +297,11 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 			}
 		}
 
-		var newInst instance
+		newInst := new(P2PInstance)
 		newInst.ID = args.Hash
 		newInst.Args = *args
-		ptpInstance := ptp.StartP2PInstance(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port, usedIPs)
-		if ptpInstance == nil {
+		newInst.PTP = ptp.StartP2PInstance(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port, usedIPs)
+		if newInst.PTP == nil {
 			resp.Output = resp.Output + "Failed to create P2P Instance"
 			resp.ExitCode = 1
 			return errors.New("Failed to create P2P Instance")
@@ -255,25 +310,22 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 		// Saving interface name
 		infFound := false
 		for _, inf := range InterfaceNames {
-			if inf == ptpInstance.Interface.Name {
+			if inf == newInst.PTP.Interface.Name {
 				infFound = true
 			}
 		}
-		if !infFound && ptpInstance.Interface.Name != "" {
-			InterfaceNames = append(InterfaceNames, ptpInstance.Interface.Name)
+		if !infFound && newInst.PTP.Interface.Name != "" {
+			InterfaceNames = append(InterfaceNames, newInst.PTP.Interface.Name)
 		}
 
-		usedIPs = append(usedIPs, ptpInstance.Interface.IP.String())
+		usedIPs = append(usedIPs, newInst.PTP.Interface.IP.String())
 		ptp.Log(ptp.Info, "Instance created")
-		newInst.PTP = ptpInstance
-		instances_mut.Lock()
-		instances[args.Hash] = newInst
-		instances_mut.Unlock()
-		runtime.Gosched()
-		go ptpInstance.Run()
-		if saveFile != "" {
+		p.Instances.Update(args.Hash, newInst)
+
+		go newInst.PTP.Run()
+		if p.SaveFile != "" {
 			resp.Output = resp.Output + "Saving instance into file"
-			saveInstances(saveFile)
+			p.Instances.SaveInstances(p.SaveFile)
 		}
 	} else {
 		resp.Output = resp.Output + "Hash already in use\n"
@@ -282,24 +334,18 @@ func (p *Procedures) Run(args *RunArgs, resp *Response) error {
 }
 
 // Stop is used to terminate a specific P2P instance
-func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
+func (p *Daemon) Stop(args *StopArgs, resp *Response) error {
 	resp.ExitCode = 0
-	var exists bool
-	instances_mut.Lock()
-	_, exists = instances[args.Hash]
-	if !exists {
+	inst := p.Instances.GetInstance(args.Hash)
+	if inst == nil {
 		resp.ExitCode = 1
 		resp.Output = "Instance with hash " + args.Hash + " was not found"
-		instances_mut.Unlock()
-		runtime.Gosched()
 	} else {
-		ip := instances[args.Hash].PTP.Interface.IP.String()
+		ip := inst.PTP.Interface.IP.String()
 		resp.Output = "Shutting down " + args.Hash
-		instances[args.Hash].PTP.StopInstance()
-		delete(instances, args.Hash)
-		instances_mut.Unlock()
-		runtime.Gosched()
-		saveInstances(saveFile)
+		inst.PTP.StopInstance()
+		p.Instances.Delete(args.Hash)
+		p.Instances.SaveInstances(p.SaveFile)
 		k := 0
 		for k, i := range usedIPs {
 			if i != ip {
@@ -313,61 +359,46 @@ func (p *Procedures) Stop(args *StopArgs, resp *Response) error {
 }
 
 // Show is used to output information about instances
-func (p *Procedures) Show(args *ShowArgs, resp *Response) error {
+func (p *Daemon) Show(args *ShowArgs, resp *Response) error {
 	if args.Hash != "" {
-		instances_mut.Lock()
-		swarm, exists := instances[args.Hash]
-		instances_mut.Unlock()
-		runtime.Gosched()
+		inst := p.Instances.GetInstance(args.Hash)
 		resp.ExitCode = 0
-		if exists {
-			peers := swarm.PTP.Peers.Get()
+		if inst != nil {
+			peers := inst.PTP.Peers.Get()
 			if args.IP != "" {
-				//swarm.PTP.PeersLock.Lock()
-				/*for _, peer := range swarm.PTP.NetworkPeers {*/
 				for _, peer := range peers {
 					if peer.PeerLocalIP.String() == args.IP {
 						if peer.State == ptp.PeerStateConnected {
 							resp.ExitCode = 0
 							resp.Output = "Integrated with " + args.IP
-							//swarm.PTP.PeersLock.Unlock()
-							//instances_mut.Unlock()
-							//runtime.Gosched()
 							return nil
 						}
 					}
 				}
-				//swarm.PTP.PeersLock.Unlock()
-				//runtime.Gosched()
 				resp.ExitCode = 1
 				resp.Output = "Not yet integrated with " + args.IP
 				return nil
 			}
 			resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
-			//swarm.PTP.PeersLock.Lock()
 			for _, peer := range peers {
 				resp.Output = resp.Output + peer.ID + "\t"
 				resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
 				resp.Output = resp.Output + peer.Endpoint.String() + "\t"
 				resp.Output = resp.Output + peer.PeerHW.String() + "\n"
 			}
-			//swarm.PTP.PeersLock.Unlock()
-			//runtime.Gosched()
 		} else {
 			resp.Output = "Specified environment was not found: " + args.Hash
 			resp.ExitCode = 1
 		}
 	} else if args.Interfaces {
 		if !args.All {
-			instances_mut.Lock()
+			instances := p.Instances.Get()
 			for _, inst := range instances {
 				if inst.PTP != nil {
 					resp.Output = resp.Output + inst.PTP.Interface.Name
 				}
 				resp.Output = resp.Output + "\n"
 			}
-			instances_mut.Unlock()
-			runtime.Gosched()
 		} else {
 			for _, inf := range InterfaceNames {
 				resp.Output = resp.Output + inf + "\n"
@@ -375,14 +406,11 @@ func (p *Procedures) Show(args *ShowArgs, resp *Response) error {
 		}
 	} else {
 		resp.ExitCode = 0
-		instances_mut.Lock()
+		instances := p.Instances.Get()
 		instLen := len(instances)
-		instances_mut.Unlock()
-		runtime.Gosched()
 		if instLen == 0 {
 			resp.Output = "No instances was found"
 		}
-		instances_mut.Lock()
 		for key, inst := range instances {
 			if inst.PTP != nil {
 				resp.Output = resp.Output + "\t" + inst.PTP.Interface.Mac.String() + "\t" + inst.PTP.Interface.IP.String() + "\t" + key
@@ -391,39 +419,31 @@ func (p *Procedures) Show(args *ShowArgs, resp *Response) error {
 			}
 			resp.Output = resp.Output + "\n"
 		}
-		instances_mut.Unlock()
-		runtime.Gosched()
 	}
 	return nil
 }
 
 // Debug output debug information
-func (p *Procedures) Debug(args *Args, resp *Response) error {
+func (p *Daemon) Debug(args *Args, resp *Response) error {
 	resp.Output = "DEBUG INFO:\n"
 	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())
 	resp.Output += fmt.Sprintf("Instances information:\n")
-	instances_mut.Lock()
-	for _, ins := range instances {
-		resp.Output += fmt.Sprintf("Hash: %s\n", ins.ID)
-		resp.Output += fmt.Sprintf("ID: %s\n", ins.PTP.Dht.ID)
-		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", ins.PTP.Interface.Name, ins.PTP.Interface.Mac.String(), ins.PTP.Interface.IP.String())
+	instances := p.Instances.Get()
+	for _, inst := range instances {
+		resp.Output += fmt.Sprintf("Hash: %s\n", inst.ID)
+		resp.Output += fmt.Sprintf("ID: %s\n", inst.PTP.Dht.ID)
+		resp.Output += fmt.Sprintf("UDP Port: %d\n", inst.PTP.UDPSocket.GetPort())
+		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", inst.PTP.Interface.Name, inst.PTP.Interface.Mac.String(), inst.PTP.Interface.IP.String())
 		resp.Output += fmt.Sprintf("Peers:\n")
-		// TODO: Rewrite this part
-		peers := ins.PTP.Peers.Get()
+
+		peers := inst.PTP.Peers.Get()
 		for _, peer := range peers {
 			resp.Output += fmt.Sprintf("\t--- %s ---\n", peer.ID)
-			resp.Output += fmt.Sprintf("\t\tHWAddr: %s\n", peer.PeerHW.String())
-			resp.Output += fmt.Sprintf("\t\tIP: %s\n", peer.PeerLocalIP.String())
-			resp.Output += fmt.Sprintf("\t\tEndpoint: %s\n", peer.Endpoint)
-			resp.Output += fmt.Sprintf("\t\tPeer Address: %s\n", peer.PeerAddr.String())
-			resp.Output += fmt.Sprintf("\t\tProxy ID: %d\n", peer.ProxyID)
-			resp.Output += fmt.Sprintf("\t--- End of %s ---\n", peer.ID)
-		}
-		/*for _, id := range ins.PTP.IPIDTable {
-			resp.Output += fmt.Sprintf("\t--- %s ---\n", id)
-			peer, exists := ins.PTP.NetworkPeers[id]
-			if !exists {
-				resp.Output += fmt.Sprintf("\tPeer was not integrated into network\n")
+			if peer.PeerLocalIP == nil {
+				resp.Output += "\t\tNo IP assigned\n"
+
+			} else if peer.PeerHW == nil {
+				resp.Output += "\t\tNo MAC assigned\n"
 			} else {
 				resp.Output += fmt.Sprintf("\t\tHWAddr: %s\n", peer.PeerHW.String())
 				resp.Output += fmt.Sprintf("\t\tIP: %s\n", peer.PeerLocalIP.String())
@@ -431,20 +451,18 @@ func (p *Procedures) Debug(args *Args, resp *Response) error {
 				resp.Output += fmt.Sprintf("\t\tPeer Address: %s\n", peer.PeerAddr.String())
 				resp.Output += fmt.Sprintf("\t\tProxy ID: %d\n", peer.ProxyID)
 			}
-			resp.Output += fmt.Sprintf("\t--- End of %s ---\n", id)
-		}*/
+			resp.Output += fmt.Sprintf("\t--- End of %s ---\n", peer.ID)
+		}
 	}
-	instances_mut.Unlock()
-	runtime.Gosched()
 	return nil
 }
 
 // Status displays information about instances, peers and their statuses
-func (p *Procedures) Status(args *RunArgs, resp *Response) error {
-	instances_mut.Lock()
-	for _, ins := range instances {
-		resp.Output += ins.ID + " | " + ins.PTP.Interface.IP.String() + "\n"
-		peers := ins.PTP.Peers.Get()
+func (p *Daemon) Status(args *RunArgs, resp *Response) error {
+	instances := p.Instances.Get()
+	for _, inst := range instances {
+		resp.Output += inst.ID + " | " + inst.PTP.Interface.IP.String() + "\n"
+		peers := inst.PTP.Peers.Get()
 		for _, peer := range peers {
 			resp.Output += peer.ID + "|"
 			resp.Output += peer.PeerLocalIP.String() + "|"
@@ -454,19 +472,7 @@ func (p *Procedures) Status(args *RunArgs, resp *Response) error {
 			}
 			resp.Output += "\n"
 		}
-		/*for _, peer := range ins.PTP.NetworkPeers {
-			resp.Output += peer.ID + "|"
-			resp.Output += peer.PeerLocalIP.String() + "|"
-			resp.Output += "State:" + StringifyState(peer.State) + "|"
-			if peer.LastError != "" {
-				resp.Output += "LastError:" + peer.LastError
-			}
-			resp.Output += "\n"
-		}
-		*/
 	}
-	instances_mut.Unlock()
-	runtime.Gosched()
 	return nil
 }
 

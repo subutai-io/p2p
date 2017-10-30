@@ -22,7 +22,6 @@ var InterfaceNames []string
 
 // StartProfiling will create a .prof file to analyze p2p app performance
 func StartProfiling(profile string) {
-
 	pwd, err := os.Getwd()
 	if err != nil {
 		ptp.Log(ptp.Error, "Getwd() error : %v", err)
@@ -138,7 +137,7 @@ func main() {
 		if argSyslog != "" {
 			ptp.SetSyslogSocket(argSyslog)
 		}
-		Daemon(argRPCPort, argsaveFile, argProfile)
+		ExecDaemon(argRPCPort, argsaveFile, argProfile)
 	case "start":
 		start.Parse(os.Args[2:])
 		Start(argRPCPort, argIP, argHash, argMac, argDev, argDht, argKeyfile, argKey, argTTL, argFwd, argPort)
@@ -249,7 +248,7 @@ func Start(rpcPort, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool,
 	args.TTL = ttl
 	args.Fwd = fwd
 	args.Port = port
-	err := client.Call("Procedures.Run", args, &response)
+	err := client.Call("Daemon.Run", args, &response)
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
@@ -272,7 +271,7 @@ func Stop(rpcPort, hash string) {
 		return
 	}
 	args.Hash = hash
-	err := client.Call("Procedures.Stop", args, &response)
+	err := client.Call("Daemon.Stop", args, &response)
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
@@ -298,7 +297,7 @@ func Show(rpcPort, hash, ip string, interfaces, all bool) {
 	args.IP = ip
 	args.Interfaces = interfaces
 	args.All = all
-	err := client.Call("Procedures.Show", args, &response)
+	err := client.Call("Daemon.Show", args, &response)
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
@@ -316,7 +315,7 @@ func ShowStatus(rpcPort string) {
 	client := Dial(rpcPort)
 	var response Response
 	args := &RunArgs{}
-	err := client.Call("Procedures.Status", args, &response)
+	err := client.Call("Daemon.Status", args, &response)
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
@@ -336,13 +335,13 @@ func Set(rpcPort, log, hash, keyfile, key, ttl string) {
 	var err error
 	if log != "" {
 		args := &NameValueArg{"log", log}
-		err = client.Call("Procedures.SetLog", args, &response)
+		err = client.Call("Daemon.SetLog", args, &response)
 	} else if key != "" {
 		args := &RunArgs{}
 		args.Key = key
 		args.TTL = ttl
 		args.Hash = hash
-		err = client.Call("Procedures.AddKey", args, &response)
+		err = client.Call("Daemon.AddKey", args, &response)
 	}
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
@@ -361,7 +360,7 @@ func Debug(rpcPort string) {
 	client := Dial(rpcPort)
 	var response Response
 	args := &Args{}
-	err := client.Call("Procedures.Debug", args, &response)
+	err := client.Call("Daemon.Debug", args, &response)
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
 		return
@@ -370,43 +369,41 @@ func Debug(rpcPort string) {
 	os.Exit(response.ExitCode)
 }
 
-// Daemon starts P2P daemon
-func Daemon(port, sFile, profiling string) {
+// ExecDaemon starts P2P daemon
+func ExecDaemon(port, sFile, profiling string) {
 	StartProfiling(profiling)
 	ptp.InitPlatform()
-	instances = make(map[string]instance)
 	ptp.InitErrors()
 
 	if !ptp.CheckPermissions() {
 		os.Exit(1)
 	}
 
-	proc := new(Procedures)
+	proc := new(Daemon)
+	proc.Init(sFile)
 	rpc.Register(proc)
 	rpc.HandleHTTP()
-	listen, err := net.Listen("tcp", "localhost:"+port)
-	if err != nil {
-		ptp.Log(ptp.Error, "Cannot start RPC listener %v", err)
-		os.Exit(1)
-	}
 
 	if sFile != "" {
-		saveFile = sFile
 		ptp.Log(ptp.Info, "Restore file provided")
 		// Try to restore from provided file
-		instances, err := loadInstances(saveFile)
+		instances, err := proc.Instances.LoadInstances(proc.SaveFile)
 		if err != nil {
 			ptp.Log(ptp.Error, "Failed to load instances: %v", err)
 		} else {
 			ptp.Log(ptp.Info, "%d instances were loaded from file", len(instances))
 			for _, inst := range instances {
-				resp := new(Response)
-				proc.Run(&inst, resp)
+				proc.Run(&inst, new(Response))
 			}
 		}
 	}
 
 	ptp.Log(ptp.Info, "Starting RPC Listener on %s port", port)
+	listen, err := net.Listen("tcp", "localhost:"+port)
+	if err != nil {
+		ptp.Log(ptp.Error, "Cannot start RPC listener %v", err)
+		os.Exit(1)
+	}
 	go http.Serve(listen, nil)
 
 	// Capture SIGINT
