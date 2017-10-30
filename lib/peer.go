@@ -138,16 +138,21 @@ func (np *NetworkPeer) stateRequestedIP(ptpc *PeerToPeer) error {
 			np.SetState(PeerStateDisconnect, ptpc)
 			break
 		}
-		for _, PeerInfo := range ptpc.Dht.Peers {
-			if PeerInfo.ID == np.ID {
-				if len(PeerInfo.Ips) >= 1 {
-					np.KnownIPs = PeerInfo.Ips
-					// After we received IP we should wait for other peer to do the same and start to connect directly
-					np.SetState(PeerStateConnectingDirectlyWait, ptpc)
-					return nil
-				}
-			}
+		if len(np.KnownIPs) > 0 {
+			np.SetState(PeerStateConnectingDirectlyWait, ptpc)
+			return nil
 		}
+		/*
+			for _, PeerInfo := range ptpc.Dht.Peers {
+				if PeerInfo.ID == np.ID {
+					if len(PeerInfo.Ips) >= 1 {
+						np.KnownIPs = PeerInfo.Ips
+						// After we received IP we should wait for other peer to do the same and start to connect directly
+						np.SetState(PeerStateConnectingDirectlyWait, ptpc)
+						return nil
+					}
+				}
+			}*/
 		time.Sleep(100 * time.Millisecond)
 	}
 	return nil
@@ -590,7 +595,7 @@ func (np *NetworkPeer) holePunch(endpoint *net.UDPAddr, ptpc *PeerToPeer) bool {
 			Log(Error, "Failed to send data: %s", err)
 		}
 		passed := time.Since(punchStarted)
-		if passed > time.Duration(15*time.Second) {
+		if passed > time.Duration(5*time.Second) {
 			Log(Warning, "Stopping UDP hole punching to %s after timeout", endpoint.String())
 			break
 		}
