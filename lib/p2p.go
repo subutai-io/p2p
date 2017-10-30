@@ -501,8 +501,9 @@ func (p *PeerToPeer) PrepareIntroductionMessage(id string) *P2PMessage {
 
 // PurgePeers method goes over peers and removes obsolete ones
 // Peer becomes obsolete when it goes out of DHT
+// TODO: Remove unused function
 func (p *PeerToPeer) PurgePeers() {
-	peers := p.Peers.Get()
+	/*peers := p.Peers.Get()
 	for i, peer := range peers {
 		found := false
 		for _, newPeer := range p.Dht.Peers {
@@ -514,26 +515,7 @@ func (p *PeerToPeer) PurgePeers() {
 			Log(Info, "Removing outdated peer")
 			p.Peers.Delete(i)
 		}
-	}
-	/*
-		for i, peer := range p.NetworkPeers {
-			var f = false
-			for _, newPeer := range p.Dht.Peers {
-				if newPeer.ID == peer.ID {
-					f = true
-				}
-			}
-			if !f {
-				Log(Info, ("Removing outdated peer"))
-				delete(p.IPIDTable, peer.PeerLocalIP.String())
-				delete(p.MACIDTable, peer.PeerHW.String())
-				p.PeersLock.Lock()
-				delete(p.NetworkPeers, i)
-				p.PeersLock.Unlock()
-				runtime.Gosched()
-			}
-		}
-	*/
+	}*/
 	return
 }
 
@@ -878,10 +860,15 @@ func (p *PeerToPeer) ReadDHTChannels() {
 			continue
 		}
 		select {
-		case peers, hasData := <-p.Dht.PeerChannel:
-			if hasData {
-				p.UpdatePeers(peers)
+		case peer, pd := <-p.Dht.PeerData:
+			if pd {
+				// Received peer update
+				p.handlePeerData(peer)
 			}
+		/*case peers, hasData := <-p.Dht.PeerChannel:
+		if hasData {
+			p.UpdatePeers(peers)
+		}*/
 		case state, s := <-p.Dht.StateChannel:
 			if s {
 				peer := p.Peers.GetPeer(state.ID)
@@ -930,6 +917,43 @@ func (p *PeerToPeer) ReadDHTChannels() {
 	Log(Info, "Stopped DHT reader channel")
 }
 
+func (p *PeerToPeer) handlePeerData(peerData NetworkPeer) {
+	// Empty peer means no peers were received from bootstrap node
+	// We remove any peer that was already exists
+	if peerData.ID == "" {
+		return
+	}
+	// Check if such peer exists
+	peer := p.Peers.GetPeer(peerData.ID)
+	if peer == nil {
+		peer := new(NetworkPeer)
+		Log(Info, "Received new peer %s", peerData.ID)
+		peer.ID = peerData.ID
+		peer.SetState(PeerStateInit, p)
+		p.Peers.Update(peerData.ID, peer)
+		p.Peers.RunPeer(peerData.ID, p)
+		return
+	}
+	// When peer data contains IPs this means we received
+	// list of IP addresses of this peer
+	if peerData.KnownIPs != nil && len(peerData.KnownIPs) > 0 {
+		Log(Info, "Received peer IPs %s", peerData.ID)
+		for _, newip := range peerData.KnownIPs {
+			found := false
+			for _, knownip := range peer.KnownIPs {
+				if knownip == newip {
+					found = true
+				}
+			}
+			if !found {
+				peer.KnownIPs = append(peer.KnownIPs, newip)
+			}
+		}
+		p.Peers.Update(peer.ID, peer)
+		return
+	}
+}
+
 // ReadProxies - reads a list of proxies received by DHT client
 func (p *PeerToPeer) ReadProxies() {
 	for {
@@ -969,7 +993,7 @@ func (p *PeerToPeer) ReadProxies() {
 }
 
 // UpdatePeers updates information about known peers
-func (p *PeerToPeer) UpdatePeers(peers []PeerIP) {
+/*func (p *PeerToPeer) UpdatePeers(peers []PeerIP) {
 	for _, newPeer := range peers {
 		if newPeer.ID == "" {
 			continue
@@ -991,4 +1015,4 @@ func (p *PeerToPeer) UpdatePeers(peers []PeerIP) {
 			p.Peers.RunPeer(peer.ID, p)
 		}
 	}
-}
+}*/

@@ -44,14 +44,14 @@ type RemotePeerState struct {
 
 // DHTClient is a main structure of a DHT client
 type DHTClient struct {
-	Routers          string         // Comma separated list of bootstrap nodes
-	FailedRouters    []string       // List of routes that we failed to connect to
-	Connection       []*net.UDPConn // List of connection objects
-	NetworkHash      string         // Saved network hash
-	P2PPort          int
-	LastCatch        []string
-	ID               string
-	Peers            []PeerIP
+	Routers       string         // Comma separated list of bootstrap nodes
+	FailedRouters []string       // List of routes that we failed to connect to
+	Connection    []*net.UDPConn // List of connection objects
+	NetworkHash   string         // Saved network hash
+	P2PPort       int
+	LastCatch     []string
+	ID            string
+	//Peers            []PeerIP
 	Forwarders       []Forwarder
 	ProxyBlacklist   []*net.UDPAddr
 	ResponseHandlers map[string]DHTResponseCallback
@@ -64,13 +64,13 @@ type DHTClient struct {
 	CommandChannel   chan []byte
 	StateChannel     chan RemotePeerState
 	Listeners        int
-	PeerChannel      chan []PeerIP
-	ProxyChannel     chan Forwarder
-	LastDHTPing      time.Time
-	RemovePeerChan   chan string
-	ForwardersLock   sync.Mutex // To avoid multiple read-write
-	isShutdown       bool       // Whether DHT shutting down or not
-	//NetworkPeers     []string       // List of peers
+	//PeerChannel      chan []PeerIP
+	ProxyChannel   chan Forwarder
+	LastDHTPing    time.Time
+	RemovePeerChan chan string
+	ForwardersLock sync.Mutex // To avoid multiple read-write
+	isShutdown     bool       // Whether DHT shutting down or not
+	PeerData       chan NetworkPeer
 }
 
 // Forwarder structure represents a Proxy received from DHT server
@@ -377,44 +377,51 @@ func (dht *DHTClient) HandleFind(data DHTMessage, conn *net.UDPConn) {
 		if len(ids) == 0 {
 			Log(Error, "Malformed list of peers received")
 		} else {
-			// Go over list of received peer IDs and look if we know
-			// anything about them. Add every new peer into list of peers
 			for _, id := range ids {
-				var found = false
-				for _, peer := range dht.Peers {
-					if peer.ID == id && len(peer.ID) > 0 {
-						found = true
-					}
-				}
-				if !found {
-					var p PeerIP
-					p.ID = id
-					dht.Peers = append(dht.Peers, p)
-				}
+				peer := NetworkPeer{ID: id}
+				dht.PeerData <- peer
 			}
-			k := 0
-			for _, peer := range dht.Peers {
-				var found = false
+			/*
+				// Go over list of received peer IDs and look if we know
+				// anything about them. Add every new peer into list of peers
 				for _, id := range ids {
-					if peer.ID == id && len(peer.ID) > 0 {
-						found = true
+					var found = false
+					for _, peer := range dht.Peers {
+						if peer.ID == id && len(peer.ID) > 0 {
+							found = true
+						}
+					}
+					if !found {
+						var p PeerIP
+						p.ID = id
+						dht.Peers = append(dht.Peers, p)
 					}
 				}
-				if found {
-					dht.Peers[k] = peer
-					k++
+				k := 0
+				for _, peer := range dht.Peers {
+					var found = false
+					for _, id := range ids {
+						if peer.ID == id && len(peer.ID) > 0 {
+							found = true
+						}
+					}
+					if found {
+						dht.Peers[k] = peer
+						k++
+					}
 				}
-			}
-			dht.Peers = dht.Peers[:k]
-			if dht.PeerChannel == nil {
-				dht.PeerChannel = make(chan []PeerIP)
-			}
-			dht.PeerChannel <- dht.Peers
-			Log(Debug, "Received peers from %s: %s", conn.RemoteAddr().String(), data.Arguments)
-			dht.UpdateLastCatch(data.Arguments)
+				dht.Peers = dht.Peers[:k]
+				if dht.PeerChannel == nil {
+					dht.PeerChannel = make(chan []PeerIP)
+				}
+				dht.PeerChannel <- dht.Peers
+				Log(Debug, "Received peers from %s: %s", conn.RemoteAddr().String(), data.Arguments)
+				dht.UpdateLastCatch(data.Arguments)*/
 		}
 	} else {
-		dht.Peers = dht.Peers[:0]
+		// We didn't received any IDs in this hash
+		dht.PeerData <- NetworkPeer{}
+		//dht.Peers = dht.Peers[:0]
 	}
 }
 
@@ -428,7 +435,30 @@ func (dht *DHTClient) HandleRegCp(data DHTMessage, conn *net.UDPConn) {
 func (dht *DHTClient) HandleNode(data DHTMessage, conn *net.UDPConn) {
 	// We've received an IPs associated with target node
 	Log(Debug, "Received IPs from %s: %v", data.ID, data.Arguments)
-	for i, peer := range dht.Peers {
+	ips := strings.Split(data.Arguments, "|")
+	list := []*net.UDPAddr{}
+
+	for _, addr := range ips {
+		if addr == "" {
+			continue
+		}
+		ip, err := net.ResolveUDPAddr("udp", addr)
+		if err != nil {
+			Log(Error, "Failed to resolve peer address: %v", err)
+			continue
+		}
+		list = append(list, ip)
+	}
+
+	if len(list) == 0 {
+		Log(Warning, "Skipping empty IP list")
+		return
+	}
+
+	peer := NetworkPeer{ID: data.ID, KnownIPs: list}
+	dht.PeerData <- peer
+
+	/*for i, peer := range dht.Peers {
 		if peer.ID == data.ID {
 			ips := strings.Split(data.Arguments, "|")
 			var list []*net.UDPAddr
@@ -445,13 +475,12 @@ func (dht *DHTClient) HandleNode(data DHTMessage, conn *net.UDPConn) {
 			}
 			dht.Peers[i].Ips = list
 		}
-	}
+	}*/
 }
 
 // NotifyPeerAboutProxy - sends a notification to another peer about proxy
 func (dht *DHTClient) NotifyPeerAboutProxy(id string) {
 	Log(Info, "Notifying %s about proxy", id)
-
 }
 
 // HandleCp - receives a message with a proxy address
@@ -581,9 +610,10 @@ func (dht *DHTClient) HandleError(data DHTMessage, conn *net.UDPConn) {
 func (dht *DHTClient) Init(hash, routers string) error {
 	dht.State = DHTStateInitializing
 	dht.RemovePeerChan = make(chan string)
-	dht.PeerChannel = make(chan []PeerIP)
+	//dht.PeerChannel = make(chan []PeerIP)
 	dht.StateChannel = make(chan RemotePeerState)
 	dht.ProxyChannel = make(chan Forwarder)
+	dht.PeerData = make(chan NetworkPeer)
 	dht.NetworkHash = hash
 	dht.Routers = routers
 	if dht.Routers == "" {
@@ -672,7 +702,7 @@ func (dht *DHTClient) WaitForID() error {
 // Initialize - This method initializes DHT by splitting list of routers and connect to each one
 func (dht *DHTClient) Initialize(config *DHTClient, ips []net.IP, peerChan chan []PeerIP, proxyChan chan Forwarder) *DHTClient {
 	dht.RemovePeerChan = make(chan string)
-	dht.PeerChannel = make(chan []PeerIP)
+	//dht.PeerChannel = make(chan []PeerIP)
 	dht.ProxyChannel = make(chan Forwarder)
 	dht.StateChannel = make(chan RemotePeerState)
 	dht = config
@@ -893,14 +923,17 @@ func (dht *DHTClient) CleanForwarderBlacklist() {
 }
 
 // CleanPeer will remove information about peer with specified ID
+// TODO: Remove this method
 func (dht *DHTClient) CleanPeer(id string) error {
-	for i, p := range dht.Peers {
-		if p.ID == id {
-			dht.Peers = append(dht.Peers[:i], dht.Peers[i+1:]...)
-			return nil
+	return nil
+	/*
+		for i, p := range dht.Peers {
+			if p.ID == id {
+				dht.Peers = append(dht.Peers[:i], dht.Peers[i+1:]...)
+				return nil
+			}
 		}
-	}
-	return fmt.Errorf("Specified peer was not found")
+		return fmt.Errorf("Specified peer was not found")*/
 }
 
 // Shutdown will turn DHT to shutdown state

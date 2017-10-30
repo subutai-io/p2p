@@ -393,7 +393,7 @@ func ExecDaemon(port, sFile, profiling string) {
 		} else {
 			ptp.Log(ptp.Info, "%d instances were loaded from file", len(instances))
 			for _, inst := range instances {
-				go proc.Run(&inst, new(Response))
+				proc.Run(&inst, new(Response))
 			}
 		}
 	}
