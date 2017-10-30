@@ -369,7 +369,7 @@ func Debug(rpcPort string) {
 	os.Exit(response.ExitCode)
 }
 
-// Daemon starts P2P daemon
+// ExecDaemon starts P2P daemon
 func ExecDaemon(port, sFile, profiling string) {
 	StartProfiling(profiling)
 	ptp.InitPlatform()
@@ -383,11 +383,6 @@ func ExecDaemon(port, sFile, profiling string) {
 	proc.Init(sFile)
 	rpc.Register(proc)
 	rpc.HandleHTTP()
-	listen, err := net.Listen("tcp", "localhost:"+port)
-	if err != nil {
-		ptp.Log(ptp.Error, "Cannot start RPC listener %v", err)
-		os.Exit(1)
-	}
 
 	if sFile != "" {
 		ptp.Log(ptp.Info, "Restore file provided")
@@ -404,6 +399,11 @@ func ExecDaemon(port, sFile, profiling string) {
 	}
 
 	ptp.Log(ptp.Info, "Starting RPC Listener on %s port", port)
+	listen, err := net.Listen("tcp", "localhost:"+port)
+	if err != nil {
+		ptp.Log(ptp.Error, "Cannot start RPC listener %v", err)
+		os.Exit(1)
+	}
 	go http.Serve(listen, nil)
 
 	// Capture SIGINT
