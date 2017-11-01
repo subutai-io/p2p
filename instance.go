@@ -196,7 +196,7 @@ type Daemon struct {
 	SaveFile  string
 }
 
-func (p *Daemon) Init(saveFile string) {
+func (p *Daemon) Initialize(saveFile string) {
 	p.Instances = new(InstanceList)
 	p.Instances.Init()
 	p.SaveFile = saveFile

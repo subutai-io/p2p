@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"net"
 	"net/http"
@@ -9,9 +8,9 @@ import (
 	"os"
 	"os/signal"
 	"runtime/pprof"
-	"time"
 
 	ptp "github.com/subutai-io/p2p/lib"
+	"github.com/urfave/cli"
 )
 
 // AppVersion is a Version of P2P
@@ -48,161 +47,293 @@ func StartProfiling(profile string) {
 }
 
 func main() {
-
+	// Command-line flags
 	var (
-		argIP                string
-		argMac               string
-		argDev               string
-		argHash              string
-		argDht               string
-		argKeyfile           string
-		argKey               string
-		argTTL               string
-		argLog               string
-		argsaveFile          string
-		argFwd               bool
-		argRPCPort           string
-		argProfile           string
-		argSyslog            string
-		argPort              int
-		argType              bool
-		argHuman             bool
-		argShowInterfaces    bool
-		argShowInterfacesAll bool
+		SaveFile       string // Save file where p2p will store data about instances
+		RPCPort        int    // Port that p2p is daemon is listening to
+		Profiling      string // Profiling type
+		Syslog         string // Syslog socket
+		Infohash       string // Infohash of a swarm
+		IP             string // IP address of local p2p interface
+		Mac            string // Hardware address of p2p interface
+		InterfaceName  string // Name of p2p interface
+		DHTRouters     string // Comma-separated list of DHT routers
+		Keyfile        string // Path to a file with crypto key
+		Key            string // AES key
+		Until          string // Until date this key will be active in Unix timestamp
+		Ports          string // Ports range for an instance
+		UDPPort        int    // Specific UDP port for an instance
+		UseForwarders  bool   // Whether or not p2p should force usage of proxy servers for this instance
+		ShowInterfaces bool   // Whether or not p2p show command should return information about interfaces in use
+		ShowAll        bool   //
+		LogLevel       string // Log level
 	)
 
-	var Usage = func() {
-		fmt.Printf("Usage: p2p <command> [OPTIONS]:\n")
-		fmt.Printf("Commands available:\n")
-		fmt.Printf("  daemon    Run p2p in daemon mode\n")
-		fmt.Printf("  start     Start new p2p instance\n")
-		fmt.Printf("  stop      Stop particular p2p instance\n")
-		fmt.Printf("  set       Modify p2p options during runtime\n")
-		fmt.Printf("  show      Display various information about p2p instances\n")
-		fmt.Printf("  status    Show detailed status about connectivity with each peer\n")
-		fmt.Printf("  debug     Control debugging and profiling options\n")
-		fmt.Printf("  version   Display version information\n")
-		fmt.Printf("  help      Show this message or detailed information about commands listed above\n")
-		fmt.Printf("\n")
-		fmt.Printf("Use 'p2p help <command>' to see detailed help information for specified command\n")
+	app := cli.NewApp()
+	app.Name = "p2p"
+	app.Version = AppVersion
+	app.Authors = []cli.Author{
+		cli.Author{
+			Name: "Subutai.io",
+		},
 	}
+	app.Copyright = "Copyright 2017 Subutai.io"
 
-	daemon := flag.NewFlagSet("p2p in daemon mode", flag.ContinueOnError)
-	daemon.StringVar(&argsaveFile, "save", "", "Path to restore file")
-	daemon.StringVar(&argRPCPort, "rpc", "52523", "Port for RPC communication")
-	daemon.StringVar(&argSyslog, "syslog", "", "Syslog socket: 127.0.0.1:1514")
-	daemon.StringVar(&argProfile, "profile", "", "Starts PTP package with profiling. Possible values : memory, cpu")
-
-	start := flag.NewFlagSet("Startup options", flag.ContinueOnError)
-	start.StringVar(&argIP, "ip", "dhcp", "`IP` address to be used in local system. Should be specified in CIDR format or `dhcp` is used by default to receive free unused IP")
-	start.StringVar(&argMac, "mac", "", "MAC or `Hardware Address` for a TUN/TAP interface")
-	start.StringVar(&argDev, "dev", "", "TUN/TAP `interface name`")
-	start.StringVar(&argHash, "hash", "", "`Infohash` for environment")
-	start.StringVar(&argDht, "dht", "", "Specify DHT bootstrap node address in a form of `HOST:PORT`")
-	start.StringVar(&argKeyfile, "keyfile", "", "Path to yaml file containing crypto key")
-	start.StringVar(&argKey, "key", "", "AES crypto key")
-	start.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
-	start.StringVar(&argTTL, "ports", "", "Ports range")
-	start.IntVar(&argPort, "port", 0, "`Port` that will be used for p2p communication. Random port number will be generated if no port were specified")
-	start.BoolVar(&argFwd, "fwd", false, "If specified, only external routing schemes will be used with use of proxy servers")
-
-	stop := flag.NewFlagSet("Shutdown options", flag.ContinueOnError)
-	stop.StringVar(&argHash, "hash", "", "Infohash for environment")
-
-	show := flag.NewFlagSet("Show flagset", flag.ContinueOnError)
-	show.StringVar(&argHash, "hash", "", "Infohash for environment")
-	show.StringVar(&argIP, "check", "", "Check if integration with specified IP is finished")
-	show.BoolVar(&argShowInterfaces, "interfaces", false, "Show interface names")
-	show.BoolVar(&argShowInterfacesAll, "all", false, "Show all interfaces")
-
-	set := flag.NewFlagSet("Option Setting", flag.ContinueOnError)
-	set.StringVar(&argLog, "log", "", "Log level")
-	set.StringVar(&argKey, "key", "", "AES crypto key")
-	set.StringVar(&argTTL, "ttl", "", "Time until specified key will be available")
-	set.StringVar(&argHash, "hash", "", "Infohash of environment")
-
-	debug := flag.NewFlagSet("Debug and Profiling mode", flag.ContinueOnError)
-
-	version := flag.NewFlagSet("Version output", flag.ContinueOnError)
-	version.BoolVar(&argType, "n", false, "Prints numeric variant of the version")
-	version.BoolVar(&argHuman, "h", false, "Prints short variant of the version (including snapshot)")
-
-	if len(os.Args) < 2 {
-		os.Args = append(os.Args, "help")
+	app.Commands = []cli.Command{
+		{
+			Name:  "daemon",
+			Usage: "Run p2p in daemon mode",
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:        "rpc-port",
+					Usage:       "RPC port",
+					Value:       52523,
+					Destination: &RPCPort,
+				},
+				cli.StringFlag{
+					Name:        "save",
+					Usage:       "Path to save/restore instance data file",
+					Value:       "",
+					Destination: &SaveFile,
+				},
+				cli.StringFlag{
+					Name:        "profile",
+					Usage:       "Run p2p in profiling mode. Possible value: mem, cpu",
+					Value:       "",
+					Destination: &Profiling,
+				},
+				cli.StringFlag{
+					Name:        "syslog",
+					Usage:       "Specify syslog socket",
+					Value:       "",
+					Destination: &Syslog,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				ExecDaemon(RPCPort, SaveFile, Profiling, Syslog)
+				return nil
+			},
+		},
+		{
+			Name:  "start",
+			Usage: "Start new p2p instance",
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:        "rpc-port",
+					Usage:       "RPC port",
+					Value:       52523,
+					Destination: &RPCPort,
+				},
+				cli.StringFlag{
+					Name:        "hash",
+					Usage:       "Infohash of p2p swarm",
+					Value:       "",
+					Destination: &Infohash,
+				},
+				cli.StringFlag{
+					Name:        "ip",
+					Usage:       "IP Address of p2p interface. Can be specified in CIDR format or use \"dhcp\" to pick free unused IP",
+					Value:       "dhcp",
+					Destination: &IP,
+				},
+				cli.StringFlag{
+					Name:        "mac",
+					Usage:       "Hardware address of a p2p interface",
+					Value:       "",
+					Destination: &Mac,
+				},
+				cli.StringFlag{
+					Name:        "dev",
+					Usage:       "Name of the p2p interface",
+					Value:       "",
+					Destination: &InterfaceName,
+				},
+				cli.StringFlag{
+					Name:        "dht",
+					Usage:       "Comman-separated list of DHT bootstrap nodes",
+					Value:       "",
+					Destination: &DHTRouters,
+				},
+				cli.StringFlag{
+					Name:        "keyfile",
+					Usage:       "Path to a file containing crypto-key",
+					Value:       "",
+					Destination: &Keyfile,
+				},
+				cli.StringFlag{
+					Name:        "key",
+					Usage:       "AES crypto key",
+					Value:       "",
+					Destination: &Key,
+				},
+				cli.StringFlag{
+					Name:        "ttl, until",
+					Usage:       "Time until specified key will be active",
+					Value:       "",
+					Destination: &Until,
+				},
+				cli.StringFlag{
+					Name:        "ports",
+					Usage:       "Ports range that should be used by p2p in a START-END format",
+					Value:       "",
+					Destination: &Ports,
+				},
+				cli.IntFlag{
+					Name:        "port",
+					Usage:       "UDP port for current instance",
+					Value:       0,
+					Destination: &UDPPort,
+				},
+				cli.BoolFlag{
+					Name:        "fwd",
+					Usage:       "Force proxy servers usage",
+					Destination: &UseForwarders,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				Start(RPCPort, IP, Infohash, Mac, InterfaceName, DHTRouters, Keyfile, Key, Until, UseForwarders, UDPPort)
+				return nil
+			},
+		},
+		{
+			Name:  "stop",
+			Usage: "Shutdown p2p instance",
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:        "rpc-port",
+					Usage:       "RPC port",
+					Value:       52523,
+					Destination: &RPCPort,
+				},
+				cli.StringFlag{
+					Name:        "hash",
+					Usage:       "Infohash of instance that needs to be shutdown",
+					Value:       "",
+					Destination: &Infohash,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				Stop(RPCPort, Infohash)
+				return nil
+			},
+		},
+		{
+			Name:  "show",
+			Usage: "Display different information about p2p daemon or instances",
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:        "rpc-port",
+					Usage:       "RPC port",
+					Value:       52523,
+					Destination: &RPCPort,
+				},
+				cli.StringFlag{
+					Name:        "hash",
+					Usage:       "Display information about specific instance",
+					Value:       "",
+					Destination: &Infohash,
+				},
+				cli.StringFlag{
+					Name:        "check, ip",
+					Usage:       "Check if integration with specified IP has been completed",
+					Value:       "",
+					Destination: &IP,
+				},
+				cli.BoolFlag{
+					Name:        "interfaces",
+					Usage:       "List interfaces used by p2p",
+					Destination: &ShowInterfaces,
+				},
+				cli.BoolFlag{
+					Name:        "all",
+					Usage:       "In combination with -interfaces this will show all interfaces used by p2p, even those that is already not in use",
+					Destination: &ShowAll,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				Show(RPCPort, Infohash, IP, ShowInterfaces, ShowAll)
+				return nil
+			},
+		},
+		{
+			Name:  "set",
+			Usage: "Modify daemon or instance",
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:        "rpc-port",
+					Usage:       "RPC port",
+					Value:       52523,
+					Destination: &RPCPort,
+				},
+				cli.StringFlag{
+					Name:        "log",
+					Usage:       "Log level. Available levels: TRACE, DEBUG, INFO, WARNING, ERROR, FATAL",
+					Value:       "",
+					Destination: &LogLevel,
+				},
+				cli.StringFlag{
+					Name:        "key",
+					Usage:       "Append specified key to a list of crypto keys. Must be used with combination of -until",
+					Value:       "",
+					Destination: &Key,
+				},
+				cli.StringFlag{
+					Name:        "ttl, until",
+					Usage:       "Specify until what time this key should work",
+					Value:       "",
+					Destination: &Until,
+				},
+				cli.StringFlag{
+					Name:        "hash",
+					Usage:       "Specify infohash of instance, that should be modified",
+					Value:       "",
+					Destination: &Infohash,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				Set(RPCPort, LogLevel, Infohash, "", Key, Until)
+				return nil
+			},
+		},
+		{
+			Name:  "debug",
+			Usage: "Display debug information",
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:        "rpc-port",
+					Usage:       "RPC port",
+					Value:       52523,
+					Destination: &RPCPort,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				Debug(RPCPort)
+				return nil
+			},
+		},
+		{
+			Name:  "status",
+			Usage: "Display connectivity status",
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:        "rpc-port",
+					Usage:       "RPC port",
+					Value:       52523,
+					Destination: &RPCPort,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				ShowStatus(RPCPort)
+				return nil
+			},
+		},
 	}
-
-	switch os.Args[1] {
-	case "daemon":
-		daemon.Parse(os.Args[2:])
-		if argSyslog != "" {
-			ptp.SetSyslogSocket(argSyslog)
-		}
-		ExecDaemon(argRPCPort, argsaveFile, argProfile)
-	case "start":
-		start.Parse(os.Args[2:])
-		Start(argRPCPort, argIP, argHash, argMac, argDev, argDht, argKeyfile, argKey, argTTL, argFwd, argPort)
-	case "stop":
-		stop.Parse(os.Args[2:])
-		Stop(argRPCPort, argHash)
-	case "show":
-		show.Parse(os.Args[2:])
-		Show(argRPCPort, argHash, argIP, argShowInterfaces, argShowInterfacesAll)
-	case "set":
-		set.Parse(os.Args[2:])
-		Set(argRPCPort, argLog, argHash, argKeyfile, argKey, argTTL)
-	case "debug":
-		debug.Parse(os.Args[2:])
-		Debug(argRPCPort)
-	case "version":
-		version.Parse(os.Args[2:])
-		if argType {
-			var macro, minor, micro int
-			fmt.Sscanf(AppVersion, "%d.%d.%d", &macro, &minor, &micro)
-			fmt.Printf("%d.%d.%d\n", macro, minor, micro)
-		} else if argHuman {
-			fmt.Printf("%s\n", AppVersion)
-		} else {
-			fmt.Printf("p2p Cloud project %s. Packet version: %s\n", AppVersion, ptp.PacketVersion)
-		}
-		os.Exit(0)
-	case "stop-packet":
-		net.DialTimeout("tcp", os.Args[2], 2*time.Second)
-		os.Exit(0)
-	case "status":
-		ShowStatus(argRPCPort)
-	case "help":
-		if len(os.Args) > 2 {
-			switch os.Args[2] {
-			case "daemon":
-				usageDaemon()
-				daemon.PrintDefaults()
-			case "start":
-				usageStart()
-				start.PrintDefaults()
-			case "show":
-				usageShow()
-				show.PrintDefaults()
-			case "stop":
-				usageStop()
-				stop.PrintDefaults()
-			case "set":
-				usageSet()
-				set.PrintDefaults()
-			}
-
-		} else {
-			Usage()
-		}
-		os.Exit(0)
-	default:
-		Usage()
-		os.Exit(0)
-	}
+	app.Run(os.Args)
 }
 
 // Dial connects to a local RPC server
-func Dial(port string) *rpc.Client {
-	client, err := rpc.DialHTTP("tcp", "localhost:"+port)
+func Dial(rpchost string) *rpc.Client {
+	client, err := rpc.DialHTTP("tcp", rpchost)
 	if err != nil {
 		ptp.Log(ptp.Error, "Failed to connect to RPC %v", err)
 		os.Exit(1)
@@ -211,8 +342,8 @@ func Dial(port string) *rpc.Client {
 }
 
 // Start - begin P2P Instance
-func Start(rpcPort, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool, port int) {
-	client := Dial(rpcPort)
+func Start(rpcPort int, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool, port int) {
+	client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
 	var response Response
 
 	args := &RunArgs{}
@@ -262,8 +393,8 @@ func Start(rpcPort, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool,
 }
 
 // Stop will terminate P2P instance
-func Stop(rpcPort, hash string) {
-	client := Dial(rpcPort)
+func Stop(rpcPort int, hash string) {
+	client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
 	var response Response
 	args := &StopArgs{}
 	if hash == "" {
@@ -285,8 +416,8 @@ func Stop(rpcPort, hash string) {
 }
 
 // Show outputs information about P2P instances and interfaces
-func Show(rpcPort, hash, ip string, interfaces, all bool) {
-	client := Dial(rpcPort)
+func Show(rpcPort int, hash, ip string, interfaces, all bool) {
+	client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
 	var response Response
 	args := &ShowArgs{}
 	if hash != "" {
@@ -311,8 +442,8 @@ func Show(rpcPort, hash, ip string, interfaces, all bool) {
 }
 
 // ShowStatus outputs connectivity status of each peer
-func ShowStatus(rpcPort string) {
-	client := Dial(rpcPort)
+func ShowStatus(rpcPort int) {
+	client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
 	var response Response
 	args := &RunArgs{}
 	err := client.Call("Daemon.Status", args, &response)
@@ -329,8 +460,8 @@ func ShowStatus(rpcPort string) {
 }
 
 // Set modifies different options of P2P daemon
-func Set(rpcPort, log, hash, keyfile, key, ttl string) {
-	client := Dial(rpcPort)
+func Set(rpcPort int, log, hash, keyfile, key, ttl string) {
+	client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
 	var response Response
 	var err error
 	if log != "" {
@@ -356,8 +487,8 @@ func Set(rpcPort, log, hash, keyfile, key, ttl string) {
 }
 
 // Debug prints debug information
-func Debug(rpcPort string) {
-	client := Dial(rpcPort)
+func Debug(rpcPort int) {
+	client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
 	var response Response
 	args := &Args{}
 	err := client.Call("Daemon.Debug", args, &response)
@@ -370,7 +501,10 @@ func Debug(rpcPort string) {
 }
 
 // ExecDaemon starts P2P daemon
-func ExecDaemon(port, sFile, profiling string) {
+func ExecDaemon(port int, sFile, profiling, syslog string) {
+	if syslog != "" {
+		ptp.SetSyslogSocket(syslog)
+	}
 	StartProfiling(profiling)
 	ptp.InitPlatform()
 	ptp.InitErrors()
@@ -380,7 +514,7 @@ func ExecDaemon(port, sFile, profiling string) {
 	}
 
 	proc := new(Daemon)
-	proc.Init(sFile)
+	proc.Initialize(sFile)
 	rpc.Register(proc)
 	rpc.HandleHTTP()
 
@@ -398,8 +532,8 @@ func ExecDaemon(port, sFile, profiling string) {
 		}
 	}
 
-	ptp.Log(ptp.Info, "Starting RPC Listener on %s port", port)
-	listen, err := net.Listen("tcp", "localhost:"+port)
+	ptp.Log(ptp.Info, "Starting RPC Listener on %d port", port)
+	listen, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
 		ptp.Log(ptp.Error, "Cannot start RPC listener %v", err)
 		os.Exit(1)
