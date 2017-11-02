@@ -142,7 +142,7 @@ try {
 			/* get p2p version */
 			String p2pVersion = sh (script: """
 				set +x
-				./p2p version | cut -d " " -f 4 | tr -d '\n'
+				./p2p -v | cut -d " " -f 4 | tr -d '\n'
 				""", returnStdout: true)
 			String responseP2P = sh (script: """
 				set +x
