@@ -7,7 +7,7 @@ import (
 
 func TestStateRestore(t *testing.T) {
 	daemon := new(Daemon)
-	daemon.Init("t.file")
+	daemon.Initialize("t.file")
 
 	i1 := new(P2PInstance)
 	i2 := new(P2PInstance)

@@ -79,20 +79,6 @@ func InitPlatform() {
 		}
 	}
 
-	/*remdev := exec.Command(TAP_TOOL, "")
-	err := remdev.Run()
-	if err != nil {
-		Log(Error, "Failed to remove TUN/TAP Devices: %v", err)
-	}*/
-	/*
-		for i := 0; i < 10; i++ {
-			adddev := exec.Command(ADD_DEV)
-			err := adddev.Run()
-			if err != nil {
-				Log(Error, "Failed to add TUN/TAP Device: %v", err)
-			}
-		}
-	*/
 	for i := 0; i < 10; i++ {
 		key, err := queryNetworkKey()
 		if err != nil {

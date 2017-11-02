@@ -142,17 +142,6 @@ func (np *NetworkPeer) stateRequestedIP(ptpc *PeerToPeer) error {
 			np.SetState(PeerStateConnectingDirectlyWait, ptpc)
 			return nil
 		}
-		/*
-			for _, PeerInfo := range ptpc.Dht.Peers {
-				if PeerInfo.ID == np.ID {
-					if len(PeerInfo.Ips) >= 1 {
-						np.KnownIPs = PeerInfo.Ips
-						// After we received IP we should wait for other peer to do the same and start to connect directly
-						np.SetState(PeerStateConnectingDirectlyWait, ptpc)
-						return nil
-					}
-				}
-			}*/
 		time.Sleep(100 * time.Millisecond)
 	}
 	return nil
@@ -204,6 +193,7 @@ func (np *NetworkPeer) stateConnectingDirectly(ptpc *PeerToPeer) error {
 	}
 	// Try to connect locally
 	isLocal := np.ProbeLocalConnection(ptpc)
+
 	if isLocal {
 		np.PeerAddr = np.Endpoint
 		Log(Info, "Connected with %s over LAN", np.ID)
@@ -520,10 +510,9 @@ func (np *NetworkPeer) ProbeLocalConnection(ptpc *PeerToPeer) bool {
 			}
 			for _, kip := range np.KnownIPs {
 				Log(Debug, "Probing new IP %s against network %s", kip.IP.String(), network.String())
-
 				if network.Contains(kip.IP) {
-
-					if np.TestConnection(ptpc, kip) {
+					result := np.holePunch(kip, ptpc)
+					if result {
 						np.Endpoint = kip
 						Log(Info, "Setting endpoint for %s to %s", np.ID, kip.String())
 						return true
