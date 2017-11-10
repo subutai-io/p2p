@@ -39,7 +39,8 @@ func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
 	if stateStr == "" {
 		return
 	}
-	ptpc.Dht.ReportState(np.ID, stateStr)
+	//ptpc.Dht.ReportState(np.ID, stateStr)
+	ptpc.Dht.sendState(np.ID, stateStr)
 }
 
 // SetState modify local state of peer
@@ -103,7 +104,7 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 func (np *NetworkPeer) stateInit(ptpc *PeerToPeer) error {
 	// Send request about IPs of a peer
 	Log(Info, "Initializing new peer: %s", np.ID)
-	ptpc.Dht.RequestPeerIPs(np.ID)
+	ptpc.Dht.sendNode(np.ID)
 	np.KnownIPs = np.KnownIPs[:0]
 	// Do some variables cleanup
 	np.Endpoint = nil
@@ -131,7 +132,12 @@ func (np *NetworkPeer) stateRequestedIP(ptpc *PeerToPeer) error {
 		if time.Since(requestSentAt) > updateInterval {
 			Log(Warning, "Didn't got network addresses for peer. Requesting again")
 			requestSentAt = time.Now()
-			ptpc.Dht.RequestPeerIPs(np.ID)
+			//ptpc.Dht.RequestPeerIPs(np.ID)
+			err := ptpc.Dht.sendNode(np.ID)
+			if err != nil {
+				np.SetState(PeerStateDisconnect, ptpc)
+				return fmt.Errorf("Failed to request IPs: %s", err)
+			}
 			attempts++
 		}
 		if attempts > 5 {
@@ -369,7 +375,6 @@ func (np *NetworkPeer) stateWaitingForwarder(ptpc *PeerToPeer) error {
 func (np *NetworkPeer) stateWaitingForwarderFailed(ptpc *PeerToPeer) error {
 	Log(Info, "Didn't received any proxies")
 	np.SetState(PeerStateInit, ptpc)
-	ptpc.Dht.CleanForwarderBlacklist()
 	np.ProxyBlacklist = np.ProxyBlacklist[:0]
 	return nil
 }
@@ -428,23 +433,6 @@ func (np *NetworkPeer) stateStop(ptpc *PeerToPeer) error {
 
 // Utilities functions
 
-// BlacklistCurrentProxy will add proxy used by this peer to a blacklist
-func (np *NetworkPeer) BlacklistCurrentProxy(ptpc *PeerToPeer) {
-	Log(Info, "%s Adding forwarder %s to a blacklist", np.ID, np.Forwarder.String())
-	ptpc.Dht.BlacklistForwarder(np.Forwarder)
-	exists := false
-	for _, proxy := range np.ProxyBlacklist {
-		if proxy.String() == np.Forwarder.String() {
-			exists = true
-		}
-	}
-	if exists {
-		Log(Info, "%s already has %s in a blacklist of proxies", np.ID, np.Forwarder.String())
-	} else {
-		np.ProxyBlacklist = append(np.ProxyBlacklist, np.Forwarder)
-	}
-}
-
 // TestConnection method tests connection with specified endpoint
 func (np *NetworkPeer) TestConnection(ptpc *PeerToPeer, endpoint *net.UDPAddr) bool {
 	if endpoint == nil || ptpc == nil {
@@ -482,7 +470,7 @@ func (np *NetworkPeer) TestConnection(ptpc *PeerToPeer, endpoint *net.UDPAddr) b
 
 // RequestForwarder sends a request for a proxy with DHT client
 func (np *NetworkPeer) RequestForwarder(ptpc *PeerToPeer) {
-	ptpc.Dht.RequestControlPeer(np.ID, np.ProxyBlacklist)
+	ptpc.Dht.sendProxy(np.ID)
 }
 
 // ProbeLocalConnection will try to connect to every known IP addr
