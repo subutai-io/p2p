@@ -1,5 +1,11 @@
 # Change Log
 
+## [6.2.0-dev] 11/13/2017
+
+* Switched from UDP to TCP in communication with Bootstrap nodes
+* Refactored bootstrap packets
+* Switched to Google Protobuf from Bencode
+
 ## [6.1.9] 10/30/2017
 
 * Fixed problem with stale peer connectivity
