@@ -1,0 +1,31 @@
+syntax = "proto3";
+package main;
+
+enum DHTPacketType { 
+	Connect = 0;
+	Forward = 1;
+	Find = 2;
+	Node = 3;
+	Ping = 4;
+	RegisterProxy = 5;
+	BadProxy = 6;
+	Proxy = 7;
+	Notify = 8;
+	ReportLoad = 9;
+	Stop = 10;
+	Unknown = 11;
+	DHCP = 12;
+	Error = 13;
+	Unsupported = 14;
+	State = 15;
+};
+
+message DHTPacket {
+	DHTPacketType type = 1;
+    string id = 2; // Node ID
+	string infohash = 3; // Infohash 
+	string data = 4; 
+	string query = 5;
+	repeated string arguments = 6; // Can hold list of IPs
+	string extra = 7; // Can contain error message, report or any other data
+}
