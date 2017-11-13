@@ -115,7 +115,7 @@ func (dht *DHTClient) packetUnknown(packet *DHTPacket) error {
 	for _, conn := range dht.TCPConnection {
 		conn.Close()
 	}
-	dht.shutdown()
+	dht.Shutdown()
 	return nil
 }
 
@@ -124,6 +124,6 @@ func (dht *DHTClient) packetUnsupported(packet *DHTPacket) error {
 	for _, conn := range dht.TCPConnection {
 		conn.Close()
 	}
-	dht.shutdown()
+	dht.Shutdown()
 	return nil
 }

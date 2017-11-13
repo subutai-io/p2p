@@ -329,7 +329,6 @@ func (np *NetworkPeer) stateHandshakingFailed(ptpc *PeerToPeer) error {
 	if np.Forwarder != nil {
 		np.LastError = "Failed to handshake with this peer over forwarder"
 		Log(Error, "Failed to handshake with %s via proxy %s", np.ID, np.Forwarder.String())
-		np.BlacklistCurrentProxy(ptpc)
 		np.Forwarder = nil
 		np.SetState(PeerStateDisconnect, ptpc)
 	} else {
@@ -396,7 +395,6 @@ func (np *NetworkPeer) stateHandshakingForwarder(ptpc *PeerToPeer) error {
 		passed := time.Since(handshakeSentAt)
 		if passed > HandshakeProxyTimeout {
 			if attempts >= 3 {
-				np.BlacklistCurrentProxy(ptpc)
 				a := np.Forwarder
 				np.Forwarder = nil
 				np.SetState(PeerStateWaitingForwarder, ptpc)
@@ -540,7 +538,6 @@ func (np *NetworkPeer) SendProxyHandshake(ptpc *PeerToPeer) error {
 	msg := CreateProxyP2PMessage(-1, np.PeerAddr.String(), uint16(ptpc.UDPSocket.GetPort()))
 	_, err := ptpc.UDPSocket.SendMessage(msg, np.Forwarder)
 	if err != nil {
-		np.BlacklistCurrentProxy(ptpc)
 		a := np.Forwarder
 		np.Forwarder = nil
 		np.SetState(PeerStateWaitingForwarder, ptpc)

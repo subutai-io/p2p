@@ -234,12 +234,12 @@ func (dht *DHTClient) sendProxy(id string) error {
 	return nil
 }
 
-func (dht *DHTClient) shutdown() {
+func (dht *DHTClient) Shutdown() {
 	Log(Info, "Entering shutdown mode. Shutting down connections with bootstrap nodes")
 	dht.isShutdown = true
 }
 
-func (dht *DHTClient) waitID() error {
+func (dht *DHTClient) WaitID() error {
 	started := time.Now()
 	period := time.Duration(time.Second * 3)
 	for len(dht.ID) != 36 {
@@ -253,5 +253,16 @@ func (dht *DHTClient) waitID() error {
 		return fmt.Errorf("Didn't received ID from bootstrap node")
 	}
 	dht.LastDHTPing = time.Now()
+	return nil
+}
+
+// RegisterProxy will register current node as a proxy on
+// bootstrap node
+func (dht *DHTClient) RegisterProxy() error {
+	return nil
+}
+
+// ReportLoad will send amount of tunnels created on particular proxy
+func (dht *DHTClient) ReportLoad(clientsNum int) error {
 	return nil
 }

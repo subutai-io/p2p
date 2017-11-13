@@ -360,12 +360,11 @@ func (p *PeerToPeer) setupHandlers() {
 // RequestIP asks DHT to get IP from DHCP-like service
 func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 	Log(Info, "Requesting IP from Bootstrap node")
-	retries := 0
 	requestedAt := time.Now()
 	interval := time.Duration(3 * time.Second)
 	p.Dht.sendDHCP(nil)
 	for p.Dht.IP == nil && p.Dht.Network == nil {
-		if time.Since(time.Now()) > interval {
+		if time.Since(requestedAt) > interval {
 			return nil, nil, fmt.Errorf("No IP were received. Swarm is empty")
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -399,7 +398,7 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 	}
 	p.Dht.IP = ip
 	p.Dht.Network = ipnet
-	mask := fmt.Sprintf("%d.%d.%d.%d", ipnet.Mask[0], ipnet.Mask[1], ipnet.Mask[2], ipnet.Mask[3])
+
 	p.Dht.sendDHCP(ipnet)
 	err = p.AssignInterface(device)
 	if err != nil {
@@ -412,7 +411,7 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 func (p *PeerToPeer) StartDHT(hash, routers string) error {
 	if p.Dht != nil {
 		Log(Info, "Stopping previous DHT instance")
-		p.Dht.shutdown()
+		p.Dht.Shutdown()
 		p.Dht = nil
 	}
 	p.Dht = new(DHTClient)
@@ -421,7 +420,6 @@ func (p *PeerToPeer) StartDHT(hash, routers string) error {
 	if err != nil {
 		return fmt.Errorf("Failed to initialize DHT: %s", err)
 	}
-	p.Dht.setupTCPCallbacks()
 	p.Dht.IPList = p.LocalIPs
 	err = p.Dht.TCPConnect()
 	if err != nil {
@@ -432,7 +430,7 @@ func (p *PeerToPeer) StartDHT(hash, routers string) error {
 			time.Sleep(3 * time.Second)
 		}
 	}
-	err = p.Dht.waitID()
+	err = p.Dht.WaitID()
 	if err != nil {
 		Log(Error, "Failed to retrieve ID from bootstrap node: %s", err)
 	}
@@ -855,7 +853,7 @@ func (p *PeerToPeer) StopInstance() {
 	} else {
 		ip = p.Dht.Network.IP
 	}
-	p.Dht.shutdown()
+	p.Dht.Shutdown()
 	p.UDPSocket.Stop()
 	p.Shutdown = true
 	Log(Info, "Stopping P2P Message handler")
