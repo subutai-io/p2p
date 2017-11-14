@@ -258,30 +258,38 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		Log(Error, "UPnP Failed: %s", err)
 	}
 	p.Hash = argHash
-	p.StartDHT(p.Hash, argDht)
-	p.Routers = p.Dht.Routers
-	if argIP == "dhcp" {
-		ipn, maskn, err := p.RequestIP(p.Interface.Mac.String(), interfaceName)
-		if err != nil {
-			Log(Error, "%v", err)
-			return nil
-		}
-		p.Interface.IP = ipn
-		p.Interface.Mask = maskn
-	} else {
-		p.Interface.IP = net.ParseIP(argIP)
-		ipn, maskn, err := p.ReportIP(argIP, p.Interface.Mac.String(), interfaceName)
-		if err != nil {
-			Log(Error, "%v", err)
-			return nil
-		}
-		p.Interface.IP = ipn
-		p.Interface.Mask = maskn
+	p.Routers = argDht
+	p.StartDHT(p.Hash, p.Routers)
+	err = p.prepareInterfaces(argIP, interfaceName)
+	if err != nil {
+		return nil
 	}
 
 	go p.UDPSocket.Listen(p.HandleP2PMessage)
 	go p.ListenInterface()
 	return p
+}
+
+func (p *PeerToPeer) prepareInterfaces(ip, interfaceName string) error {
+	if ip == "dhcp" {
+		ipn, maskn, err := p.RequestIP(p.Interface.Mac.String(), interfaceName)
+		if err != nil {
+			Log(Error, "%v", err)
+			return err
+		}
+		p.Interface.IP = ipn
+		p.Interface.Mask = maskn
+	} else {
+		p.Interface.IP = net.ParseIP(ip)
+		ipn, maskn, err := p.ReportIP(ip, p.Interface.Mac.String(), interfaceName)
+		if err != nil {
+			Log(Error, "%v", err)
+			return err
+		}
+		p.Interface.IP = ipn
+		p.Interface.Mask = maskn
+	}
+	return nil
 }
 
 func (p *PeerToPeer) attemptPortForward(port uint16, name string) error {
@@ -497,30 +505,48 @@ func (p *PeerToPeer) Run() {
 			} else {
 				Log(Trace, "Closed channel")
 			}
-		case rm, r := <-p.Dht.RemovePeerChan:
-			if r {
-				if rm == "DUMMY" || rm == "" {
-					continue
-				}
-				err := p.markPeerForRemoval(rm, "Stop")
-				if err != nil {
-					Log(Error, "Failed to mark peer for removal: %s", err)
-				}
-			}
+		// case rm, r := <-p.Dht.RemovePeerChan:
+		// 	if r {
+		// 		if rm == "DUMMY" || rm == "" {
+		// 			continue
+		// 		}
+		// 		err := p.markPeerForRemoval(rm, "Stop")
+		// 		if err != nil {
+		// 			Log(Error, "Failed to mark peer for removal: %s", err)
+		// 		}
+		// 	}
 		default:
-			peers := p.Peers.Get()
-			for i, peer := range peers {
-				if peer.State == PeerStateStop {
-					Log(Info, "Removing peer %s", i)
-					p.Peers.Delete(i)
-					Log(Info, "Peer removed")
-					break
-				}
-			}
+			p.removeStoppedPeers()
+			p.checkBootstrapNodes()
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
 	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)
+}
+
+func (p *PeerToPeer) checkBootstrapNodes() {
+	if !p.Dht.Connected {
+		p.StartDHT(p.Hash, p.Routers)
+		ones, _ := p.Interface.Mask.Size()
+		_, network, err := net.ParseCIDR(fmt.Sprintf("%s/%d", p.Interface.IP.String(), ones))
+		if err != nil {
+			Log(Error, "Failed to parse local p2p interface: %s", err)
+			return
+		}
+		p.Dht.sendDHCP(network)
+	}
+}
+
+func (p *PeerToPeer) removeStoppedPeers() {
+	peers := p.Peers.Get()
+	for id, peer := range peers {
+		if peer.State == PeerStateStop {
+			Log(Info, "Removing peer %s", id)
+			p.Peers.Delete(id)
+			Log(Info, "Peer %s has been removed", id)
+			break
+		}
+	}
 }
 
 // PrepareIntroductionMessage collects client ID, mac and IP address
@@ -884,6 +910,7 @@ func (p *PeerToPeer) StopInstance() {
 func (p *PeerToPeer) handlePeerData(peerData NetworkPeer) {
 	// Empty peer means no peers were received from bootstrap node
 	// We remove any peer that was already exists
+	Log(Warning, "Received empty peer list")
 	if peerData.ID == "" {
 		return
 	}
