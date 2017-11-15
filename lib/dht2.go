@@ -8,6 +8,7 @@ import (
 
 	"github.com/ccding/go-stun/stun"
 	proto "github.com/golang/protobuf/proto"
+	uuid "github.com/wayn3h0/go-uuid"
 )
 
 // OperatingMode - Mode in which DHT client is operating
@@ -280,18 +281,19 @@ func (dht *DHTClient) sendState(id, state string) error {
 	return dht.send(data)
 }
 
-func (dht *DHTClient) sendDHCP(network *net.IPNet) error {
-	ip := "0"
+func (dht *DHTClient) sendDHCP(ip net.IP, network *net.IPNet) error {
 	subnet := "0"
+	if ip == nil {
+		ip = net.ParseIP("127.0.0.1")
+	}
 	if network != nil {
-		ip = network.IP.String()
 		ones, _ := network.Mask.Size()
 		subnet = fmt.Sprintf("%d", ones)
 	}
 	packet := &DHTPacket{
 		Type:  DHTPacketType_DHCP,
 		Id:    dht.ID,
-		Data:  ip,
+		Data:  ip.String(),
 		Extra: subnet,
 	}
 	data, err := proto.Marshal(packet)
@@ -330,7 +332,22 @@ func (dht *DHTClient) WaitID() error {
 
 // RegisterProxy will register current node as a proxy on
 // bootstrap node
-func (dht *DHTClient) RegisterProxy() error {
+func (dht *DHTClient) RegisterProxy(ip net.IP, port int) error {
+	id, err := uuid.NewTimeBased()
+	if err != nil {
+		return fmt.Errorf("Failed to generate ID: %s", err)
+	}
+
+	packet := &DHTPacket{
+		Type: DHTPacketType_RegisterProxy,
+		Id:   id.String(),
+		Data: fmt.Sprintf("%s:%d", ip.String(), port),
+	}
+	data, err := proto.Marshal(packet)
+	if err != nil {
+		return fmt.Errorf("Failed to marshal RegProxy: %s", err)
+	}
+	dht.send(data)
 	return nil
 }
 

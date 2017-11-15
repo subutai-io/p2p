@@ -370,7 +370,7 @@ func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 	Log(Info, "Requesting IP from Bootstrap node")
 	requestedAt := time.Now()
 	interval := time.Duration(3 * time.Second)
-	p.Dht.sendDHCP(nil)
+	p.Dht.sendDHCP(nil, nil)
 	for p.Dht.IP == nil && p.Dht.Network == nil {
 		if time.Since(requestedAt) > interval {
 			return nil, nil, fmt.Errorf("No IP were received. Swarm is empty")
@@ -407,7 +407,7 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 	p.Dht.IP = ip
 	p.Dht.Network = ipnet
 
-	p.Dht.sendDHCP(ipnet)
+	p.Dht.sendDHCP(ip, ipnet)
 	err = p.AssignInterface(device)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to configure interface: %s", err)
@@ -527,13 +527,7 @@ func (p *PeerToPeer) Run() {
 func (p *PeerToPeer) checkBootstrapNodes() {
 	if !p.Dht.Connected {
 		p.StartDHT(p.Hash, p.Routers)
-		ones, _ := p.Interface.Mask.Size()
-		_, network, err := net.ParseCIDR(fmt.Sprintf("%s/%d", p.Interface.IP.String(), ones))
-		if err != nil {
-			Log(Error, "Failed to parse local p2p interface: %s", err)
-			return
-		}
-		p.Dht.sendDHCP(network)
+		p.Dht.sendDHCP(p.Dht.IP, p.Dht.Network)
 	}
 }
 
@@ -705,7 +699,7 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	pt := PingType(msg.Header.NetProto)
 	if pt == PingReq {
-		Log(Debug, "Ping request received")
+		Log(Debug, "Ping request received: %s. Responding with %s", string(msg.Data), p.Interface.Mac.String())
 		// Send a PING response
 		r := CreateXpeerPingMessage(PingResp, p.Interface.Mac.String())
 		addr, err := net.ParseMAC(string(msg.Data))
@@ -824,10 +818,8 @@ func (p *PeerToPeer) HandleBadTun(msg *P2PMessage, srcAddr *net.UDPAddr) {
 // HandleTestMessage responses with a test message when another peer trying to
 // establish direct connection
 func (p *PeerToPeer) HandleTestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
-	response := CreateTestP2PMessage(p.Crypter, p.Dht.ID, 0)
-	_, err := p.UDPSocket.SendMessage(response, srcAddr)
-	if err != nil {
-		Log(Error, "Failed to respond to test message: %v", err)
+	if len(p.Dht.ID) != 36 {
+		return
 	}
 	// See if we have peer with this ID
 	id := string(msg.Data)
@@ -839,6 +831,11 @@ func (p *PeerToPeer) HandleTestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	if peer != nil && (peer.State == PeerStateConnectingDirectly || peer.State == PeerStateConnectingInternet) {
 		peer.TestPacketReceived = true
 		p.Peers.Update(id, peer)
+		response := CreateTestP2PMessage(p.Crypter, p.Dht.ID, 0)
+		_, err := p.UDPSocket.SendMessage(response, srcAddr)
+		if err != nil {
+			Log(Error, "Failed to respond to test message: %v", err)
+		}
 	}
 }
 
@@ -848,12 +845,14 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 	Log(Trace, "Requested Send to %s", dst.String())
 	//id, exists := p.MACIDTable[dst.String()]
 	endpoint, proxy, err := p.Peers.GetEndpointAndProxy(dst.String())
-	if err == nil {
+	if err == nil && endpoint != nil {
 		Log(Debug, "Sending to %s via proxy id %d", dst.String(), proxy)
 		msg.Header.ProxyID = uint16(proxy)
 		size, err := p.UDPSocket.SendMessage(msg, endpoint)
 		return size, err
 	}
+	Log(Debug, "Not sending")
+
 	return 0, nil
 }
 

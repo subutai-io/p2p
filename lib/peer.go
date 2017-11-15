@@ -300,6 +300,7 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 	passed := time.Since(np.LastContact)
 	if passed > PeerPingTimeout {
 		np.LastError = ""
+		np.LastContact = time.Now()
 		Log(Trace, "Sending ping")
 		msg := CreateXpeerPingMessage(PingReq, ptpc.Interface.Mac.String())
 		ptpc.SendTo(np.PeerHW, msg)
@@ -431,41 +432,6 @@ func (np *NetworkPeer) stateStop(ptpc *PeerToPeer) error {
 
 // Utilities functions
 
-// TestConnection method tests connection with specified endpoint
-func (np *NetworkPeer) TestConnection(ptpc *PeerToPeer, endpoint *net.UDPAddr) bool {
-	if endpoint == nil || ptpc == nil {
-		return false
-	}
-	msg := CreateTestP2PMessage(ptpc.Crypter, ptpc.Dht.ID, 0)
-	conn, err := net.DialUDP("udp4", nil, endpoint)
-	defer conn.Close()
-	if err != nil {
-		Log(Debug, "%v", err)
-		return false
-	}
-	ser := msg.Serialize()
-	_, err = conn.Write(ser)
-	if err != nil {
-		return false
-	}
-	t := time.Now()
-	t = t.Add(1500 * time.Millisecond)
-	conn.SetReadDeadline(t)
-	// TODO: Check if it was real TEST message
-	for {
-		var buf [4096]byte
-		s, _, err := conn.ReadFromUDP(buf[0:])
-		if err != nil {
-			Log(Debug, "%v", err)
-			break
-		}
-		if s > 0 {
-			return true
-		}
-	}
-	return false
-}
-
 // RequestForwarder sends a request for a proxy with DHT client
 func (np *NetworkPeer) RequestForwarder(ptpc *PeerToPeer) {
 	ptpc.Dht.sendProxy(np.ID)
@@ -548,6 +514,11 @@ func (np *NetworkPeer) SendProxyHandshake(ptpc *PeerToPeer) error {
 }
 
 func (np *NetworkPeer) holePunch(endpoint *net.UDPAddr, ptpc *PeerToPeer) bool {
+	if len(ptpc.Dht.ID) != 36 {
+		Log(Error, "No personal ID. Aborting connection")
+		np.SetState(PeerStateStop, ptpc)
+		return false
+	}
 	ptpc.HolePunching.Lock()
 	defer ptpc.HolePunching.Unlock()
 	Log(Info, "Starting UDP hole punching to %s", endpoint.String())
@@ -559,7 +530,7 @@ func (np *NetworkPeer) holePunch(endpoint *net.UDPAddr, ptpc *PeerToPeer) bool {
 	packet := msg.Serialize()
 
 	punchStarted := time.Now()
-	for {
+	for np.State == PeerStateConnectingDirectly || np.State == PeerStateConnectingInternet {
 		if np.TestPacketReceived {
 			np.TestPacketReceived = false
 			return true

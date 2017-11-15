@@ -24,12 +24,12 @@ func (dht *DHTClient) packetConnect(packet *DHTPacket) error {
 func (dht *DHTClient) packetDHCP(packet *DHTPacket) error {
 	Log(Info, "Received DHCP packet")
 	if packet.Data != "" && packet.Extra != "" {
-		_, network, err := net.ParseCIDR(fmt.Sprintf("%s/%s", packet.Data, packet.Extra))
+		ip, network, err := net.ParseCIDR(fmt.Sprintf("%s/%s", packet.Data, packet.Extra))
 		if err != nil {
 			Log(Error, "Failed to parse DHCP packet: %s", err)
 			return err
 		}
-		dht.IP = network.IP
+		dht.IP = ip
 		dht.Network = network
 		Log(Info, "Received network information: %s", network.String())
 	}
