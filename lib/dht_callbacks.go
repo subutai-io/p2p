@@ -105,6 +105,9 @@ func (dht *DHTClient) packetProxy(packet *DHTPacket) error {
 }
 
 func (dht *DHTClient) packetRegisterProxy(packet *DHTPacket) error {
+	if packet.Data == "OK" {
+		Log(Info, "Proxy registration confirmed")
+	}
 	return nil
 }
 

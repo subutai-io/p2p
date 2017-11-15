@@ -304,8 +304,17 @@ func (dht *DHTClient) sendDHCP(ip net.IP, network *net.IPNet) error {
 }
 
 func (dht *DHTClient) sendProxy(id string) error {
-
-	return nil
+	Log(Debug, "Requesting proxy for %s", id)
+	packet := &DHTPacket{
+		Type: DHTPacketType_Proxy,
+		Id:   dht.ID,
+		Data: id,
+	}
+	data, err := proto.Marshal(packet)
+	if err != nil {
+		return fmt.Errorf("Failed to marshal DHCP packet: %s", err)
+	}
+	return dht.send(data)
 }
 
 func (dht *DHTClient) Shutdown() {
