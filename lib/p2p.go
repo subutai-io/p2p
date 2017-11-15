@@ -258,30 +258,38 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		Log(Error, "UPnP Failed: %s", err)
 	}
 	p.Hash = argHash
-	p.StartDHT(p.Hash, argDht)
-	p.Routers = p.Dht.Routers
-	if argIP == "dhcp" {
-		ipn, maskn, err := p.RequestIP(p.Interface.Mac.String(), interfaceName)
-		if err != nil {
-			Log(Error, "%v", err)
-			return nil
-		}
-		p.Interface.IP = ipn
-		p.Interface.Mask = maskn
-	} else {
-		p.Interface.IP = net.ParseIP(argIP)
-		ipn, maskn, err := p.ReportIP(argIP, p.Interface.Mac.String(), interfaceName)
-		if err != nil {
-			Log(Error, "%v", err)
-			return nil
-		}
-		p.Interface.IP = ipn
-		p.Interface.Mask = maskn
+	p.Routers = argDht
+	p.StartDHT(p.Hash, p.Routers)
+	err = p.prepareInterfaces(argIP, interfaceName)
+	if err != nil {
+		return nil
 	}
 
 	go p.UDPSocket.Listen(p.HandleP2PMessage)
 	go p.ListenInterface()
 	return p
+}
+
+func (p *PeerToPeer) prepareInterfaces(ip, interfaceName string) error {
+	if ip == "dhcp" {
+		ipn, maskn, err := p.RequestIP(p.Interface.Mac.String(), interfaceName)
+		if err != nil {
+			Log(Error, "%v", err)
+			return err
+		}
+		p.Interface.IP = ipn
+		p.Interface.Mask = maskn
+	} else {
+		p.Interface.IP = net.ParseIP(ip)
+		ipn, maskn, err := p.ReportIP(ip, p.Interface.Mac.String(), interfaceName)
+		if err != nil {
+			Log(Error, "%v", err)
+			return err
+		}
+		p.Interface.IP = ipn
+		p.Interface.Mask = maskn
+	}
+	return nil
 }
 
 func (p *PeerToPeer) attemptPortForward(port uint16, name string) error {
@@ -362,7 +370,7 @@ func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 	Log(Info, "Requesting IP from Bootstrap node")
 	requestedAt := time.Now()
 	interval := time.Duration(3 * time.Second)
-	p.Dht.sendDHCP(nil)
+	p.Dht.sendDHCP(nil, nil)
 	for p.Dht.IP == nil && p.Dht.Network == nil {
 		if time.Since(requestedAt) > interval {
 			return nil, nil, fmt.Errorf("No IP were received. Swarm is empty")
@@ -399,7 +407,7 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 	p.Dht.IP = ip
 	p.Dht.Network = ipnet
 
-	p.Dht.sendDHCP(ipnet)
+	p.Dht.sendDHCP(ip, ipnet)
 	err = p.AssignInterface(device)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to configure interface: %s", err)
@@ -497,30 +505,42 @@ func (p *PeerToPeer) Run() {
 			} else {
 				Log(Trace, "Closed channel")
 			}
-		case rm, r := <-p.Dht.RemovePeerChan:
-			if r {
-				if rm == "DUMMY" || rm == "" {
-					continue
-				}
-				err := p.markPeerForRemoval(rm, "Stop")
-				if err != nil {
-					Log(Error, "Failed to mark peer for removal: %s", err)
-				}
-			}
+		// case rm, r := <-p.Dht.RemovePeerChan:
+		// 	if r {
+		// 		if rm == "DUMMY" || rm == "" {
+		// 			continue
+		// 		}
+		// 		err := p.markPeerForRemoval(rm, "Stop")
+		// 		if err != nil {
+		// 			Log(Error, "Failed to mark peer for removal: %s", err)
+		// 		}
+		// 	}
 		default:
-			peers := p.Peers.Get()
-			for i, peer := range peers {
-				if peer.State == PeerStateStop {
-					Log(Info, "Removing peer %s", i)
-					p.Peers.Delete(i)
-					Log(Info, "Peer removed")
-					break
-				}
-			}
+			p.removeStoppedPeers()
+			p.checkBootstrapNodes()
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
 	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)
+}
+
+func (p *PeerToPeer) checkBootstrapNodes() {
+	if !p.Dht.Connected {
+		p.StartDHT(p.Hash, p.Routers)
+		p.Dht.sendDHCP(p.Dht.IP, p.Dht.Network)
+	}
+}
+
+func (p *PeerToPeer) removeStoppedPeers() {
+	peers := p.Peers.Get()
+	for id, peer := range peers {
+		if peer.State == PeerStateStop {
+			Log(Info, "Removing peer %s", id)
+			p.Peers.Delete(id)
+			Log(Info, "Peer %s has been removed", id)
+			break
+		}
+	}
 }
 
 // PrepareIntroductionMessage collects client ID, mac and IP address
@@ -679,7 +699,7 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	pt := PingType(msg.Header.NetProto)
 	if pt == PingReq {
-		Log(Debug, "Ping request received")
+		Log(Debug, "Ping request received: %s. Responding with %s", string(msg.Data), p.Interface.Mac.String())
 		// Send a PING response
 		r := CreateXpeerPingMessage(PingResp, p.Interface.Mac.String())
 		addr, err := net.ParseMAC(string(msg.Data))
@@ -798,10 +818,8 @@ func (p *PeerToPeer) HandleBadTun(msg *P2PMessage, srcAddr *net.UDPAddr) {
 // HandleTestMessage responses with a test message when another peer trying to
 // establish direct connection
 func (p *PeerToPeer) HandleTestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
-	response := CreateTestP2PMessage(p.Crypter, p.Dht.ID, 0)
-	_, err := p.UDPSocket.SendMessage(response, srcAddr)
-	if err != nil {
-		Log(Error, "Failed to respond to test message: %v", err)
+	if len(p.Dht.ID) != 36 {
+		return
 	}
 	// See if we have peer with this ID
 	id := string(msg.Data)
@@ -813,6 +831,11 @@ func (p *PeerToPeer) HandleTestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	if peer != nil && (peer.State == PeerStateConnectingDirectly || peer.State == PeerStateConnectingInternet) {
 		peer.TestPacketReceived = true
 		p.Peers.Update(id, peer)
+		response := CreateTestP2PMessage(p.Crypter, p.Dht.ID, 0)
+		_, err := p.UDPSocket.SendMessage(response, srcAddr)
+		if err != nil {
+			Log(Error, "Failed to respond to test message: %v", err)
+		}
 	}
 }
 
@@ -822,12 +845,14 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 	Log(Trace, "Requested Send to %s", dst.String())
 	//id, exists := p.MACIDTable[dst.String()]
 	endpoint, proxy, err := p.Peers.GetEndpointAndProxy(dst.String())
-	if err == nil {
+	if err == nil && endpoint != nil {
 		Log(Debug, "Sending to %s via proxy id %d", dst.String(), proxy)
 		msg.Header.ProxyID = uint16(proxy)
 		size, err := p.UDPSocket.SendMessage(msg, endpoint)
 		return size, err
 	}
+	Log(Debug, "Not sending")
+
 	return 0, nil
 }
 
@@ -884,6 +909,7 @@ func (p *PeerToPeer) StopInstance() {
 func (p *PeerToPeer) handlePeerData(peerData NetworkPeer) {
 	// Empty peer means no peers were received from bootstrap node
 	// We remove any peer that was already exists
+	Log(Warning, "Received empty peer list")
 	if peerData.ID == "" {
 		return
 	}

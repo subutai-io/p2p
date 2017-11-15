@@ -22,14 +22,38 @@ func (dht *DHTClient) packetConnect(packet *DHTPacket) error {
 }
 
 func (dht *DHTClient) packetDHCP(packet *DHTPacket) error {
+	Log(Info, "Received DHCP packet")
+	if packet.Data != "" && packet.Extra != "" {
+		ip, network, err := net.ParseCIDR(fmt.Sprintf("%s/%s", packet.Data, packet.Extra))
+		if err != nil {
+			Log(Error, "Failed to parse DHCP packet: %s", err)
+			return err
+		}
+		dht.IP = ip
+		dht.Network = network
+		Log(Info, "Received network information: %s", network.String())
+	}
 	return nil
 }
 
 func (dht *DHTClient) packetError(packet *DHTPacket) error {
+	lvl := LogLevel(Trace)
+	if packet.Data == "" {
+		lvl = Error
+	} else if packet.Data == "Warning" {
+		lvl = Warning
+	} else if packet.Data == "Error" {
+		lvl = Error
+	}
+	Log(lvl, "Bootstrap node returns: %s", packet.Extra)
 	return nil
 }
 
 func (dht *DHTClient) packetFind(packet *DHTPacket) error {
+	if len(packet.Arguments) == 0 {
+		Log(Warning, "Received empty peer list")
+		return nil
+	}
 	Log(Debug, "Received peer list")
 	for _, id := range packet.Arguments {
 		if id == dht.ID {
