@@ -45,6 +45,7 @@ type PeerToPeer struct {
 	Interface       NetworkInterface                     // TAP Interface
 	Peers           *PeerList                            // Known peers
 	HolePunching    sync.Mutex                           // Mutex for hole punching sync
+	Proxies         []*proxyServer                       // List of proxies
 }
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
@@ -487,34 +488,8 @@ func (p *PeerToPeer) Run() {
 			}
 		case proxy, pr := <-p.Dht.ProxyChannel:
 			if pr {
-				exists := false
-				peers := p.Peers.Get()
-				for i, peer := range peers {
-					if i == proxy.DestinationID {
-						peer.SetState(PeerStateHandshakingForwarder, p)
-						peer.Forwarder = proxy.Addr
-						peer.Endpoint = proxy.Addr
-						p.Peers.Update(i, peer)
-					}
-				}
-				if !exists {
-					Log(Info, "Received forwarder for unknown peer")
-					p.Dht.sendFind()
-				}
-
-			} else {
-				Log(Trace, "Closed channel")
+				go p.initProxy(proxy)
 			}
-		// case rm, r := <-p.Dht.RemovePeerChan:
-		// 	if r {
-		// 		if rm == "DUMMY" || rm == "" {
-		// 			continue
-		// 		}
-		// 		err := p.markPeerForRemoval(rm, "Stop")
-		// 		if err != nil {
-		// 			Log(Error, "Failed to mark peer for removal: %s", err)
-		// 		}
-		// 	}
 		default:
 			p.removeStoppedPeers()
 			p.checkBootstrapNodes()
@@ -781,22 +756,14 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 }
 
 // HandleProxyMessage receives a control packet from proxy
+// Proxy packets comes in format of UDP connection address
 func (p *PeerToPeer) HandleProxyMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
-	// Proxy registration data
-	if msg.Header.ProxyID < 1 {
-		return
-	}
-	ip := string(msg.Data)
-	Log(Info, "Proxy confirmation received from %s. Tunnel ID %d", ip, int(msg.Header.ProxyID))
-	peers := p.Peers.Get()
-	for i, peer := range peers {
-		if peer.PeerAddr.String() == ip {
-			peer.ProxyID = msg.Header.ProxyID
-			p.Peers.Update(i, peer)
-			return
+	for i, proxy := range p.Proxies {
+		if proxy.addr == srcAddr {
+			p.Proxies[i].status = proxyActive
+			Log(Info, "Connected with %s proxy", srcAddr.String())
 		}
 	}
-	Log(Warning, "Can't set Tunnel#%d for %s: Can't find address", int(msg.Header.ProxyID), ip)
 }
 
 // HandleBadTun notified peer about proxy being malfunction
@@ -942,9 +909,16 @@ func (p *PeerToPeer) handlePeerData(peerData NetworkPeer) {
 		p.Peers.Update(peer.ID, peer)
 		return
 	}
+
+	if peer != nil && len(peerData.Proxies) > 0 {
+		Log(Info, "Received proxies for peer %s", peerData.ID)
+		peer.Proxies = peerData.Proxies
+		p.Peers.Update(peer.ID, peer)
+	}
 }
 
 // ReadProxies - reads a list of proxies received by DHT client
+/*
 func (p *PeerToPeer) ReadProxies() {
 	for {
 		if p.Shutdown {
@@ -981,3 +955,4 @@ func (p *PeerToPeer) ReadProxies() {
 	}
 	Log(Info, "Stopped Proxy reader channel")
 }
+*/
