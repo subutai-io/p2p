@@ -6,6 +6,28 @@ import (
 	"strconv"
 )
 
+func (dht *DHTClient) setupTCPCallbacks() {
+	dht.TCPCallbacks = make(map[DHTPacketType]dhtCallback)
+	dht.TCPCallbacks[DHTPacketType_BadProxy] = dht.packetBadProxy
+	dht.TCPCallbacks[DHTPacketType_Connect] = dht.packetConnect
+	dht.TCPCallbacks[DHTPacketType_DHCP] = dht.packetDHCP
+	dht.TCPCallbacks[DHTPacketType_Error] = dht.packetError
+	dht.TCPCallbacks[DHTPacketType_Find] = dht.packetFind
+	dht.TCPCallbacks[DHTPacketType_Forward] = dht.packetForward
+	dht.TCPCallbacks[DHTPacketType_Node] = dht.packetNode
+	dht.TCPCallbacks[DHTPacketType_Notify] = dht.packetNotify
+	dht.TCPCallbacks[DHTPacketType_Ping] = dht.packetPing
+	dht.TCPCallbacks[DHTPacketType_Proxy] = dht.packetProxy
+	dht.TCPCallbacks[DHTPacketType_RequestProxy] = dht.packetRequestProxy
+	dht.TCPCallbacks[DHTPacketType_ReportProxy] = dht.packetReportProxy
+	dht.TCPCallbacks[DHTPacketType_RegisterProxy] = dht.packetRegisterProxy
+	dht.TCPCallbacks[DHTPacketType_ReportLoad] = dht.packetReportLoad
+	dht.TCPCallbacks[DHTPacketType_State] = dht.packetState
+	dht.TCPCallbacks[DHTPacketType_Stop] = dht.packetStop
+	dht.TCPCallbacks[DHTPacketType_Unknown] = dht.packetUnknown
+	dht.TCPCallbacks[DHTPacketType_Unsupported] = dht.packetUnsupported
+}
+
 func (dht *DHTClient) packetBadProxy(packet *DHTPacket) error {
 	return nil
 }
@@ -17,7 +39,7 @@ func (dht *DHTClient) packetConnect(packet *DHTPacket) error {
 	}
 	dht.ID = packet.Id
 	Log(Info, "Received personal ID for this session: %s", dht.ID)
-
+	dht.sendProxy()
 	return dht.sendFind()
 }
 
@@ -101,6 +123,31 @@ func (dht *DHTClient) packetPing(packet *DHTPacket) error {
 }
 
 func (dht *DHTClient) packetProxy(packet *DHTPacket) error {
+	Log(Info, "Received list of proxies")
+	for _, proxy := range packet.Arguments {
+		dht.ProxyChannel <- proxy
+	}
+	return nil
+}
+
+// packetRequestProxy received when we was requesting proxy to connect to some peer
+func (dht *DHTClient) packetRequestProxy(packet *DHTPacket) error {
+	list := []*net.UDPAddr{}
+	for _, proxy := range packet.Proxies {
+		addr, err := net.ResolveUDPAddr("udp", proxy)
+		if err != nil {
+			Log(Error, "Can't parse proxy %s for peer %s", proxy, packet.Data)
+			continue
+		}
+		list = append(list, addr)
+	}
+	peer := NetworkPeer{ID: packet.Data, Proxies: list}
+	dht.PeerData <- peer
+	return nil
+}
+
+func (dht *DHTClient) packetReportProxy(packet *DHTPacket) error {
+	Log(Info, "DHT confirmed proxy registration")
 	return nil
 }
 

@@ -44,7 +44,7 @@ type DHTClient struct {
 	IP            net.IP                        // IP of local interface received from DHCP or specified manually
 	Network       *net.IPNet                    // Network information about current network. Used to inform p2p about mask for interface
 	StateChannel  chan RemotePeerState          // Channel to pass states to instance
-	ProxyChannel  chan Forwarder                // Channel to pass proxies to instance
+	ProxyChannel  chan string                   // Channel to pass proxies to instance
 	isShutdown    bool                          // Whether DHT shutting down or not
 	PeerData      chan NetworkPeer              // Channel to pass data about changes in peers
 	Connected     bool                          // Whether connection with bootstrap nodes established or not
@@ -82,7 +82,7 @@ func (dht *DHTClient) TCPInit(hash, routers string) error {
 	// dht.RemovePeerChan = make(chan string)
 	//dht.PeerChannel = make(chan []PeerIP)
 	dht.StateChannel = make(chan RemotePeerState)
-	dht.ProxyChannel = make(chan Forwarder)
+	dht.ProxyChannel = make(chan string)
 	dht.PeerData = make(chan NetworkPeer)
 	dht.NetworkHash = hash
 	dht.Routers = routers
@@ -91,26 +91,6 @@ func (dht *DHTClient) TCPInit(hash, routers string) error {
 	}
 	dht.setupTCPCallbacks()
 	return nil
-}
-
-func (dht *DHTClient) setupTCPCallbacks() {
-	dht.TCPCallbacks = make(map[DHTPacketType]dhtCallback)
-	dht.TCPCallbacks[DHTPacketType_BadProxy] = dht.packetBadProxy
-	dht.TCPCallbacks[DHTPacketType_Connect] = dht.packetConnect
-	dht.TCPCallbacks[DHTPacketType_DHCP] = dht.packetDHCP
-	dht.TCPCallbacks[DHTPacketType_Error] = dht.packetError
-	dht.TCPCallbacks[DHTPacketType_Find] = dht.packetFind
-	dht.TCPCallbacks[DHTPacketType_Forward] = dht.packetForward
-	dht.TCPCallbacks[DHTPacketType_Node] = dht.packetNode
-	dht.TCPCallbacks[DHTPacketType_Notify] = dht.packetNotify
-	dht.TCPCallbacks[DHTPacketType_Ping] = dht.packetPing
-	dht.TCPCallbacks[DHTPacketType_Proxy] = dht.packetProxy
-	dht.TCPCallbacks[DHTPacketType_RegisterProxy] = dht.packetRegisterProxy
-	dht.TCPCallbacks[DHTPacketType_ReportLoad] = dht.packetReportLoad
-	dht.TCPCallbacks[DHTPacketType_State] = dht.packetState
-	dht.TCPCallbacks[DHTPacketType_Stop] = dht.packetStop
-	dht.TCPCallbacks[DHTPacketType_Unknown] = dht.packetUnknown
-	dht.TCPCallbacks[DHTPacketType_Unsupported] = dht.packetUnsupported
 }
 
 func (dht *DHTClient) TCPConnect() error {
@@ -303,12 +283,37 @@ func (dht *DHTClient) sendDHCP(ip net.IP, network *net.IPNet) error {
 	return dht.send(data)
 }
 
-func (dht *DHTClient) sendProxy(id string) error {
-	Log(Debug, "Requesting proxy for %s", id)
+func (dht *DHTClient) sendProxy() error {
+	Log(Debug, "Requesting proxies")
 	packet := &DHTPacket{
 		Type: DHTPacketType_Proxy,
 		Id:   dht.ID,
+	}
+	data, err := proto.Marshal(packet)
+	if err != nil {
+		return fmt.Errorf("Failed to marshal DHCP packet: %s", err)
+	}
+	return dht.send(data)
+}
+
+func (dht *DHTClient) sendRequestProxy(id string) error {
+	packet := &DHTPacket{
+		Type: DHTPacketType_RequestProxy,
+		Id:   dht.ID,
 		Data: id,
+	}
+	data, err := proto.Marshal(packet)
+	if err != nil {
+		return fmt.Errorf("Failed to marshal DHCP packet: %s", err)
+	}
+	return dht.send(data)
+}
+
+func (dht *DHTClient) sendReportProxy(addr *net.UDPAddr) error {
+	packet := &DHTPacket{
+		Type: DHTPacketType_ReportProxy,
+		Id:   dht.ID,
+		Data: addr.String(),
 	}
 	data, err := proto.Marshal(packet)
 	if err != nil {

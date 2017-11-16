@@ -21,6 +21,7 @@ type NetworkPeer struct {
 	PeerHW             net.HardwareAddr                   // Hardware address of peer interface. TODO: Rename to Mac
 	Endpoint           *net.UDPAddr                       // Endpoint address of a peer. TODO: Make this net.UDPAddr
 	KnownIPs           []*net.UDPAddr                     // List of IP addresses that accepts connection on peer
+	Proxies            []*net.UDPAddr                     // List of proxies of this peer
 	State              PeerState                          // State of a peer
 	RemoteState        PeerState                          // State of remote peer
 	LastContact        time.Time                          // Last ping with this peer
@@ -359,7 +360,7 @@ func (np *NetworkPeer) stateWaitingForwarder(ptpc *PeerToPeer) error {
 	Log(Info, "Requesting proxy for %s", np.ID)
 	np.RequestForwarder(ptpc)
 	waitStart := time.Now()
-	for np.Forwarder == nil {
+	for len(np.Proxies) == 0 {
 		time.Sleep(time.Millisecond * 100)
 		passed := time.Since(waitStart)
 		if passed > WaitProxyTimeout {
@@ -381,39 +382,20 @@ func (np *NetworkPeer) stateWaitingForwarderFailed(ptpc *PeerToPeer) error {
 
 // stateHandshakingForwarder waits for handshake with a proxy to be completed
 func (np *NetworkPeer) stateHandshakingForwarder(ptpc *PeerToPeer) error {
-	if np.Forwarder == nil {
-		np.SetState(PeerStateWaitingForwarder, ptpc)
-		return nil
-	}
-	np.ProxyRequests = 0
-	err := np.SendProxyHandshake(ptpc)
-	if err != nil {
-		return err
-	}
-	handshakeSentAt := time.Now()
-	attempts := 0
-	for np.ProxyID == 0 {
-		passed := time.Since(handshakeSentAt)
-		if passed > HandshakeProxyTimeout {
-			if attempts >= 3 {
-				a := np.Forwarder
-				np.Forwarder = nil
-				np.SetState(PeerStateWaitingForwarder, ptpc)
-				np.LastError = "Failed to handshake with a forwarder"
-				return fmt.Errorf("Failed to handshake with proxy %s [%s]", np.ID, a.String())
+	for _, proxy := range np.Proxies {
+		np.Endpoint = proxy
+		Log(Info, "Sending handshake to %s over forwarder %s", np.ID, np.Endpoint.String())
+		handshakeSentAt := time.Now()
+		for np.State == PeerStateHandshakingForwarder {
+			passed := time.Since(handshakeSentAt)
+			if passed > time.Duration(time.Second*14) {
+				np.SetState(PeerStateHandshakingFailed, ptpc)
+				return fmt.Errorf("Failed to handshake with peer %s", np.ID)
 			}
-
-			err := np.SendProxyHandshake(ptpc)
-			if err != nil {
-				return err
-			}
-			handshakeSentAt = time.Now()
-			attempts++
+			np.sendHandshake(ptpc)
+			time.Sleep(time.Millisecond * 500)
 		}
-		time.Sleep(time.Millisecond * 100)
 	}
-	Log(Info, "%s handshaked with proxy %s", np.ID, np.Forwarder.String())
-	np.SetState(PeerStateHandshaking, ptpc)
 	return nil
 }
 
@@ -434,7 +416,7 @@ func (np *NetworkPeer) stateStop(ptpc *PeerToPeer) error {
 
 // RequestForwarder sends a request for a proxy with DHT client
 func (np *NetworkPeer) RequestForwarder(ptpc *PeerToPeer) {
-	ptpc.Dht.sendProxy(np.ID)
+	ptpc.Dht.sendRequestProxy(np.ID)
 }
 
 // ProbeLocalConnection will try to connect to every known IP addr
@@ -483,7 +465,7 @@ func (np *NetworkPeer) sendHandshake(ptpc *PeerToPeer) {
 		return
 	}
 	msg := CreateIntroRequest(ptpc.Crypter, ptpc.Dht.ID)
-	msg.Header.ProxyID = uint16(np.ProxyID)
+	//msg.Header.ProxyID = uint16(np.ProxyID)
 	_, err := ptpc.UDPSocket.SendMessage(msg, np.Endpoint)
 	if err != nil {
 		np.LastError = "Failed to send intoduction message"
