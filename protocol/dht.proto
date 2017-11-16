@@ -8,16 +8,18 @@ enum DHTPacketType {
 	Node = 3;
 	Ping = 4;
 	RegisterProxy = 5;
-	BadProxy = 6;
-	Proxy = 7;
-	Notify = 8;
-	ReportLoad = 9;
-	Stop = 10;
-	Unknown = 11;
-	DHCP = 12;
-	Error = 13;
-	Unsupported = 14;
-	State = 15;
+	RequestProxy = 6;
+	ReportProxy = 7;
+	BadProxy = 8;
+	Proxy = 9;
+	Notify = 10;
+	ReportLoad = 11;
+	Stop = 12;
+	Unknown = 13;
+	DHCP = 14;
+	Error = 15;
+	Unsupported = 16;
+	State = 17;
 };
 
 message DHTPacket {
@@ -27,5 +29,6 @@ message DHTPacket {
 	string data = 4; 
 	string query = 5;
 	repeated string arguments = 6; // Can hold list of IPs
-	string extra = 7; // Can contain error message, report or any other data
+	repeated string proxies = 7; // List of proxies associated with particular peer 
+	string extra = 8; // Can contain error message, report or any other data
 }
