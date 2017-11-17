@@ -3,65 +3,61 @@ package ptp
 import (
 	"fmt"
 	"net"
-	"sync"
+	"time"
 )
 
-// ProxyStatus represents current status of a proxy
-type ProxyStatus uint8
+type proxyStatus uint8
 
-// Types of proxy statuses
 const (
-	ProxyConnecting ProxyStatus = 0
-	ProxyConnected  ProxyStatus = 1
-	ProxyFailed     ProxyStatus = 2
+	proxyConnecting   proxyStatus = 0
+	proxyActive       proxyStatus = 1
+	proxyDisconnected proxyStatus = 2
 )
 
-// ProxyList manages all proxies within daemon, not per p2p instance
-type ProxyList struct {
-	proxies map[string]*Proxy
-	lock    sync.RWMutex
+type proxyServer struct {
+	addr     *net.UDPAddr
+	endpoint *net.UDPAddr // Endpoint provided by proxy
+	status   proxyStatus
 }
 
-func (l *ProxyList) operate(action ListOperation, key string, proxy *Proxy) {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-	if action == OperateUpdate {
-		l.proxies[key] = proxy
-	} else if action == OperateDelete {
-		delete(l.proxies, key)
-	}
-}
-
-// Exists returns whether proxy with specified already in the list or not
-func (l *ProxyList) Exists(endpoint string) bool {
-	_, exists := l.proxies[endpoint]
-	return exists
-}
-
-// Add will add new proxy, connect to it and get our tunnel ID from it
-func (l *ProxyList) Add(endpoint string) error {
-	if l.Exists(endpoint) {
-		return fmt.Errorf("Proxy already exists")
-	}
-	proxy := new(Proxy)
-	err := proxy.Connect(endpoint)
+func (p *PeerToPeer) initProxy(addr string) error {
+	var err error
+	proxy := new(proxyServer)
+	proxy.addr, err = net.ResolveUDPAddr("udp", addr)
 	if err != nil {
-		return fmt.Errorf("Failed to connect to proxy: %s", err)
+		return fmt.Errorf("Failed to resolve proxy address")
 	}
-	// Wait for our ID
+
+	for _, pr := range p.Proxies {
+		if pr.addr == proxy.addr {
+			return fmt.Errorf("Proxy %s already exists", addr)
+		}
+	}
+	p.Proxies = append(p.Proxies, proxy)
+	initStarted := time.Now()
+	proxy.status = proxyConnecting
+
+	msg := CreateProxyP2PMessage(0, p.Dht.ID, 1)
+	p.UDPSocket.SendMessage(msg, proxy.addr)
+	for proxy.status == proxyConnecting {
+		time.Sleep(100 * time.Millisecond)
+		if time.Duration(3*time.Second) < time.Since(initStarted) {
+			p.removeProxy(proxy.addr)
+			return fmt.Errorf("Failed to connect to proxy")
+		}
+	}
+	if proxy.status != proxyActive {
+		p.removeProxy(proxy.addr)
+		return fmt.Errorf("Wrong proxy status")
+	}
 	return nil
 }
 
-// Proxy is user a traffic proxy when peer is behind NAT and can't
-// connect to other peers in any way
-type Proxy struct {
-	Conn   *net.UDPConn
-	ID     uint16
-	Status ProxyStatus
-}
-
-// Connect will send initial handshake packet to the specified proxy
-func (p *Proxy) Connect(endpoint string) error {
-
-	return nil
+func (p *PeerToPeer) removeProxy(addr *net.UDPAddr) {
+	for i, proxy := range p.Proxies {
+		if proxy.addr == addr {
+			p.Proxies = append(p.Proxies[:i], p.Proxies[i+1:]...)
+			return
+		}
+	}
 }

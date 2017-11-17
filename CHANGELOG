@@ -1,6 +1,16 @@
 # Change Log
 
-## [6.2.0-dev] 11/13/2017
+## [6.3.0] 11/17/2017
+
+* Fixed connectivity issues
+
+## [6.2.1] 11/16/2017
+
+* New scheme for traffic forwarders
+* Modified DHT message 
+* Implemented new DHT message type - RequestProxy and ReportProxy
+
+## [6.2.0] 11/13/2017
 
 * Switched from UDP to TCP in communication with Bootstrap nodes
 * Refactored bootstrap packets

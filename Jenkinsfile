@@ -5,7 +5,7 @@ p2pCommitId = ""
 cdnHost = ""
 
 switch (env.BRANCH_NAME) {
-	case ~/master/: cdnHost = "stagecdn.subut.ai"; break;
+	case ~/master/: cdnHost = "mastercdn.subut.ai"; break;
 	default: cdnHost = "devcdn.subut.ai"
 }
 
