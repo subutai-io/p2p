@@ -10,15 +10,6 @@ const PacketVersion string = "5"
 // SupportedVersion is a list of versions supported by DHT server
 var SupportedVersion = [...]string{"6", "5"}
 
-// DHTMessage is an unmarshaled DHT packet
-type DHTMessage struct {
-	ID        string "i"
-	Query     string "q"
-	Command   string "c"
-	Arguments string "a"
-	Payload   string "p"
-}
-
 // MsgType is a type of the message
 type MsgType uint16
 

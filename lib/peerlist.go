@@ -6,11 +6,13 @@ import (
 	"sync"
 )
 
+// ListOperation will specify which operation is performed on peer list
 type ListOperation int
 
+// List operations
 const (
-	OperateDelete ListOperation = 0
-	OperateUpdate ListOperation = 1
+	OperateDelete ListOperation = 0 // Delete entry from map
+	OperateUpdate ListOperation = 1 // Add/Update entry in map
 )
 
 // PeerList is for handling list of peers with all mappings
@@ -77,6 +79,7 @@ func (l *PeerList) deleteTables(ip, mac string) {
 	}
 }
 
+// Delete will remove entry with specified ID from peer list
 func (l *PeerList) Delete(id string) {
 	l.operate(OperateDelete, id, nil)
 }
@@ -133,10 +136,13 @@ func (l *PeerList) GetID(ip string) (string, error) {
 	return "", fmt.Errorf("Specified IP was not found in table")
 }
 
+// Length returns size of peer list map
 func (l *PeerList) Length() int {
 	return len(l.peers)
 }
 
+// RunPeer should be called once on each peer when added
+// to list
 func (l *PeerList) RunPeer(id string, p *PeerToPeer) {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
