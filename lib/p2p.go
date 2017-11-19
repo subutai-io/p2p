@@ -430,12 +430,12 @@ func (p *PeerToPeer) StartDHT(hash, routers string) error {
 		return fmt.Errorf("Failed to initialize DHT: %s", err)
 	}
 	p.Dht.IPList = p.LocalIPs
-	err = p.Dht.TCPConnect()
+	err = p.Dht.Connect()
 	if err != nil {
 		Log(Error, "Failed to establish connection with Bootstrap node: %s")
 		for err != nil {
 			Log(Warning, "Retrying connection")
-			err = p.Dht.TCPConnect()
+			err = p.Dht.Connect()
 			time.Sleep(3 * time.Second)
 		}
 	}
@@ -493,10 +493,19 @@ func (p *PeerToPeer) Run() {
 		default:
 			p.removeStoppedPeers()
 			p.checkBootstrapNodes()
-			time.Sleep(100 * time.Millisecond)
+			p.checkLastDHTUpdate()
+			time.Sleep(10 * time.Millisecond)
 		}
 	}
 	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)
+}
+
+func (p *PeerToPeer) checkLastDHTUpdate() {
+	passed := time.Since(p.Dht.LastUpdate)
+	if passed > time.Duration(90*time.Second) {
+		Log(Debug, "DHT Last Update timeout passed")
+		p.Dht.sendFind()
+	}
 }
 
 func (p *PeerToPeer) checkBootstrapNodes() {
