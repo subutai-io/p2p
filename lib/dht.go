@@ -144,6 +144,7 @@ func (dht *DHTClient) Handshake(conn *net.TCPConn) error {
 	packet := DHTPacket{
 		Type:      DHTPacketType_Connect,
 		Arguments: ips,
+		Infohash:  dht.NetworkHash,
 		Data:      fmt.Sprintf("%d", dht.P2PPort),
 		Extra:     PacketVersion,
 	}
@@ -227,9 +228,10 @@ func (dht *DHTClient) sendNode(id string) error {
 		return fmt.Errorf("Failed to send node: Malformed ID")
 	}
 	packet := &DHTPacket{
-		Type: DHTPacketType_Node,
-		Id:   dht.ID,
-		Data: id,
+		Type:     DHTPacketType_Node,
+		Id:       dht.ID,
+		Infohash: dht.NetworkHash,
+		Data:     id,
 	}
 	data, err := proto.Marshal(packet)
 	if err != nil {
@@ -245,6 +247,7 @@ func (dht *DHTClient) sendState(id, state string) error {
 	packet := &DHTPacket{
 		Type:      DHTPacketType_State,
 		Id:        dht.ID,
+		Infohash:  dht.NetworkHash,
 		Data:      id,
 		Arguments: []string{state},
 	}
@@ -265,23 +268,26 @@ func (dht *DHTClient) sendDHCP(ip net.IP, network *net.IPNet) error {
 		subnet = fmt.Sprintf("%d", ones)
 	}
 	packet := &DHTPacket{
-		Type:  DHTPacketType_DHCP,
-		Id:    dht.ID,
-		Data:  ip.String(),
-		Extra: subnet,
+		Type:     DHTPacketType_DHCP,
+		Id:       dht.ID,
+		Infohash: dht.NetworkHash,
+		Data:     ip.String(),
+		Extra:    subnet,
 	}
 	data, err := proto.Marshal(packet)
 	if err != nil {
 		return fmt.Errorf("Failed to marshal DHCP packet: %s", err)
 	}
+	Log(Debug, "Sending DHCP: %+v", packet)
 	return dht.send(data)
 }
 
 func (dht *DHTClient) sendProxy() error {
 	Log(Debug, "Requesting proxies")
 	packet := &DHTPacket{
-		Type: DHTPacketType_Proxy,
-		Id:   dht.ID,
+		Type:     DHTPacketType_Proxy,
+		Infohash: dht.NetworkHash,
+		Id:       dht.ID,
 	}
 	data, err := proto.Marshal(packet)
 	if err != nil {
@@ -292,9 +298,10 @@ func (dht *DHTClient) sendProxy() error {
 
 func (dht *DHTClient) sendRequestProxy(id string) error {
 	packet := &DHTPacket{
-		Type: DHTPacketType_RequestProxy,
-		Id:   dht.ID,
-		Data: id,
+		Type:     DHTPacketType_RequestProxy,
+		Id:       dht.ID,
+		Infohash: dht.NetworkHash,
+		Data:     id,
 	}
 	data, err := proto.Marshal(packet)
 	if err != nil {
@@ -305,9 +312,10 @@ func (dht *DHTClient) sendRequestProxy(id string) error {
 
 func (dht *DHTClient) sendReportProxy(addr *net.UDPAddr) error {
 	packet := &DHTPacket{
-		Type: DHTPacketType_ReportProxy,
-		Id:   dht.ID,
-		Data: addr.String(),
+		Type:     DHTPacketType_ReportProxy,
+		Id:       dht.ID,
+		Infohash: dht.NetworkHash,
+		Data:     addr.String(),
 	}
 	data, err := proto.Marshal(packet)
 	if err != nil {
@@ -353,9 +361,10 @@ func (dht *DHTClient) RegisterProxy(ip net.IP, port int) error {
 	}
 
 	packet := &DHTPacket{
-		Type: DHTPacketType_RegisterProxy,
-		Id:   id.String(),
-		Data: fmt.Sprintf("%s:%d", ip.String(), port),
+		Type:     DHTPacketType_RegisterProxy,
+		Id:       id.String(),
+		Infohash: dht.NetworkHash,
+		Data:     fmt.Sprintf("%s:%d", ip.String(), port),
 	}
 	data, err := proto.Marshal(packet)
 	if err != nil {
