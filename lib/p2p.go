@@ -244,31 +244,51 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		Log(Info, "No AES key were provided. Traffic encryption is disabled")
 	}
 
+	p.Hash = argHash
+	p.Routers = argDht
+
 	p.setupHandlers()
 
 	p.UDPSocket = new(Network)
 	p.UDPSocket.Init("", port)
+	go p.UDPSocket.KeepAlive(p.retrieveFirstDHTRouter())
+	go p.UDPSocket.Listen(p.HandleP2PMessage)
 
 	// Create new DHT Client, configure it and initialize
 	// During initialization procedure, DHT Client will send
 	// a introduction packet along with a hash to a DHT bootstrap
 	// nodes that was hardcoded into it's code
 	Log(Info, "Started UDP Listener at port %d", p.UDPSocket.GetPort())
-	err = p.attemptPortForward(uint16(p.UDPSocket.GetPort()), interfaceName)
-	if err != nil {
-		Log(Error, "UPnP Failed: %s", err)
-	}
-	p.Hash = argHash
-	p.Routers = argDht
+	// err = p.attemptPortForward(uint16(p.UDPSocket.GetPort()), interfaceName)
+	// if err != nil {
+	// 	Log(Error, "UPnP Failed: %s", err)
+	// }
+
 	p.StartDHT(p.Hash, p.Routers)
 	err = p.prepareInterfaces(argIP, interfaceName)
 	if err != nil {
 		return nil
 	}
 
-	go p.UDPSocket.Listen(p.HandleP2PMessage)
 	go p.ListenInterface()
 	return p
+}
+
+func (p *PeerToPeer) retrieveFirstDHTRouter() *net.UDPAddr {
+	Log(Info, "Routers: %s", p.Routers)
+	routers := strings.Split(p.Routers, ",")
+	if len(routers) == 0 {
+		return nil
+	}
+	router := strings.Split(routers[0], ":")
+	if len(router) != 2 {
+		return nil
+	}
+	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", router[0], 6882))
+	if err != nil {
+		return nil
+	}
+	return addr
 }
 
 func (p *PeerToPeer) prepareInterfaces(ip, interfaceName string) error {
@@ -374,6 +394,7 @@ func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 	p.Dht.sendDHCP(nil, nil)
 	for p.Dht.IP == nil && p.Dht.Network == nil {
 		if time.Since(requestedAt) > interval {
+			p.Dht.Shutdown()
 			return nil, nil, fmt.Errorf("No IP were received. Swarm is empty")
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -641,13 +662,15 @@ func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error
 		Log(Error, "P2P Message Handle: %v", err)
 		return
 	}
-
 	buf := make([]byte, count)
 	copy(buf[:], rcvBytes[:])
 
 	msg, desErr := P2PMessageFromBytes(buf)
 	if desErr != nil {
 		Log(Error, "P2PMessageFromBytes error: %v", desErr)
+		return
+	}
+	if msg == nil {
 		return
 	}
 	//var msgType MSG_TYPE = MSG_TYPE(msg.Header.Type)
