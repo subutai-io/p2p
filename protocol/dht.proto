@@ -31,4 +31,5 @@ message DHTPacket {
 	repeated string arguments = 6; // Can hold list of IPs
 	repeated string proxies = 7; // List of proxies associated with particular peer 
 	string extra = 8; // Can contain error message, report or any other data
+	bytes payload = 9; // Payload for forwarded/distributed message
 }
