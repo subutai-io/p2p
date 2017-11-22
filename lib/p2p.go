@@ -258,11 +258,14 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 	// During initialization procedure, DHT Client will send
 	// a introduction packet along with a hash to a DHT bootstrap
 	// nodes that was hardcoded into it's code
+
 	Log(Info, "Started UDP Listener at port %d", p.UDPSocket.GetPort())
-	// err = p.attemptPortForward(uint16(p.UDPSocket.GetPort()), interfaceName)
-	// if err != nil {
-	// 	Log(Error, "UPnP Failed: %s", err)
-	// }
+	go func() {
+		err = p.attemptPortForward(uint16(p.UDPSocket.GetPort()), interfaceName)
+		if err != nil {
+			Log(Error, "UPnP Failed: %s", err)
+		}
+	}()
 
 	p.StartDHT(p.Hash, p.Routers)
 	err = p.prepareInterfaces(argIP, interfaceName)
