@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
 )
 
 // Constants
@@ -50,6 +51,9 @@ func (v *P2PMessageHeader) Serialize() []byte {
 // P2PMessageHeaderFromBytes extracts message header from received packet
 func P2PMessageHeaderFromBytes(bytes []byte) (*P2PMessageHeader, error) {
 	if len(bytes) < HeaderSize {
+		if len(bytes) == 2 {
+			return nil, nil
+		}
 		return nil, errors.New("P2PMessageHeaderFromBytes_error : less then 14 bytes")
 	}
 
@@ -87,6 +91,9 @@ func P2PMessageFromBytes(bytes []byte) (*P2PMessage, error) {
 	res.Header, err = P2PMessageHeaderFromBytes(bytes)
 	if err != nil {
 		return nil, err
+	}
+	if res.Header == nil {
+		return nil, nil
 	}
 	Log(Trace, "--- P2PMessageHeaderFromBytes Length : %d, SerLen : %d", res.Header.Length, res.Header.SerializedLen)
 	if res.Header.Magic != MagicCookie {
@@ -329,6 +336,24 @@ func (uc *Network) Init(host string, port int) error {
 	}
 	uc.disposed = false
 	return nil
+}
+
+// KeepAlive will send keep alive packet periodically to keep
+// UDP port bind
+func (uc *Network) KeepAlive(addr *net.UDPAddr) {
+	if addr == nil {
+		Log(Error, "Can't start keep alive session: address is nil")
+		return
+	}
+	data := []byte{0x0D, 0x0A}
+	keepAlive := time.Now()
+	Log(Info, "Started keep alive session with %s", addr)
+	for !uc.disposed {
+		if time.Duration(time.Second*3) < time.Since(keepAlive) {
+			keepAlive = time.Now()
+			uc.SendRawBytes(data, addr)
+		}
+	}
 }
 
 // GetPort return a port assigned

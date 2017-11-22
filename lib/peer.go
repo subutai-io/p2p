@@ -508,25 +508,34 @@ func (np *NetworkPeer) holePunch(endpoint *net.UDPAddr, ptpc *PeerToPeer) bool {
 		Log(Error, "Endpoint is not set")
 		return false
 	}
-	msg := CreateTestP2PMessage(ptpc.Crypter, ptpc.Dht.ID, 0)
-	packet := msg.Serialize()
 
 	punchStarted := time.Now()
+	c := uint16(0)
 	for np.State == PeerStateConnectingDirectly || np.State == PeerStateConnectingInternet {
 		if np.TestPacketReceived {
 			np.TestPacketReceived = false
 			return true
 		}
+
+		msg := CreateTestP2PMessage(ptpc.Crypter, ptpc.Dht.ID, c)
+		packet := msg.Serialize()
+		c++
+		if c > 99 {
+			c = 0
+		}
+
+		Log(Trace, "UDP hole punch packet to %s", endpoint.String())
 		_, err := ptpc.UDPSocket.SendRawBytes(packet, endpoint)
 		if err != nil {
 			Log(Error, "Failed to send data: %s", err)
+			break
 		}
 		passed := time.Since(punchStarted)
 		if passed > time.Duration(5*time.Second) {
 			Log(Warning, "Stopping UDP hole punching to %s after timeout", endpoint.String())
 			break
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
 	return false
 }
