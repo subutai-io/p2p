@@ -4,6 +4,10 @@
 
 * Draft next version
 
+## [6.2.3] 11/23/2017
+
+* Forced usage of master dht
+
 ## [6.2.2] 11/20/2017
 
 * Fixed connectivity issues
