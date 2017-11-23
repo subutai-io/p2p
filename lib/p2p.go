@@ -267,7 +267,27 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		}
 	}()
 
-	p.StartDHT(p.Hash, p.Routers)
+	err = p.StartDHT(p.Hash, p.Routers)
+	if err != nil {
+		Log(Info, "Retrying DHT connection")
+		attempts := 0
+		for attempts < 3 {
+			err = p.StartDHT(p.Hash, p.Routers)
+			if err != nil {
+				Log(Info, "Another attempt failed")
+				attempts++
+			} else {
+				Log(Info, "Connection established")
+				err = nil
+				break
+			}
+		}
+	}
+	if err != nil {
+		Log(Error, "Failed to start instance due to problems with bootstrap node connection")
+		return nil
+	}
+
 	err = p.prepareInterfaces(argIP, interfaceName)
 	if err != nil {
 		return nil
