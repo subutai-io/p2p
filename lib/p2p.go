@@ -205,6 +205,8 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 
 // StartP2PInstance is an entry point of a P2P library.
 func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int, ignoreIPs []string) *PeerToPeer {
+	// Master mode
+	argDht = "mdht.subut.ai:6881"
 	p := new(PeerToPeer)
 	p.Init()
 	p.Interface.Mac = p.validateMac(argMac)
@@ -267,7 +269,27 @@ func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyf
 		}
 	}()
 
-	p.StartDHT(p.Hash, p.Routers)
+	err = p.StartDHT(p.Hash, p.Routers)
+	if err != nil {
+		Log(Info, "Retrying DHT connection")
+		attempts := 0
+		for attempts < 3 {
+			err = p.StartDHT(p.Hash, p.Routers)
+			if err != nil {
+				Log(Info, "Another attempt failed")
+				attempts++
+			} else {
+				Log(Info, "Connection established")
+				err = nil
+				break
+			}
+		}
+	}
+	if err != nil {
+		Log(Error, "Failed to start instance due to problems with bootstrap node connection")
+		return nil
+	}
+
 	err = p.prepareInterfaces(argIP, interfaceName)
 	if err != nil {
 		return nil
