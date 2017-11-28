@@ -31,11 +31,11 @@ type dhtCallback func(*DHTPacket) error
 // DHTClient is a main structure of a DHT client
 type DHTClient struct {
 	Routers       string                        // Comma-separated list of bootstrap nodes
+	NetworkHash   string                        // Saved network hash
+	ID            string                        // Current instance ID
 	FailedRouters []string                      // List of routes that we failed to connect to
 	Connections   []*net.TCPConn                // TCP connections to bootstrap nodes
-	NetworkHash   string                        // Saved network hash
 	P2PPort       int                           // UDP port number used by this instance
-	ID            string                        // Current instance ID
 	Forwarders    []Forwarder                   // List of worwarders
 	TCPCallbacks  map[DHTPacketType]dhtCallback // Callbacks for incoming packets
 	Mode          OperatingMode                 // DHT Client mode ???
@@ -44,9 +44,9 @@ type DHTClient struct {
 	Network       *net.IPNet                    // Network information about current network. Used to inform p2p about mask for interface
 	StateChannel  chan RemotePeerState          // Channel to pass states to instance
 	ProxyChannel  chan string                   // Channel to pass proxies to instance
-	isShutdown    bool                          // Whether DHT shutting down or not
 	PeerData      chan NetworkPeer              // Channel to pass data about changes in peers
 	Connected     bool                          // Whether connection with bootstrap nodes established or not
+	isShutdown    bool                          // Whether DHT shutting down or not
 	LastUpdate    time.Time                     // When last `find` packet was sent
 }
 
