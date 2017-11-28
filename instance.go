@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"runtime"
 	"sync"
@@ -192,8 +193,9 @@ type Response struct {
 
 // Procedures is an object of RPC procedures
 type Daemon struct {
-	Instances *InstanceList
-	SaveFile  string
+	Instances  *InstanceList
+	SaveFile   string
+	OutboundIP net.IP
 }
 
 func (p *Daemon) Initialize(saveFile string) {
@@ -300,7 +302,7 @@ func (p *Daemon) Run(args *RunArgs, resp *Response) error {
 		newInst := new(P2PInstance)
 		newInst.ID = args.Hash
 		newInst.Args = *args
-		newInst.PTP = ptp.StartP2PInstance(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port, usedIPs)
+		newInst.PTP = ptp.New(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port, usedIPs, OutboundIP)
 		if newInst.PTP == nil {
 			resp.Output = resp.Output + "Failed to create P2P Instance"
 			resp.ExitCode = 1

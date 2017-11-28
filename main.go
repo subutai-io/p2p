@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"runtime/pprof"
 
+	"github.com/ccding/go-stun/stun"
 	ptp "github.com/subutai-io/p2p/lib"
 	"github.com/urfave/cli"
 )
@@ -18,6 +19,9 @@ var AppVersion = "Unknown"
 
 // InterfaceNames - List of all interfaces names that was used by p2p historically. These interfaces may not present in the system anymore
 var InterfaceNames []string
+
+// OutboundIP is an outbound IP address detected by STUN
+var OutboundIP net.IP
 
 // StartProfiling will create a .prof file to analyze p2p app performance
 func StartProfiling(profile string) {
@@ -110,6 +114,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
+
 				ExecDaemon(RPCPort, SaveFile, Profiling, Syslog)
 				return nil
 			},
@@ -512,6 +517,14 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 	if !ptp.CheckPermissions() {
 		os.Exit(1)
 	}
+
+	ptp.Log(ptp.Info, "Determining outbound IP")
+	_, host, err := stun.NewClient().Discover()
+	if err != nil {
+		ptp.Log(ptp.Error, "Failed to discover outbound IP: %s", err)
+		return
+	}
+	OutboundIP = net.ParseIP(host.IP())
 
 	proc := new(Daemon)
 	proc.Initialize(sFile)
