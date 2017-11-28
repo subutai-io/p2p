@@ -46,6 +46,7 @@ type PeerToPeer struct {
 	Peers           *PeerList                            // Known peers
 	HolePunching    sync.Mutex                           // Mutex for hole punching sync
 	Proxies         []*proxyServer                       // List of proxies
+	outboundIP      net.IP                               // Outbound IP
 }
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
@@ -204,10 +205,9 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 }
 
 // StartP2PInstance is an entry point of a P2P library.
-func StartP2PInstance(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int, ignoreIPs []string) *PeerToPeer {
-	// Master mode
-	argDht = "mdht.subut.ai:6881"
+func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int, ignoreIPs []string, outboundIP net.IP) *PeerToPeer {
 	p := new(PeerToPeer)
+	p.outboundIP = outboundIP
 	p.Init()
 	p.Interface.Mac = p.validateMac(argMac)
 	p.FindNetworkAddresses()
@@ -470,6 +470,7 @@ func (p *PeerToPeer) StartDHT(hash, routers string) error {
 		p.Dht = nil
 	}
 	p.Dht = new(DHTClient)
+	p.Dht.OutboundIP = p.outboundIP
 	p.Dht.P2PPort = p.UDPSocket.GetPort()
 	err := p.Dht.TCPInit(hash, routers)
 	if err != nil {
@@ -815,8 +816,10 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 // HandleProxyMessage receives a control packet from proxy
 // Proxy packets comes in format of UDP connection address
 func (p *PeerToPeer) HandleProxyMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
+	Log(Info, "New proxy message from %s", srcAddr)
 	for i, proxy := range p.Proxies {
-		if proxy.addr == srcAddr {
+		Log(Info, "Proxy addr: %s", proxy.addr.String())
+		if proxy.addr.String() == srcAddr.String() {
 			p.Proxies[i].status = proxyActive
 			Log(Info, "Connected with %s proxy", srcAddr.String())
 		}
