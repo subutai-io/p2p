@@ -21,6 +21,7 @@ type proxyServer struct {
 }
 
 func (p *PeerToPeer) initProxy(addr string) error {
+	Log(Info, "Initializing proxy %s", addr)
 	var err error
 	proxy := new(proxyServer)
 	proxy.addr, err = net.ResolveUDPAddr("udp", addr)

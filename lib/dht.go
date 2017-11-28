@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ccding/go-stun/stun"
 	proto "github.com/golang/protobuf/proto"
 	uuid "github.com/wayn3h0/go-uuid"
 )
@@ -48,6 +47,7 @@ type DHTClient struct {
 	Connected     bool                          // Whether connection with bootstrap nodes established or not
 	isShutdown    bool                          // Whether DHT shutting down or not
 	LastUpdate    time.Time                     // When last `find` packet was sent
+	OutboundIP    net.IP                        // Outbound IP
 }
 
 // Forwarder structure represents a Proxy received from DHT server
@@ -129,14 +129,7 @@ func (dht *DHTClient) ConnectAndHandshake(router string, ipList []net.IP) (*net.
 // packet version.
 // This packet will be sent immediately to a bootstrap node
 func (dht *DHTClient) Handshake(conn *net.TCPConn) error {
-	Log(Info, "Requesting outbound IP")
-	_, host, err := stun.NewClient().Discover()
-	if err != nil {
-		return fmt.Errorf("Failed to discover outbound IP: %s", err)
-	}
-	Log(Info, "Our IP: %s", host.IP())
-
-	ips := []string{host.IP()}
+	ips := []string{dht.OutboundIP.String()}
 	for _, ip := range dht.IPList {
 		ips = append(ips, ip.String())
 	}
@@ -283,7 +276,7 @@ func (dht *DHTClient) sendDHCP(ip net.IP, network *net.IPNet) error {
 }
 
 func (dht *DHTClient) sendProxy() error {
-	Log(Debug, "Requesting proxies")
+	Log(Info, "Requesting proxies")
 	packet := &DHTPacket{
 		Type:     DHTPacketType_Proxy,
 		Infohash: dht.NetworkHash,

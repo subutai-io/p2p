@@ -39,8 +39,7 @@ func (dht *DHTClient) packetConnect(packet *DHTPacket) error {
 	}
 	dht.ID = packet.Id
 	Log(Info, "Received personal ID for this session: %s", dht.ID)
-	dht.sendProxy()
-	return dht.sendFind()
+	return nil
 }
 
 func (dht *DHTClient) packetDHCP(packet *DHTPacket) error {
@@ -55,6 +54,8 @@ func (dht *DHTClient) packetDHCP(packet *DHTPacket) error {
 		dht.Network = network
 		Log(Info, "Received network information: %s", network.String())
 	}
+	dht.sendProxy()
+	dht.sendFind()
 	return nil
 }
 
