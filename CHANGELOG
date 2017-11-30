@@ -1,8 +1,10 @@
 # Change Log
 
-## [6.3.0] TBD
+## [6.2.4] 11/30/2017
 
-* Draft next version
+* Refactored communication between peers over TURN server
+* Fixed high CPU consumption
+* Improved stability
 
 ## [6.2.3] 11/23/2017
 
