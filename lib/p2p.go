@@ -309,7 +309,7 @@ func (p *PeerToPeer) retrieveFirstDHTRouter() *net.UDPAddr {
 	if len(router) != 2 {
 		return nil
 	}
-	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", router[0], 6882))
+	addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", router[0], 6882))
 	if err != nil {
 		return nil
 	}
@@ -541,7 +541,7 @@ func (p *PeerToPeer) Run() {
 			p.removeStoppedPeers()
 			p.checkBootstrapNodes()
 			p.checkLastDHTUpdate()
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)
@@ -763,7 +763,7 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	id, mac, ip := p.ParseIntroString(string(msg.Data))
 	peer := p.Peers.GetPeer(id)
 	// Do nothing when handshaking already done
-	if peer.State != PeerStateHandshaking {
+	if peer.State != PeerStateHandshaking && peer.State != PeerStateHandshakingForwarder {
 		return
 	}
 	if peer == nil {
@@ -771,15 +771,7 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 		p.Dht.sendFind()
 		return
 	}
-	if msg.Header.ProxyID > 0 && peer.ProxyID == 0 {
-		peer.ForceProxy = true
-		peer.PeerAddr = nil
-		peer.Endpoint = nil
-		peer.SetState(PeerStateInit, p)
-		peer.KnownIPs = peer.KnownIPs[:0]
-		p.Peers.Update(id, peer)
-		return
-	}
+
 	if mac == nil {
 		Log(Error, "Received empty MAC address. Skipping")
 		return
@@ -805,8 +797,32 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 		p.Dht.sendFind()
 		return
 	}
+	proxy := false
+	if msg.Header.ProxyID > 0 {
+		proxy = true
+		Log(Info, "Received introduction request via proxy")
+		if len(peer.Proxies) == 0 {
+			Log(Warning, "Peer %s has no proxies attached", id)
+			p.Dht.sendRequestProxy(id)
+			return
+		}
+	} else {
+		Log(Info, "Received introduction request directly")
+	}
+
 	response := p.PrepareIntroductionMessage(p.Dht.ID)
-	response.Header.ProxyID = uint16(peer.ProxyID)
+	if proxy {
+		response.Header.ProxyID = 1
+		for _, peerProxy := range peer.Proxies {
+			Log(Info, "Sending handshake response over proxy %s", peerProxy.String())
+			_, err := p.UDPSocket.SendMessage(response, peerProxy)
+			if err != nil {
+				Log(Error, "Failed to respond to introduction request over proxy: %v", err)
+			}
+		}
+		return
+	}
+	Log(Info, "Sending handshake response")
 	_, err := p.UDPSocket.SendMessage(response, srcAddr)
 	if err != nil {
 		Log(Error, "Failed to respond to introduction request: %v", err)
@@ -818,10 +834,17 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 func (p *PeerToPeer) HandleProxyMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	Log(Info, "New proxy message from %s", srcAddr)
 	for i, proxy := range p.Proxies {
-		Log(Info, "Proxy addr: %s", proxy.addr.String())
-		if proxy.addr.String() == srcAddr.String() {
-			p.Proxies[i].status = proxyActive
+		Log(Info, "Proxy addr: %s", proxy.Addr.String())
+		if proxy.Addr.String() == srcAddr.String() && proxy.Status == proxyConnecting {
+			p.Proxies[i].Status = proxyActive
 			Log(Info, "Connected with %s proxy", srcAddr.String())
+			addr, err := net.ResolveUDPAddr("udp4", string(msg.Data))
+			if err != nil {
+				Log(Error, "Failed to resolve proxy addr: %s", err)
+				return
+			}
+			Log(Info, "This peer is now available over %s", addr.String())
+			p.Dht.sendReportProxy(addr)
 		}
 	}
 }
@@ -911,7 +934,7 @@ func (p *PeerToPeer) StopInstance() {
 	Log(Info, "Stopping P2P Message handler")
 	// Tricky part: we need to send a message to ourselves to quit blocking operation
 	msg := CreateTestP2PMessage(p.Crypter, "STOP", 1)
-	addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", p.Dht.P2PPort))
+	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("127.0.0.1:%d", p.Dht.P2PPort))
 	p.UDPSocket.SendMessage(msg, addr)
 	var ipIt = 200
 	if ip != nil {
@@ -976,43 +999,3 @@ func (p *PeerToPeer) handlePeerData(peerData NetworkPeer) {
 		p.Peers.Update(peer.ID, peer)
 	}
 }
-
-// ReadProxies - reads a list of proxies received by DHT client
-/*
-func (p *PeerToPeer) ReadProxies() {
-	for {
-		if p.Shutdown {
-			break
-		}
-		if p.Dht == nil {
-			time.Sleep(10 * time.Millisecond)
-			continue
-		}
-		select {
-		case proxy, hasData := <-p.Dht.ProxyChannel:
-			if hasData {
-				exists := false
-				peers := p.Peers.Get()
-				for i, peer := range peers {
-					if i == proxy.DestinationID {
-						peer.SetState(PeerStateHandshakingForwarder, p)
-						peer.Forwarder = proxy.Addr
-						peer.Endpoint = proxy.Addr
-						p.Peers.Update(i, peer)
-					}
-				}
-				if !exists {
-					Log(Info, "Received forwarder for unknown peer")
-					p.Dht.sendFind()
-				}
-
-			} else {
-				Log(Trace, "Closed channel")
-			}
-		default:
-			time.Sleep(100 * time.Millisecond)
-		}
-	}
-	Log(Info, "Stopped Proxy reader channel")
-}
-*/

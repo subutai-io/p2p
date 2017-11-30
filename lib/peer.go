@@ -320,7 +320,7 @@ func (np *NetworkPeer) stateHandshaking(ptpc *PeerToPeer) error {
 			np.SetState(PeerStateHandshakingFailed, ptpc)
 			return fmt.Errorf("Failed to handshake with peer %s", np.ID)
 		}
-		np.sendHandshake(ptpc)
+		np.sendHandshake(ptpc, false)
 		time.Sleep(time.Millisecond * 500)
 	}
 	return nil
@@ -392,7 +392,7 @@ func (np *NetworkPeer) stateHandshakingForwarder(ptpc *PeerToPeer) error {
 				np.SetState(PeerStateHandshakingFailed, ptpc)
 				return fmt.Errorf("Failed to handshake with peer %s", np.ID)
 			}
-			np.sendHandshake(ptpc)
+			np.sendHandshake(ptpc, true)
 			time.Sleep(time.Millisecond * 500)
 		}
 	}
@@ -458,21 +458,23 @@ func (np *NetworkPeer) ProbeLocalConnection(ptpc *PeerToPeer) bool {
 	return false
 }
 
-func (np *NetworkPeer) sendHandshake(ptpc *PeerToPeer) {
+func (np *NetworkPeer) sendHandshake(ptpc *PeerToPeer, proxy bool) {
 	Log(Debug, "Preparing introduction message for %s", np.ID)
 	if ptpc.Dht.ID == "" {
 		np.LastError = "DHT Disconnected"
 		return
 	}
 	msg := CreateIntroRequest(ptpc.Crypter, ptpc.Dht.ID)
-	//msg.Header.ProxyID = uint16(np.ProxyID)
+	if proxy {
+		msg.Header.ProxyID = 1
+	}
 	_, err := ptpc.UDPSocket.SendMessage(msg, np.Endpoint)
 	if err != nil {
 		np.LastError = "Failed to send intoduction message"
 		Log(Error, "Failed to send introduction to %s", np.Endpoint.String())
-	} else {
-		Log(Debug, "Sent introduction handshake to %s [%s %d]", np.ID, np.Endpoint.String(), np.ProxyID)
+		return
 	}
+	Log(Info, "Sent introduction handshake to %s [%s %d]", np.ID, np.Endpoint.String(), np.ProxyID)
 }
 
 // SendProxyHandshake sends a handshake packet to a proxy
@@ -535,7 +537,7 @@ func (np *NetworkPeer) holePunch(endpoint *net.UDPAddr, ptpc *PeerToPeer) bool {
 			Log(Warning, "Stopping UDP hole punching to %s after timeout", endpoint.String())
 			break
 		}
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
 	return false
 }

@@ -326,11 +326,11 @@ func (uc *Network) Init(host string, port int) error {
 	uc.disposed = true
 
 	//todo check if we need Host and Port
-	uc.addr, err = net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
+	uc.addr, err = net.ResolveUDPAddr("udp4", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return err
 	}
-	uc.conn, err = net.ListenUDP("udp", uc.addr)
+	uc.conn, err = net.ListenUDP("udp4", uc.addr)
 	if err != nil {
 		return err
 	}
@@ -353,12 +353,13 @@ func (uc *Network) KeepAlive(addr *net.UDPAddr) {
 			keepAlive = time.Now()
 			uc.SendRawBytes(data, addr)
 		}
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
 // GetPort return a port assigned
 func (uc *Network) GetPort() int {
-	addr, _ := net.ResolveUDPAddr("udp", uc.conn.LocalAddr().String())
+	addr, _ := net.ResolveUDPAddr("udp4", uc.conn.LocalAddr().String())
 	return addr.Port
 }
 

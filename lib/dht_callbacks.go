@@ -54,7 +54,6 @@ func (dht *DHTClient) packetDHCP(packet *DHTPacket) error {
 		dht.Network = network
 		Log(Info, "Received network information: %s", network.String())
 	}
-	dht.sendProxy()
 	dht.sendFind()
 	return nil
 }
@@ -73,6 +72,7 @@ func (dht *DHTClient) packetError(packet *DHTPacket) error {
 }
 
 func (dht *DHTClient) packetFind(packet *DHTPacket) error {
+	dht.sendProxy()
 	if len(packet.Arguments) == 0 {
 		Log(Warning, "Received empty peer list")
 		return nil
@@ -99,7 +99,7 @@ func (dht *DHTClient) packetNode(packet *DHTPacket) error {
 		if addr == "" {
 			continue
 		}
-		ip, err := net.ResolveUDPAddr("udp", addr)
+		ip, err := net.ResolveUDPAddr("udp4", addr)
 		if err != nil {
 			Log(Error, "Failed to resolve one of peer addresses: %s", err)
 			continue
@@ -135,7 +135,7 @@ func (dht *DHTClient) packetProxy(packet *DHTPacket) error {
 func (dht *DHTClient) packetRequestProxy(packet *DHTPacket) error {
 	list := []*net.UDPAddr{}
 	for _, proxy := range packet.Proxies {
-		addr, err := net.ResolveUDPAddr("udp", proxy)
+		addr, err := net.ResolveUDPAddr("udp4", proxy)
 		if err != nil {
 			Log(Error, "Can't parse proxy %s for peer %s", proxy, packet.Data)
 			continue
