@@ -372,7 +372,7 @@ func Start(rpcPort int, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd b
 	args.Mac = mac
 	args.Dev = dev
 	if dht != "" {
-		_, err := net.ResolveUDPAddr("udp", dht)
+		_, err := net.ResolveUDPAddr("udp4", dht)
 		if err != nil {
 			fmt.Printf("Invalid DHT node address provided. Please specify correct DHT address in form HOST:PORT\n")
 			return

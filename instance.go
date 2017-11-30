@@ -436,6 +436,13 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 		resp.Output += fmt.Sprintf("ID: %s\n", inst.PTP.Dht.ID)
 		resp.Output += fmt.Sprintf("UDP Port: %d\n", inst.PTP.UDPSocket.GetPort())
 		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", inst.PTP.Interface.Name, inst.PTP.Interface.Mac.String(), inst.PTP.Interface.IP.String())
+		resp.Output += fmt.Sprintf("Proxies:\n")
+		if len(inst.PTP.Proxies) == 0 {
+			resp.Output += fmt.Sprintf("\tNo proxies in use\n")
+		}
+		for _, proxy := range inst.PTP.Proxies {
+			resp.Output += fmt.Sprintf("\tProxy address: %s\n", proxy.Addr.String())
+		}
 		resp.Output += fmt.Sprintf("Peers:\n")
 
 		peers := inst.PTP.Peers.Get()
