@@ -15,40 +15,39 @@ const (
 )
 
 type proxyServer struct {
-	addr     *net.UDPAddr
-	endpoint *net.UDPAddr // Endpoint provided by proxy
-	status   proxyStatus
+	Addr     *net.UDPAddr
+	Endpoint *net.UDPAddr // Endpoint provided by proxy
+	Status   proxyStatus
 }
 
 func (p *PeerToPeer) initProxy(addr string) error {
 	Log(Info, "Initializing proxy %s", addr)
 	var err error
 	proxy := new(proxyServer)
-	proxy.addr, err = net.ResolveUDPAddr("udp", addr)
+	proxy.Addr, err = net.ResolveUDPAddr("udp4", addr)
 	if err != nil {
 		return fmt.Errorf("Failed to resolve proxy address")
 	}
-
 	for _, pr := range p.Proxies {
-		if pr.addr == proxy.addr {
+		if pr.Addr == proxy.Addr {
 			return fmt.Errorf("Proxy %s already exists", addr)
 		}
 	}
 	p.Proxies = append(p.Proxies, proxy)
 	initStarted := time.Now()
-	proxy.status = proxyConnecting
+	proxy.Status = proxyConnecting
 
 	msg := CreateProxyP2PMessage(0, p.Dht.ID, 1)
-	p.UDPSocket.SendMessage(msg, proxy.addr)
-	for proxy.status == proxyConnecting {
+	p.UDPSocket.SendMessage(msg, proxy.Addr)
+	for proxy.Status == proxyConnecting {
 		time.Sleep(100 * time.Millisecond)
 		if time.Duration(3*time.Second) < time.Since(initStarted) {
-			p.removeProxy(proxy.addr)
+			p.removeProxy(proxy.Addr)
 			return fmt.Errorf("Failed to connect to proxy")
 		}
 	}
-	if proxy.status != proxyActive {
-		p.removeProxy(proxy.addr)
+	if proxy.Status != proxyActive {
+		p.removeProxy(proxy.Addr)
 		return fmt.Errorf("Wrong proxy status")
 	}
 	return nil
@@ -56,7 +55,7 @@ func (p *PeerToPeer) initProxy(addr string) error {
 
 func (p *PeerToPeer) removeProxy(addr *net.UDPAddr) {
 	for i, proxy := range p.Proxies {
-		if proxy.addr == addr {
+		if proxy.Addr == addr {
 			p.Proxies = append(p.Proxies[:i], p.Proxies[i+1:]...)
 			return
 		}

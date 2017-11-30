@@ -164,13 +164,13 @@ func (dht *DHTClient) Listen(conn *net.TCPConn) {
 			dht.Connected = false
 			break
 		}
-		packet := &DHTPacket{}
-		err = proto.Unmarshal(data[:n], packet)
-		if err != nil {
-			Log(Warning, "Corrupted data: %s", err)
-			continue
-		}
 		go func() {
+			packet := &DHTPacket{}
+			err = proto.Unmarshal(data[:n], packet)
+			if err != nil {
+				Log(Warning, "Corrupted data: %s", err)
+				return
+			}
 			callback, exists := dht.TCPCallbacks[packet.Type]
 			if !exists {
 				Log(Error, "Unknown packet type from BSN")
@@ -187,12 +187,14 @@ func (dht *DHTClient) Listen(conn *net.TCPConn) {
 
 // Sends bytes to all connected bootstrap nodes
 func (dht *DHTClient) send(data []byte) error {
-	for _, conn := range dht.Connections {
-		_, err := conn.Write(data)
-		if err != nil {
-			return err
+	go func() {
+		for _, conn := range dht.Connections {
+			_, err := conn.Write(data)
+			if err != nil {
+				continue
+			}
 		}
-	}
+	}()
 	return nil
 }
 
@@ -202,6 +204,7 @@ func (dht *DHTClient) sendFind() error {
 	if dht.NetworkHash == "" {
 		return fmt.Errorf("Failed to find peers: Infohash is not set")
 	}
+	Log(Info, "Requesting swarm updates")
 	packet := &DHTPacket{
 		Type:     DHTPacketType_Find,
 		Id:       dht.ID,
