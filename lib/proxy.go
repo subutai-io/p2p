@@ -29,7 +29,7 @@ func (p *PeerToPeer) initProxy(addr string) error {
 		return fmt.Errorf("Failed to resolve proxy address")
 	}
 	for _, pr := range p.Proxies {
-		if pr.Addr == proxy.Addr {
+		if pr.Addr.String() == proxy.Addr.String() {
 			return fmt.Errorf("Proxy %s already exists", addr)
 		}
 	}
