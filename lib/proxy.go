@@ -29,7 +29,7 @@ func (p *PeerToPeer) initProxy(addr string) error {
 		return fmt.Errorf("Failed to resolve proxy address")
 	}
 	for _, pr := range p.Proxies {
-		if pr.Addr == proxy.Addr {
+		if pr.Addr.String() == proxy.Addr.String() {
 			return fmt.Errorf("Proxy %s already exists", addr)
 		}
 	}
@@ -50,6 +50,7 @@ func (p *PeerToPeer) initProxy(addr string) error {
 		p.removeProxy(proxy.Addr)
 		return fmt.Errorf("Wrong proxy status")
 	}
+	Log(Info, "Proxy %s initialization complete", addr)
 	return nil
 }
 
