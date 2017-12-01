@@ -50,6 +50,7 @@ func (p *PeerToPeer) initProxy(addr string) error {
 		p.removeProxy(proxy.Addr)
 		return fmt.Errorf("Wrong proxy status")
 	}
+	Log(Info, "Proxy %s initialization complete", addr)
 	return nil
 }
 
