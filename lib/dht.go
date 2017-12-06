@@ -138,8 +138,8 @@ func (dht *DHTClient) Handshake(conn *net.TCPConn) error {
 	}
 
 	packet := DHTPacket{
-		Type:      DHTPacketType_Connect,
 		Arguments: ips,
+		Type:      DHTPacketType_Connect,
 		Infohash:  dht.NetworkHash,
 		Data:      fmt.Sprintf("%d", dht.P2PPort),
 		Extra:     PacketVersion,
