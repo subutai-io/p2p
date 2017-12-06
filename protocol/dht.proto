@@ -2,24 +2,25 @@ syntax = "proto3";
 package main;
 
 enum DHTPacketType { 
-	Connect = 0;
-	Forward = 1;
-	Find = 2;
-	Node = 3;
-	Ping = 4;
-	RegisterProxy = 5;
-	RequestProxy = 6;
-	ReportProxy = 7;
-	BadProxy = 8;
-	Proxy = 9;
-	Notify = 10;
-	ReportLoad = 11;
-	Stop = 12;
-	Unknown = 13;
-	DHCP = 14;
-	Error = 15;
-	Unsupported = 16;
-	State = 17;
+	Undefined = 0;
+	Connect = 1;
+	Forward = 2;
+	Find = 3;
+	Node = 4;
+	Ping = 5;
+	RegisterProxy = 6;
+	RequestProxy = 7;
+	ReportProxy = 8;
+	BadProxy = 9;
+	Proxy = 10;
+	Notify = 11;
+	ReportLoad = 12;
+	Stop = 13;
+	Unknown = 14;
+	DHCP = 15;
+	Error = 16;
+	Unsupported = 17;
+	State = 18;
 };
 
 message DHTPacket {

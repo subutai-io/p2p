@@ -522,9 +522,10 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 	_, host, err := stun.NewClient().Discover()
 	if err != nil {
 		ptp.Log(ptp.Error, "Failed to discover outbound IP: %s", err)
-		return
+		OutboundIP = nil
+	} else {
+		OutboundIP = net.ParseIP(host.IP())
 	}
-	OutboundIP = net.ParseIP(host.IP())
 
 	proc := new(Daemon)
 	proc.Initialize(sFile)

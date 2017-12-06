@@ -129,14 +129,17 @@ func (dht *DHTClient) ConnectAndHandshake(router string, ipList []net.IP) (*net.
 // packet version.
 // This packet will be sent immediately to a bootstrap node
 func (dht *DHTClient) Handshake(conn *net.TCPConn) error {
-	ips := []string{dht.OutboundIP.String()}
+	ips := []string{}
+	if dht.OutboundIP != nil {
+		ips = append(ips, dht.OutboundIP.String())
+	}
 	for _, ip := range dht.IPList {
 		ips = append(ips, ip.String())
 	}
 
 	packet := DHTPacket{
-		Type:      DHTPacketType_Connect,
 		Arguments: ips,
+		Type:      DHTPacketType_Connect,
 		Infohash:  dht.NetworkHash,
 		Data:      fmt.Sprintf("%d", dht.P2PPort),
 		Extra:     PacketVersion,
@@ -334,7 +337,7 @@ func (dht *DHTClient) Shutdown() {
 // or specified timeout passes.
 func (dht *DHTClient) WaitID() error {
 	started := time.Now()
-	period := time.Duration(time.Second * 3)
+	period := time.Duration(time.Second * 10)
 	for len(dht.ID) != 36 {
 		time.Sleep(time.Millisecond * 100)
 		passed := time.Since(started)

@@ -39,6 +39,10 @@ func createInterface(file *os.File, ifPattern string, kind DevKind) (string, err
 	return string(req.Name[:]), nil
 }
 
+func closeInterface(file *os.File) {
+	file.Close()
+}
+
 // ConfigureInterface performs a configuration of an existing interface
 func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 	Log(Info, "Configuring %s. IP: %s, Mac: %s", device, ip, mac)

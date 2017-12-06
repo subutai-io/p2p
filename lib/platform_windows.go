@@ -16,6 +16,8 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+const PlatformType string = "Windows"
+
 var (
 	// UsedInterfaces - List of interfaces currently in use by p2p daemon
 	UsedInterfaces []string
@@ -455,4 +457,8 @@ func GetDeviceBase() string {
 // Syslog provides additional logging to the syslog server
 func Syslog(level LogLevel, format string, v ...interface{}) {
 	Log(Info, "Syslog is not supported on this platform. Please do not use syslog flag.")
+}
+
+func closeInterface(file syscall.Handle) {
+
 }
