@@ -11,6 +11,8 @@ import (
 	"fmt"
 )
 
+const PlatformType string = "posix"
+
 // Interface represent network interface
 type Interface struct {
 	Name string

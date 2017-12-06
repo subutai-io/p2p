@@ -18,6 +18,10 @@ func createInterface(file *os.File, ifPattern string, kind DevKind) (string, err
 	return "1", nil
 }
 
+func closeInterface(file *os.File) {
+	file.Close()
+}
+
 func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {
 	// First we need to set MAC address, because ifconfig requires interface to go down
 	// before changing it
