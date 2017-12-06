@@ -70,18 +70,6 @@ func CheckPermissions() bool {
 		return false
 	}
 	return true
-	/*
-		user, err := user.Current()
-		if err != nil {
-			Log(Error, "Failed to retrieve information about user: %v", err)
-			return false
-		}
-		if user.Uid != "0" {
-			Log(Error, "P2P cannot run in daemon mode without root privileges")
-			return false
-		}
-		return true
-	*/
 }
 
 // Open creates an interface

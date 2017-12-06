@@ -306,6 +306,7 @@ type Network struct {
 // Stop will terminate packet reader
 func (uc *Network) Stop() {
 	uc.disposed = true
+	uc.conn.Close()
 }
 
 // Disposed returns whether service is willing to stop or not
