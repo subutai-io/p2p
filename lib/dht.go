@@ -337,7 +337,7 @@ func (dht *DHTClient) Shutdown() {
 // or specified timeout passes.
 func (dht *DHTClient) WaitID() error {
 	started := time.Now()
-	period := time.Duration(time.Second * 3)
+	period := time.Duration(time.Second * 10)
 	for len(dht.ID) != 36 {
 		time.Sleep(time.Millisecond * 100)
 		passed := time.Since(started)

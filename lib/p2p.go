@@ -206,7 +206,6 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 
 // StartP2PInstance is an entry point of a P2P library.
 func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int, ignoreIPs []string, outboundIP net.IP) *PeerToPeer {
-	argDht = "mdht.subut.ai:6881"
 	p := new(PeerToPeer)
 	p.outboundIP = outboundIP
 	p.Init()
