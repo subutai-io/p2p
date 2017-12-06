@@ -129,7 +129,10 @@ func (dht *DHTClient) ConnectAndHandshake(router string, ipList []net.IP) (*net.
 // packet version.
 // This packet will be sent immediately to a bootstrap node
 func (dht *DHTClient) Handshake(conn *net.TCPConn) error {
-	ips := []string{dht.OutboundIP.String()}
+	ips := []string{}
+	if dht.OutboundIP != nil {
+		ips = append(ips, dht.OutboundIP.String())
+	}
 	for _, ip := range dht.IPList {
 		ips = append(ips, ip.String())
 	}

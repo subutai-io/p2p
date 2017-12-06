@@ -922,36 +922,37 @@ func (p *PeerToPeer) StopInstance() {
 	}
 	Log(Info, "All peers under this instance has been removed")
 
-	var ip net.IP
-	if p.Dht == nil || p.Dht.Network == nil {
-		Log(Warning, "DHT isn't in use")
-	} else {
-		ip = p.Dht.Network.IP
-	}
+	// var ip net.IP
+	// if p.Dht == nil || p.Dht.Network == nil {
+	// 	Log(Warning, "DHT isn't in use")
+	// } else {
+	// 	ip = p.Dht.Network.IP
+	// }
 	p.Dht.Shutdown()
 	p.UDPSocket.Stop()
+	p.Interface.Interface.file.Close()
 	p.Shutdown = true
-	Log(Info, "Stopping P2P Message handler")
-	// Tricky part: we need to send a message to ourselves to quit blocking operation
-	msg := CreateTestP2PMessage(p.Crypter, "STOP", 1)
-	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("127.0.0.1:%d", p.Dht.P2PPort))
-	p.UDPSocket.SendMessage(msg, addr)
-	var ipIt = 200
-	if ip != nil {
-		for p.IsDeviceExists(p.Interface.Name) {
-			time.Sleep(1 * time.Second)
-			target := fmt.Sprintf("%d.%d.%d.%d:9922", ip[0], ip[1], ip[2], ipIt)
-			Log(Info, "Dialing %s", target)
-			_, err := net.DialTimeout("tcp", target, 2*time.Second)
-			if err != nil {
-				Log(Info, "ERROR: %v", err)
-			}
-			ipIt++
-			if ipIt == 255 {
-				break
-			}
-		}
-	}
+	// Log(Info, "Stopping P2P Message handler")
+	// // Tricky part: we need to send a message to ourselves to quit blocking operation
+	// msg := CreateTestP2PMessage(p.Crypter, "STOP", 1)
+	// addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("127.0.0.1:%d", p.Dht.P2PPort))
+	// p.UDPSocket.SendMessage(msg, addr)
+	// var ipIt = 200
+	// if ip != nil {
+	// 	for p.IsDeviceExists(p.Interface.Name) {
+	// 		time.Sleep(1 * time.Second)
+	// 		target := fmt.Sprintf("%d.%d.%d.%d:9922", ip[0], ip[1], ip[2], ipIt)
+	// 		Log(Info, "Dialing %s", target)
+	// 		_, err := net.DialTimeout("tcp", target, 2*time.Second)
+	// 		if err != nil {
+	// 			Log(Info, "ERROR: %v", err)
+	// 		}
+	// 		ipIt++
+	// 		if ipIt == 255 {
+	// 			break
+	// 		}
+	// 	}
+	// }
 	time.Sleep(3 * time.Second)
 	p.ReadyToStop = true
 }
