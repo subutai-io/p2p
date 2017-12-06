@@ -930,7 +930,10 @@ func (p *PeerToPeer) StopInstance() {
 	// }
 	p.Dht.Shutdown()
 	p.UDPSocket.Stop()
-	p.Interface.Interface.file.Close()
+	closeInterface(p.Interface.Interface.file)
+	/*if runtime.GOOS != "windows" {
+		p.Interface.Interface.file.Close()
+	}*/
 	p.Shutdown = true
 	// Log(Info, "Stopping P2P Message handler")
 	// // Tricky part: we need to send a message to ourselves to quit blocking operation
