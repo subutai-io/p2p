@@ -507,6 +507,7 @@ func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
 
 // Run is a main loop
 func (p *PeerToPeer) Run() {
+	p.Dht.LastUpdate = time.Unix(1, 1)
 	for {
 		if p.Shutdown {
 			// TODO: Do it more safely
@@ -552,6 +553,7 @@ func (p *PeerToPeer) checkLastDHTUpdate() {
 	passed := time.Since(p.Dht.LastUpdate)
 	if passed > time.Duration(90*time.Second) {
 		Log(Debug, "DHT Last Update timeout passed")
+		p.Dht.sendProxy()
 		p.Dht.sendFind()
 	}
 }
@@ -794,7 +796,7 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 	id := string(msg.Data)
 	peer := p.Peers.GetPeer(id)
 	if peer == nil {
-		Log(Debug, "Introduction request came from unknown peer: %s", id)
+		Log(Debug, "Introduction request came from unknown peer: %s [%s]", id, srcAddr.String())
 		p.Dht.sendFind()
 		return
 	}

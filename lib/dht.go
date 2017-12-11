@@ -207,6 +207,7 @@ func (dht *DHTClient) sendFind() error {
 	if dht.NetworkHash == "" {
 		return fmt.Errorf("Failed to find peers: Infohash is not set")
 	}
+	dht.LastUpdate = time.Now()
 	Log(Info, "Requesting swarm updates")
 	packet := &DHTPacket{
 		Type:     DHTPacketType_Find,
@@ -217,7 +218,6 @@ func (dht *DHTClient) sendFind() error {
 	if err != nil {
 		return fmt.Errorf("Failed to marshal find: %s", err)
 	}
-	dht.LastUpdate = time.Now()
 	return dht.send(data)
 }
 
