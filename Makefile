@@ -4,10 +4,22 @@ PACK=goupx
 VERSION=$(shell cat VERSION)
 OS=$(shell uname -s)
 ARCH=$(shell uname -m)
+BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
 NAME_PREFIX=p2p
 NAME_BASE=p2p
+DHT=mdht.subut.ai:6881
+ifeq ($(BRANCH),HEAD)
+	DHT=mdht.subut.ai:6881
+endif
+ifeq ($(BRANCH),dev)
+	DHT=18.195.169.215:6881
+endif
+ifeq ($(BRANCH),master)
+	DHT=54.93.172.70:6881
+endif
 sinclude config.make
 APP=$(NAME_BASE)
+
 
 build: $(APP)
 ifdef UPX_BIN
@@ -18,19 +30,20 @@ linux: $(APP)
 windows: $(APP).exe
 macos: $(APP)_osx
 
+
 all: linux windows macos
 
 $(APP): help.go instance.go main.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
-	$(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $@ -v $^
+	$(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT)" -o $@ -v $^
 
 $(APP).exe:
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
-	GOOS=windows $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $@ -v $^
+	GOOS=windows $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT)" -o $@ -v $^
 	
 $(APP)_osx:
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
-	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)" -o $@ -v $^
+	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT)" -o $@ -v $^
 
 ifdef UPX_BIN
 pack: $(APP)

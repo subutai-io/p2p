@@ -128,7 +128,7 @@ func CreateStringP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage 
 }
 
 // CreatePingP2PMessage creates a PING message
-func CreatePingP2PMessage() *P2PMessage {
+func CreatePingP2PMessage(data string) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
 	msg.Header.Magic = MagicCookie
@@ -137,7 +137,7 @@ func CreatePingP2PMessage() *P2PMessage {
 	msg.Header.Length = uint16(len("1"))
 	msg.Header.Complete = 1
 	msg.Header.ID = 0
-	msg.Data = []byte("1")
+	msg.Data = []byte(data)
 	return msg
 }
 
