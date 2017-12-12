@@ -206,7 +206,7 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 
 // StartP2PInstance is an entry point of a P2P library.
 func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int, ignoreIPs []string, outboundIP net.IP) *PeerToPeer {
-	argDht = "mdht.subut.ai:6881"
+	//argDht = "mdht.subut.ai:6881"
 	p := new(PeerToPeer)
 	p.outboundIP = outboundIP
 	p.Init()
@@ -507,6 +507,7 @@ func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
 
 // Run is a main loop
 func (p *PeerToPeer) Run() {
+	p.Dht.LastUpdate = time.Unix(1, 1)
 	for {
 		if p.Shutdown {
 			// TODO: Do it more safely
@@ -552,6 +553,7 @@ func (p *PeerToPeer) checkLastDHTUpdate() {
 	passed := time.Since(p.Dht.LastUpdate)
 	if passed > time.Duration(90*time.Second) {
 		Log(Debug, "DHT Last Update timeout passed")
+		p.Dht.sendProxy()
 		p.Dht.sendFind()
 	}
 }
@@ -698,6 +700,7 @@ func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error
 		return
 	}
 	if msg == nil {
+		Log(Error, "Received broken message")
 		return
 	}
 	//var msgType MSG_TYPE = MSG_TYPE(msg.Header.Type)
@@ -726,7 +729,12 @@ func (p *PeerToPeer) HandleNotEncryptedMessage(msg *P2PMessage, srcAddr *net.UDP
 
 // HandlePingMessage is a PING message from a proxy handler
 func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
-	p.UDPSocket.SendMessage(msg, srcAddr)
+	_, err := net.ResolveUDPAddr("udp4", string(msg.Data))
+	if err != nil {
+		p.UDPSocket.SendMessage(msg, srcAddr)
+		return
+	}
+	//Log(Info, "Received addr: %s", addr.String())
 }
 
 // HandleXpeerPingMessage receives a cross-peer ping message
@@ -794,7 +802,7 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 	id := string(msg.Data)
 	peer := p.Peers.GetPeer(id)
 	if peer == nil {
-		Log(Debug, "Introduction request came from unknown peer: %s", id)
+		Log(Debug, "Introduction request came from unknown peer: %s [%s]", id, srcAddr.String())
 		p.Dht.sendFind()
 		return
 	}
@@ -879,13 +887,26 @@ func (p *PeerToPeer) HandleTestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 		return
 	}
 	peer := p.Peers.GetPeer(id)
-	if peer != nil && (peer.State == PeerStateConnectingDirectly || peer.State == PeerStateConnectingInternet) {
-		peer.TestPacketReceived = true
-		p.Peers.Update(id, peer)
-		response := CreateTestP2PMessage(p.Crypter, p.Dht.ID, 0)
-		_, err := p.UDPSocket.SendMessage(response, srcAddr)
-		if err != nil {
-			Log(Error, "Failed to respond to test message: %v", err)
+	if peer != nil {
+		if peer.State == PeerStateConnectingDirectly || peer.State == PeerStateConnectingInternet {
+			peer.TestPacketReceived = true
+			p.Peers.Update(id, peer)
+			response := CreateTestP2PMessage(p.Crypter, p.Dht.ID, 0)
+			_, err := p.UDPSocket.SendMessage(response, srcAddr)
+			if err != nil {
+				Log(Error, "Failed to respond to test message: %v", err)
+			}
+		} else if peer.State == PeerStateConnected && peer.IsUsingTURN {
+			Log(Info, "Received test message from peer which was previously connected over TURN")
+			if len(peer.KnownIPs) == 0 {
+				return
+			}
+			peer.Endpoint = peer.KnownIPs[0]
+			peer.IsUsingTURN = false
+			p.Peers.Update(peer.ID, peer)
+			Log(Info, "Peer %s switched to direct UDP connection %s", peer.ID, peer.Endpoint.String())
+		} else {
+			Log(Info, "Received test message for peer in unsupported state")
 		}
 	}
 }
