@@ -543,6 +543,7 @@ func (p *PeerToPeer) Run() {
 			p.removeStoppedPeers()
 			p.checkBootstrapNodes()
 			p.checkLastDHTUpdate()
+			p.checkProxies()
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
@@ -572,6 +573,17 @@ func (p *PeerToPeer) removeStoppedPeers() {
 			Log(Info, "Removing peer %s", id)
 			p.Peers.Delete(id)
 			Log(Info, "Peer %s has been removed", id)
+			break
+		}
+	}
+}
+
+func (p *PeerToPeer) checkProxies() {
+	lifetime := time.Duration(time.Second * 30)
+	for i, proxy := range p.Proxies {
+		if time.Since(proxy.LastUpdate) > lifetime {
+			Log(Info, "Proxy connection with %s [EP: %s] has been died", proxy.Addr.String(), proxy.Endpoint.String())
+			p.Proxies = append(p.Proxies[:i], p.Proxies[:i+1]...)
 			break
 		}
 	}
@@ -732,6 +744,11 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	_, err := net.ResolveUDPAddr("udp4", string(msg.Data))
 	if err != nil {
 		p.UDPSocket.SendMessage(msg, srcAddr)
+		for i, proxy := range p.Proxies {
+			if proxy.Addr.String() == srcAddr.String() {
+				p.Proxies[i].LastUpdate = time.Now()
+			}
+		}
 		return
 	}
 	//Log(Info, "Received addr: %s", addr.String())
