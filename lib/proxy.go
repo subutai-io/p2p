@@ -15,15 +15,17 @@ const (
 )
 
 type proxyServer struct {
-	Addr     *net.UDPAddr
-	Endpoint *net.UDPAddr // Endpoint provided by proxy
-	Status   proxyStatus
+	Addr       *net.UDPAddr
+	Endpoint   *net.UDPAddr // Endpoint provided by proxy
+	Status     proxyStatus
+	LastUpdate time.Time
 }
 
 func (p *PeerToPeer) initProxy(addr string) error {
 	Log(Info, "Initializing proxy %s", addr)
 	var err error
 	proxy := new(proxyServer)
+	proxy.LastUpdate = time.Now()
 	proxy.Addr, err = net.ResolveUDPAddr("udp4", addr)
 	if err != nil {
 		return fmt.Errorf("Failed to resolve proxy address")

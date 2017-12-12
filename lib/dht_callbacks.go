@@ -54,7 +54,6 @@ func (dht *DHTClient) packetDHCP(packet *DHTPacket) error {
 		dht.Network = network
 		Log(Info, "Received network information: %s", network.String())
 	}
-	dht.sendFind()
 	return nil
 }
 
