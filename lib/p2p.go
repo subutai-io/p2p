@@ -729,12 +729,12 @@ func (p *PeerToPeer) HandleNotEncryptedMessage(msg *P2PMessage, srcAddr *net.UDP
 
 // HandlePingMessage is a PING message from a proxy handler
 func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
-	addr, err := net.ResolveUDPAddr("udp4", string(msg.Data))
+	_, err := net.ResolveUDPAddr("udp4", string(msg.Data))
 	if err != nil {
 		p.UDPSocket.SendMessage(msg, srcAddr)
 		return
 	}
-	Log(Info, "Received addr: %s", addr.String())
+	//Log(Info, "Received addr: %s", addr.String())
 }
 
 // HandleXpeerPingMessage receives a cross-peer ping message
@@ -877,8 +877,6 @@ func (p *PeerToPeer) HandleBadTun(msg *P2PMessage, srcAddr *net.UDPAddr) {
 // HandleTestMessage responses with a test message when another peer trying to
 // establish direct connection
 func (p *PeerToPeer) HandleTestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
-
-	Log(Info, "TEST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	if len(p.Dht.ID) != 36 {
 		return
 	}
