@@ -52,7 +52,7 @@ try {
         }
 		if (env.BRANCH_NAME == 'master') {
             sh """
-                ./configure --dht=54.93.172.70
+                ./configure --dht=54.93.172.70:6881
             """
         }
 
