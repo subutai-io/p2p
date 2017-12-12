@@ -269,6 +269,7 @@ func (p *Daemon) Execute(args *Args, resp *Response) error {
 
 // Run starts a P2P instance
 func (p *Daemon) Run(args *RunArgs, resp *Response) error {
+	args.Dht = DefaultDHT
 	resp.ExitCode = 0
 	resp.Output = "Running new P2P instance for " + args.Hash + "\n"
 
@@ -458,7 +459,12 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 				resp.Output += fmt.Sprintf("\t\tIP: %s\n", peer.PeerLocalIP.String())
 				resp.Output += fmt.Sprintf("\t\tEndpoint: %s\n", peer.Endpoint)
 				resp.Output += fmt.Sprintf("\t\tPeer Address: %s\n", peer.PeerAddr.String())
-				resp.Output += fmt.Sprintf("\t\tProxy ID: %d\n", peer.ProxyID)
+				proxyInUse := "No"
+				if peer.IsUsingTURN {
+					proxyInUse = "Yes"
+				}
+				resp.Output += fmt.Sprintf("\t\tUsing proxy: %s\n", proxyInUse)
+				//resp.Output += fmt.Sprintf("\t\tProxy ID: %d\n", peer.ProxyID)
 			}
 			resp.Output += fmt.Sprintf("\t--- End of %s ---\n", peer.ID)
 		}

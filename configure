@@ -21,10 +21,13 @@ Options:
         Email of package maintainer email. Appropriate GPG key should exist in the system
 
     --version-postfix=<postfix>
-	Place an extra version number of debian package
+	    Place an extra version number of debian package
 
     --debian-release=<codename>
-	Codename of target Debian/Ubuntu release
+	    Codename of target Debian/Ubuntu release
+
+    --dht=<url>
+        Default DHT url
 
     --help
     Display this help screen
@@ -43,6 +46,7 @@ build_deb=1
 prefix=/usr
 debian_release=trusty
 version_postfix=
+dht=""
 
 while [ $# -ge 1 ]; do
     case "$1" in
@@ -54,9 +58,11 @@ while [ $# -ge 1 ]; do
             maintainer_email="`echo ${1} | awk '{print substr($0,20)}'`" ;;
         --no-debian)
             build_deb=0 ;;
-	--debian-release=*)
+        --dht=*)
+            dht="`echo ${1} | awk '{print substr($0,7)}'`" ;;
+        --debian-release=*)
             debian_release="`echo ${1} | awk '{print substr($0,18)}'`" ;;
-	--version-postfix=*)
+        --version-postfix=*)
             version_postfix=-"`echo ${1} | awk '{print substr($0,19)}'`" ;;
         --help)
             showhelp
@@ -244,6 +250,9 @@ echo "NAME_BASE = $name_base" >> config.make
 echo "NAME_PREFIX = $name_prefix" >> config.make
 echo "BUILD_DEB = $build_deb" >> config.make
 echo "PREFIX = $prefix" >> config.make
+if [ "$dht" != "" ]; then
+    echo "DHT = $dht" >> config.make
+fi
 if [ "$upx_bin" != "" ]; then
     echo "UPX_BIN = $upx_bin" >> config.make
 fi

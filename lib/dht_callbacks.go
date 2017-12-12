@@ -72,7 +72,6 @@ func (dht *DHTClient) packetError(packet *DHTPacket) error {
 }
 
 func (dht *DHTClient) packetFind(packet *DHTPacket) error {
-	dht.sendProxy()
 	if len(packet.Arguments) == 0 {
 		Log(Warning, "Received empty peer list")
 		return nil

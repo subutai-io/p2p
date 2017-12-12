@@ -43,6 +43,20 @@ try {
 		notifyBuildDetails = "\nFailed on Stage - Build p2p"
 
 		sh """
+            ./configure --dht=mdht.subut.ai:6881
+		"""
+		if (env.BRANCH_NAME == 'dev') {
+            sh """
+                ./configure --dht=18.195.169.215:6881
+            """
+        }
+		if (env.BRANCH_NAME == 'master') {
+            sh """
+                ./configure --dht=54.93.172.70
+            """
+        }
+
+		sh """
 			export GOPATH=${workspace}/${goenvDir}
 			export GOBIN=${workspace}/${goenvDir}/bin
 			go get

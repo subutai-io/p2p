@@ -64,6 +64,7 @@ type (
 const (
 	PeerStateInit                   PeerState = iota // Peer has been added recently.
 	PeerStateRequestedIP                      = iota // We know ID of a peer, but don't know it's IPs
+	PeerStateConnecting                       = iota // Trying to establish connection
 	PeerStateConnectingDirectlyWait           = iota // Wait for other peer to start connecting directly over LAN
 	PeerStateConnectingDirectly               = iota // Trying to establish a direct connection over LAN
 	PeerStateConnectingInternetWait           = iota // Wait for other peer to start connecting over Internet
