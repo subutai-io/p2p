@@ -16,7 +16,7 @@ import (
 
 // AppVersion is a Version of P2P
 var AppVersion = "Unknown"
-var DefaultDHT = "mdht.subut.ai"
+var DefaultDHT = "mdht.subut.ai:6881"
 
 // InterfaceNames - List of all interfaces names that was used by p2p historically. These interfaces may not present in the system anymore
 var InterfaceNames []string
