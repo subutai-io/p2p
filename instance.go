@@ -429,10 +429,15 @@ func (p *Daemon) Show(args *ShowArgs, resp *Response) error {
 // Debug output debug information
 func (p *Daemon) Debug(args *Args, resp *Response) error {
 	resp.Output = "DEBUG INFO:\n"
+	resp.Output = fmt.Sprintf("Version: %s\n", AppVersion)
 	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())
 	resp.Output += fmt.Sprintf("Instances information:\n")
 	instances := p.Instances.Get()
 	for _, inst := range instances {
+		resp.Output += fmt.Sprintf("Bootstrap nodes:\n")
+		for _, conn := range inst.PTP.Dht.Connections {
+			resp.Output += fmt.Sprintf("\t%s\n", conn.RemoteAddr().String())
+		}
 		resp.Output += fmt.Sprintf("Hash: %s\n", inst.ID)
 		resp.Output += fmt.Sprintf("ID: %s\n", inst.PTP.Dht.ID)
 		resp.Output += fmt.Sprintf("UDP Port: %d\n", inst.PTP.UDPSocket.GetPort())
