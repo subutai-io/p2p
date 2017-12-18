@@ -316,7 +316,7 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 	if np.IsUsingTURN && len(np.KnownIPs) > 0 {
 		tm := CreateTestP2PMessage(ptpc.Crypter, ptpc.Dht.ID, 0)
 		ptpc.UDPSocket.SendMessage(tm, np.KnownIPs[0])
-		Log(Info, "%s", np.KnownIPs[0].String())
+		Log(Trace, "Sending packet directly to %s", np.KnownIPs[0].String())
 	}
 	return nil
 }
@@ -375,7 +375,7 @@ func (np *NetworkPeer) stateWaitingForwarder(ptpc *PeerToPeer) error {
 		time.Sleep(time.Millisecond * 100)
 		passed := time.Since(waitStart)
 		if passed > WaitProxyTimeout {
-			np.SetState(PeerStateWaitingForwarderFailed, ptpc)
+			np.SetState(PeerStateDisconnect, ptpc)
 			np.LastError = "No forwarders received"
 			return fmt.Errorf("No proxy were received for %s", np.ID)
 		}
