@@ -22,7 +22,7 @@ type proxyServer struct {
 }
 
 func (p *PeerToPeer) initProxy(addr string) error {
-	Log(Info, "Initializing proxy %s", addr)
+
 	var err error
 	proxy := new(proxyServer)
 	proxy.LastUpdate = time.Now()
@@ -35,6 +35,7 @@ func (p *PeerToPeer) initProxy(addr string) error {
 			return fmt.Errorf("Proxy %s already exists", addr)
 		}
 	}
+	Log(Info, "Initializing proxy %s", addr)
 	p.Proxies = append(p.Proxies, proxy)
 	initStarted := time.Now()
 	proxy.Status = proxyConnecting
@@ -52,7 +53,6 @@ func (p *PeerToPeer) initProxy(addr string) error {
 		p.removeProxy(proxy.Addr)
 		return fmt.Errorf("Wrong proxy status")
 	}
-	Log(Info, "Proxy %s initialization complete", addr)
 	return nil
 }
 

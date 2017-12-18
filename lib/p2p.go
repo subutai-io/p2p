@@ -787,6 +787,10 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	Log(Info, "Introduction string from %s[%d]", srcAddr, msg.Header.ProxyID)
 	id, mac, ip := p.ParseIntroString(string(msg.Data))
+	if len(id) != 36 {
+		Log(Debug, "Received wrong ID in introduction message: %s", id)
+		return
+	}
 	peer := p.Peers.GetPeer(id)
 	// Do nothing when handshaking already done
 	if peer.State != PeerStateHandshaking && peer.State != PeerStateHandshakingForwarder {
@@ -817,6 +821,10 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 // HandleIntroRequestMessage is a handshake request from another peer
 func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	id := string(msg.Data)
+	if len(id) != 36 {
+		Log(Debug, "Introduction request with malformed ID [%s] from %s", id, srcAddr.String())
+		return
+	}
 	peer := p.Peers.GetPeer(id)
 	if peer == nil {
 		Log(Debug, "Introduction request came from unknown peer: %s [%s]", id, srcAddr.String())
@@ -858,12 +866,10 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 // HandleProxyMessage receives a control packet from proxy
 // Proxy packets comes in format of UDP connection address
 func (p *PeerToPeer) HandleProxyMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
-	Log(Info, "New proxy message from %s", srcAddr)
+	Log(Debug, "New proxy message from %s", srcAddr)
 	for i, proxy := range p.Proxies {
-		Log(Info, "Proxy addr: %s", proxy.Addr.String())
 		if proxy.Addr.String() == srcAddr.String() && proxy.Status == proxyConnecting {
 			p.Proxies[i].Status = proxyActive
-			Log(Info, "Connected with %s proxy", srcAddr.String())
 			addr, err := net.ResolveUDPAddr("udp4", string(msg.Data))
 			if err != nil {
 				Log(Error, "Failed to resolve proxy addr: %s", err)
@@ -940,8 +946,7 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 		size, err := p.UDPSocket.SendMessage(msg, endpoint)
 		return size, err
 	}
-	Log(Debug, "Not sending")
-
+	Log(Trace, "Skipping packet")
 	return 0, nil
 }
 
@@ -1038,6 +1043,15 @@ func (p *PeerToPeer) handlePeerData(peerData NetworkPeer) {
 
 	if peer != nil && len(peerData.Proxies) > 0 {
 		Log(Info, "Received proxies for peer %s", peerData.ID)
+		peers := p.Peers.Get()
+		for _, proxy := range peerData.Proxies {
+			for _, existingPeer := range peers {
+				if existingPeer.Endpoint.String() == proxy.String() && existingPeer.ID != peerData.ID {
+					existingPeer.SetState(PeerStateDisconnect, p)
+					Log(Info, "Peer %s was associated with address %s. Disconnecting", existingPeer.ID, proxy.String())
+				}
+			}
+		}
 		peer.Proxies = peerData.Proxies
 		p.Peers.Update(peer.ID, peer)
 	}
