@@ -1,5 +1,11 @@
 # Change Log
 
+## [6.2.8] 12/19/2017
+
+* Fixed problem with proxy connection spam
+* Fixed stale proxy cleanup
+* Improved stability
+
 ## [6.2.5] 12/01/2017
 
 * Fixed proxy array population
