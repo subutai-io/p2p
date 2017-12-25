@@ -428,6 +428,7 @@ func (p *Daemon) Show(args *ShowArgs, resp *Response) error {
 
 // Debug output debug information
 func (p *Daemon) Debug(args *Args, resp *Response) error {
+	ptp.Log(ptp.Info, "Preparing Debug output")
 	resp.Output = "DEBUG INFO:\n"
 	resp.Output = fmt.Sprintf("Version: %s\n", AppVersion)
 	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())
