@@ -11,8 +11,8 @@ import (
 )
 
 type RESTResponse struct {
-	code    int    `json:"code"`
-	message string `json:"message"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 type DaemonArgs struct {
@@ -33,6 +33,7 @@ type DaemonArgs struct {
 }
 
 func (d *Daemon) execRESTStart(w http.ResponseWriter, r *http.Request) {
+	ptp.Log(ptp.Info, "Start request")
 	args := new(DaemonArgs)
 	err := getJSON(r.Body, args)
 	if handleMarshalError(err, w) != nil {
@@ -60,6 +61,7 @@ func (d *Daemon) execRESTStart(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *Daemon) execRESTStop(w http.ResponseWriter, r *http.Request) {
+	ptp.Log(ptp.Info, "Stop request")
 	args := new(DaemonArgs)
 	err := getJSON(r.Body, args)
 	if handleMarshalError(err, w) != nil {
@@ -78,6 +80,7 @@ func (d *Daemon) execRESTStop(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *Daemon) execRESTShow(w http.ResponseWriter, r *http.Request) {
+	ptp.Log(ptp.Info, "Show request")
 	args := new(DaemonArgs)
 	err := getJSON(r.Body, args)
 	if handleMarshalError(err, w) != nil {
@@ -99,6 +102,7 @@ func (d *Daemon) execRESTShow(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *Daemon) execRESTStatus(w http.ResponseWriter, r *http.Request) {
+	ptp.Log(ptp.Info, "Status request")
 	args := new(DaemonArgs)
 	err := getJSON(r.Body, args)
 	if handleMarshalError(err, w) != nil {
@@ -115,6 +119,7 @@ func (d *Daemon) execRESTStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *Daemon) execRESTDebug(w http.ResponseWriter, r *http.Request) {
+	ptp.Log(ptp.Info, "Debug request")
 	args := new(DaemonArgs)
 	err := getJSON(r.Body, args)
 	if handleMarshalError(err, w) != nil {
@@ -130,6 +135,7 @@ func (d *Daemon) execRESTDebug(w http.ResponseWriter, r *http.Request) {
 		ptp.Log(ptp.Error, "Internal error: %s", err)
 		return
 	}
+	ptp.Log(ptp.Info, "RESPONSE: %s", string(resp))
 	w.Write(resp)
 }
 
@@ -152,8 +158,8 @@ func getJSON(body io.ReadCloser, args *DaemonArgs) error {
 
 func getResponse(exitCode int, outputMessage string) ([]byte, error) {
 	resp := &RESTResponse{
-		code:    exitCode,
-		message: outputMessage,
+		Code:    exitCode,
+		Message: outputMessage,
 	}
 	out, err := json.Marshal(resp)
 	if err != nil {

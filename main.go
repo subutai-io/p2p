@@ -392,11 +392,11 @@ func Start(rpcPort int, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd b
 	out, err := sendRequest(rpcPort, "start", args)
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		os.Exit(1)
 	}
 
-	fmt.Println(out.message)
-	os.Exit(out.code)
+	fmt.Println(out.Message)
+	os.Exit(out.Code)
 
 	// err := client.Call("Daemon.Run", args, &response)
 	// if err != nil {
@@ -422,14 +422,14 @@ func Stop(rpcPort int, hash string) {
 	}
 	args.Hash = hash
 
-	out, err := sendRequest(rpcPort, "start", args)
+	out, err := sendRequest(rpcPort, "stop", args)
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		os.Exit(1)
 	}
 
-	fmt.Println(out.message)
-	os.Exit(out.code)
+	fmt.Println(out.Message)
+	os.Exit(out.Code)
 	// err := client.Call("Daemon.Stop", args, &response)
 	// if err != nil {
 	// 	fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
@@ -457,14 +457,14 @@ func Show(rpcPort int, hash, ip string, interfaces, all bool) {
 	args.Interfaces = interfaces
 	args.All = all
 
-	out, err := sendRequest(rpcPort, "start", args)
+	out, err := sendRequest(rpcPort, "show", args)
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		os.Exit(1)
 	}
 
-	fmt.Println(out.message)
-	os.Exit(out.code)
+	fmt.Println(out.Message)
+	os.Exit(out.Code)
 
 	// err := client.Call("Daemon.Show", args, &response)
 	// if err != nil {
@@ -493,11 +493,11 @@ func ShowStatus(rpcPort int) {
 	out, err := sendRequest(rpcPort, "start", args)
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		os.Exit(1)
 	}
 
-	fmt.Println(out.message)
-	os.Exit(out.code)
+	fmt.Println(out.Message)
+	os.Exit(out.Code)
 
 	// if response.ExitCode == 0 {
 	// 	fmt.Printf("%s\n", response.Output)
@@ -536,14 +536,14 @@ func Set(rpcPort int, log, hash, keyfile, key, ttl string) {
 
 // Debug prints debug information
 func Debug(rpcPort int) {
-	out, err := sendRequest(rpcPort, "start", &DaemonArgs{})
+	out, err := sendRequest(rpcPort, "debug", &DaemonArgs{})
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		os.Exit(1)
 	}
 
-	fmt.Println(out.message)
-	os.Exit(out.code)
+	fmt.Println(out.Message)
+	os.Exit(out.Code)
 	// client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
 	// var response Response
 	// args := &Args{}
