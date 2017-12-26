@@ -40,7 +40,9 @@ func createInterface(file *os.File, ifPattern string, kind DevKind) (string, err
 }
 
 func closeInterface(file *os.File) {
-	file.Close()
+	if file != nil {
+		file.Close()
+	}
 }
 
 // ConfigureInterface performs a configuration of an existing interface
