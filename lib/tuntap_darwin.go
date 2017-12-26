@@ -19,7 +19,9 @@ func createInterface(file *os.File, ifPattern string, kind DevKind) (string, err
 }
 
 func closeInterface(file *os.File) {
-	file.Close()
+	if file != nil {
+		file.Close()
+	}
 }
 
 func ConfigureInterface(dev *Interface, ip, mac, device, tool string) error {

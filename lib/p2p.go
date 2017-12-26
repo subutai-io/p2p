@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -1017,8 +1018,10 @@ func (p *PeerToPeer) StopInstance() {
 	// }
 	p.Dht.Shutdown()
 	p.UDPSocket.Stop()
-	if p.Interface.Interface != nil && p.Interface.Interface.file != nil {
-		closeInterface(p.Interface.Interface.file)
+	if runtime.GOOS != "windows" {
+		if p.Interface.Interface != nil {
+			closeInterface(p.Interface.Interface.file)
+		}
 	}
 	/*if runtime.GOOS != "windows" {
 		p.Interface.Interface.file.Close()
