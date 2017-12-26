@@ -122,7 +122,7 @@ func (dht *DHTClient) packetPing(packet *DHTPacket) error {
 }
 
 func (dht *DHTClient) packetProxy(packet *DHTPacket) error {
-	Log(Info, "Received list of proxies")
+	Log(Debug, "Received list of proxies")
 	for _, proxy := range packet.Arguments {
 		dht.ProxyChannel <- proxy
 	}

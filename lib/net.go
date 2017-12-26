@@ -295,12 +295,13 @@ func CreateBadTunnelP2PMessage(id int, netProto uint16) *P2PMessage {
 
 // Network is a network subsystem
 type Network struct {
-	host     string
-	port     int
-	addr     *net.UDPAddr
-	conn     *net.UDPConn
-	inBuffer [4096]byte
-	disposed bool
+	host       string
+	port       int
+	remotePort int
+	addr       *net.UDPAddr
+	conn       *net.UDPConn
+	inBuffer   [4096]byte
+	disposed   bool
 }
 
 // Stop will terminate packet reader
@@ -349,6 +350,12 @@ func (uc *Network) KeepAlive(addr *net.UDPAddr) {
 	data := []byte{0x0D, 0x0A}
 	keepAlive := time.Now()
 	Log(Info, "Started keep alive session with %s", addr)
+	i := 0
+	for i < 20 {
+		uc.SendRawBytes(data, addr)
+		i++
+		time.Sleep(time.Millisecond * 500)
+	}
 	for !uc.disposed {
 		if time.Duration(time.Second*3) < time.Since(keepAlive) {
 			keepAlive = time.Now()

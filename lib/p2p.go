@@ -254,8 +254,9 @@ func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, 
 
 	p.UDPSocket = new(Network)
 	p.UDPSocket.Init("", port)
-	go p.UDPSocket.KeepAlive(p.retrieveFirstDHTRouter())
 	go p.UDPSocket.Listen(p.HandleP2PMessage)
+	go p.UDPSocket.KeepAlive(p.retrieveFirstDHTRouter())
+	p.waitForRemotePort()
 
 	// Create new DHT Client, configure it and initialize
 	// During initialization procedure, DHT Client will send
@@ -263,12 +264,12 @@ func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, 
 	// nodes that was hardcoded into it's code
 
 	Log(Info, "Started UDP Listener at port %d", p.UDPSocket.GetPort())
-	go func() {
-		err = p.attemptPortForward(uint16(p.UDPSocket.GetPort()), interfaceName)
-		if err != nil {
-			Log(Error, "UPnP Failed: %s", err)
-		}
-	}()
+	// go func() {
+	// 	err = p.attemptPortForward(uint16(p.UDPSocket.GetPort()), interfaceName)
+	// 	if err != nil {
+	// 		Log(Error, "UPnP Failed: %s", err)
+	// 	}
+	// }()
 
 	err = p.StartDHT(p.Hash, p.Routers)
 	if err != nil {
@@ -298,6 +299,24 @@ func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, 
 
 	go p.ListenInterface()
 	return p
+}
+
+// This method will block for seconds or unless we receive remote port
+// from echo server
+func (p *PeerToPeer) waitForRemotePort() {
+	started := time.Now()
+	for p.UDPSocket.remotePort == 0 {
+		time.Sleep(time.Millisecond * 100)
+		if time.Since(started) > time.Duration(time.Second*3) {
+			break
+		}
+	}
+	if p.UDPSocket.remotePort == 0 {
+		Log(Warning, "Didn't received remote port")
+		p.UDPSocket.remotePort = p.UDPSocket.GetPort()
+		return
+	}
+	Log(Warning, "Remote port received: %d", p.UDPSocket.remotePort)
 }
 
 func (p *PeerToPeer) retrieveFirstDHTRouter() *net.UDPAddr {
@@ -420,7 +439,7 @@ func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 	p.Dht.sendDHCP(nil, nil)
 	for p.Dht.IP == nil && p.Dht.Network == nil {
 		if time.Since(requestedAt) > interval {
-			p.Dht.Shutdown()
+			p.StopInstance()
 			return nil, nil, fmt.Errorf("No IP were received. Swarm is empty")
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -472,7 +491,12 @@ func (p *PeerToPeer) StartDHT(hash, routers string) error {
 	}
 	p.Dht = new(DHTClient)
 	p.Dht.OutboundIP = p.outboundIP
-	p.Dht.P2PPort = p.UDPSocket.GetPort()
+	p.Dht.LocalPort = p.UDPSocket.GetPort()
+	if p.UDPSocket.remotePort == 0 {
+		p.Dht.LocalPort = p.Dht.RemotePort
+	} else {
+		p.Dht.RemotePort = p.UDPSocket.remotePort
+	}
 	err := p.Dht.TCPInit(hash, routers)
 	if err != nil {
 		return fmt.Errorf("Failed to initialize DHT: %s", err)
@@ -507,7 +531,8 @@ func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
 
 // Run is a main loop
 func (p *PeerToPeer) Run() {
-	p.Dht.LastUpdate = time.Unix(1, 1)
+	// p.Dht.LastUpdate = time.Unix(1, 1)
+	p.Dht.LastUpdate = time.Now()
 	for {
 		if p.Shutdown {
 			// TODO: Do it more safely
@@ -552,10 +577,13 @@ func (p *PeerToPeer) Run() {
 
 func (p *PeerToPeer) checkLastDHTUpdate() {
 	passed := time.Since(p.Dht.LastUpdate)
-	if passed > time.Duration(90*time.Second) {
+	if passed > time.Duration(30*time.Second) {
 		Log(Debug, "DHT Last Update timeout passed")
 		p.Dht.sendProxy()
-		p.Dht.sendFind()
+		err := p.Dht.sendFind()
+		if err != nil {
+			Log(Error, "Failed to send update: %s", err)
+		}
 	}
 }
 
@@ -741,7 +769,7 @@ func (p *PeerToPeer) HandleNotEncryptedMessage(msg *P2PMessage, srcAddr *net.UDP
 
 // HandlePingMessage is a PING message from a proxy handler
 func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
-	_, err := net.ResolveUDPAddr("udp4", string(msg.Data))
+	addr, err := net.ResolveUDPAddr("udp4", string(msg.Data))
 	if err != nil {
 		p.UDPSocket.SendMessage(msg, srcAddr)
 		for i, proxy := range p.Proxies {
@@ -751,7 +779,15 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 		}
 		return
 	}
-	//Log(Info, "Received addr: %s", addr.String())
+	port := addr.Port
+	if p.UDPSocket.remotePort == 0 {
+		p.UDPSocket.remotePort = port
+	} else {
+		if port != p.UDPSocket.GetPort() && port != p.UDPSocket.remotePort {
+			Log(Debug, "Port translation detected %d -> %d", p.UDPSocket.GetPort(), port)
+			p.UDPSocket.remotePort = port
+		}
+	}
 }
 
 // HandleXpeerPingMessage receives a cross-peer ping message
@@ -903,12 +939,19 @@ func (p *PeerToPeer) HandleTestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	if len(p.Dht.ID) != 36 {
 		return
 	}
-	// See if we have peer with this ID
-	id := string(msg.Data)
-	if len(id) != 36 {
-		Log(Error, "Malformed ID received during test: %s", id)
+
+	if len(msg.Data) < 36 || len(msg.Data) > 40 {
+		Log(Error, "Malformed data received during test: %s", string(msg.Data))
 		return
 	}
+
+	// See if we have peer with this ID
+	id := string(msg.Data[0:36])
+	if len(id) != 36 {
+		Log(Error, "Wrong ID during test message")
+		return
+	}
+
 	peer := p.Peers.GetPeer(id)
 	if peer != nil {
 		if peer.State == PeerStateConnectingDirectly || peer.State == PeerStateConnectingInternet {
@@ -974,7 +1017,9 @@ func (p *PeerToPeer) StopInstance() {
 	// }
 	p.Dht.Shutdown()
 	p.UDPSocket.Stop()
-	closeInterface(p.Interface.Interface.file)
+	if p.Interface.Interface != nil && p.Interface.Interface.file != nil {
+		closeInterface(p.Interface.Interface.file)
+	}
 	/*if runtime.GOOS != "windows" {
 		p.Interface.Interface.file.Close()
 	}*/
@@ -1005,9 +1050,6 @@ func (p *PeerToPeer) StopInstance() {
 }
 
 func (p *PeerToPeer) handlePeerData(peerData NetworkPeer) {
-	// Empty peer means no peers were received from bootstrap node
-	// We remove any peer that was already exists
-	Log(Warning, "Received empty peer list")
 	if peerData.ID == "" {
 		return
 	}
