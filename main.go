@@ -509,6 +509,14 @@ func ShowStatus(rpcPort int) {
 
 // Set modifies different options of P2P daemon
 func Set(rpcPort int, log, hash, keyfile, key, ttl string) {
+	out, err := sendRequest(rpcPort, "set", &DaemonArgs{Log: log, Keyfile: keyfile, Key: key, TTL: ttl})
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
+	fmt.Println(out.Message)
+	os.Exit(out.Code)
 	// client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
 	// var response Response
 	// var err error
@@ -570,12 +578,13 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 	}
 
 	ptp.Log(ptp.Info, "Determining outbound IP")
-	_, host, err := stun.NewClient().Discover()
+	nat, host, err := stun.NewClient().Discover()
 	if err != nil {
 		ptp.Log(ptp.Error, "Failed to discover outbound IP: %s", err)
 		OutboundIP = nil
 	} else {
 		OutboundIP = net.ParseIP(host.IP())
+		ptp.Log(ptp.Info, "Public IP is %s. %s", OutboundIP.String(), nat)
 	}
 
 	proc := new(Daemon)

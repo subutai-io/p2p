@@ -30,6 +30,7 @@ type DaemonArgs struct {
 	All        bool   `json:"all"`        // show only
 	Command    string `json:"command"`
 	Args       string `json:"args"`
+	Log        string `json:"log"`
 }
 
 func (d *Daemon) execRESTStart(w http.ResponseWriter, r *http.Request) {
@@ -135,12 +136,33 @@ func (d *Daemon) execRESTDebug(w http.ResponseWriter, r *http.Request) {
 		ptp.Log(ptp.Error, "Internal error: %s", err)
 		return
 	}
-	ptp.Log(ptp.Info, "RESPONSE: %s", string(resp))
 	w.Write(resp)
 }
 
 func (d *Daemon) execRESTSet(w http.ResponseWriter, r *http.Request) {
-
+	ptp.Log(ptp.Info, "Debug request")
+	args := new(DaemonArgs)
+	err := getJSON(r.Body, args)
+	if handleMarshalError(err, w) != nil {
+		return
+	}
+	response := new(Response)
+	if args.Log != "" {
+		d.SetLog(&NameValueArg{
+			Name:  "log",
+			Value: args.Log,
+		}, response)
+	} else {
+		response.ExitCode = 0
+		response.Output = "Unknown command"
+	}
+	resp, err := getResponse(response.ExitCode, response.Output)
+	if err != nil {
+		ptp.Log(ptp.Error, "Internal error: %s", err)
+		return
+	}
+	ptp.Log(ptp.Info, "RESPONSE: %s", string(resp))
+	w.Write(resp)
 }
 
 func getJSON(body io.ReadCloser, args *DaemonArgs) error {
