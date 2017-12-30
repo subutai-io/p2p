@@ -66,6 +66,8 @@ var (
 )
 
 func InitPlatform() {
+	Log(Info, "Initializing Windows Platform")
+	SetupWindowsService()
 	// Remove interfaces
 	remove := exec.Command(TAP_TOOL, "remove", TAP_ID)
 	err := remove.Run()
@@ -460,5 +462,9 @@ func Syslog(level LogLevel, format string, v ...interface{}) {
 }
 
 func closeInterface(file syscall.Handle) {
+
+}
+
+func SetupWindowsService() {
 
 }
