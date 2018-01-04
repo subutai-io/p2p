@@ -490,7 +490,7 @@ func ShowStatus(rpcPort int) {
 	// 	return
 	// }
 
-	out, err := sendRequest(rpcPort, "start", args)
+	out, err := sendRequest(rpcPort, "status", args)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
