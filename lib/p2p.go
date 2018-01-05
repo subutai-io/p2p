@@ -732,7 +732,9 @@ func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error
 		if decErr != nil {
 			Log(Error, "Failed to decrypt message")
 		}
-		msg.Data = msg.Data[:msg.Header.Length]
+		if len(msg.Data) == int(msg.Header.Length) {
+			msg.Data = msg.Data[:msg.Header.Length]
+		}
 	}
 	callback, exists := p.MessageHandlers[msg.Header.Type]
 	if exists {
