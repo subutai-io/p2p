@@ -5,10 +5,11 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"strconv"
 	"time"
+
+	"gopkg.in/yaml.v2"
 )
 
 // CryptoKey represents a key and it's expiration date
@@ -67,7 +68,7 @@ func (c Crypto) ReadKeysFromFile(filepath string) {
 }
 
 // Encrypt encrypts data
-func (c Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
+func (c Crypto) encrypt(key []byte, data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -91,7 +92,7 @@ func (c Crypto) Encrypt(key []byte, data []byte) ([]byte, error) {
 }
 
 // Decrypt decrypts data
-func (c Crypto) Decrypt(key []byte, data []byte) ([]byte, error) {
+func (c Crypto) decrypt(key []byte, data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err

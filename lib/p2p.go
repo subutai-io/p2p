@@ -611,7 +611,7 @@ func (p *PeerToPeer) checkProxies() {
 	lifetime := time.Duration(time.Second * 30)
 	for i, proxy := range p.Proxies {
 		if time.Since(proxy.LastUpdate) > lifetime {
-			Log(Info, "Proxy connection with %s [EP: %s] has been died", proxy.Addr.String(), proxy.Endpoint.String())
+			Log(Info, "Proxy connection with %s [EP: %s] has died", proxy.Addr.String(), proxy.Endpoint.String())
 			p.Proxies = append(p.Proxies[:i], p.Proxies[:i+1]...)
 			break
 		}
@@ -624,26 +624,6 @@ func (p *PeerToPeer) PrepareIntroductionMessage(id string) *P2PMessage {
 	var intro = id + "," + p.Interface.Mac.String() + "," + p.Interface.IP.String()
 	msg := CreateIntroP2PMessage(p.Crypter, intro, 0)
 	return msg
-}
-
-// PurgePeers method goes over peers and removes obsolete ones
-// Peer becomes obsolete when it goes out of DHT
-// TODO: Remove unused function
-func (p *PeerToPeer) PurgePeers() {
-	/*peers := p.Peers.Get()
-	for i, peer := range peers {
-		found := false
-		for _, newPeer := range p.Dht.Peers {
-			if newPeer.ID == peer.ID {
-				found = true
-			}
-		}
-		if !found {
-			Log(Info, "Removing outdated peer")
-			p.Peers.Delete(i)
-		}
-	}*/
-	return
 }
 
 // SyncForwarders extracts proxies from DHT and assign them to target peers
@@ -746,9 +726,9 @@ func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error
 	}
 	//var msgType MSG_TYPE = MSG_TYPE(msg.Header.Type)
 	// Decrypt message if crypter is active
-	if p.Crypter.Active && (msg.Header.Type == MsgTypeIntro || msg.Header.Type == MsgTypeNenc || msg.Header.Type == MsgTypeIntroReq || msg.Header.Type == MsgTypeTest) {
+	if p.Crypter.Active && (msg.Header.Type == MsgTypeIntro || msg.Header.Type == MsgTypeNenc || msg.Header.Type == MsgTypeIntroReq || msg.Header.Type == MsgTypeTest || msg.Header.Type == MsgTypeXpeerPing) {
 		var decErr error
-		msg.Data, decErr = p.Crypter.Decrypt(p.Crypter.ActiveKey.Key, msg.Data)
+		msg.Data, decErr = p.Crypter.decrypt(p.Crypter.ActiveKey.Key, msg.Data)
 		if decErr != nil {
 			Log(Error, "Failed to decrypt message")
 		}
@@ -797,13 +777,13 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 	if pt == PingReq {
 		Log(Debug, "Ping request received: %s. Responding with %s", string(msg.Data), p.Interface.Mac.String())
 		// Send a PING response
-		r := CreateXpeerPingMessage(PingResp, p.Interface.Mac.String())
+		r := CreateXpeerPingMessage(p.Crypter, PingResp, p.Interface.Mac.String())
 		addr, err := net.ParseMAC(string(msg.Data))
 		if err != nil {
 			Log(Error, "Failed to parse MAC address in crosspeer ping message")
 		} else {
 			p.SendTo(addr, r)
-			Log(Debug, "Sending to %s", addr.String())
+			Log(Debug, "Sending crosspeer PING response to %s", addr.String())
 		}
 	} else {
 		Log(Debug, "Ping response received")
