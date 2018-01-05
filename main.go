@@ -19,6 +19,7 @@ import (
 
 // AppVersion is a Version of P2P
 var AppVersion = "Unknown"
+var BuildID = "Unknown"
 var DefaultDHT = "mdht.subut.ai:6881"
 
 // InterfaceNames - List of all interfaces names that was used by p2p historically. These interfaces may not present in the system anymore
@@ -656,7 +657,7 @@ func sendRequest(port int, command string, args *DaemonArgs) (*RESTResponse, err
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to send request: %s", err)
+		return nil, fmt.Errorf("Couldn't execute command. Check if p2p daemon is running.")
 	}
 	defer resp.Body.Close()
 
