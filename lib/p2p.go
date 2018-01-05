@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -610,7 +611,7 @@ func (p *PeerToPeer) checkProxies() {
 	lifetime := time.Duration(time.Second * 30)
 	for i, proxy := range p.Proxies {
 		if time.Since(proxy.LastUpdate) > lifetime {
-			Log(Info, "Proxy connection with %s [EP: %s] has been died", proxy.Addr.String(), proxy.Endpoint.String())
+			Log(Info, "Proxy connection with %s [EP: %s] has died", proxy.Addr.String(), proxy.Endpoint.String())
 			p.Proxies = append(p.Proxies[:i], p.Proxies[:i+1]...)
 			break
 		}
@@ -623,26 +624,6 @@ func (p *PeerToPeer) PrepareIntroductionMessage(id string) *P2PMessage {
 	var intro = id + "," + p.Interface.Mac.String() + "," + p.Interface.IP.String()
 	msg := CreateIntroP2PMessage(p.Crypter, intro, 0)
 	return msg
-}
-
-// PurgePeers method goes over peers and removes obsolete ones
-// Peer becomes obsolete when it goes out of DHT
-// TODO: Remove unused function
-func (p *PeerToPeer) PurgePeers() {
-	/*peers := p.Peers.Get()
-	for i, peer := range peers {
-		found := false
-		for _, newPeer := range p.Dht.Peers {
-			if newPeer.ID == peer.ID {
-				found = true
-			}
-		}
-		if !found {
-			Log(Info, "Removing outdated peer")
-			p.Peers.Delete(i)
-		}
-	}*/
-	return
 }
 
 // SyncForwarders extracts proxies from DHT and assign them to target peers
@@ -745,9 +726,9 @@ func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error
 	}
 	//var msgType MSG_TYPE = MSG_TYPE(msg.Header.Type)
 	// Decrypt message if crypter is active
-	if p.Crypter.Active && (msg.Header.Type == MsgTypeIntro || msg.Header.Type == MsgTypeNenc || msg.Header.Type == MsgTypeIntroReq || msg.Header.Type == MsgTypeTest) {
+	if p.Crypter.Active && (msg.Header.Type == MsgTypeIntro || msg.Header.Type == MsgTypeNenc || msg.Header.Type == MsgTypeIntroReq || msg.Header.Type == MsgTypeTest || msg.Header.Type == MsgTypeXpeerPing) {
 		var decErr error
-		msg.Data, decErr = p.Crypter.Decrypt(p.Crypter.ActiveKey.Key, msg.Data)
+		msg.Data, decErr = p.Crypter.decrypt(p.Crypter.ActiveKey.Key, msg.Data)
 		if decErr != nil {
 			Log(Error, "Failed to decrypt message")
 		}
@@ -796,13 +777,13 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 	if pt == PingReq {
 		Log(Debug, "Ping request received: %s. Responding with %s", string(msg.Data), p.Interface.Mac.String())
 		// Send a PING response
-		r := CreateXpeerPingMessage(PingResp, p.Interface.Mac.String())
+		r := CreateXpeerPingMessage(p.Crypter, PingResp, p.Interface.Mac.String())
 		addr, err := net.ParseMAC(string(msg.Data))
 		if err != nil {
 			Log(Error, "Failed to parse MAC address in crosspeer ping message")
 		} else {
 			p.SendTo(addr, r)
-			Log(Debug, "Sending to %s", addr.String())
+			Log(Debug, "Sending crosspeer PING response to %s", addr.String())
 		}
 	} else {
 		Log(Debug, "Ping response received")
@@ -979,9 +960,7 @@ func (p *PeerToPeer) HandleTestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 
 // SendTo sends a p2p packet by MAC address
 func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
-	// TODO: Speed up this by switching to map
 	Log(Trace, "Requested Send to %s", dst.String())
-	//id, exists := p.MACIDTable[dst.String()]
 	endpoint, proxy, err := p.Peers.GetEndpointAndProxy(dst.String())
 	if err == nil && endpoint != nil {
 		Log(Debug, "Sending to %s via proxy id %d", dst.String(), proxy)
@@ -1009,42 +988,14 @@ func (p *PeerToPeer) StopInstance() {
 	}
 	Log(Info, "All peers under this instance has been removed")
 
-	// var ip net.IP
-	// if p.Dht == nil || p.Dht.Network == nil {
-	// 	Log(Warning, "DHT isn't in use")
-	// } else {
-	// 	ip = p.Dht.Network.IP
-	// }
 	p.Dht.Shutdown()
 	p.UDPSocket.Stop()
-	if p.Interface.Interface != nil && p.Interface.Interface.file != nil {
-		closeInterface(p.Interface.Interface.file)
+	if runtime.GOOS != "windows" {
+		if p.Interface.Interface != nil {
+			closeInterface(p.Interface.Interface.file)
+		}
 	}
-	/*if runtime.GOOS != "windows" {
-		p.Interface.Interface.file.Close()
-	}*/
 	p.Shutdown = true
-	// Log(Info, "Stopping P2P Message handler")
-	// // Tricky part: we need to send a message to ourselves to quit blocking operation
-	// msg := CreateTestP2PMessage(p.Crypter, "STOP", 1)
-	// addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("127.0.0.1:%d", p.Dht.P2PPort))
-	// p.UDPSocket.SendMessage(msg, addr)
-	// var ipIt = 200
-	// if ip != nil {
-	// 	for p.IsDeviceExists(p.Interface.Name) {
-	// 		time.Sleep(1 * time.Second)
-	// 		target := fmt.Sprintf("%d.%d.%d.%d:9922", ip[0], ip[1], ip[2], ipIt)
-	// 		Log(Info, "Dialing %s", target)
-	// 		_, err := net.DialTimeout("tcp", target, 2*time.Second)
-	// 		if err != nil {
-	// 			Log(Info, "ERROR: %v", err)
-	// 		}
-	// 		ipIt++
-	// 		if ipIt == 255 {
-	// 			break
-	// 		}
-	// 	}
-	// }
 	time.Sleep(3 * time.Second)
 	p.ReadyToStop = true
 }
