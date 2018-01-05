@@ -33,7 +33,7 @@ macos: $(APP)_osx
 
 all: linux windows macos
 
-$(APP): help.go instance.go main.go
+$(APP): help.go instance.go main.go rest.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	$(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT)" -o $@ -v $^
 
@@ -97,7 +97,7 @@ debian-source: *.changes
 	debuild --preserve-env -S -d
 endif
 
-snapcraft: help.go instance.go main.go
+snapcraft: help.go instance.go main.go rest.go
 	$(eval export GOPATH=$(shell pwd)/../go)
 	$(eval export GOBIN=$(shell pwd)/../go/bin)
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi

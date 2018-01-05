@@ -253,15 +253,27 @@ func (np *NetworkPeer) stateConnectingInternet(ptpc *PeerToPeer) error {
 	// behind NAT we should connect to it successfully
 	// Otherwise we will failback to proxy
 	np.IsUsingTURN = false
-	addr := np.KnownIPs[0]
-	np.Endpoint = addr
-	Log(Info, "Attempting to connect with %s over Internet", np.ID)
-	success := np.holePunch(addr, ptpc)
-	if success {
-		np.PeerAddr = np.Endpoint
-		Log(Info, "Connected with %s over Internet", np.ID)
-		np.SetState(PeerStateHandshaking, ptpc)
-		return nil
+
+	for _, addr := range np.KnownIPs {
+		ip := addr.IP
+		isPrivate, err := isPrivateIP(ip)
+		if err != nil {
+			Log(Error, "%s", err)
+			continue
+		}
+		if isPrivate {
+			Log(Debug, "Skipping private IP %s", ip.String())
+			continue
+		}
+		np.Endpoint = addr
+		Log(Info, "Attempting to connect with %s over Internet [%s]", np.ID, np.Endpoint.String())
+		success := np.holePunch(addr, ptpc)
+		if success {
+			np.PeerAddr = np.Endpoint
+			Log(Info, "Connected with %s over Internet", np.ID)
+			np.SetState(PeerStateHandshaking, ptpc)
+			return nil
+		}
 	}
 	np.SetPeerAddr()
 	np.SetState(PeerStateWaitingForwarder, ptpc)
@@ -518,31 +530,38 @@ func (np *NetworkPeer) holePunch(endpoint *net.UDPAddr, ptpc *PeerToPeer) bool {
 
 	punchStarted := time.Now()
 	c := uint16(0)
+
 	for np.State == PeerStateConnectingDirectly || np.State == PeerStateConnectingInternet {
 		if np.TestPacketReceived {
 			np.TestPacketReceived = false
 			return true
 		}
 
-		msg := CreateTestP2PMessage(ptpc.Crypter, ptpc.Dht.ID, c)
+		msg := CreateTestP2PMessage(ptpc.Crypter, fmt.Sprintf("%s%d", ptpc.Dht.ID, c), c)
 		packet := msg.Serialize()
 		c++
 		if c > 99 {
 			c = 0
 		}
 
-		Log(Trace, "UDP hole punch packet to %s", endpoint.String())
-		_, err := ptpc.UDPSocket.SendRawBytes(packet, endpoint)
+		if endpoint.IP == nil {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+		n, err := ptpc.UDPSocket.SendRawBytes(packet, endpoint)
 		if err != nil {
 			Log(Error, "Failed to send data: %s", err)
 			break
 		}
+
+		Log(Trace, "Sending %d bytes. Sent %d. Endpoint: %s", len(packet), n, endpoint.String())
 		passed := time.Since(punchStarted)
-		if passed > time.Duration(5*time.Second) {
+		if passed > time.Duration(30*time.Second) {
 			Log(Warning, "Stopping UDP hole punching to %s after timeout", endpoint.String())
 			break
 		}
-		time.Sleep(500 * time.Millisecond)
+
+		time.Sleep(200 * time.Millisecond)
 	}
 	return false
 }
@@ -555,4 +574,15 @@ func (np *NetworkPeer) SetPeerAddr() bool {
 	Log(Info, "Setting peer address as %s for %s", np.KnownIPs[0].String(), np.ID)
 	np.PeerAddr = np.KnownIPs[0]
 	return true
+}
+
+func isPrivateIP(ip net.IP) (bool, error) {
+	if ip == nil {
+		return false, fmt.Errorf("Missing IP")
+	}
+	_, private24, _ := net.ParseCIDR("10.0.0.0/8")
+	_, private20, _ := net.ParseCIDR("172.16.0.0/12")
+	_, private16, _ := net.ParseCIDR("192.168.0.0/16")
+	isPrivate := private24.Contains(ip) || private20.Contains(ip) || private16.Contains(ip)
+	return isPrivate, nil
 }

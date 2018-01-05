@@ -16,23 +16,23 @@ import (
 // RunArgs is a list of arguments used at instance startup and
 // some other RPC calls
 type RunArgs struct {
-	IP      string
-	Mac     string
-	Dev     string
-	Hash    string
-	Dht     string
-	Keyfile string
-	Key     string
-	TTL     string
-	Fwd     bool
-	Port    int
+	IP      string `json:"ip"`
+	Mac     string `json:"mac"`
+	Dev     string `json:"dev"`
+	Hash    string `json:"hash"`
+	Dht     string `json:"dht"`
+	Keyfile string `json:"keyfile"`
+	Key     string `json:"key"`
+	TTL     string `json:"ttl"`
+	Fwd     bool   `json:"fwd"`
+	Port    int    `json:"port"`
 }
 
 type ShowArgs struct {
-	Hash       string
-	IP         string
-	Interfaces bool
-	All        bool
+	Hash       string `json:"hash"`
+	IP         string `json:"ip"`
+	Interfaces bool   `json:"interfaces"`
+	All        bool   `json:"all"`
 }
 
 // P2PInstance is a holder for P2P instances started by daemon
@@ -428,6 +428,7 @@ func (p *Daemon) Show(args *ShowArgs, resp *Response) error {
 
 // Debug output debug information
 func (p *Daemon) Debug(args *Args, resp *Response) error {
+	ptp.Log(ptp.Info, "Preparing Debug output")
 	resp.Output = "DEBUG INFO:\n"
 	resp.Output = fmt.Sprintf("Version: %s\n", AppVersion)
 	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())

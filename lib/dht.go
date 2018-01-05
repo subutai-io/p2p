@@ -34,7 +34,8 @@ type DHTClient struct {
 	ID            string                        // Current instance ID
 	FailedRouters []string                      // List of routes that we failed to connect to
 	Connections   []*net.TCPConn                // TCP connections to bootstrap nodes
-	P2PPort       int                           // UDP port number used by this instance
+	LocalPort     int                           // UDP port number used by this instance
+	RemotePort    int                           // UDP port number reported by echo server
 	Forwarders    []Forwarder                   // List of worwarders
 	TCPCallbacks  map[DHTPacketType]dhtCallback // Callbacks for incoming packets
 	Mode          OperatingMode                 // DHT Client mode ???
@@ -64,6 +65,8 @@ type PeerIP struct {
 
 // TCPInit initializes connection to DHT/bootstrap nodes over TCP
 func (dht *DHTClient) TCPInit(hash, routers string) error {
+	// dht.LastUpdate = time.Unix(1, 1)
+	dht.LastUpdate = time.Now()
 	dht.StateChannel = make(chan RemotePeerState)
 	dht.ProxyChannel = make(chan string)
 	dht.PeerData = make(chan NetworkPeer)
@@ -141,8 +144,9 @@ func (dht *DHTClient) Handshake(conn *net.TCPConn) error {
 		Arguments: ips,
 		Type:      DHTPacketType_Connect,
 		Infohash:  dht.NetworkHash,
-		Data:      fmt.Sprintf("%d", dht.P2PPort),
+		Data:      fmt.Sprintf("%d", dht.LocalPort),
 		Extra:     PacketVersion,
+		Query:     fmt.Sprintf("%d", dht.RemotePort),
 	}
 	data, err := proto.Marshal(&packet)
 	if err != nil {
@@ -204,11 +208,11 @@ func (dht *DHTClient) send(data []byte) error {
 // This method will send request for network peers known to BSN
 // As a response BSN will send array of IDs of peers in this swarm
 func (dht *DHTClient) sendFind() error {
+	dht.LastUpdate = time.Now()
 	if dht.NetworkHash == "" {
 		return fmt.Errorf("Failed to find peers: Infohash is not set")
 	}
-	dht.LastUpdate = time.Now()
-	Log(Info, "Requesting swarm updates")
+	Log(Debug, "Requesting swarm updates")
 	packet := &DHTPacket{
 		Type:     DHTPacketType_Find,
 		Id:       dht.ID,
@@ -282,7 +286,7 @@ func (dht *DHTClient) sendDHCP(ip net.IP, network *net.IPNet) error {
 }
 
 func (dht *DHTClient) sendProxy() error {
-	Log(Info, "Requesting proxies")
+	Log(Debug, "Requesting proxies")
 	packet := &DHTPacket{
 		Type:     DHTPacketType_Proxy,
 		Infohash: dht.NetworkHash,
