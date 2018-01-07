@@ -15,6 +15,9 @@ import (
 	"github.com/ccding/go-stun/stun"
 	ptp "github.com/subutai-io/p2p/lib"
 	"github.com/urfave/cli"
+	"golang.org/x/sys/windows/svc"
+	"golang.org/x/sys/windows/svc/debug"
+	"golang.org/x/sys/windows/svc/eventlog"
 )
 
 // AppVersion is a Version of P2P
@@ -26,6 +29,8 @@ var InterfaceNames []string
 
 // OutboundIP is an outbound IP address detected by STUN
 var OutboundIP net.IP
+
+var SignalChannel chan os.Signal
 
 // StartProfiling will create a .prof file to analyze p2p app performance
 func StartProfiling(profile string) {
@@ -75,6 +80,8 @@ func main() {
 		ShowInterfaces bool   // Whether or not p2p show command should return information about interfaces in use
 		ShowAll        bool   //
 		LogLevel       string // Log level
+		RemoveService  bool   // If yes - service will be removed (used with service)
+		InstallService bool   // If yes - service will be installed (used with service)
 	)
 
 	app := cli.NewApp()
@@ -118,8 +125,66 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-
 				ExecDaemon(RPCPort, SaveFile, Profiling, Syslog)
+				return nil
+			},
+		},
+		{
+			Name:  "service",
+			Usage: "[Windows Only] Run Windows Service",
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:        "install",
+					Usage:       "If set - windows service will be installed",
+					Destination: &InstallService,
+				},
+				cli.BoolFlag{
+					Name:        "remove",
+					Usage:       "If set - service will be removed if it's already present in the system",
+					Destination: &RemoveService,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				if InstallService {
+					ptp.SetupPlatform(false)
+					return nil
+				}
+				if RemoveService {
+					ptp.SetupPlatform(true)
+					return nil
+				}
+				isIntSess, err := svc.IsAnInteractiveSession()
+				if err != nil {
+					ptp.Log(ptp.Error, "Failed to determine if we are running in an interactive session: %v", err)
+					os.Exit(106)
+					return nil
+				}
+				if isIntSess {
+					ptp.Log(ptp.Info, "Running in an interactive session")
+					elog := debug.New("Subutai P2P")
+					defer elog.Close()
+					elog.Info(1, fmt.Sprintf("Debug mode ON"))
+					run := debug.Run
+					err = run("Subutai P2P", &P2PService{})
+					if err != nil {
+						elog.Info(1, fmt.Sprintf("Failed to run service: %s", err))
+						return nil
+					}
+				} else {
+					elog, err := eventlog.Open("Subutai P2P")
+					if err != nil {
+						ptp.Log(ptp.Error, "Failed to get access to event logger")
+						return nil
+					}
+					defer elog.Close()
+					elog.Info(1, fmt.Sprintf("Running in a non-interactive mode"))
+					run := svc.Run
+					err = run("Subutai P2P", &P2PService{})
+					if err != nil {
+						elog.Info(1, fmt.Sprintf("Failed to run service: %s", err))
+						return nil
+					}
+				}
 				return nil
 			},
 		},
@@ -570,7 +635,7 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 		ptp.SetSyslogSocket(syslog)
 	}
 	StartProfiling(profiling)
-	ptp.InitPlatform()
+	go ptp.InitPlatform()
 	ptp.InitErrors()
 
 	if !ptp.CheckPermissions() {
@@ -590,8 +655,6 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 	proc := new(Daemon)
 	proc.Initialize(sFile)
 	setupRESTHandlers(port, proc)
-	/*rpc.Register(proc)
-	rpc.HandleHTTP()*/
 
 	if sFile != "" {
 		ptp.Log(ptp.Info, "Restore file provided")
@@ -607,22 +670,11 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 		}
 	}
 
-	// ptp.Log(ptp.Info, "Starting RPC Listener on %d port", port)
-	// listen, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
-	// if err != nil {
-	// 	ptp.Log(ptp.Error, "Cannot start RPC listener %v", err)
-	// 	os.Exit(1)
-	// }
-	// go http.Serve(listen, nil)
-
-	// Capture SIGINT
-	// This is used for development purposes only, but later we should consider updating
-	// this code to handle signals
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	SignalChannel = make(chan os.Signal, 1)
+	signal.Notify(SignalChannel, os.Interrupt)
 
 	go func() {
-		for sig := range c {
+		for sig := range SignalChannel {
 			fmt.Println("Received signal: ", sig)
 			pprof.StopCPUProfile()
 			os.Exit(0)
