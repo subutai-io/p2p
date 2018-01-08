@@ -40,9 +40,17 @@ func createInterface(file *os.File, ifPattern string, kind DevKind) (string, err
 }
 
 func closeInterface(file *os.File) {
+	Log(Info, "Closing network interface")
 	if file != nil {
-		file.Close()
+		err := file.Close()
+		if err != nil {
+			Log(Error, "Failed to close network interface: %s", err)
+			return
+		}
+		Log(Info, "Interface closed")
+		return
 	}
+	Log(Warning, "Skipping previously closed interface")
 }
 
 // ConfigureInterface performs a configuration of an existing interface
