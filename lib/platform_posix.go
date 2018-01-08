@@ -112,3 +112,7 @@ func Syslog(level LogLevel, format string, v ...interface{}) {
 		l3.Close()
 	}
 }
+
+func SetupPlatform(remove bool) {
+	// Not used on POSIX
+}
