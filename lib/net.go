@@ -315,7 +315,9 @@ type Network struct {
 // Stop will terminate packet reader
 func (uc *Network) Stop() {
 	uc.disposed = true
-	uc.conn.Close()
+	if uc.conn != nil {
+		uc.conn.Close()
+	}
 }
 
 // Disposed returns whether service is willing to stop or not
@@ -325,7 +327,10 @@ func (uc *Network) Disposed() bool {
 
 // Addr returns assigned address
 func (uc *Network) Addr() *net.UDPAddr {
-	return uc.addr
+	if uc.addr != nil {
+		return uc.addr
+	}
+	return nil
 }
 
 // Init creates a UDP connection

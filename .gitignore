@@ -1,6 +1,7 @@
 # vim
 *.swp
 *.swo
+*.suo
 
 # vscode
 .vscode
