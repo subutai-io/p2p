@@ -320,7 +320,7 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 		np.LastError = ""
 		np.LastContact = time.Now()
 		Log(Trace, "Sending ping")
-		msg := CreateXpeerPingMessage(PingReq, ptpc.Interface.Mac.String())
+		msg := CreateXpeerPingMessage(ptpc.Crypter, PingReq, ptpc.Interface.Mac.String())
 		ptpc.SendTo(np.PeerHW, msg)
 		np.PingCount++
 	}
