@@ -93,11 +93,6 @@ func (c Crypto) encrypt(key []byte, data []byte) ([]byte, error) {
 
 // Decrypt decrypts data
 func (c Crypto) decrypt(key []byte, data []byte) ([]byte, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			Log(Error, "Panic in decrypter")
-		}
-	}()
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
