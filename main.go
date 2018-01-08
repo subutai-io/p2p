@@ -15,9 +15,6 @@ import (
 	"github.com/ccding/go-stun/stun"
 	ptp "github.com/subutai-io/p2p/lib"
 	"github.com/urfave/cli"
-	"golang.org/x/sys/windows/svc"
-	"golang.org/x/sys/windows/svc/debug"
-	"golang.org/x/sys/windows/svc/eventlog"
 )
 
 // AppVersion is a Version of P2P
@@ -154,39 +151,7 @@ func main() {
 					ptp.SetupPlatform(true)
 					return nil
 				}
-				isIntSess, err := svc.IsAnInteractiveSession()
-				if err != nil {
-					ptp.Log(ptp.Error, "Failed to determine if we are running in an interactive session: %v", err)
-					os.Exit(106)
-					return nil
-				}
-				if isIntSess {
-					ptp.Log(ptp.Info, "Running in an interactive session")
-					elog := debug.New("Subutai P2P")
-					defer elog.Close()
-					elog.Info(1, fmt.Sprintf("Debug mode ON"))
-					run := debug.Run
-					err = run("Subutai P2P", &P2PService{})
-					if err != nil {
-						elog.Info(1, fmt.Sprintf("Failed to run service: %s", err))
-						return nil
-					}
-				} else {
-					elog, err := eventlog.Open("Subutai P2P")
-					if err != nil {
-						ptp.Log(ptp.Error, "Failed to get access to event logger")
-						return nil
-					}
-					defer elog.Close()
-					elog.Info(1, fmt.Sprintf("Running in a non-interactive mode"))
-					run := svc.Run
-					err = run("Subutai P2P", &P2PService{})
-					if err != nil {
-						elog.Info(1, fmt.Sprintf("Failed to run service: %s", err))
-						return nil
-					}
-				}
-				return nil
+				return ExecService()
 			},
 		},
 		{
