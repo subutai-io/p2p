@@ -97,7 +97,7 @@ debian-source: *.changes
 	debuild --preserve-env -S -d
 endif
 
-snapcraft: help.go instance.go main.go rest.go
+snapcraft: help.go instance.go main.go rest.go service_posix.go
 	$(eval export GOPATH=$(shell pwd)/../go)
 	$(eval export GOBIN=$(shell pwd)/../go/bin)
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
