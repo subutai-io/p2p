@@ -732,9 +732,8 @@ func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error
 		if decErr != nil {
 			Log(Error, "Failed to decrypt message")
 		}
-		if len(msg.Data) == int(msg.Header.Length) {
-			msg.Data = msg.Data[:msg.Header.Length]
-		}
+		msg.Data = msg.Data[:msg.Header.Length]
+
 	}
 	callback, exists := p.MessageHandlers[msg.Header.Type]
 	if exists {
@@ -817,7 +816,7 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	}
 	if peer == nil {
 		Log(Debug, "Received introduction confirmation from unknown peer: %s", id)
-		p.Dht.sendFind()
+		//p.Dht.sendFind()
 		return
 	}
 
@@ -847,7 +846,7 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 	peer := p.Peers.GetPeer(id)
 	if peer == nil {
 		Log(Debug, "Introduction request came from unknown peer: %s [%s]", id, srcAddr.String())
-		p.Dht.sendFind()
+		//p.Dht.sendFind()
 		return
 	}
 	proxy := false
@@ -923,8 +922,8 @@ func (p *PeerToPeer) HandleTestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 		return
 	}
 
-	if len(msg.Data) < 36 || len(msg.Data) > 40 {
-		Log(Error, "Malformed data received during test: %s", string(msg.Data))
+	if len(msg.Data) != 36 {
+		Log(Error, "Malformed data received during test: %s [L: %d]", string(msg.Data), msg.Header.Length)
 		return
 	}
 
