@@ -537,7 +537,7 @@ func (np *NetworkPeer) holePunch(endpoint *net.UDPAddr, ptpc *PeerToPeer) bool {
 			return true
 		}
 
-		msg := CreateTestP2PMessage(ptpc.Crypter, fmt.Sprintf("%s%d", ptpc.Dht.ID, c), c)
+		msg := CreateTestP2PMessage(ptpc.Crypter, ptpc.Dht.ID, c)
 		packet := msg.Serialize()
 		c++
 		if c > 99 {
