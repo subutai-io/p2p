@@ -251,9 +251,15 @@ func main() {
 					Value:       "",
 					Destination: &Infohash,
 				},
+				cli.StringFlag{
+					Name:        "dev",
+					Usage:       "Specify interface name that needs to be removed from interface history",
+					Value:       "",
+					Destination: &InterfaceName,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				Stop(RPCPort, Infohash)
+				Stop(RPCPort, Infohash, InterfaceName)
 				return nil
 			},
 		},
@@ -443,16 +449,18 @@ func Start(rpcPort int, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd b
 }
 
 // Stop will terminate P2P instance
-func Stop(rpcPort int, hash string) {
+func Stop(rpcPort int, hash, interfaceName string) {
 	// client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
 	// var response Response
 	args := &DaemonArgs{}
-	if hash == "" {
-		fmt.Printf("Specify a hash of instance with -hash argument\n")
+	if hash != "" {
+		args.Hash = hash
+	} else if interfaceName != "" {
+		args.Dev = interfaceName
+	} else {
+		fmt.Printf("Not enough parameters for stop command")
 		return
 	}
-	args.Hash = hash
-
 	out, err := sendRequest(rpcPort, "stop", args)
 	if err != nil {
 		fmt.Println(err.Error())
