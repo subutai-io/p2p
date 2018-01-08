@@ -1,6 +1,6 @@
 CC=go
 PACK=goupx
-#VERSION=$(shell git describe)
+BUILD=$(shell git describe)
 VERSION=$(shell cat VERSION)
 OS=$(shell uname -s)
 ARCH=$(shell uname -m)
@@ -33,17 +33,17 @@ macos: $(APP)_osx
 
 all: linux windows macos
 
-$(APP): help.go instance.go main.go
+$(APP): help.go instance.go main.go rest.go service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
-	$(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT)" -o $@ -v $^
+	$(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 
-$(APP).exe:
+$(APP).exe: help.go instance.go main.go rest.go service_windows.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
-	GOOS=windows $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT)" -o $@ -v $^
+	GOOS=windows $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 	
-$(APP)_osx:
+$(APP)_osx: help.go instance.go main.go rest.go service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
-	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT)" -o $@ -v $^
+	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 
 ifdef UPX_BIN
 pack: $(APP)
@@ -97,9 +97,9 @@ debian-source: *.changes
 	debuild --preserve-env -S -d
 endif
 
-snapcraft: help.go instance.go main.go
+snapcraft: help.go instance.go main.go rest.go service_posix.go
 	$(eval export GOPATH=$(shell pwd)/../go)
 	$(eval export GOBIN=$(shell pwd)/../go/bin)
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	$(CC) get -d
-	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT)" -o $(APP) -v $^
+	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $(APP) -v $^

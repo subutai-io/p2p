@@ -117,7 +117,7 @@ func CreateStringP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage 
 	msg.Header.Complete = 1
 	if c.Active {
 		var err error
-		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
+		msg.Data, err = c.encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {
 			Log(Error, "Failed to encrypt data")
 		}
@@ -157,7 +157,7 @@ func CreateConfP2PMessage(id, seq uint16) *P2PMessage {
 }
 
 // CreateXpeerPingMessage creates a cross-peer PING message
-func CreateXpeerPingMessage(pt PingType, hw string) *P2PMessage {
+func CreateXpeerPingMessage(c Crypto, pt PingType, hw string) *P2PMessage {
 	msg := new(P2PMessage)
 	msg.Header = new(P2PMessageHeader)
 	msg.Header.Magic = MagicCookie
@@ -166,7 +166,15 @@ func CreateXpeerPingMessage(pt PingType, hw string) *P2PMessage {
 	msg.Header.Length = uint16(len(hw))
 	msg.Header.Complete = 1
 	msg.Header.ID = 0
-	msg.Data = []byte(hw)
+	if c.Active {
+		var err error
+		msg.Data, err = c.encrypt(c.ActiveKey.Key, []byte(hw))
+		if err != nil {
+			Log(Error, "Failed to encrypt data")
+		}
+	} else {
+		msg.Data = []byte(hw)
+	}
 	return msg
 }
 
@@ -182,7 +190,7 @@ func CreateIntroP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg.Header.ID = 0
 	if c.Active {
 		var err error
-		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
+		msg.Data, err = c.encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {
 			Log(Error, "Failed to encrypt data")
 		}
@@ -204,7 +212,7 @@ func CreateIntroRequest(c Crypto, id string) *P2PMessage {
 	msg.Header.ID = 0
 	if c.Active {
 		var err error
-		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(id))
+		msg.Data, err = c.encrypt(c.ActiveKey.Key, []byte(id))
 		if err != nil {
 			Log(Error, "Failed to encrypt data")
 		}
@@ -227,7 +235,7 @@ func CreateNencP2PMessage(c Crypto, data []byte, netProto, complete, id, seq uin
 	msg.Header.Seq = seq
 	if c.Active {
 		var err error
-		msg.Data, err = c.Encrypt(c.ActiveKey.Key, data)
+		msg.Data, err = c.encrypt(c.ActiveKey.Key, data)
 		if err != nil {
 			Log(Error, "Failed to encrypt data")
 		}
@@ -249,7 +257,7 @@ func CreateTestP2PMessage(c Crypto, data string, netProto uint16) *P2PMessage {
 	msg.Header.ID = 0
 	if c.Active {
 		var err error
-		msg.Data, err = c.Encrypt(c.ActiveKey.Key, []byte(data))
+		msg.Data, err = c.encrypt(c.ActiveKey.Key, []byte(data))
 		if err != nil {
 			Log(Error, "Failed to encrypt data")
 		}
@@ -295,18 +303,21 @@ func CreateBadTunnelP2PMessage(id int, netProto uint16) *P2PMessage {
 
 // Network is a network subsystem
 type Network struct {
-	host     string
-	port     int
-	addr     *net.UDPAddr
-	conn     *net.UDPConn
-	inBuffer [4096]byte
-	disposed bool
+	host       string
+	port       int
+	remotePort int
+	addr       *net.UDPAddr
+	conn       *net.UDPConn
+	inBuffer   [4096]byte
+	disposed   bool
 }
 
 // Stop will terminate packet reader
 func (uc *Network) Stop() {
 	uc.disposed = true
-	uc.conn.Close()
+	if uc.conn != nil {
+		uc.conn.Close()
+	}
 }
 
 // Disposed returns whether service is willing to stop or not
@@ -316,7 +327,10 @@ func (uc *Network) Disposed() bool {
 
 // Addr returns assigned address
 func (uc *Network) Addr() *net.UDPAddr {
-	return uc.addr
+	if uc.addr != nil {
+		return uc.addr
+	}
+	return nil
 }
 
 // Init creates a UDP connection
@@ -349,6 +363,12 @@ func (uc *Network) KeepAlive(addr *net.UDPAddr) {
 	data := []byte{0x0D, 0x0A}
 	keepAlive := time.Now()
 	Log(Info, "Started keep alive session with %s", addr)
+	i := 0
+	for i < 20 {
+		uc.SendRawBytes(data, addr)
+		i++
+		time.Sleep(time.Millisecond * 500)
+	}
 	for !uc.disposed {
 		if time.Duration(time.Second*3) < time.Since(keepAlive) {
 			keepAlive = time.Now()

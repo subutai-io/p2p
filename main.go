@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -16,6 +19,7 @@ import (
 
 // AppVersion is a Version of P2P
 var AppVersion = "Unknown"
+var BuildID = "Unknown"
 var DefaultDHT = "mdht.subut.ai:6881"
 
 // InterfaceNames - List of all interfaces names that was used by p2p historically. These interfaces may not present in the system anymore
@@ -23,6 +27,8 @@ var InterfaceNames []string
 
 // OutboundIP is an outbound IP address detected by STUN
 var OutboundIP net.IP
+
+var SignalChannel chan os.Signal
 
 // StartProfiling will create a .prof file to analyze p2p app performance
 func StartProfiling(profile string) {
@@ -72,6 +78,8 @@ func main() {
 		ShowInterfaces bool   // Whether or not p2p show command should return information about interfaces in use
 		ShowAll        bool   //
 		LogLevel       string // Log level
+		RemoveService  bool   // If yes - service will be removed (used with service)
+		InstallService bool   // If yes - service will be installed (used with service)
 	)
 
 	app := cli.NewApp()
@@ -115,9 +123,35 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-
 				ExecDaemon(RPCPort, SaveFile, Profiling, Syslog)
 				return nil
+			},
+		},
+		{
+			Name:  "service",
+			Usage: "[Windows Only] Run Windows Service",
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:        "install",
+					Usage:       "If set - windows service will be installed",
+					Destination: &InstallService,
+				},
+				cli.BoolFlag{
+					Name:        "remove",
+					Usage:       "If set - service will be removed if it's already present in the system",
+					Destination: &RemoveService,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				if InstallService {
+					ptp.SetupPlatform(false)
+					return nil
+				}
+				if RemoveService {
+					ptp.SetupPlatform(true)
+					return nil
+				}
+				return ExecService()
 			},
 		},
 		{
@@ -349,10 +383,10 @@ func Dial(rpchost string) *rpc.Client {
 
 // Start - begin P2P Instance
 func Start(rpcPort int, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool, port int) {
-	client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
-	var response Response
+	// client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
+	// var response Response
 
-	args := &RunArgs{}
+	args := &DaemonArgs{}
 	/*if net.ParseIP(ip) == nil {
 		fmt.Printf("Bad IP Address specified\n")
 		return
@@ -385,47 +419,66 @@ func Start(rpcPort int, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd b
 	args.TTL = ttl
 	args.Fwd = fwd
 	args.Port = port
-	err := client.Call("Daemon.Run", args, &response)
+
+	out, err := sendRequest(rpcPort, "start", args)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
-		return
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
-	if response.ExitCode == 0 {
-		fmt.Printf("%s\n", response.Output)
-	} else {
-		fmt.Fprintf(os.Stderr, "%s\n", response.Output)
-	}
-	os.Exit(response.ExitCode)
+
+	fmt.Println(out.Message)
+	os.Exit(out.Code)
+
+	// err := client.Call("Daemon.Run", args, &response)
+	// if err != nil {
+	// 	fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
+	// 	return
+	// }
+	// if response.ExitCode == 0 {
+	// 	fmt.Printf("%s\n", response.Output)
+	// } else {
+	// 	fmt.Fprintf(os.Stderr, "%s\n", response.Output)
+	// }
+	// os.Exit(response.ExitCode)
 }
 
 // Stop will terminate P2P instance
 func Stop(rpcPort int, hash string) {
-	client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
-	var response Response
-	args := &StopArgs{}
+	// client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
+	// var response Response
+	args := &DaemonArgs{}
 	if hash == "" {
 		fmt.Printf("Specify a hash of instance with -hash argument\n")
 		return
 	}
 	args.Hash = hash
-	err := client.Call("Daemon.Stop", args, &response)
+
+	out, err := sendRequest(rpcPort, "stop", args)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
-		return
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
-	if response.ExitCode == 0 {
-		fmt.Printf("%s\n", response.Output)
-	} else {
-		fmt.Fprintf(os.Stderr, "%s\n", response.Output)
-	}
-	os.Exit(response.ExitCode)
+
+	fmt.Println(out.Message)
+	os.Exit(out.Code)
+	// err := client.Call("Daemon.Stop", args, &response)
+	// if err != nil {
+	// 	fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
+	// 	return
+	// }
+	// if response.ExitCode == 0 {
+	// 	fmt.Printf("%s\n", response.Output)
+	// } else {
+	// 	fmt.Fprintf(os.Stderr, "%s\n", response.Output)
+	// }
+	// os.Exit(response.ExitCode)
 }
 
 // Show outputs information about P2P instances and interfaces
 func Show(rpcPort int, hash, ip string, interfaces, all bool) {
-	client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
-	var response Response
-	args := &ShowArgs{}
+	// client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
+	// var response Response
+	args := &DaemonArgs{}
 	if hash != "" {
 		args.Hash = hash
 	} else {
@@ -434,76 +487,112 @@ func Show(rpcPort int, hash, ip string, interfaces, all bool) {
 	args.IP = ip
 	args.Interfaces = interfaces
 	args.All = all
-	err := client.Call("Daemon.Show", args, &response)
+
+	out, err := sendRequest(rpcPort, "show", args)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
-		return
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
-	if response.ExitCode == 0 {
-		fmt.Printf("%s\n", response.Output)
-	} else {
-		fmt.Fprintf(os.Stderr, "%s\n", response.Output)
-	}
-	os.Exit(response.ExitCode)
+
+	fmt.Println(out.Message)
+	os.Exit(out.Code)
+
+	// err := client.Call("Daemon.Show", args, &response)
+	// if err != nil {
+	// 	fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
+	// 	return
+	// }
+	// if response.ExitCode == 0 {
+	// 	fmt.Printf("%s\n", response.Output)
+	// } else {
+	// 	fmt.Fprintf(os.Stderr, "%s\n", response.Output)
+	// }
+	// os.Exit(response.ExitCode)
 }
 
 // ShowStatus outputs connectivity status of each peer
 func ShowStatus(rpcPort int) {
-	client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
-	var response Response
-	args := &RunArgs{}
-	err := client.Call("Daemon.Status", args, &response)
+	// client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
+	// var response Response
+	args := &DaemonArgs{}
+	// err := client.Call("Daemon.Status", args, &response)
+	// if err != nil {
+	// 	fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
+	// 	return
+	// }
+
+	out, err := sendRequest(rpcPort, "status", args)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
-		return
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
-	if response.ExitCode == 0 {
-		fmt.Printf("%s\n", response.Output)
-	} else {
-		fmt.Fprintf(os.Stderr, "%s\n", response.Output)
-	}
-	os.Exit(response.ExitCode)
+
+	fmt.Println(out.Message)
+	os.Exit(out.Code)
+
+	// if response.ExitCode == 0 {
+	// 	fmt.Printf("%s\n", response.Output)
+	// } else {
+	// 	fmt.Fprintf(os.Stderr, "%s\n", response.Output)
+	// }
+	// os.Exit(response.ExitCode)
 }
 
 // Set modifies different options of P2P daemon
 func Set(rpcPort int, log, hash, keyfile, key, ttl string) {
-	client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
-	var response Response
-	var err error
-	if log != "" {
-		args := &NameValueArg{"log", log}
-		err = client.Call("Daemon.SetLog", args, &response)
-	} else if key != "" {
-		args := &RunArgs{}
-		args.Key = key
-		args.TTL = ttl
-		args.Hash = hash
-		err = client.Call("Daemon.AddKey", args, &response)
-	}
+	out, err := sendRequest(rpcPort, "set", &DaemonArgs{Log: log, Keyfile: keyfile, Key: key, TTL: ttl})
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
-		return
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
-	if response.ExitCode == 0 {
-		fmt.Printf("%s\n", response.Output)
-	} else {
-		fmt.Fprintf(os.Stderr, "%s\n", response.Output)
-	}
-	os.Exit(response.ExitCode)
+
+	fmt.Println(out.Message)
+	os.Exit(out.Code)
+	// client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
+	// var response Response
+	// var err error
+	// if log != "" {
+	// 	args := &NameValueArg{"log", log}
+	// 	err = client.Call("Daemon.SetLog", args, &response)
+	// } else if key != "" {
+	// 	args := &RunArgs{}
+	// 	args.Key = key
+	// 	args.TTL = ttl
+	// 	args.Hash = hash
+	// 	err = client.Call("Daemon.AddKey", args, &response)
+	// }
+	// if err != nil {
+	// 	fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
+	// 	return
+	// }
+	// if response.ExitCode == 0 {
+	// 	fmt.Printf("%s\n", response.Output)
+	// } else {
+	// 	fmt.Fprintf(os.Stderr, "%s\n", response.Output)
+	// }
+	// os.Exit(response.ExitCode)
 }
 
 // Debug prints debug information
 func Debug(rpcPort int) {
-	client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
-	var response Response
-	args := &Args{}
-	err := client.Call("Daemon.Debug", args, &response)
+	out, err := sendRequest(rpcPort, "debug", &DaemonArgs{})
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
-		return
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
-	fmt.Printf("%s\n", response.Output)
-	os.Exit(response.ExitCode)
+
+	fmt.Println(out.Message)
+	os.Exit(out.Code)
+	// client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
+	// var response Response
+	// args := &Args{}
+	// err := client.Call("Daemon.Debug", args, &response)
+	// if err != nil {
+	// 	fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
+	// 	return
+	// }
+	// fmt.Printf("%s\n", response.Output)
+	// os.Exit(response.ExitCode)
 }
 
 // ExecDaemon starts P2P daemon
@@ -512,7 +601,7 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 		ptp.SetSyslogSocket(syslog)
 	}
 	StartProfiling(profiling)
-	ptp.InitPlatform()
+	go ptp.InitPlatform()
 	ptp.InitErrors()
 
 	if !ptp.CheckPermissions() {
@@ -520,18 +609,18 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 	}
 
 	ptp.Log(ptp.Info, "Determining outbound IP")
-	_, host, err := stun.NewClient().Discover()
+	nat, host, err := stun.NewClient().Discover()
 	if err != nil {
 		ptp.Log(ptp.Error, "Failed to discover outbound IP: %s", err)
 		OutboundIP = nil
 	} else {
 		OutboundIP = net.ParseIP(host.IP())
+		ptp.Log(ptp.Info, "Public IP is %s. %s", OutboundIP.String(), nat)
 	}
 
 	proc := new(Daemon)
 	proc.Initialize(sFile)
-	rpc.Register(proc)
-	rpc.HandleHTTP()
+	setupRESTHandlers(port, proc)
 
 	if sFile != "" {
 		ptp.Log(ptp.Info, "Restore file provided")
@@ -547,26 +636,53 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 		}
 	}
 
-	ptp.Log(ptp.Info, "Starting RPC Listener on %d port", port)
-	listen, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
-	if err != nil {
-		ptp.Log(ptp.Error, "Cannot start RPC listener %v", err)
-		os.Exit(1)
-	}
-	go http.Serve(listen, nil)
-
-	// Capture SIGINT
-	// This is used for development purposes only, but later we should consider updating
-	// this code to handle signals
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	SignalChannel = make(chan os.Signal, 1)
+	signal.Notify(SignalChannel, os.Interrupt)
 
 	go func() {
-		for sig := range c {
+		for sig := range SignalChannel {
 			fmt.Println("Received signal: ", sig)
 			pprof.StopCPUProfile()
 			os.Exit(0)
 		}
 	}()
 	select {}
+}
+
+func setupRESTHandlers(port int, d *Daemon) {
+	http.HandleFunc("/rest/v1/start", d.execRESTStart)
+	http.HandleFunc("/rest/v1/stop", d.execRESTStop)
+	http.HandleFunc("/rest/v1/show", d.execRESTShow)
+	http.HandleFunc("/rest/v1/status", d.execRESTStatus)
+	http.HandleFunc("/rest/v1/debug", d.execRESTDebug)
+	http.HandleFunc("/rest/v1/set", d.execRESTSet)
+
+	go http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+}
+
+func sendRequest(port int, command string, args *DaemonArgs) (*RESTResponse, error) {
+	data, err := json.Marshal(args)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal request: %s", err)
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/rest/v1/%s", port, command), bytes.NewBuffer(data))
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create request: %s", err)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't execute command. Check if p2p daemon is running.")
+	}
+	defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	out := &RESTResponse{}
+	err = json.Unmarshal(body, out)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to unmarshal response: %s", err)
+	}
+	return out, nil
 }
