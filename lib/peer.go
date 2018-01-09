@@ -39,7 +39,6 @@ func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
 	if stateStr == "" {
 		return
 	}
-	//ptpc.Dht.ReportState(np.ID, stateStr)
 	ptpc.Dht.sendState(np.ID, stateStr)
 }
 
