@@ -344,6 +344,7 @@ func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
 		if inst == nil {
 			resp.ExitCode = 1
 			resp.Output = "Instance with hash " + args.Hash + " was not found"
+			return nil
 		} else {
 			ip := inst.PTP.Interface.IP.String()
 			resp.Output = "Shutting down " + args.Hash
@@ -358,6 +359,7 @@ func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
 				}
 			}
 			usedIPs = usedIPs[:k]
+			return nil
 		}
 	} else if args.Dev != "" {
 		resp.Output = "Removing " + args.Dev
