@@ -449,14 +449,14 @@ func Start(rpcPort int, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd b
 }
 
 // Stop will terminate P2P instance
-func Stop(rpcPort int, hash, interfaceName string) {
-	// client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
-	// var response Response
+func Stop(rpcPort int, hash, dev string) {
 	args := &DaemonArgs{}
 	if hash != "" {
 		args.Hash = hash
-	} else if interfaceName != "" {
-		args.Dev = interfaceName
+		args.Dev = ""
+	} else if dev != "" {
+		args.Dev = dev
+		args.Hash = ""
 	} else {
 		fmt.Printf("Not enough parameters for stop command")
 		return
@@ -469,17 +469,6 @@ func Stop(rpcPort int, hash, interfaceName string) {
 
 	fmt.Println(out.Message)
 	os.Exit(out.Code)
-	// err := client.Call("Daemon.Stop", args, &response)
-	// if err != nil {
-	// 	fmt.Printf("[ERROR] Failed to run RPC request: %v\n", err)
-	// 	return
-	// }
-	// if response.ExitCode == 0 {
-	// 	fmt.Printf("%s\n", response.Output)
-	// } else {
-	// 	fmt.Fprintf(os.Stderr, "%s\n", response.Output)
-	// }
-	// os.Exit(response.ExitCode)
 }
 
 // Show outputs information about P2P instances and interfaces

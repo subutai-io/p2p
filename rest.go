@@ -71,6 +71,7 @@ func (d *Daemon) execRESTStop(w http.ResponseWriter, r *http.Request) {
 	response := new(Response)
 	d.Stop(&DaemonArgs{
 		Hash: args.Hash,
+		Dev:  args.Dev,
 	}, response)
 	resp, err := getResponse(response.ExitCode, response.Output)
 	if err != nil {
