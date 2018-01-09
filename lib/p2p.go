@@ -109,14 +109,18 @@ func (p *PeerToPeer) ListenInterface() {
 		packet, err := p.Interface.Interface.ReadPacket()
 		if err != nil {
 			Log(Error, "Reading packet %s", err)
+			continue
 		}
 		if packet.Truncated {
 			Log(Debug, "Truncated packet")
 		}
 		go p.handlePacket(packet.Packet, packet.Protocol)
 	}
-	p.Interface.Interface.Close()
 	Log(Info, "Shutting down interface listener")
+
+	if runtime.GOOS != "windows" && p.Interface.Interface != nil {
+		closeInterface(p.Interface.Interface.file)
+	}
 }
 
 // IsDeviceExists - checks whether interface with the given name exists in the system or not
@@ -975,6 +979,8 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 
 // StopInstance stops current instance
 func (p *PeerToPeer) StopInstance() {
+	hash := p.Dht.NetworkHash
+	Log(Info, "Stopping instance %s", hash)
 	peers := p.Peers.Get()
 	for i, peer := range peers {
 		peer.SetState(PeerStateDisconnect, p)
@@ -991,14 +997,12 @@ func (p *PeerToPeer) StopInstance() {
 
 	p.Dht.Shutdown()
 	p.UDPSocket.Stop()
-	if runtime.GOOS != "windows" {
-		if p.Interface.Interface != nil {
-			closeInterface(p.Interface.Interface.file)
-		}
-	}
 	p.Shutdown = true
-	time.Sleep(3 * time.Second)
+	if runtime.GOOS != "windows" && p.Interface.Interface != nil {
+		closeInterface(p.Interface.Interface.file)
+	}
 	p.ReadyToStop = true
+	Log(Info, "Instance %s stopped", hash)
 }
 
 func (p *PeerToPeer) handlePeerData(peerData NetworkPeer) {
