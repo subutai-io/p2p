@@ -360,24 +360,26 @@ func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
 			usedIPs = usedIPs[:k]
 		}
 	} else if args.Dev != "" {
+		resp.Output = "Removing " + args.Dev
 		instances := p.Instances.Get()
 		for i, inf := range InterfaceNames {
 			if inf == args.Dev {
 				for _, instance := range instances {
 					if instance.PTP.Interface.Name == args.Dev {
 						resp.ExitCode = 12
-						resp.Output = "Can't remove interface: already in use"
+						resp.Output += "Can't remove interface: In use"
 						return nil
 					}
 				}
 				InterfaceNames = append(InterfaceNames[:i], InterfaceNames[i+1:]...)
 				resp.ExitCode = 0
-				resp.Output = "Removed"
+				resp.Output += "Removed " + args.Dev
 				return nil
 			}
 		}
 		resp.ExitCode = 1
-		resp.Output = "Interface was not found"
+		resp.Output += "Interface was not found"
+		return nil
 	}
 	resp.ExitCode = 2
 	resp.Output = "Not enough parameters for stop"
