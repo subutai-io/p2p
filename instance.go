@@ -378,6 +378,7 @@ func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
 		}
 		resp.ExitCode = 1
 		resp.Output = "Interface was not found"
+		return nil
 	}
 	resp.ExitCode = 2
 	resp.Output = "Not enough parameters for stop"
