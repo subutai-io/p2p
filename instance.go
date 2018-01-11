@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -388,69 +389,126 @@ func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
 	return nil
 }
 
-// Show is used to output information about instances
-func (p *Daemon) Show(args *ShowArgs, resp *Response) error {
-	if args.Hash != "" {
-		inst := p.Instances.GetInstance(args.Hash)
-		resp.ExitCode = 0
-		if inst != nil {
-			peers := inst.PTP.Peers.Get()
-			if args.IP != "" {
-				for _, peer := range peers {
-					if peer.PeerLocalIP.String() == args.IP {
-						if peer.State == ptp.PeerStateConnected {
-							resp.ExitCode = 0
-							resp.Output = "Integrated with " + args.IP
-							return nil
-						}
-					}
+func (p *Daemon) showOutput(data []ShowOutput) ([]byte, error) {
+	return json.Marshal(data)
+}
+
+func (p *Daemon) showIP(ip string, instance *P2PInstance) ([]byte, error) {
+	peers := instance.PTP.Peers.Get()
+	for _, peer := range peers {
+		if peer.PeerLocalIP.String() == ip {
+			if peer.State == ptp.PeerStateConnected {
+				out := []ShowOutput{
+					ShowOutput{
+						Text: "Integrated with " + ip,
+						Code: 0,
+					},
 				}
-				resp.ExitCode = 1
-				resp.Output = "Not yet integrated with " + args.IP
-				return nil
+				return p.showOutput(out)
 			}
-			resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
-			for _, peer := range peers {
-				resp.Output = resp.Output + peer.ID + "\t"
-				resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
-				resp.Output = resp.Output + peer.Endpoint.String() + "\t"
-				resp.Output = resp.Output + peer.PeerHW.String() + "\n"
-			}
-		} else {
-			resp.Output = "Specified environment was not found: " + args.Hash
-			resp.ExitCode = 1
-		}
-	} else if args.Interfaces {
-		if !args.All {
-			instances := p.Instances.Get()
-			for _, inst := range instances {
-				if inst.PTP != nil {
-					resp.Output = resp.Output + inst.PTP.Interface.Name
-				}
-				resp.Output = resp.Output + "\n"
-			}
-		} else {
-			for _, inf := range InterfaceNames {
-				resp.Output = resp.Output + inf + "\n"
-			}
-		}
-	} else {
-		resp.ExitCode = 0
-		instances := p.Instances.Get()
-		instLen := len(instances)
-		if instLen == 0 {
-			resp.Output = "No instances was found"
-		}
-		for key, inst := range instances {
-			if inst.PTP != nil {
-				resp.Output = resp.Output + "\t" + inst.PTP.Interface.Mac.String() + "\t" + inst.PTP.Interface.IP.String() + "\t" + key
-			} else {
-				resp.Output = resp.Output + "\tUnknown\tUnknown\t" + key
-			}
-			resp.Output = resp.Output + "\n"
 		}
 	}
-	return nil
+	out := []ShowOutput{
+		ShowOutput{
+			Error: "Not yet integrated with " + ip,
+			Code:  12,
+		},
+	}
+	return p.showOutput(out)
+}
+
+func (p *Daemon) showHash(instance *P2PInstance) ([]byte, error) {
+	peers := instance.PTP.Peers.Get()
+	out := []ShowOutput{}
+	for _, peer := range peers {
+		s := ShowOutput{
+			ID:              peer.ID,
+			IP:              peer.PeerLocalIP.String(),
+			Endpoint:        peer.Endpoint.String(),
+			HardwareAddress: peer.PeerHW.String(),
+		}
+		out = append(out, s)
+	}
+	return p.showOutput(out)
+}
+
+func (p *Daemon) showInterfaces() ([]byte, error) {
+	instances := p.Instances.Get()
+	out := []ShowOutput{}
+	for _, inst := range instances {
+		if inst.PTP != nil {
+			s := ShowOutput{InterfaceName: inst.PTP.Interface.Name}
+			out = append(out, s)
+		}
+	}
+	return p.showOutput(out)
+}
+
+func (p *Daemon) showAllInterfaces() ([]byte, error) {
+	out := []ShowOutput{}
+	for _, inf := range InterfaceNames {
+		s := ShowOutput{InterfaceName: inf}
+		out = append(out, s)
+	}
+	return p.showOutput(out)
+}
+
+func (p *Daemon) showInstances() ([]byte, error) {
+	instances := p.Instances.Get()
+	out := []ShowOutput{}
+	for key, inst := range instances {
+		if inst.PTP != nil {
+			s := ShowOutput{
+				HardwareAddress: inst.PTP.Interface.Mac.String(),
+				IP:              inst.PTP.Interface.IP.String(),
+				Hash:            key,
+			}
+			out = append(out, s)
+		} else {
+			s := ShowOutput{
+				HardwareAddress: "Unknown",
+				IP:              "Unknown",
+				Hash:            key,
+			}
+			out = append(out, s)
+		}
+	}
+	return p.showOutput(out)
+}
+
+// Show is used to output information about instances
+func (p *Daemon) Show(args *ShowArgs) ([]byte, error) {
+	if args.Hash != "" {
+		inst := p.Instances.GetInstance(args.Hash)
+		if inst != nil {
+			//peers := inst.PTP.Peers.Get()
+			if args.IP != "" {
+				out, err := p.showIP(args.IP, inst)
+				return out, err
+			}
+			out, err := p.showHash(inst)
+			return out, err
+			// resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
+			// resp.Output = resp.Output + peer.ID + "\t"
+			// resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
+			// resp.Output = resp.Output + peer.Endpoint.String() + "\t"
+			// resp.Output = resp.Output + peer.PeerHW.String() + "\n"
+		}
+		return p.showOutput([]ShowOutput{
+			ShowOutput{
+				Error: "Specified environment was not found",
+				Code:  15,
+			},
+		})
+	} else if args.Interfaces {
+		if !args.All {
+			return p.showInterfaces()
+		}
+		return p.showAllInterfaces()
+	} else {
+		return p.showInstances()
+	}
+	return nil, nil
 }
 
 // Debug output debug information
