@@ -613,10 +613,13 @@ func (p *PeerToPeer) removeStoppedPeers() {
 func (p *PeerToPeer) checkProxies() {
 	lifetime := time.Duration(time.Second * 30)
 	for i, proxy := range p.Proxies {
-		if time.Since(proxy.LastUpdate) > lifetime {
-			Log(Info, "Proxy connection with %s [EP: %s] has died", proxy.Addr.String(), proxy.Endpoint.String())
+		if p.Proxies[i].Status == proxyDisconnected {
 			p.Proxies = append(p.Proxies[:i], p.Proxies[:i+1]...)
 			break
+		}
+		if time.Since(proxy.LastUpdate) > lifetime {
+			Log(Info, "Proxy connection with %s [EP: %s] has died", proxy.Addr.String(), proxy.Endpoint.String())
+			p.Proxies[i].Close()
 		}
 	}
 }
