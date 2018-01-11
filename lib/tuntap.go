@@ -1,7 +1,5 @@
 package ptp
 
-import ()
-
 // DevKind Type of the device
 type DevKind int
 
