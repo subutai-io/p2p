@@ -413,6 +413,9 @@ func (uc *Network) SendMessage(msg *P2PMessage, dstAddr *net.UDPAddr) (int, erro
 
 // SendRawBytes sends bytes over network
 func (uc *Network) SendRawBytes(bytes []byte, dstAddr *net.UDPAddr) (int, error) {
+	if uc.conn == nil {
+		return -1, fmt.Errorf("Nil connection")
+	}
 	n, err := uc.conn.WriteToUDP(bytes, dstAddr)
 	if err != nil {
 		return 0, err

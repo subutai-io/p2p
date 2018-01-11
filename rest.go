@@ -33,6 +33,25 @@ type DaemonArgs struct {
 	Log        string `json:"log"`
 }
 
+// ShowOutput is a JSON object for output from `show` command
+type ShowOutput struct {
+	ID              string `json:"id"`
+	IP              string `json:"ip"`
+	Endpoint        string `json:"endpoint"`
+	HardwareAddress string `json:"hw"`
+	Error           string `json:"error"`
+	Text            string `json:"text"`
+	Code            int    `json:"code"`
+	InterfaceName   string `json:"interface"`
+	Hash            string `json:"hash"`
+}
+
+// ErrorOutput is a JSON object for output
+type ErrorOutput struct {
+	Error string `json:"error"`
+	Code  int    `json:"code"`
+}
+
 func (d *Daemon) execRESTStart(w http.ResponseWriter, r *http.Request) {
 	ptp.Log(ptp.Info, "Start request")
 	args := new(DaemonArgs)
@@ -88,19 +107,17 @@ func (d *Daemon) execRESTShow(w http.ResponseWriter, r *http.Request) {
 	if handleMarshalError(err, w) != nil {
 		return
 	}
-	response := new(Response)
-	d.Show(&ShowArgs{
+	output, err := d.Show(&ShowArgs{
 		Hash:       args.Hash,
 		IP:         args.IP,
 		Interfaces: args.Interfaces,
 		All:        args.All,
-	}, response)
-	resp, err := getResponse(response.ExitCode, response.Output)
+	})
 	if err != nil {
 		ptp.Log(ptp.Error, "Internal error: %s", err)
 		return
 	}
-	w.Write(resp)
+	w.Write(output)
 }
 
 func (d *Daemon) execRESTStatus(w http.ResponseWriter, r *http.Request) {

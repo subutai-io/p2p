@@ -1,5 +1,13 @@
 # Change Log
 
+## [6.2.9] 01/10/2017
+
+* New option to remove interface from p2p history using `stop` command
+* Windows Service implementation with `service` command
+* Fixed routine cleanup #469
+* Improved connectivity using TURN server
+* Improved connectivity over Internet
+
 ## [6.2.8] 12/19/2017
 
 * Fixed problem with proxy connection spam
