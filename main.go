@@ -472,7 +472,7 @@ func Stop(rpcPort int, hash, dev string) {
 }
 
 // Show outputs information about P2P instances and interfaces
-func Show(rpcPort int, hash, ip string, interfaces, all bool) {
+func Show(queryPort int, hash, ip string, interfaces, all bool) {
 	// client := Dial(fmt.Sprintf("localhost:%d", rpcPort))
 	// var response Response
 	args := &DaemonArgs{}
@@ -485,14 +485,49 @@ func Show(rpcPort int, hash, ip string, interfaces, all bool) {
 	args.Interfaces = interfaces
 	args.All = all
 
-	out, err := sendRequest(rpcPort, "show", args)
+	out, err := sendRequestRaw(queryPort, "show", args)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
+	show := []ShowOutput{}
+	err = json.Unmarshal(out, &show)
+	if err != nil {
+		fmt.Printf("Failed to unmarshal JSON. Error %s\n", err)
+		os.Exit(99)
+	}
 
-	fmt.Println(out.Message)
-	os.Exit(out.Code)
+	if args.Hash != "" {
+		if args.IP != "" {
+			for _, m := range show {
+				if m.Code != 0 {
+					fmt.Println(m.Error)
+				} else {
+					fmt.Println(m.Text)
+				}
+				os.Exit(m.Code)
+			}
+			fmt.Println("No data available")
+			os.Exit(102)
+		} else {
+			fmt.Println("< Peer ID >\t< IP >\t< Endpoint >\t< HW >")
+			for _, m := range show {
+				fmt.Printf("%s\t%s\t%s\t%s\n", m.ID, m.IP, m.Endpoint, m.HardwareAddress)
+			}
+			os.Exit(0)
+		}
+	}
+	if args.Interfaces {
+		for _, m := range show {
+			fmt.Println(m.InterfaceName)
+		}
+		os.Exit(0)
+	}
+
+	for _, m := range show {
+		fmt.Printf("%s\t%s\t%s\n", m.HardwareAddress, m.IP, m.Hash)
+	}
+	os.Exit(0)
 
 	// err := client.Call("Daemon.Show", args, &response)
 	// if err != nil {
@@ -682,4 +717,24 @@ func sendRequest(port int, command string, args *DaemonArgs) (*RESTResponse, err
 		return nil, fmt.Errorf("Failed to unmarshal response: %s", err)
 	}
 	return out, nil
+}
+
+func sendRequestRaw(port int, command string, args *DaemonArgs) ([]byte, error) {
+	data, err := json.Marshal(args)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal request: %s", err)
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/rest/v1/%s", port, command), bytes.NewBuffer(data))
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create request: %s", err)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't execute command. Check if p2p daemon is running.")
+	}
+	defer resp.Body.Close()
+	return ioutil.ReadAll(resp.Body)
 }

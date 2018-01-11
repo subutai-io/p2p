@@ -15,14 +15,13 @@ const (
 )
 
 type proxyServer struct {
-	Addr       *net.UDPAddr
+	Addr       *net.UDPAddr // Address of the proxy
 	Endpoint   *net.UDPAddr // Endpoint provided by proxy
-	Status     proxyStatus
+	Status     proxyStatus  // Current proxy status
 	LastUpdate time.Time
 }
 
 func (p *PeerToPeer) initProxy(addr string) error {
-
 	var err error
 	proxy := new(proxyServer)
 	proxy.LastUpdate = time.Now()
@@ -45,22 +44,32 @@ func (p *PeerToPeer) initProxy(addr string) error {
 	for proxy.Status == proxyConnecting {
 		time.Sleep(100 * time.Millisecond)
 		if time.Duration(3*time.Second) < time.Since(initStarted) {
-			p.removeProxy(proxy.Addr)
+			p.disableProxy(proxy.Addr)
 			return fmt.Errorf("Failed to connect to proxy")
 		}
 	}
 	if proxy.Status != proxyActive {
-		p.removeProxy(proxy.Addr)
+		p.disableProxy(proxy.Addr)
 		return fmt.Errorf("Wrong proxy status")
 	}
 	return nil
 }
 
-func (p *PeerToPeer) removeProxy(addr *net.UDPAddr) {
+func (p *PeerToPeer) disableProxy(addr *net.UDPAddr) {
 	for i, proxy := range p.Proxies {
 		if proxy.Addr == addr {
-			p.Proxies = append(p.Proxies[:i], p.Proxies[i+1:]...)
+			p.Proxies[i].Close()
+			//p.Proxies = append(p.Proxies[:i], p.Proxies[i+1:]...)
 			return
 		}
 	}
+}
+
+// Close will stop proxy
+func (p *proxyServer) Close() error {
+	Log(Info, "Stopping proxy %s, Endpoint: %s", p.Addr.String(), p.Endpoint.String())
+	p.Addr = nil
+	p.Endpoint = nil
+	p.Status = proxyDisconnected
+	return nil
 }

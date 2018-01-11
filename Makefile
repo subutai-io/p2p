@@ -10,12 +10,18 @@ NAME_BASE=p2p
 DHT=mdht.subut.ai:6881
 ifeq ($(BRANCH),HEAD)
 	DHT=mdht.subut.ai:6881
+	SCHEME=
+else
+	SCHEME=-$(BRANCH)
 endif
 ifeq ($(BRANCH),dev)
 	DHT=18.195.169.215:6881
 endif
 ifeq ($(BRANCH),master)
 	DHT=54.93.172.70:6881
+endif
+ifeq ($(BRANCH),sysnet)
+	DHT=18.195.169.215:6881
 endif
 sinclude config.make
 APP=$(NAME_BASE)
@@ -35,15 +41,15 @@ all: linux windows macos
 
 $(APP): help.go instance.go main.go rest.go service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
-	$(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
+	$(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(SCHEME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 
 $(APP).exe: help.go instance.go main.go rest.go service_windows.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
-	GOOS=windows $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
+	GOOS=windows $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(SCHEME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 	
 $(APP)_osx: help.go instance.go main.go rest.go service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
-	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
+	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(SCHEME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 
 ifdef UPX_BIN
 pack: $(APP)
@@ -102,4 +108,4 @@ snapcraft: help.go instance.go main.go rest.go service_posix.go
 	$(eval export GOBIN=$(shell pwd)/../go/bin)
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	$(CC) get -d
-	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $(APP) -v $^
+	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)$(SCHEME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $(APP) -v $^
