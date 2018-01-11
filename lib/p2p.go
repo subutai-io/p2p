@@ -311,11 +311,11 @@ func (p *PeerToPeer) waitForRemotePort() {
 	started := time.Now()
 	for p.UDPSocket.remotePort == 0 {
 		time.Sleep(time.Millisecond * 100)
-		if time.Since(started) > time.Duration(time.Second*3) {
+		if time.Since(started) > time.Duration(time.Second*3) && p.UDPSocket.disposed {
 			break
 		}
 	}
-	if p.UDPSocket.remotePort == 0 {
+	if p.UDPSocket != nil && p.UDPSocket.remotePort == 0 {
 		Log(Warning, "Didn't received remote port")
 		p.UDPSocket.remotePort = p.UDPSocket.GetPort()
 		return
