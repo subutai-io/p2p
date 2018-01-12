@@ -27,10 +27,12 @@ func (p *PeerToPeer) initProxy(addr string) error {
 	proxy.LastUpdate = time.Now()
 	proxy.Addr, err = net.ResolveUDPAddr("udp4", addr)
 	if err != nil {
+		Log(Error, "Failed to resolve proxy address")
 		return fmt.Errorf("Failed to resolve proxy address")
 	}
 	for _, pr := range p.Proxies {
 		if pr.Addr.String() == proxy.Addr.String() {
+			Log(Debug, "Proxy %s already exists", addr)
 			return fmt.Errorf("Proxy %s already exists", addr)
 		}
 	}
@@ -45,11 +47,13 @@ func (p *PeerToPeer) initProxy(addr string) error {
 		time.Sleep(100 * time.Millisecond)
 		if time.Duration(3*time.Second) < time.Since(initStarted) {
 			p.disableProxy(proxy.Addr)
+			Log(Error, "Failed to connect to proxy")
 			return fmt.Errorf("Failed to connect to proxy")
 		}
 	}
 	if proxy.Status != proxyActive {
 		p.disableProxy(proxy.Addr)
+		Log(Error, "Wrong proxy status")
 		return fmt.Errorf("Wrong proxy status")
 	}
 	return nil
