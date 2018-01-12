@@ -1,6 +1,6 @@
 # Change Log
 
-## [6.2.9] 01/10/2017
+## [6.2.9] 01/12/2017
 
 * New option to remove interface from p2p history using `stop` command
 * Windows Service implementation with `service` command
