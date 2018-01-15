@@ -195,6 +195,7 @@ func (dht *DHTClient) Listen(conn *net.TCPConn) {
 			}
 		}()
 	}
+	Log(Info, "DHT Listener stopped")
 	dht.ListenerIsRunning = false
 }
 
