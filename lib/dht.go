@@ -29,26 +29,27 @@ type dhtCallback func(*DHTPacket) error
 
 // DHTClient is a main structure of a DHT client
 type DHTClient struct {
-	Routers       string                        // Comma-separated list of bootstrap nodes
-	NetworkHash   string                        // Saved network hash
-	ID            string                        // Current instance ID
-	FailedRouters []string                      // List of routes that we failed to connect to
-	Connections   []*net.TCPConn                // TCP connections to bootstrap nodes
-	LocalPort     int                           // UDP port number used by this instance
-	RemotePort    int                           // UDP port number reported by echo server
-	Forwarders    []Forwarder                   // List of worwarders
-	TCPCallbacks  map[DHTPacketType]dhtCallback // Callbacks for incoming packets
-	Mode          OperatingMode                 // DHT Client mode ???
-	IPList        []net.IP                      // List of network active interfaces
-	IP            net.IP                        // IP of local interface received from DHCP or specified manually
-	Network       *net.IPNet                    // Network information about current network. Used to inform p2p about mask for interface
-	StateChannel  chan RemotePeerState          // Channel to pass states to instance
-	ProxyChannel  chan string                   // Channel to pass proxies to instance
-	PeerData      chan NetworkPeer              // Channel to pass data about changes in peers
-	Connected     bool                          // Whether connection with bootstrap nodes established or not
-	isShutdown    bool                          // Whether DHT shutting down or not
-	LastUpdate    time.Time                     // When last `find` packet was sent
-	OutboundIP    net.IP                        // Outbound IP
+	Routers           string                        // Comma-separated list of bootstrap nodes
+	NetworkHash       string                        // Saved network hash
+	ID                string                        // Current instance ID
+	FailedRouters     []string                      // List of routes that we failed to connect to
+	Connections       []*net.TCPConn                // TCP connections to bootstrap nodes
+	LocalPort         int                           // UDP port number used by this instance
+	RemotePort        int                           // UDP port number reported by echo server
+	Forwarders        []Forwarder                   // List of worwarders
+	TCPCallbacks      map[DHTPacketType]dhtCallback // Callbacks for incoming packets
+	Mode              OperatingMode                 // DHT Client mode ???
+	IPList            []net.IP                      // List of network active interfaces
+	IP                net.IP                        // IP of local interface received from DHCP or specified manually
+	Network           *net.IPNet                    // Network information about current network. Used to inform p2p about mask for interface
+	StateChannel      chan RemotePeerState          // Channel to pass states to instance
+	ProxyChannel      chan string                   // Channel to pass proxies to instance
+	PeerData          chan NetworkPeer              // Channel to pass data about changes in peers
+	Connected         bool                          // Whether connection with bootstrap nodes established or not
+	isShutdown        bool                          // Whether DHT shutting down or not
+	LastUpdate        time.Time                     // When last `find` packet was sent
+	OutboundIP        net.IP                        // Outbound IP
+	ListenerIsRunning bool                          // True if listener is runnning
 }
 
 // Forwarder structure represents a Proxy received from DHT server
@@ -84,9 +85,11 @@ func (dht *DHTClient) TCPInit(hash, routers string) error {
 // This method will close all previous connections
 func (dht *DHTClient) Connect() error {
 	// Close every open connection
+	dht.Connected = false
 	for _, con := range dht.Connections {
 		con.Close()
 	}
+
 	dht.Connections = dht.Connections[:0]
 	dht.FailedRouters = dht.FailedRouters[:0]
 	routers := strings.Split(dht.Routers, ",")
@@ -165,6 +168,7 @@ func (dht *DHTClient) Listen(conn *net.TCPConn) {
 	Log(Info, "Listening to bootstrap node")
 	dht.Connected = true
 	data := make([]byte, 2048)
+	dht.ListenerIsRunning = true
 	for dht.Connected {
 		n, err := conn.Read(data)
 		if err != nil {
@@ -191,6 +195,7 @@ func (dht *DHTClient) Listen(conn *net.TCPConn) {
 			}
 		}()
 	}
+	dht.ListenerIsRunning = false
 }
 
 // Sends bytes to all connected bootstrap nodes
@@ -331,10 +336,21 @@ func (dht *DHTClient) sendReportProxy(addr *net.UDPAddr) error {
 // Shutdown will close all connections and switch DHT object to
 // shutdown mode, which will terminate every loop/goroutine
 func (dht *DHTClient) Shutdown() {
+	dht.Connected = false
 	for _, c := range dht.Connections {
 		c.Close()
 	}
 	Log(Info, "Entering shutdown mode. Shutting down connections with bootstrap nodes")
+	if dht.ListenerIsRunning {
+		Log(Info, "Waiting for DHT listener to stop")
+	}
+	started := time.Now()
+	for dht.ListenerIsRunning {
+		time.Sleep(time.Millisecond * 100)
+		if time.Since(started) > time.Duration(time.Second*30) {
+			Log(Error, "DHT Listener failed to stop within 30 seconds")
+		}
+	}
 	dht.isShutdown = true
 }
 
