@@ -587,7 +587,11 @@ func (p *PeerToPeer) checkLastDHTUpdate() {
 
 func (p *PeerToPeer) checkBootstrapNodes() {
 	if !p.Dht.Connected {
-		p.StartDHT(p.Hash, p.Routers)
+		err := p.StartDHT(p.Hash, p.Routers)
+		if err != nil {
+			Log(Error, "Failed to restore connection to DHT node")
+			return
+		}
 		p.Dht.sendDHCP(p.Dht.IP, p.Dht.Network)
 	}
 }
@@ -720,9 +724,10 @@ func (p *PeerToPeer) StopInstance() {
 	}
 	Log(Info, "All peers under this instance has been removed")
 
+	p.Shutdown = true
 	p.Dht.Shutdown()
 	p.UDPSocket.Stop()
-	p.Shutdown = true
+
 	if runtime.GOOS != "windows" && p.Interface.Interface != nil {
 		closeInterface(p.Interface.Interface.file)
 	}
