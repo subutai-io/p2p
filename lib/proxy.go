@@ -23,20 +23,22 @@ type proxyServer struct {
 
 func (p *PeerToPeer) initProxy(addr string) error {
 	var err error
-	proxy := new(proxyServer)
-	proxy.LastUpdate = time.Now()
-	proxy.Addr, err = net.ResolveUDPAddr("udp4", addr)
+
+	pAddr, err := net.ResolveUDPAddr("udp4", addr)
 	if err != nil {
 		Log(Error, "Failed to resolve proxy address")
 		return fmt.Errorf("Failed to resolve proxy address")
 	}
 	for _, pr := range p.Proxies {
-		if pr.Addr.String() == proxy.Addr.String() {
+		if pr.Addr.String() == pAddr.String() {
 			Log(Debug, "Proxy %s already exists", addr)
 			return fmt.Errorf("Proxy %s already exists", addr)
 		}
 	}
 	Log(Info, "Initializing proxy %s", addr)
+	proxy := new(proxyServer)
+	proxy.LastUpdate = time.Now()
+	proxy.Addr = pAddr
 	p.Proxies = append(p.Proxies, proxy)
 	initStarted := time.Now()
 	proxy.Status = proxyConnecting
