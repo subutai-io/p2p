@@ -111,20 +111,6 @@
             "InstallerClass" = "11:FALSE"
             "CustomActionData" = "8:"
             }
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_6C750916E1664102BD7B24B0B422917D"
-            {
-            "Name" = "8:p2p.exe"
-            "Condition" = "8:"
-            "Object" = "8:_E66B1EF5E95A4652AD594183E37F7E18"
-            "FileType" = "3:2"
-            "InstallAction" = "3:4"
-            "Arguments" = "8:service --remove"
-            "EntryPoint" = "8:"
-            "Sequence" = "3:1"
-            "Identifier" = "8:_DB8EB0DC_4225_4060_B03B_E977B4155244"
-            "InstallerClass" = "11:FALSE"
-            "CustomActionData" = "8:"
-            }
             "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_8C54E64FBE6C41649DD95BC7C6F3E69F"
             {
             "Name" = "8:p2p.exe"
@@ -250,8 +236,8 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Subutai P2P"
-        "ProductCode" = "8:{67896BB0-4236-4AB4-B2DC-972B6D4FBDEB}"
-        "PackageCode" = "8:{478A4189-CAD3-4865-99AA-248EA4CD032D}"
+        "ProductCode" = "8:{101366BA-D375-46C1-8871-C46D29EE7C70}"
+        "PackageCode" = "8:{48B04540-C5DF-48CC-98B8-6177A2F9D5C7}"
         "UpgradeCode" = "8:{C0CF2BD5-2887-496D-8B11-FA92E78F64A1}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"

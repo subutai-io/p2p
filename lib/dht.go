@@ -162,6 +162,7 @@ func (dht *DHTClient) Handshake(conn *net.TCPConn) error {
 // on DHTPacket.Type field's value
 // Callback will be executed inside a goroutine
 func (dht *DHTClient) Listen(conn *net.TCPConn) {
+	Log(Info, "Listening to bootstrap node")
 	dht.Connected = true
 	data := make([]byte, 2048)
 	for dht.Connected {

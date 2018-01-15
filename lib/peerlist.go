@@ -144,6 +144,7 @@ func (l *PeerList) Length() int {
 // RunPeer should be called once on each peer when added
 // to list
 func (l *PeerList) RunPeer(id string, p *PeerToPeer) {
+	Log(Info, "Running peer %s", id)
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 	go l.peers[id].Run(p)
