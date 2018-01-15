@@ -130,7 +130,7 @@ func (np *NetworkPeer) stateInit(ptpc *PeerToPeer) error {
 func (np *NetworkPeer) stateRequestedIP(ptpc *PeerToPeer) error {
 	Log(Info, "Waiting network addresses for peer: %s", np.ID)
 	requestSentAt := time.Now()
-	updateInterval := time.Duration(time.Second * 5)
+	updateInterval := time.Duration(time.Millisecond * 1000)
 	attempts := 0
 	for {
 		if time.Since(requestSentAt) > updateInterval {
@@ -183,7 +183,7 @@ func (np *NetworkPeer) stateConnectingDirectlyWait(ptpc *PeerToPeer) error {
 		}
 		time.Sleep(100 * time.Millisecond)
 		passed := time.Since(started)
-		if passed > time.Duration(4*time.Minute) {
+		if passed > time.Duration(1*time.Minute) {
 			np.SetState(PeerStateConnectingDirectly, ptpc)
 			return fmt.Errorf("Wait for direct connection failed: Peer doesn't responded in a timely manner")
 		}
@@ -253,7 +253,7 @@ func (np *NetworkPeer) stateConnectingInternetWait(ptpc *PeerToPeer) error {
 		}
 		time.Sleep(100 * time.Millisecond)
 		passed := time.Since(started)
-		if passed > time.Duration(4*time.Minute) {
+		if passed > time.Duration(1*time.Minute) {
 			np.SetState(PeerStateConnectingInternet, ptpc)
 			return fmt.Errorf("Wait for internet connection failed: Peer doesn't responded in a timely manner")
 		}
@@ -366,15 +366,19 @@ func (np *NetworkPeer) stateHandshakingForwarder(ptpc *PeerToPeer) error {
 		handshakeSentAt := time.Now()
 		for np.State == PeerStateHandshakingForwarder {
 			passed := time.Since(handshakeSentAt)
-			if passed > time.Duration(time.Second*14) {
-				np.SetState(PeerStateHandshakingFailed, ptpc)
-				return fmt.Errorf("Failed to handshake with peer %s", np.ID)
+			if passed > time.Duration(time.Second*10) {
+				// Stop attempts to connect over specified forwarder and switch to next
+				break
 			}
 			np.sendHandshake(ptpc, true)
 			time.Sleep(time.Millisecond * 500)
 		}
+		if np.State != PeerStateHandshakingForwarder {
+			return nil
+		}
 	}
-	return nil
+	np.SetState(PeerStateHandshakingFailed, ptpc)
+	return fmt.Errorf("Failed to handshake with peer %s over TURN", np.ID)
 }
 
 // stateConnected is executed when connection was established and peer is operating normally
@@ -400,14 +404,14 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 	}
 	if np.PingCount > 15 {
 		np.LastError = "Disconnected by timeout"
-		np.SetState(PeerStateInit, ptpc)
+		np.SetState(PeerStateDisconnect, ptpc)
 		np.PeerAddr = nil
 		np.Endpoint = nil
 		np.PingCount = 0
 		return fmt.Errorf("Peer %s has been timed out", np.ID)
 	}
 	if np.Endpoint == nil {
-		np.SetState(PeerStateInit, ptpc)
+		np.SetState(PeerStateDisconnect, ptpc)
 		np.PeerAddr = nil
 		np.PingCount = 0
 		return fmt.Errorf("Peer %s has lost endpoint", np.ID)
@@ -422,11 +426,11 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 		np.PingCount++
 	}
 	// Anyway we are trying to establish direct connection over time
-	if np.IsUsingTURN && len(np.KnownIPs) > 0 {
-		tm := CreateTestP2PMessage(ptpc.Crypter, ptpc.Dht.ID, 0)
-		ptpc.UDPSocket.SendMessage(tm, np.KnownIPs[0])
-		Log(Trace, "Sending packet directly to %s", np.KnownIPs[0].String())
-	}
+	// if np.IsUsingTURN && len(np.KnownIPs) > 0 {
+	// 	tm := CreateTestP2PMessage(ptpc.Crypter, ptpc.Dht.ID, 0)
+	// 	ptpc.UDPSocket.SendMessage(tm, np.KnownIPs[0])
+	// 	Log(Trace, "Sending packet directly to %s", np.KnownIPs[0].String())
+	// }
 	return nil
 }
 
@@ -572,7 +576,7 @@ func (np *NetworkPeer) holePunch(endpoint *net.UDPAddr, ptpc *PeerToPeer) bool {
 
 		Log(Trace, "Sending %d bytes. Sent %d. Endpoint: %s", len(packet), n, endpoint.String())
 		passed := time.Since(punchStarted)
-		if passed > time.Duration(30*time.Second) {
+		if passed > time.Duration(10*time.Second) {
 			Log(Warning, "Stopping UDP hole punching to %s after timeout", endpoint.String())
 			break
 		}
