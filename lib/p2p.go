@@ -268,12 +268,6 @@ func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, 
 	// nodes that was hardcoded into it's code
 
 	Log(Info, "Started UDP Listener at port %d", p.UDPSocket.GetPort())
-	// go func() {
-	// 	err = p.attemptPortForward(uint16(p.UDPSocket.GetPort()), interfaceName)
-	// 	if err != nil {
-	// 		Log(Error, "UPnP Failed: %s", err)
-	// 	}
-	// }()
 
 	err = p.StartDHT(p.Hash, p.Routers)
 	if err != nil {
