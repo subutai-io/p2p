@@ -32,6 +32,7 @@ type NetworkPeer struct {
 	ConnectionAttempts uint8                              // How many times we tried to connect
 	stateHandlers      map[PeerState]StateHandlerCallback // List of callbacks for different peer states
 	IsUsingTURN        bool                               // Whether or not we are currently connected via TURN
+	Running            bool
 }
 
 func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
@@ -56,6 +57,7 @@ type NetworkPeerState struct {
 
 // Run is main loop for a peer
 func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
+	np.Running = true
 	np.ConnectionAttempts = 0
 	for {
 		if np.State == PeerStateStop {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,12 +11,7 @@ import (
 	ptp "github.com/subutai-io/p2p/lib"
 )
 
-type RESTResponse struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-type DaemonArgs struct {
+type request struct {
 	IP         string `json:"ip"`
 	Mac        string `json:"mac"`
 	Dev        string `json:"dev"`
@@ -26,24 +22,13 @@ type DaemonArgs struct {
 	TTL        string `json:"ttl"`
 	Fwd        bool   `json:"fwd"`
 	Port       int    `json:"port"`
-	Interfaces bool   `json:"interfaces"` // show only
-	All        bool   `json:"all"`        // show only
-	Command    string `json:"command"`
-	Args       string `json:"args"`
-	Log        string `json:"log"`
+	Interfaces bool   `json:"interfaces"` // Used for show request
+	All        bool   `json:"all"`        // Used for show request
 }
 
-// ShowOutput is a JSON object for output from `show` command
-type ShowOutput struct {
-	ID              string `json:"id"`
-	IP              string `json:"ip"`
-	Endpoint        string `json:"endpoint"`
-	HardwareAddress string `json:"hw"`
-	Error           string `json:"error"`
-	Text            string `json:"text"`
-	Code            int    `json:"code"`
-	InterfaceName   string `json:"interface"`
-	Hash            string `json:"hash"`
+type RESTResponse struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 // ErrorOutput is a JSON object for output
@@ -52,135 +37,62 @@ type ErrorOutput struct {
 	Code  int    `json:"code"`
 }
 
-func (d *Daemon) execRESTStart(w http.ResponseWriter, r *http.Request) {
-	ptp.Log(ptp.Info, "Start request")
-	args := new(DaemonArgs)
-	err := getJSON(r.Body, args)
-	if handleMarshalError(err, w) != nil {
-		return
-	}
-	response := new(Response)
-	d.Run(&RunArgs{
-		IP:      args.IP,
-		Mac:     args.Mac,
-		Dev:     args.Dev,
-		Hash:    args.Hash,
-		Dht:     args.Dht,
-		Keyfile: args.Keyfile,
-		Key:     args.Key,
-		TTL:     args.TTL,
-		Fwd:     args.Fwd,
-		Port:    args.Port,
-	}, response)
-	resp, err := getResponse(response.ExitCode, response.Output)
-	if err != nil {
-		ptp.Log(ptp.Error, "Internal error: %s", err)
-		return
-	}
-	w.Write(resp)
+func setupRESTHandlers(port int, d *Daemon) {
+	http.HandleFunc("/rest/v1/start", d.execRESTStart)
+	http.HandleFunc("/rest/v1/stop", d.execRESTStop)
+	http.HandleFunc("/rest/v1/show", d.execRESTShow)
+	http.HandleFunc("/rest/v1/status", d.execRESTStatus)
+	http.HandleFunc("/rest/v1/debug", d.execRESTDebug)
+	http.HandleFunc("/rest/v1/set", d.execRESTSet)
+
+	go http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
-func (d *Daemon) execRESTStop(w http.ResponseWriter, r *http.Request) {
-	ptp.Log(ptp.Info, "Stop request")
-	args := new(DaemonArgs)
-	err := getJSON(r.Body, args)
-	if handleMarshalError(err, w) != nil {
-		return
-	}
-	response := new(Response)
-	d.Stop(&DaemonArgs{
-		Hash: args.Hash,
-		Dev:  args.Dev,
-	}, response)
-	resp, err := getResponse(response.ExitCode, response.Output)
+func sendRequest(port int, command string, args *DaemonArgs) (*RESTResponse, error) {
+	data, err := json.Marshal(args)
 	if err != nil {
-		ptp.Log(ptp.Error, "Internal error: %s", err)
-		return
+		return nil, fmt.Errorf("Failed to marshal request: %s", err)
 	}
-	w.Write(resp)
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/rest/v1/%s", port, command), bytes.NewBuffer(data))
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create request: %s", err)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't execute command. Check if p2p daemon is running.")
+	}
+	defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	out := &RESTResponse{}
+	err = json.Unmarshal(body, out)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to unmarshal response: %s", err)
+	}
+	return out, nil
 }
 
-func (d *Daemon) execRESTShow(w http.ResponseWriter, r *http.Request) {
-	ptp.Log(ptp.Info, "Show request")
-	args := new(DaemonArgs)
-	err := getJSON(r.Body, args)
-	if handleMarshalError(err, w) != nil {
-		return
-	}
-	output, err := d.Show(&ShowArgs{
-		Hash:       args.Hash,
-		IP:         args.IP,
-		Interfaces: args.Interfaces,
-		All:        args.All,
-	})
+func sendRequestRaw(port int, command string, r *request) ([]byte, error) {
+	data, err := json.Marshal(r)
 	if err != nil {
-		ptp.Log(ptp.Error, "Internal error: %s", err)
-		return
+		return nil, fmt.Errorf("Failed to marshal request: %s", err)
 	}
-	w.Write(output)
-}
 
-func (d *Daemon) execRESTStatus(w http.ResponseWriter, r *http.Request) {
-	ptp.Log(ptp.Info, "Status request")
-	args := new(DaemonArgs)
-	err := getJSON(r.Body, args)
-	if handleMarshalError(err, w) != nil {
-		return
-	}
-	response := new(Response)
-	d.Status(&RunArgs{}, response)
-	resp, err := getResponse(response.ExitCode, response.Output)
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/rest/v1/%s", port, command), bytes.NewBuffer(data))
 	if err != nil {
-		ptp.Log(ptp.Error, "Internal error: %s", err)
-		return
+		return nil, fmt.Errorf("Failed to create request: %s", err)
 	}
-	w.Write(resp)
-}
 
-func (d *Daemon) execRESTDebug(w http.ResponseWriter, r *http.Request) {
-	ptp.Log(ptp.Info, "Debug request")
-	args := new(DaemonArgs)
-	err := getJSON(r.Body, args)
-	if handleMarshalError(err, w) != nil {
-		return
-	}
-	response := new(Response)
-	d.Debug(&Args{
-		Command: args.Command,
-		Args:    args.Args,
-	}, response)
-	resp, err := getResponse(response.ExitCode, response.Output)
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
-		ptp.Log(ptp.Error, "Internal error: %s", err)
-		return
+		return nil, fmt.Errorf("Couldn't execute command. Check if p2p daemon is running.")
 	}
-	w.Write(resp)
-}
-
-func (d *Daemon) execRESTSet(w http.ResponseWriter, r *http.Request) {
-	ptp.Log(ptp.Info, "Debug request")
-	args := new(DaemonArgs)
-	err := getJSON(r.Body, args)
-	if handleMarshalError(err, w) != nil {
-		return
-	}
-	response := new(Response)
-	if args.Log != "" {
-		d.SetLog(&NameValueArg{
-			Name:  "log",
-			Value: args.Log,
-		}, response)
-	} else {
-		response.ExitCode = 0
-		response.Output = "Unknown command"
-	}
-	resp, err := getResponse(response.ExitCode, response.Output)
-	if err != nil {
-		ptp.Log(ptp.Error, "Internal error: %s", err)
-		return
-	}
-	ptp.Log(ptp.Info, "RESPONSE: %s", string(resp))
-	w.Write(resp)
+	defer resp.Body.Close()
+	return ioutil.ReadAll(resp.Body)
 }
 
 func getJSON(body io.ReadCloser, args *DaemonArgs) error {

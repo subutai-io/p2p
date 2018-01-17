@@ -7,6 +7,7 @@ ARCH=$(shell uname -m)
 BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
 NAME_PREFIX=p2p
 NAME_BASE=p2p
+SOURCES=help.go instance.go main.go rest.go start.go stop.go show.go set.go status.go debug.go
 DHT=mdht.subut.ai:6881
 ifeq ($(BRANCH),HEAD)
 	DHT=mdht.subut.ai:6881
@@ -39,15 +40,15 @@ macos: $(APP)_osx
 
 all: linux windows macos
 
-$(APP): help.go instance.go main.go rest.go service_posix.go
+$(APP): $(SOURCES) service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	$(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(SCHEME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 
-$(APP).exe: help.go instance.go main.go rest.go service_windows.go
+$(APP).exe: $(SOURCES) service_windows.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	GOOS=windows $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(SCHEME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 	
-$(APP)_osx: help.go instance.go main.go rest.go service_posix.go
+$(APP)_osx: $(SOURCES) service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(SCHEME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 
@@ -65,6 +66,7 @@ clean:
 	-rm -f $(NAME_PREFIX)_osx
 	-rm -f $(NAME_PREFIX).exe
 	-rm -f $(NAME_PREFIX)-$(OS)*
+	-rm -rf debian/extra-code/*
 
 mrproper: clean
 mrproper:
@@ -103,7 +105,7 @@ debian-source: *.changes
 	debuild --preserve-env -S -d
 endif
 
-snapcraft: help.go instance.go main.go rest.go service_posix.go
+snapcraft: $(SOURCES) service_posix.go
 	$(eval export GOPATH=$(shell pwd)/../go)
 	$(eval export GOBIN=$(shell pwd)/../go/bin)
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi

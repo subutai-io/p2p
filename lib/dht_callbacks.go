@@ -185,12 +185,10 @@ func (dht *DHTClient) packetStop(packet *DHTPacket) error {
 
 func (dht *DHTClient) packetUnknown(packet *DHTPacket) error {
 	Log(Warning, "Bootstap node refuses our identity. Shutting down")
-	dht.Shutdown()
-	return nil
+	return dht.Close()
 }
 
 func (dht *DHTClient) packetUnsupported(packet *DHTPacket) error {
 	Log(Error, "Bootstap node doesn't support our version. Shutting down")
-	dht.Shutdown()
-	return nil
+	return dht.Close()
 }
