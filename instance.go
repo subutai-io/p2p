@@ -3,12 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"os"
-	"runtime"
 	"sync"
 
 	ptp "github.com/subutai-io/p2p/lib"
@@ -205,380 +202,10 @@ func (p *Daemon) Initialize(saveFile string) {
 	p.SaveFile = saveFile
 }
 
-// SetLog modifies specific option
-func (p *Daemon) SetLog(args *NameValueArg, resp *Response) error {
-	ptp.Log(ptp.Info, "Setting option %s to %s", args.Name, args.Value)
-	resp.ExitCode = 0
-	if args.Name == "log" {
-		resp.Output = "Logging level has switched to " + args.Value + " level"
-		if args.Value == "DEBUG" {
-			ptp.SetMinLogLevel(ptp.Debug)
-		} else if args.Value == "INFO" {
-			ptp.SetMinLogLevel(ptp.Info)
-		} else if args.Value == "TRACE" {
-			ptp.SetMinLogLevel(ptp.Trace)
-		} else if args.Value == "WARNING" {
-			ptp.SetMinLogLevel(ptp.Warning)
-		} else if args.Value == "ERROR" {
-			ptp.SetMinLogLevel(ptp.Error)
-		} else {
-			resp.ExitCode = 1
-			resp.Output = "Unknown log level was specified. Supported log levels is:\n"
-			resp.Output = resp.Output + "TRACE\n"
-			resp.Output = resp.Output + "DEBUG\n"
-			resp.Output = resp.Output + "INFO\n"
-			resp.Output = resp.Output + "WARNING\n"
-			resp.Output = resp.Output + "ERROR\n"
-		}
-	}
-	return nil
-}
-
-// AddKey adds a new crypto-key
-func (p *Daemon) AddKey(args *RunArgs, resp *Response) error {
-	resp.ExitCode = 0
-	if args.Hash == "" {
-		resp.ExitCode = 1
-		resp.Output = "You have not specified hash"
-	}
-	if args.Key == "" {
-		resp.ExitCode = 1
-		resp.Output = "You have not specified key"
-	}
-	inst := p.Instances.GetInstance(args.Hash)
-	if inst == nil {
-		resp.ExitCode = 1
-		resp.Output = "No instances with specified hash were found"
-	}
-	if resp.ExitCode == 0 {
-		resp.Output = "New key added"
-		var newKey ptp.CryptoKey
-
-		newKey = inst.PTP.Crypter.EnrichKeyValues(newKey, args.Key, args.TTL)
-		inst.PTP.Crypter.Keys = append(inst.PTP.Crypter.Keys, newKey)
-		p.Instances.Update(args.Hash, inst)
-	}
-	return nil
-}
-
 // Execute is a dummy method used for tests
 func (p *Daemon) Execute(args *Args, resp *Response) error {
 	resp.ExitCode = 0
 	resp.Output = ""
-	return nil
-}
-
-// Run starts a P2P instance
-func (p *Daemon) Run(args *RunArgs, resp *Response) error {
-	args.Dht = DefaultDHT
-	resp.ExitCode = 0
-	resp.Output = "Running new P2P instance for " + args.Hash + "\n"
-
-	// Validate if interface name is unique
-	if args.Dev != "" {
-		instances := p.Instances.Get()
-		for _, inst := range instances {
-			if inst.PTP.Interface.Name == args.Dev {
-				resp.ExitCode = 1
-				resp.Output = "Device name is already in use"
-				return errors.New(resp.Output)
-			}
-		}
-	}
-
-	inst := p.Instances.GetInstance(args.Hash)
-	if inst == nil {
-		resp.Output = resp.Output + "Lookup finished\n"
-		if args.Key != "" {
-			if len(args.Key) < 16 {
-				args.Key += "0000000000000000"[:16-len(args.Key)]
-			} else if len(args.Key) > 16 && len(args.Key) < 24 {
-				args.Key += "000000000000000000000000"[:24-len(args.Key)]
-			} else if len(args.Key) > 24 && len(args.Key) < 32 {
-				args.Key += "00000000000000000000000000000000"[:32-len(args.Key)]
-			} else if len(args.Key) > 32 {
-				args.Key = args.Key[:32]
-			}
-		}
-
-		newInst := new(P2PInstance)
-		newInst.ID = args.Hash
-		newInst.Args = *args
-		newInst.PTP = ptp.New(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port, usedIPs, OutboundIP)
-		if newInst.PTP == nil {
-			resp.Output = resp.Output + "Failed to create P2P Instance"
-			resp.ExitCode = 1
-			return errors.New("Failed to create P2P Instance")
-		}
-
-		// Saving interface name
-		infFound := false
-		for _, inf := range InterfaceNames {
-			if inf == newInst.PTP.Interface.Name {
-				infFound = true
-			}
-		}
-		if !infFound && newInst.PTP.Interface.Name != "" {
-			InterfaceNames = append(InterfaceNames, newInst.PTP.Interface.Name)
-		}
-
-		usedIPs = append(usedIPs, newInst.PTP.Interface.IP.String())
-		ptp.Log(ptp.Info, "Instance created")
-		p.Instances.Update(args.Hash, newInst)
-
-		go newInst.PTP.Run()
-		if p.SaveFile != "" {
-			resp.Output = resp.Output + "Saving instance into file"
-			p.Instances.SaveInstances(p.SaveFile)
-		}
-	} else {
-		resp.Output = resp.Output + "Hash already in use\n"
-	}
-	return nil
-}
-
-// Stop is used to terminate a specific P2P instance
-func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
-	resp.ExitCode = 0
-	if args.Hash != "" {
-		inst := p.Instances.GetInstance(args.Hash)
-		if inst == nil {
-			resp.ExitCode = 1
-			resp.Output = "Instance with hash " + args.Hash + " was not found"
-			return nil
-		} else {
-			ip := inst.PTP.Interface.IP.String()
-			resp.Output = "Shutting down " + args.Hash
-			inst.PTP.StopInstance()
-			p.Instances.Delete(args.Hash)
-			p.Instances.SaveInstances(p.SaveFile)
-			k := 0
-			for k, i := range usedIPs {
-				if i != ip {
-					usedIPs[k] = i
-					k++
-				}
-			}
-			usedIPs = usedIPs[:k]
-			return nil
-		}
-	} else if args.Dev != "" {
-		resp.Output = "Removing " + args.Dev
-		instances := p.Instances.Get()
-		for i, inf := range InterfaceNames {
-			if inf == args.Dev {
-				for _, instance := range instances {
-					if instance.PTP.Interface.Name == args.Dev {
-						resp.ExitCode = 12
-						resp.Output += "Can't remove interface: In use"
-						return nil
-					}
-				}
-				InterfaceNames = append(InterfaceNames[:i], InterfaceNames[i+1:]...)
-				resp.ExitCode = 0
-				resp.Output += "Removed " + args.Dev
-				return nil
-			}
-		}
-		resp.ExitCode = 1
-		resp.Output += "Interface was not found"
-		return nil
-	}
-	resp.ExitCode = 2
-	resp.Output = "Not enough parameters for stop"
-	return nil
-}
-
-func (p *Daemon) showOutput(data []ShowOutput) ([]byte, error) {
-	return json.Marshal(data)
-}
-
-func (p *Daemon) showIP(ip string, instance *P2PInstance) ([]byte, error) {
-	peers := instance.PTP.Peers.Get()
-	for _, peer := range peers {
-		if peer.PeerLocalIP.String() == ip {
-			if peer.State == ptp.PeerStateConnected {
-				out := []ShowOutput{
-					ShowOutput{
-						Text: "Integrated with " + ip,
-						Code: 0,
-					},
-				}
-				return p.showOutput(out)
-			}
-		}
-	}
-	out := []ShowOutput{
-		ShowOutput{
-			Error: "Not yet integrated with " + ip,
-			Code:  12,
-		},
-	}
-	return p.showOutput(out)
-}
-
-func (p *Daemon) showHash(instance *P2PInstance) ([]byte, error) {
-	peers := instance.PTP.Peers.Get()
-	out := []ShowOutput{}
-	for _, peer := range peers {
-		s := ShowOutput{
-			ID:              peer.ID,
-			IP:              peer.PeerLocalIP.String(),
-			Endpoint:        peer.Endpoint.String(),
-			HardwareAddress: peer.PeerHW.String(),
-		}
-		out = append(out, s)
-	}
-	return p.showOutput(out)
-}
-
-func (p *Daemon) showInterfaces() ([]byte, error) {
-	instances := p.Instances.Get()
-	out := []ShowOutput{}
-	for _, inst := range instances {
-		if inst.PTP != nil {
-			s := ShowOutput{InterfaceName: inst.PTP.Interface.Name}
-			out = append(out, s)
-		}
-	}
-	return p.showOutput(out)
-}
-
-func (p *Daemon) showAllInterfaces() ([]byte, error) {
-	out := []ShowOutput{}
-	for _, inf := range InterfaceNames {
-		s := ShowOutput{InterfaceName: inf}
-		out = append(out, s)
-	}
-	return p.showOutput(out)
-}
-
-func (p *Daemon) showInstances() ([]byte, error) {
-	instances := p.Instances.Get()
-	out := []ShowOutput{}
-	for key, inst := range instances {
-		if inst.PTP != nil {
-			s := ShowOutput{
-				HardwareAddress: inst.PTP.Interface.Mac.String(),
-				IP:              inst.PTP.Interface.IP.String(),
-				Hash:            key,
-			}
-			out = append(out, s)
-		} else {
-			s := ShowOutput{
-				HardwareAddress: "Unknown",
-				IP:              "Unknown",
-				Hash:            key,
-			}
-			out = append(out, s)
-		}
-	}
-	return p.showOutput(out)
-}
-
-// Show is used to output information about instances
-func (p *Daemon) Show(args *ShowArgs) ([]byte, error) {
-	if args.Hash != "" {
-		inst := p.Instances.GetInstance(args.Hash)
-		if inst != nil {
-			//peers := inst.PTP.Peers.Get()
-			if args.IP != "" {
-				out, err := p.showIP(args.IP, inst)
-				return out, err
-			}
-			out, err := p.showHash(inst)
-			return out, err
-			// resp.Output = "< Peer ID >\t< IP >\t< Endpoint >\t< HW >\n"
-			// resp.Output = resp.Output + peer.ID + "\t"
-			// resp.Output = resp.Output + peer.PeerLocalIP.String() + "\t"
-			// resp.Output = resp.Output + peer.Endpoint.String() + "\t"
-			// resp.Output = resp.Output + peer.PeerHW.String() + "\n"
-		}
-		return p.showOutput([]ShowOutput{
-			ShowOutput{
-				Error: "Specified environment was not found",
-				Code:  15,
-			},
-		})
-	} else if args.Interfaces {
-		if !args.All {
-			return p.showInterfaces()
-		}
-		return p.showAllInterfaces()
-	} else {
-		return p.showInstances()
-	}
-	return nil, nil
-}
-
-// Debug output debug information
-func (p *Daemon) Debug(args *Args, resp *Response) error {
-	ptp.Log(ptp.Info, "Preparing Debug output")
-	resp.Output = "DEBUG INFO:\n"
-	resp.Output = fmt.Sprintf("Version: %s Build: %s\n", AppVersion, BuildID)
-	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())
-	resp.Output += fmt.Sprintf("Instances information:\n")
-	instances := p.Instances.Get()
-	for _, inst := range instances {
-		resp.Output += fmt.Sprintf("Bootstrap nodes:\n")
-		for _, conn := range inst.PTP.Dht.Connections {
-			resp.Output += fmt.Sprintf("\t%s\n", conn.RemoteAddr().String())
-		}
-		resp.Output += fmt.Sprintf("Hash: %s\n", inst.ID)
-		resp.Output += fmt.Sprintf("ID: %s\n", inst.PTP.Dht.ID)
-		resp.Output += fmt.Sprintf("UDP Port: %d\n", inst.PTP.UDPSocket.GetPort())
-		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", inst.PTP.Interface.Name, inst.PTP.Interface.Mac.String(), inst.PTP.Interface.IP.String())
-		resp.Output += fmt.Sprintf("Proxies:\n")
-		if len(inst.PTP.Proxies) == 0 {
-			resp.Output += fmt.Sprintf("\tNo proxies in use\n")
-		}
-		for _, proxy := range inst.PTP.Proxies {
-			resp.Output += fmt.Sprintf("\tProxy address: %s\n", proxy.Addr.String())
-		}
-		resp.Output += fmt.Sprintf("Peers:\n")
-
-		peers := inst.PTP.Peers.Get()
-		for _, peer := range peers {
-			resp.Output += fmt.Sprintf("\t--- %s ---\n", peer.ID)
-			if peer.PeerLocalIP == nil {
-				resp.Output += "\t\tNo IP assigned\n"
-
-			} else if peer.PeerHW == nil {
-				resp.Output += "\t\tNo MAC assigned\n"
-			} else {
-				resp.Output += fmt.Sprintf("\t\tHWAddr: %s\n", peer.PeerHW.String())
-				resp.Output += fmt.Sprintf("\t\tIP: %s\n", peer.PeerLocalIP.String())
-				resp.Output += fmt.Sprintf("\t\tEndpoint: %s\n", peer.Endpoint)
-				resp.Output += fmt.Sprintf("\t\tPeer Address: %s\n", peer.PeerAddr.String())
-				proxyInUse := "No"
-				if peer.IsUsingTURN {
-					proxyInUse = "Yes"
-				}
-				resp.Output += fmt.Sprintf("\t\tUsing proxy: %s\n", proxyInUse)
-				//resp.Output += fmt.Sprintf("\t\tProxy ID: %d\n", peer.ProxyID)
-			}
-			resp.Output += fmt.Sprintf("\t--- End of %s ---\n", peer.ID)
-		}
-	}
-	return nil
-}
-
-// Status displays information about instances, peers and their statuses
-func (p *Daemon) Status(args *RunArgs, resp *Response) error {
-	instances := p.Instances.Get()
-	for _, inst := range instances {
-		resp.Output += inst.ID + " | " + inst.PTP.Interface.IP.String() + "\n"
-		peers := inst.PTP.Peers.Get()
-		for _, peer := range peers {
-			resp.Output += peer.ID + "|"
-			resp.Output += peer.PeerLocalIP.String() + "|"
-			resp.Output += "State:" + StringifyState(peer.State) + "|"
-			if peer.LastError != "" {
-				resp.Output += "LastError:" + peer.LastError
-			}
-			resp.Output += "\n"
-		}
-	}
 	return nil
 }
 
@@ -589,8 +216,16 @@ func StringifyState(state ptp.PeerState) string {
 		return "Initializing"
 	case ptp.PeerStateRequestedIP:
 		return "Waiting for IP"
+	case ptp.PeerStateConnecting:
+		return "Initializing connection"
+	case ptp.PeerStateConnectingDirectlyWait:
+		return "Waiting to start direct connection"
 	case ptp.PeerStateConnectingDirectly:
 		return "Trying direct connection"
+	case ptp.PeerStateConnectingInternetWait:
+		return "Waiting to start internet connection"
+	case ptp.PeerStateConnectingInternet:
+		return "Trying connection over Internet"
 	case ptp.PeerStateConnected:
 		return "Connected"
 	case ptp.PeerStateHandshaking:
@@ -598,9 +233,11 @@ func StringifyState(state ptp.PeerState) string {
 	case ptp.PeerStateHandshakingFailed:
 		return "Handshaking failed"
 	case ptp.PeerStateWaitingForwarder:
-		return "Waiting forwarder IP"
+		return "Waiting for tunnel"
+	case ptp.PeerStateWaitingForwarderFailed:
+		return "Failed to receive tunnel"
 	case ptp.PeerStateHandshakingForwarder:
-		return "Handshaking forwarder"
+		return "Handshaking using tunnel"
 	case ptp.PeerStateDisconnect:
 		return "Disconnected"
 	case ptp.PeerStateStop:
