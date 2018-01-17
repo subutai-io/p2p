@@ -484,10 +484,14 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 func (p *PeerToPeer) StartDHT(hash, routers string) error {
 	if p.Dht != nil {
 		Log(Info, "Stopping previous DHT instance")
-		p.Dht.Shutdown()
-		p.Dht = nil
+		err := p.Dht.Close()
+		if err != nil {
+			return err
+		}
+		//p.Dht = nil
+	} else {
+		p.Dht = new(DHTClient)
 	}
-	p.Dht = new(DHTClient)
 	p.Dht.OutboundIP = p.outboundIP
 	p.Dht.LocalPort = p.UDPSocket.GetPort()
 	if p.UDPSocket.remotePort == 0 {
@@ -725,7 +729,10 @@ func (p *PeerToPeer) StopInstance() {
 	Log(Info, "All peers under this instance has been removed")
 
 	p.Shutdown = true
-	p.Dht.Shutdown()
+	err := p.Dht.Close()
+	if err != nil {
+		Log(Error, "Failed to stop DHT: %s", err)
+	}
 	p.UDPSocket.Stop()
 
 	if runtime.GOOS != "windows" && p.Interface.Interface != nil {
