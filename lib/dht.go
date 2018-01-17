@@ -336,7 +336,7 @@ func (dht *DHTClient) sendReportProxy(addr *net.UDPAddr) error {
 
 // Shutdown will close all connections and switch DHT object to
 // shutdown mode, which will terminate every loop/goroutine
-func (dht *DHTClient) Shutdown() {
+func (dht *DHTClient) Close() error {
 	dht.Connected = false
 	for _, c := range dht.Connections {
 		c.Close()
@@ -350,9 +350,11 @@ func (dht *DHTClient) Shutdown() {
 		time.Sleep(time.Millisecond * 100)
 		if time.Since(started) > time.Duration(time.Second*30) {
 			Log(Error, "DHT Listener failed to stop within 30 seconds")
+			return fmt.Errorf("DHT Listener failed to stop withing 30 seconds")
 		}
 	}
 	dht.isShutdown = true
+	return nil
 }
 
 // WaitID will block DHT until valid instance ID is received from Bootstrap node
