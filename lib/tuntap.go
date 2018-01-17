@@ -1,5 +1,7 @@
 package ptp
 
+import "net"
+
 // DevKind Type of the device
 type DevKind int
 
@@ -30,4 +32,20 @@ type Packet struct {
 // Open(), if the latter was a pattern.
 func (t *Interface) InterfaceName() string {
 	return t.Name
+}
+
+// TAP interface
+type TAP interface {
+	GetName() string
+	GetHardwareAddress() net.HardwareAddr
+	GetIP() net.IP
+	GetMask() net.IPMask
+	GetBasename() string
+	Init(string) error
+	Open() error
+	Close() error
+	Configure() error
+	ReadPacket() (*Packet, error)
+	WritePacket(*Packet) error
+	Run()
 }

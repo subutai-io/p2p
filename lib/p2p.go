@@ -42,22 +42,29 @@ type PeerToPeer struct {
 	PeersLock       sync.Mutex                           // Lock for peers map
 	Hash            string                               // Infohash for this instance
 	Routers         string                               // Comma-separated list of Bootstrap nodes
-	Interface       NetworkInterface                     // TAP Interface
-	Peers           *PeerList                            // Known peers
-	HolePunching    sync.Mutex                           // Mutex for hole punching sync
-	Proxies         []*proxyServer                       // List of proxies
-	outboundIP      net.IP                               // Outbound IP
+	//Interface       NetworkInterface                     // TAP Interface
+	Interface    TAP
+	Peers        *PeerList      // Known peers
+	HolePunching sync.Mutex     // Mutex for hole punching sync
+	Proxies      []*proxyServer // List of proxies
+	outboundIP   net.IP         // Outbound IP
 }
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
 func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	var err error
-	p.Interface.Name = interfaceName
+	if p.Interface == nil {
+		return fmt.Errorf("Failed to initialize TAP")
+	}
+	err = p.Interface.Init(interfaceName)
+	if err != nil {
+		return fmt.Errorf("Failed to initialize TAP: %s", err)
+	}
 
-	if p.Interface.IP == nil {
+	if p.Interface.GetIP() == nil {
 		return fmt.Errorf("No IP provided")
 	}
-	if p.Interface.Mac == nil {
+	if p.Interface.GetHardwareAddress() == nil {
 		return fmt.Errorf("No Hardware address provided")
 	}
 
@@ -76,20 +83,20 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 		return err
 	}
 
-	p.Interface.Interface, err = Open(p.Interface.Name, DevTap)
-	if p.Interface.Interface == nil {
-		Log(Error, "Failed to open TAP device %s: %v", p.Interface.Name, err)
+	err = p.Interface.Open()
+	if err != nil {
+		Log(Error, "Failed to open TAP device %s: %v", p.Interface.GetName(), err)
 		return err
 	}
-	Log(Info, "%v TAP Device created", p.Interface.Name)
+	Log(Info, "%v TAP Device created", p.Interface.GetName())
 
 	// Windows returns a real mac here. However, other systems should return empty string
-	hwaddr := ExtractMacFromInterface(p.Interface.Interface)
-	if hwaddr != "" {
-		p.Interface.Mac, _ = net.ParseMAC(hwaddr)
-	}
-
-	err = ConfigureInterface(p.Interface.Interface, p.Interface.IP.String(), p.Interface.Mac.String(), p.Interface.Name, p.IPTool)
+	// hwaddr := p.Interface.GetHardwareAddress()
+	// if hwaddr != nil {
+	// 	p.Interface.Mac, _ = net.ParseMAC(hwaddr)
+	// }
+	err = p.Interface.Configure()
+	// err = ConfigureInterface(p.Interface.Interface, p.Interface.IP.String(), p.Interface.Mac.String(), p.Interface.Name, p.IPTool)
 	Log(Info, "Interface has been configured")
 	return err
 }
@@ -99,13 +106,18 @@ func (p *PeerToPeer) ListenInterface() {
 	// Read packets received by TUN/TAP device and send them to a handlePacket goroutine
 	// This goroutine will decide what to do with this packet
 
+	if p.Interface == nil {
+		Log(Error, "Failed to start TAP listener: nil object")
+		return
+	}
+
 	// Run is for windows only
-	p.Interface.Interface.Run()
+	p.Interface.Run()
 	for {
 		if p.Shutdown {
 			break
 		}
-		packet, err := p.Interface.Interface.ReadPacket()
+		packet, err := p.Interface.ReadPacket()
 		if err != nil {
 			Log(Error, "Reading packet %s", err)
 			continue
@@ -117,8 +129,8 @@ func (p *PeerToPeer) ListenInterface() {
 	}
 	Log(Info, "Shutting down interface listener")
 
-	if runtime.GOOS != "windows" && p.Interface.Interface != nil {
-		closeInterface(p.Interface.Interface.file)
+	if p.Interface != nil {
+		p.Interface.Close()
 	}
 }
 
