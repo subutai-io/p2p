@@ -90,7 +90,7 @@ func (d *Daemon) Status() (*statusResponse, error) {
 	for _, inst := range instances {
 		instance := &statusInstance{
 			ID: inst.ID,
-			IP: inst.PTP.Interface.IP.String(),
+			IP: inst.PTP.Interface.GetIP().String(),
 		}
 		peers := inst.PTP.Peers.Get()
 		for _, peer := range peers {

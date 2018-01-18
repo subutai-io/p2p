@@ -334,7 +334,7 @@ func (dht *DHTClient) sendReportProxy(addr *net.UDPAddr) error {
 	return dht.send(data)
 }
 
-// Shutdown will close all connections and switch DHT object to
+// Close will close all connections and switch DHT object to
 // shutdown mode, which will terminate every loop/goroutine
 func (dht *DHTClient) Close() error {
 	dht.Connected = false

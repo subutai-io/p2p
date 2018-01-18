@@ -93,7 +93,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 	if args.Dev != "" {
 		instances := d.Instances.Get()
 		for _, inst := range instances {
-			if inst.PTP.Interface.Name == args.Dev {
+			if inst.PTP.Interface.GetName() == args.Dev {
 				resp.ExitCode = 1
 				resp.Output = "Device with specified name is already in use"
 				return errors.New(resp.Output)
@@ -129,15 +129,15 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		// Saving interface name
 		infFound := false
 		for _, inf := range InterfaceNames {
-			if inf == newInst.PTP.Interface.Name {
+			if inf == newInst.PTP.Interface.GetName() {
 				infFound = true
 			}
 		}
-		if !infFound && newInst.PTP.Interface.Name != "" {
-			InterfaceNames = append(InterfaceNames, newInst.PTP.Interface.Name)
+		if !infFound && newInst.PTP.Interface.GetName() != "" {
+			InterfaceNames = append(InterfaceNames, newInst.PTP.Interface.GetName())
 		}
 
-		usedIPs = append(usedIPs, newInst.PTP.Interface.IP.String())
+		usedIPs = append(usedIPs, newInst.PTP.Interface.GetIP().String())
 		ptp.Log(ptp.Info, "Instance created")
 		d.Instances.Update(args.Hash, newInst)
 

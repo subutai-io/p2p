@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -220,13 +219,19 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 	Log(Info, "%d interfaces were saved", len(p.LocalIPs))
 }
 
-// StartP2PInstance is an entry point of a P2P library.
+// New is an entry point of a P2P library.
 func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int, ignoreIPs []string, outboundIP net.IP) *PeerToPeer {
 	//argDht = "mdht.subut.ai:6881"
 	p := new(PeerToPeer)
 	p.outboundIP = outboundIP
 	p.Init()
-	p.Interface.Mac = p.validateMac(argMac)
+	var err error
+	p.Interface, err = newTAP(GetConfigurationTool(), "127.0.0.1", "00:00:00:00:00:00", "", DefaultMTU)
+	if err != nil {
+		Log(Error, "Failed to create TAP object: %s", err)
+		return nil
+	}
+	p.Interface.SetHardwareAddress(p.validateMac(argMac))
 	p.FindNetworkAddresses()
 	interfaceName, err := p.validateInterfaceName(argDev)
 	if err != nil {
@@ -348,22 +353,22 @@ func (p *PeerToPeer) retrieveFirstDHTRouter() *net.UDPAddr {
 
 func (p *PeerToPeer) prepareInterfaces(ip, interfaceName string) error {
 	if ip == "dhcp" {
-		ipn, maskn, err := p.RequestIP(p.Interface.Mac.String(), interfaceName)
+		ipn, maskn, err := p.RequestIP(p.Interface.GetHardwareAddress().String(), interfaceName)
 		if err != nil {
 			Log(Error, "%v", err)
 			return err
 		}
-		p.Interface.IP = ipn
-		p.Interface.Mask = maskn
+		p.Interface.SetIP(ipn)
+		p.Interface.SetMask(maskn)
 	} else {
-		p.Interface.IP = net.ParseIP(ip)
-		ipn, maskn, err := p.ReportIP(ip, p.Interface.Mac.String(), interfaceName)
+		p.Interface.SetIP(net.ParseIP(ip))
+		ipn, maskn, err := p.ReportIP(ip, p.Interface.GetHardwareAddress().String(), interfaceName)
 		if err != nil {
 			Log(Error, "%v", err)
 			return err
 		}
-		p.Interface.IP = ipn
-		p.Interface.Mask = maskn
+		p.Interface.SetIP(ipn)
+		p.Interface.SetMask(maskn)
 	}
 	return nil
 }
@@ -454,8 +459,8 @@ func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	p.Interface.IP = p.Dht.IP
-	p.Interface.Mask = p.Dht.Network.Mask
+	p.Interface.SetIP(p.Dht.IP)
+	p.Interface.SetMask(p.Dht.Network.Mask)
 	err := p.AssignInterface(device)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to configure interface: %s", err)
@@ -641,7 +646,7 @@ func (p *PeerToPeer) checkProxies() {
 // PrepareIntroductionMessage collects client ID, mac and IP address
 // and create a comma-separated line
 func (p *PeerToPeer) PrepareIntroductionMessage(id string) *P2PMessage {
-	var intro = id + "," + p.Interface.Mac.String() + "," + p.Interface.IP.String()
+	var intro = id + "," + p.Interface.GetHardwareAddress().String() + "," + p.Interface.GetIP().String()
 	msg := CreateIntroP2PMessage(p.Crypter, intro, 0)
 	return msg
 }
@@ -672,11 +677,11 @@ func (p *PeerToPeer) WriteToDevice(b []byte, proto uint16, truncated bool) {
 	packet.Protocol = int(proto)
 	packet.Truncated = truncated
 	packet.Packet = b
-	if p.Interface.Interface == nil {
+	if p.Interface == nil {
 		Log(Error, "TAP Interface not initialized")
 		return
 	}
-	err := p.Interface.Interface.WritePacket(&packet)
+	err := p.Interface.WritePacket(&packet)
 	if err != nil {
 		Log(Error, "Failed to write to TAP Interface: %v", err)
 	}
@@ -747,8 +752,9 @@ func (p *PeerToPeer) StopInstance() {
 	}
 	p.UDPSocket.Stop()
 
-	if runtime.GOOS != "windows" && p.Interface.Interface != nil {
-		closeInterface(p.Interface.Interface.file)
+	if p.Interface != nil {
+		err := p.Interface.Close()
+		Log(Error, "Failed to close TAP interface: %s", err)
 	}
 	p.ReadyToStop = true
 	Log(Info, "Instance %s stopped", hash)

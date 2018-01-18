@@ -41,6 +41,10 @@ type TAP interface {
 	GetIP() net.IP
 	GetMask() net.IPMask
 	GetBasename() string
+	SetName(string)
+	SetHardwareAddress(net.HardwareAddr)
+	SetIP(net.IP)
+	SetMask(net.IPMask)
 	Init(string) error
 	Open() error
 	Close() error

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/exec"
 	"syscall"
 	"unsafe"
 )
@@ -13,7 +14,7 @@ import (
 // Constants
 const (
 	ConfigDir  string = "/usr/local/etc"
-	DefaultMTU string = "1376"
+	DefaultMTU int    = 1376
 )
 
 // func openDevice(ifPattern string) (*os.File, error) {
@@ -131,6 +132,36 @@ func GetDeviceBase() string {
 	return "vptp"
 }
 
+// GetConfigurationTool function will return path to configuration tool on specific platform
+func GetConfigurationTool() string {
+	path, err := exec.LookPath("ip")
+	if err != nil {
+		Log(Error, "Failed to find `ip` in path. Returning default /bin/ip")
+		return "/bin/ip"
+	}
+	Log(Info, "Network configuration tool found: %s", path)
+	return path
+}
+
+func newTAP(tool, ip, mac, mask string, mtu int) (*TAPLinux, error) {
+	nip := net.ParseIP(ip)
+	if nip == nil {
+		return nil, fmt.Errorf("Failed to parse IP during TAP creation")
+	}
+	nmac, err := net.ParseMAC(mac)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse MAC during TAP creation: %s", err)
+	}
+	return &TAPLinux{
+		Tool: tool,
+		IP:   nip,
+		Mac:  nmac,
+		Mask: net.IPv4Mask(255, 255, 255, 0), // Unused yet
+		MTU:  DefaultMTU,
+	}, nil
+}
+
+// TAPLinux is an interface for TAP device on Linux platform
 type TAPLinux struct {
 	IP   net.IP           // IP
 	Mask net.IPMask       // Mask
@@ -141,31 +172,58 @@ type TAPLinux struct {
 	file *os.File         // Interface descriptor
 }
 
+// GetName returns a name of interface
 func (t *TAPLinux) GetName() string {
 	return t.Name
 }
 
+// GetHardwareAddress returns a MAC address of the interface
 func (t *TAPLinux) GetHardwareAddress() net.HardwareAddr {
 	return t.Mac
 }
 
+// GetIP returns IP addres of the interface
 func (t *TAPLinux) GetIP() net.IP {
 	return t.IP
 }
 
+// GetMask returns an IP mask of the interface
 func (t *TAPLinux) GetMask() net.IPMask {
 	return t.Mask
 }
 
+// GetBasename returns a prefix for automatically generated interface names
 func (t *TAPLinux) GetBasename() string {
 	return "vptp"
 }
 
+// SetName will set interface name
+func (t *TAPLinux) SetName(name string) {
+	t.Name = name
+}
+
+// SetHardwareAddress will set MAC
+func (t *TAPLinux) SetHardwareAddress(mac net.HardwareAddr) {
+	t.Mac = mac
+}
+
+// SetIP will set IP
+func (t *TAPLinux) SetIP(ip net.IP) {
+	t.IP = ip
+}
+
+// SetMask will set mask
+func (t *TAPLinux) SetMask(mask net.IPMask) {
+	t.Mask = mask
+}
+
+// Init will initialize TAP interface creation process
 func (t *TAPLinux) Init(name string) error {
 	t.Name = name
 	return nil
 }
 
+// Open will open a file descriptor for a new interface
 func (t *TAPLinux) Open() error {
 	var err error
 	t.file, err = os.OpenFile("/dev/net/tun", os.O_RDWR, 0)
@@ -179,10 +237,11 @@ func (t *TAPLinux) Open() error {
 	return nil
 }
 
+// Close will close TAP interface by closing it's file descriptor
 func (t *TAPLinux) Close() error {
-	if file != nil {
+	if t.file != nil {
 		Log(Info, "Closing network interface %s", t.GetName())
-		err := file.Close()
+		err := t.file.Close()
 		if err != nil {
 			return fmt.Errorf("Failed to close network interface: %s", err)
 		}
@@ -193,27 +252,29 @@ func (t *TAPLinux) Close() error {
 	return nil
 }
 
+// Configure will configure interface using system calls to commands
 func (t *TAPLinux) Configure() error {
-	Log(Info, "Configuring %s. IP: %s, Mac: %s", t.Name, t.IP.String(), t.Mac())
+	Log(Info, "Configuring %s. IP: %s, Mac: %s", t.Name, t.IP.String(), t.Mac.String())
 	err := t.linkUp()
 	if err != nil {
 		return err
 	}
 
-	err = t.setMTU(DefaultMTU)
+	err = t.setMTU()
 	if err != nil {
 		return err
 	}
 
 	// Configure new device
-	err = t.setIP(ip)
+	err = t.setIP()
 	if err != nil {
 		return err
 	}
 
-	return t.setMac(mac)
+	return t.setMac()
 }
 
+// ReadPacket will read single packet from network interface
 func (t *TAPLinux) ReadPacket() (*Packet, error) {
 	buf := make([]byte, 4096)
 
@@ -229,6 +290,7 @@ func (t *TAPLinux) ReadPacket() (*Packet, error) {
 	return pkt, nil
 }
 
+// WritePacket will write a single packet to interface
 func (t *TAPLinux) WritePacket(packet *Packet) error {
 	n, err := t.file.Write(packet.Packet)
 	if err != nil {
@@ -240,6 +302,7 @@ func (t *TAPLinux) WritePacket(packet *Packet) error {
 	return nil
 }
 
+// Run will start TAP processes
 func (t *TAPLinux) Run() {
 
 }
@@ -257,20 +320,45 @@ func (t *TAPLinux) createInterface() error {
 	return nil
 }
 
-func newTAP(tool, ip, mac, mask string, mtu int) (*TAPLinux, error) {
-	nip, err := net.ParseIP(ip)
+func (t *TAPLinux) setMTU() error {
+	mtu := fmt.Sprintf("%d", t.MTU)
+	setmtu := exec.Command(t.Tool, "link", "set", "dev", t.Name, "mtu", mtu)
+	err := setmtu.Run()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse IP during TAP creation: %s", err)
+		Log(Error, "Failed to set MTU on device %s: %v", t.Name, err)
+		return err
 	}
-	nmac, err := net.ParseMAC(mac)
+	return nil
+}
+
+func (t *TAPLinux) linkUp() error {
+	linkup := exec.Command(t.Tool, "link", "set", "dev", t.Name, "up")
+	err := linkup.Run()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse MAC during TAP creation: %s", err)
+		Log(Error, "Failed to up link: %v", err)
+		return err
 	}
-	return &TAPLinux{
-		Tool: tool,
-		IP:   nip,
-		Mac:  nmac,
-		Mask: "255.255.255.0", // Unused yet
-		MTU:  DefaultMTU,
-	}, nil
+	return nil
+}
+
+func (t *TAPLinux) setIP() error {
+	Log(Info, "Setting %s IP on device %s", t.IP.String(), t.Name)
+	setip := exec.Command(t.Tool, "addr", "add", t.IP.String()+"/24", "dev", t.Name)
+	err := setip.Run()
+	if err != nil {
+		Log(Error, "Failed to set IP: %v", err)
+		return err
+	}
+	return err
+}
+
+func (t *TAPLinux) setMac() error {
+	Log(Info, "Setting %s MAC on device %s", t.Mac.String(), t.Name)
+	setmac := exec.Command(t.Tool, "link", "set", "dev", t.Name, "address", t.Mac.String())
+	err := setmac.Run()
+	if err != nil {
+		Log(Error, "Failed to set MAC: %v", err)
+		return err
+	}
+	return err
 }

@@ -9,6 +9,7 @@ import (
 	"fmt"
 )
 
+// PlatformType constant holds type of platform
 const PlatformType string = "posix"
 
 // Interface represent network interface
@@ -111,6 +112,7 @@ func Syslog(level LogLevel, format string, v ...interface{}) {
 	}
 }
 
+// SetupPlatform runs platform specific preparations during p2p daemon creation
 func SetupPlatform(remove bool) {
 	// Not used on POSIX
 }
