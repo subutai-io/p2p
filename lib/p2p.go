@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -17,13 +16,13 @@ import (
 type MessageHandler func(message *P2PMessage, srcAddr *net.UDPAddr)
 
 // NetworkInterface keeps information about P2P network interface
-type NetworkInterface struct {
-	IP        net.IP           // IP
-	Mask      net.IPMask       // Mask
-	Mac       net.HardwareAddr // Hardware Address
-	Name      string           // Network interface name
-	Interface *Interface       // TAP Interface
-}
+// type NetworkInterface struct {
+// 	IP        net.IP           // IP
+// 	Mask      net.IPMask       // Mask
+// 	Mac       net.HardwareAddr // Hardware Address
+// 	Name      string           // Network interface name
+// 	Interface *Interface       // TAP Interface
+// }
 
 // PeerToPeer - Main structure
 type PeerToPeer struct {
@@ -42,22 +41,29 @@ type PeerToPeer struct {
 	PeersLock       sync.Mutex                           // Lock for peers map
 	Hash            string                               // Infohash for this instance
 	Routers         string                               // Comma-separated list of Bootstrap nodes
-	Interface       NetworkInterface                     // TAP Interface
-	Peers           *PeerList                            // Known peers
-	HolePunching    sync.Mutex                           // Mutex for hole punching sync
-	Proxies         []*proxyServer                       // List of proxies
-	outboundIP      net.IP                               // Outbound IP
+	//Interface       NetworkInterface                     // TAP Interface
+	Interface    TAP
+	Peers        *PeerList      // Known peers
+	HolePunching sync.Mutex     // Mutex for hole punching sync
+	Proxies      []*proxyServer // List of proxies
+	outboundIP   net.IP         // Outbound IP
 }
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
 func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	var err error
-	p.Interface.Name = interfaceName
+	if p.Interface == nil {
+		return fmt.Errorf("Failed to initialize TAP")
+	}
+	err = p.Interface.Init(interfaceName)
+	if err != nil {
+		return fmt.Errorf("Failed to initialize TAP: %s", err)
+	}
 
-	if p.Interface.IP == nil {
+	if p.Interface.GetIP() == nil {
 		return fmt.Errorf("No IP provided")
 	}
-	if p.Interface.Mac == nil {
+	if p.Interface.GetHardwareAddress() == nil {
 		return fmt.Errorf("No Hardware address provided")
 	}
 
@@ -76,20 +82,20 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 		return err
 	}
 
-	p.Interface.Interface, err = Open(p.Interface.Name, DevTap)
-	if p.Interface.Interface == nil {
-		Log(Error, "Failed to open TAP device %s: %v", p.Interface.Name, err)
+	err = p.Interface.Open()
+	if err != nil {
+		Log(Error, "Failed to open TAP device %s: %v", p.Interface.GetName(), err)
 		return err
 	}
-	Log(Info, "%v TAP Device created", p.Interface.Name)
+	Log(Info, "%v TAP Device created", p.Interface.GetName())
 
 	// Windows returns a real mac here. However, other systems should return empty string
-	hwaddr := ExtractMacFromInterface(p.Interface.Interface)
-	if hwaddr != "" {
-		p.Interface.Mac, _ = net.ParseMAC(hwaddr)
-	}
-
-	err = ConfigureInterface(p.Interface.Interface, p.Interface.IP.String(), p.Interface.Mac.String(), p.Interface.Name, p.IPTool)
+	// hwaddr := p.Interface.GetHardwareAddress()
+	// if hwaddr != nil {
+	// 	p.Interface.Mac, _ = net.ParseMAC(hwaddr)
+	// }
+	err = p.Interface.Configure()
+	// err = ConfigureInterface(p.Interface.Interface, p.Interface.IP.String(), p.Interface.Mac.String(), p.Interface.Name, p.IPTool)
 	Log(Info, "Interface has been configured")
 	return err
 }
@@ -99,13 +105,18 @@ func (p *PeerToPeer) ListenInterface() {
 	// Read packets received by TUN/TAP device and send them to a handlePacket goroutine
 	// This goroutine will decide what to do with this packet
 
+	if p.Interface == nil {
+		Log(Error, "Failed to start TAP listener: nil object")
+		return
+	}
+
 	// Run is for windows only
-	p.Interface.Interface.Run()
+	p.Interface.Run()
 	for {
 		if p.Shutdown {
 			break
 		}
-		packet, err := p.Interface.Interface.ReadPacket()
+		packet, err := p.Interface.ReadPacket()
 		if err != nil {
 			Log(Error, "Reading packet %s", err)
 			continue
@@ -117,8 +128,8 @@ func (p *PeerToPeer) ListenInterface() {
 	}
 	Log(Info, "Shutting down interface listener")
 
-	if runtime.GOOS != "windows" && p.Interface.Interface != nil {
-		closeInterface(p.Interface.Interface.file)
+	if p.Interface != nil {
+		p.Interface.Close()
 	}
 }
 
@@ -208,13 +219,19 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 	Log(Info, "%d interfaces were saved", len(p.LocalIPs))
 }
 
-// StartP2PInstance is an entry point of a P2P library.
+// New is an entry point of a P2P library.
 func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int, ignoreIPs []string, outboundIP net.IP) *PeerToPeer {
 	//argDht = "mdht.subut.ai:6881"
 	p := new(PeerToPeer)
 	p.outboundIP = outboundIP
 	p.Init()
-	p.Interface.Mac = p.validateMac(argMac)
+	var err error
+	p.Interface, err = newTAP(GetConfigurationTool(), "127.0.0.1", "00:00:00:00:00:00", "", DefaultMTU)
+	if err != nil {
+		Log(Error, "Failed to create TAP object: %s", err)
+		return nil
+	}
+	p.Interface.SetHardwareAddress(p.validateMac(argMac))
 	p.FindNetworkAddresses()
 	interfaceName, err := p.validateInterfaceName(argDev)
 	if err != nil {
@@ -336,22 +353,22 @@ func (p *PeerToPeer) retrieveFirstDHTRouter() *net.UDPAddr {
 
 func (p *PeerToPeer) prepareInterfaces(ip, interfaceName string) error {
 	if ip == "dhcp" {
-		ipn, maskn, err := p.RequestIP(p.Interface.Mac.String(), interfaceName)
+		ipn, maskn, err := p.RequestIP(p.Interface.GetHardwareAddress().String(), interfaceName)
 		if err != nil {
 			Log(Error, "%v", err)
 			return err
 		}
-		p.Interface.IP = ipn
-		p.Interface.Mask = maskn
+		p.Interface.SetIP(ipn)
+		p.Interface.SetMask(maskn)
 	} else {
-		p.Interface.IP = net.ParseIP(ip)
-		ipn, maskn, err := p.ReportIP(ip, p.Interface.Mac.String(), interfaceName)
+		p.Interface.SetIP(net.ParseIP(ip))
+		ipn, maskn, err := p.ReportIP(ip, p.Interface.GetHardwareAddress().String(), interfaceName)
 		if err != nil {
 			Log(Error, "%v", err)
 			return err
 		}
-		p.Interface.IP = ipn
-		p.Interface.Mask = maskn
+		p.Interface.SetIP(ipn)
+		p.Interface.SetMask(maskn)
 	}
 	return nil
 }
@@ -442,8 +459,8 @@ func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	p.Interface.IP = p.Dht.IP
-	p.Interface.Mask = p.Dht.Network.Mask
+	p.Interface.SetIP(p.Dht.IP)
+	p.Interface.SetMask(p.Dht.Network.Mask)
 	err := p.AssignInterface(device)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to configure interface: %s", err)
@@ -629,7 +646,7 @@ func (p *PeerToPeer) checkProxies() {
 // PrepareIntroductionMessage collects client ID, mac and IP address
 // and create a comma-separated line
 func (p *PeerToPeer) PrepareIntroductionMessage(id string) *P2PMessage {
-	var intro = id + "," + p.Interface.Mac.String() + "," + p.Interface.IP.String()
+	var intro = id + "," + p.Interface.GetHardwareAddress().String() + "," + p.Interface.GetIP().String()
 	msg := CreateIntroP2PMessage(p.Crypter, intro, 0)
 	return msg
 }
@@ -660,11 +677,11 @@ func (p *PeerToPeer) WriteToDevice(b []byte, proto uint16, truncated bool) {
 	packet.Protocol = int(proto)
 	packet.Truncated = truncated
 	packet.Packet = b
-	if p.Interface.Interface == nil {
+	if p.Interface == nil {
 		Log(Error, "TAP Interface not initialized")
 		return
 	}
-	err := p.Interface.Interface.WritePacket(&packet)
+	err := p.Interface.WritePacket(&packet)
 	if err != nil {
 		Log(Error, "Failed to write to TAP Interface: %v", err)
 	}
@@ -735,8 +752,9 @@ func (p *PeerToPeer) StopInstance() {
 	}
 	p.UDPSocket.Stop()
 
-	if runtime.GOOS != "windows" && p.Interface.Interface != nil {
-		closeInterface(p.Interface.Interface.file)
+	if p.Interface != nil {
+		err := p.Interface.Close()
+		Log(Error, "Failed to close TAP interface: %s", err)
 	}
 	p.ReadyToStop = true
 	Log(Info, "Instance %s stopped", hash)

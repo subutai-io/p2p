@@ -80,9 +80,9 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	pt := PingType(msg.Header.NetProto)
 	if pt == PingReq {
-		Log(Debug, "Ping request received: %s. Responding with %s", string(msg.Data), p.Interface.Mac.String())
+		Log(Debug, "Ping request received: %s. Responding with %s", string(msg.Data), p.Interface.GetHardwareAddress().String())
 		// Send a PING response
-		r := CreateXpeerPingMessage(p.Crypter, PingResp, p.Interface.Mac.String())
+		r := CreateXpeerPingMessage(p.Crypter, PingResp, p.Interface.GetHardwareAddress().String())
 		addr, err := net.ParseMAC(string(msg.Data))
 		if err != nil {
 			Log(Error, "Failed to parse MAC address in crosspeer ping message")
