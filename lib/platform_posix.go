@@ -13,10 +13,10 @@ import (
 const PlatformType string = "posix"
 
 // Interface represent network interface
-type Interface struct {
-	Name string
-	file *os.File
-}
+// type Interface struct {
+// 	Name string
+// 	file *os.File
+// }
 
 var syslogLevel = [...]syslog.Priority{syslog.LOG_DEBUG, syslog.LOG_DEBUG, syslog.LOG_INFO, syslog.LOG_WARNING, syslog.LOG_ERR}
 

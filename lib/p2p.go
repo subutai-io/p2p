@@ -16,13 +16,13 @@ import (
 type MessageHandler func(message *P2PMessage, srcAddr *net.UDPAddr)
 
 // NetworkInterface keeps information about P2P network interface
-type NetworkInterface struct {
-	IP        net.IP           // IP
-	Mask      net.IPMask       // Mask
-	Mac       net.HardwareAddr // Hardware Address
-	Name      string           // Network interface name
-	Interface *Interface       // TAP Interface
-}
+// type NetworkInterface struct {
+// 	IP        net.IP           // IP
+// 	Mask      net.IPMask       // Mask
+// 	Mac       net.HardwareAddr // Hardware Address
+// 	Name      string           // Network interface name
+// 	Interface *Interface       // TAP Interface
+// }
 
 // PeerToPeer - Main structure
 type PeerToPeer struct {

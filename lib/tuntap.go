@@ -30,9 +30,9 @@ type Packet struct {
 
 // InterfaceName - The name of the interface. May be different from the name given to
 // Open(), if the latter was a pattern.
-func (t *Interface) InterfaceName() string {
-	return t.Name
-}
+// func (t *Interface) InterfaceName() string {
+// 	return t.Name
+// }
 
 // TAP interface
 type TAP interface {
