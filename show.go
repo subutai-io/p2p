@@ -191,7 +191,7 @@ func (d *Daemon) showInterfaces() ([]byte, error) {
 	out := []ShowOutput{}
 	for _, inst := range instances {
 		if inst.PTP != nil {
-			s := ShowOutput{InterfaceName: inst.PTP.Interface.Name}
+			s := ShowOutput{InterfaceName: inst.PTP.Interface.GetName()}
 			out = append(out, s)
 		}
 	}
@@ -213,8 +213,8 @@ func (d *Daemon) showInstances() ([]byte, error) {
 	for key, inst := range instances {
 		if inst.PTP != nil {
 			s := ShowOutput{
-				HardwareAddress: inst.PTP.Interface.Mac.String(),
-				IP:              inst.PTP.Interface.IP.String(),
+				HardwareAddress: inst.PTP.Interface.GetHardwareAddress().String(),
+				IP:              inst.PTP.Interface.GetIP().String(),
 				Hash:            key,
 			}
 			out = append(out, s)

@@ -67,7 +67,7 @@ func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
 			resp.Output = "Instance with hash " + args.Hash + " was not found"
 			return nil
 		} else {
-			ip := inst.PTP.Interface.IP.String()
+			ip := inst.PTP.Interface.GetIP().String()
 			resp.Output = "Shutting down " + args.Hash
 			inst.PTP.StopInstance()
 			p.Instances.Delete(args.Hash)
@@ -88,7 +88,7 @@ func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
 		for i, inf := range InterfaceNames {
 			if inf == args.Dev {
 				for _, instance := range instances {
-					if instance.PTP.Interface.Name == args.Dev {
+					if instance.PTP.Interface.GetName() == args.Dev {
 						resp.ExitCode = 12
 						resp.Output += "Can't remove interface: In use"
 						return nil

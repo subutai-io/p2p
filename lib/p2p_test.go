@@ -41,8 +41,7 @@ func TestGenerateMac(t *testing.T) {
 
 func TestPrepareIntroductionMessage(t *testing.T) {
 	p := new(PeerToPeer)
-	p.Interface.Mac, _ = net.ParseMAC("01:02:03:04:05:06")
-	p.Interface.IP = net.ParseIP("127.0.0.1")
+	p.Interface, _ = newTAP("", "127.0.0.1", "01:02:03:04:05:06", "", 1)
 	msg := p.PrepareIntroductionMessage("test-id")
 	if string(msg.Data) != "test-id,01:02:03:04:05:06,127.0.0.1" {
 		t.Errorf("Failed to create introduction message")
