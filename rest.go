@@ -101,6 +101,9 @@ func getJSON(body io.ReadCloser, args *DaemonArgs) error {
 		return err
 	}
 	//args := new(RunArgs)
+	if len(data) == 0 {
+		return nil
+	}
 	err = json.Unmarshal(data, args)
 	if err != nil {
 		return err
