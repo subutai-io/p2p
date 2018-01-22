@@ -199,6 +199,7 @@ func (t *TAPWindows) Configure() error {
 }
 
 func (t *TAPWindows) Run() {
+	Log(Info, "Started packet listener")
 	t.Rx = make(chan []byte, 1500)
 	t.Tx = make(chan []byte, 1500)
 	go func() {
