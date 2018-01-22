@@ -14,7 +14,7 @@ main
 tests/*
 /p2p-*
 /p2p_osx
-*.exe
+*.exe*
 *.zip
 *.tmp
 *.msi

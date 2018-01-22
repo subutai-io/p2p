@@ -39,7 +39,8 @@ gopath=
 upx_go=$GOPATH/bin/goupx
 name_prefix=p2p
 scheme="master"
-branch=`git branch | grep \* | cut -d ' ' -f2`
+#branch=`git branch | grep \* | cut -d ' ' -f2`
+branch=`git rev-parse --abbrev-ref HEAD`
 maintainer="Subutai Social"
 maintainer_email="jenkins@subut.ai"
 build_deb=1
@@ -110,6 +111,20 @@ else
     exit 1
 fi
 echo "Building $name_base"
+
+if [ "$dht" == "" ]; then
+    echo "Determining DHT address"
+    if [ "$branch" == "HEAD" ]; then
+        dht="mdht.subut.ai:6881"
+    elif [ "$branch" == "master" ]; then
+        dht="54.93.172.70:6881"
+    else
+        dht="18.195.169.215:6881"
+    fi
+    echo "DHT is set to $dht"
+else
+    echo "DHT is set to $dht"
+fi
 
 echo "checking go environment"
 if [ "$GOPATH" == "" ]; then
@@ -250,6 +265,7 @@ echo "NAME_BASE = $name_base" >> config.make
 echo "NAME_PREFIX = $name_prefix" >> config.make
 echo "BUILD_DEB = $build_deb" >> config.make
 echo "PREFIX = $prefix" >> config.make
+echo "DHT_ENDPOINTS = $dht" >> config.make
 if [ "$dht" != "" ]; then
     echo "DHT = $dht" >> config.make
 fi
@@ -261,6 +277,7 @@ echo "export NAME_BASE" >> config.make
 echo "export BUILD_DEB" >> config.make
 echo "export NAME_PREFIX" >> config.make
 echo "export PREFIX" >> config.make
+echo "export DHT_ENDPOINTS" >> config.make
 if [ ! -z "$gopath" ]; then
 echo "GOPATH = $HOME" >> config.make
 echo "export GOPATH" >> config.make
