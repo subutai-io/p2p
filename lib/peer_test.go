@@ -33,6 +33,7 @@ func TestSetState(t *testing.T) {
 		}
 	}
 }
+
 func TestSetPeerAddr(t *testing.T) {
 	np := new(NetworkPeer)
 

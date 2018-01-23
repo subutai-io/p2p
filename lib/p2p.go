@@ -150,7 +150,8 @@ func (p *PeerToPeer) IsDeviceExists(name string) bool {
 
 // GenerateDeviceName method will generate device name if none were specified at startup
 func (p *PeerToPeer) GenerateDeviceName(i int) string {
-	var devName = GetDeviceBase() + fmt.Sprintf("%d", i)
+	tap, _ := newTAP("", "127.0.0.1", "00:00:00:00:00:00", "", 0)
+	var devName = tap.GetBasename() + fmt.Sprintf("%d", i)
 	if p.IsDeviceExists(devName) {
 		return p.GenerateDeviceName(i + 1)
 	}
