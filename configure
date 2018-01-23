@@ -29,6 +29,10 @@ Options:
     --dht=<url>
         Default DHT url
 
+    --branch=<branch_ name>
+        Specify a branch name. By default configure script will try to determine branch name
+        using command line. Setting this option will modify version output and target DHT
+
     --help
     Display this help screen
 ENDHELP
@@ -53,6 +57,8 @@ while [ $# -ge 1 ]; do
     case "$1" in
         --scheme=*)
             scheme="`echo ${1} | awk '{print substr($0,10)}'`" ;;
+        --branch=*)
+            branch="`echo ${1} | awk '{print substr($0,10)}'`" ;;
         --maintainer=*)
             maintainer="`echo ${1} | awk '{print substr($0,14)}'`" ;;
         --maintainer-email=*)
@@ -273,7 +279,10 @@ fi
 if [ "$upx_bin" != "" ]; then
     echo "UPX_BIN = $upx_bin" >> config.make
 fi
-echo "BRANCH_NAME = $branch" >> config.make
+if [ "$branch" != "HEAD" ]; then
+    echo "BRANCH_POSTFIX = -$branch" >> config.make
+fi
+#
 echo "export UPX_GO" >> config.make
 echo "export NAME_BASE" >> config.make
 echo "export BUILD_DEB" >> config.make
@@ -287,5 +296,6 @@ fi
 if [ "$upx_bin" != "" ]; then
     echo "export UPX_BIN" >> config.make
 fi
-
-echo "export BRANCH_NAME" >> config.make
+if [ "$branch" != "HEAD" ]; then
+    echo "export BRANCH_POSTFIX" >> config.make
+fi
