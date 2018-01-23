@@ -33,17 +33,6 @@ func TestSetState(t *testing.T) {
 		}
 	}
 }
-
-func TestProbeLocalConnection(t *testing.T) {
-	np := new(NetworkPeer)
-	ptp := new(PeerToPeer)
-	wait := false
-	get := np.ProbeLocalConnection(ptp)
-	if get != wait {
-		t.Errorf("Error. Wait %v, get %v", wait, get)
-	}
-}
-
 func TestSetPeerAddr(t *testing.T) {
 	np := new(NetworkPeer)
 
