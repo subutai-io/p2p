@@ -48,15 +48,15 @@ all: linux windows macos
 
 $(APP): $(SOURCES) service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
-	$(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(SCHEME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
+	$(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)-$(BRANCH_NAME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 
 $(APP).exe: $(SOURCES) service_windows.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
-	GOOS=windows $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(SCHEME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
+	GOOS=windows $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)-$(BRANCH_NAME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 	
 $(APP)_osx: $(SOURCES) service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
-	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(SCHEME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
+	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)-$(BRANCH_NAME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 
 ifdef UPX_BIN
 pack: $(APP)
@@ -116,4 +116,4 @@ snapcraft: $(SOURCES) service_posix.go
 	$(eval export GOBIN=$(shell pwd)/../go/bin)
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	$(CC) get -d
-	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)$(SCHEME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $(APP) -v $^
+	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)-$(BRANCH_NAME) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $(APP) -v $^

@@ -132,6 +132,7 @@ if [ "$GOPATH" == "" ]; then
 	gopath=~
 fi
 
+# GO UPX
 echo "checking upx"
 hash upx 2>/dev/null || { echo >&2 "upx is not installed" ; upx_bin="" ; }
 
@@ -224,34 +225,34 @@ fi
 
 echo "Downloading necessary packages"
 if [ ! -z $gopath ]; then
-export GOPATH=$HOME
-export GOBIN=$HOME/go-bin
+    export GOPATH=$HOME
+    export GOBIN=$HOME/go-bin
 fi
 
 # Download necessary package
 if [ "$build_deb" == "1" ]; then
-go get github.com/subutai-io/p2p
-go get github.com/subutai-io/p2p/lib
-go get github.com/mdlayher/ethernet
-go get github.com/jackpal/bencode-go
-go get gopkg.in/check.v1
-go get gopkg.in/yaml.v2
+    go get github.com/subutai-io/p2p
+    go get github.com/subutai-io/p2p/lib
+    go get github.com/mdlayher/ethernet
+    go get github.com/jackpal/bencode-go
+    go get gopkg.in/check.v1
+    go get gopkg.in/yaml.v2
 
-rm -rf debian/extra-code
-mkdir -p debian/extra-code
-#mkdir -p debian/extra-code/src/github.com/subutai-io
-#cp -r $GOPATH/src/github.com/subutai-io/p2p debian/extra-code/src/github.com/subutai-io
-mkdir -p debian/extra-code/src/github.com/mdlayher
-cp -r $GOPATH/src/github.com/mdlayher/ethernet debian/extra-code/src/github.com/mdlayher
-mkdir -p debian/extra-code/src/github.com/jackpal
-cp -r $GOPATH/src/github.com/jackpal/bencode-go debian/extra-code/src/github.com/jackpal
-mkdir -p debian/extra-code/src/gopkg.in
-cp -r $GOPATH/src/gopkg.in/yaml.v2 debian/extra-code/src/gopkg.in
-mkdir -p debian/extra-code/src/gopkg.in
-cp -r $GOPATH/src/gopkg.in/check.v1 debian/extra-code/src/gopkg.in
+    rm -rf debian/extra-code
+    mkdir -p debian/extra-code
+    #mkdir -p debian/extra-code/src/github.com/subutai-io
+    #cp -r $GOPATH/src/github.com/subutai-io/p2p debian/extra-code/src/github.com/subutai-io
+    mkdir -p debian/extra-code/src/github.com/mdlayher
+    cp -r $GOPATH/src/github.com/mdlayher/ethernet debian/extra-code/src/github.com/mdlayher
+    mkdir -p debian/extra-code/src/github.com/jackpal
+    cp -r $GOPATH/src/github.com/jackpal/bencode-go debian/extra-code/src/github.com/jackpal
+    mkdir -p debian/extra-code/src/gopkg.in
+    cp -r $GOPATH/src/gopkg.in/yaml.v2 debian/extra-code/src/gopkg.in
+    mkdir -p debian/extra-code/src/gopkg.in
+    cp -r $GOPATH/src/gopkg.in/check.v1 debian/extra-code/src/gopkg.in
 else
-echo "Copying extra-code to GOPATH: $GOPATH"
-cp -r debian/extra-code/* $GOPATH
+    echo "Copying extra-code to GOPATH: $GOPATH"
+    cp -r debian/extra-code/* $GOPATH
 fi
 
 if [ $? != 0 ]; then
@@ -272,6 +273,7 @@ fi
 if [ "$upx_bin" != "" ]; then
     echo "UPX_BIN = $upx_bin" >> config.make
 fi
+echo "BRANCH_NAME = $branch" >> config.make
 echo "export UPX_GO" >> config.make
 echo "export NAME_BASE" >> config.make
 echo "export BUILD_DEB" >> config.make
@@ -285,3 +287,5 @@ fi
 if [ "$upx_bin" != "" ]; then
     echo "export UPX_BIN" >> config.make
 fi
+
+echo "export BRANCH_NAME" >> config.make
