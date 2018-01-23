@@ -282,6 +282,7 @@ fi
 if [ "$branch" != "HEAD" ]; then
     echo "BRANCH_POSTFIX = -$branch" >> config.make
 fi
+#
 echo "export UPX_GO" >> config.make
 echo "export NAME_BASE" >> config.make
 echo "export BUILD_DEB" >> config.make
