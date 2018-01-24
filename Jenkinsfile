@@ -230,7 +230,7 @@ try {
     */
 
     node("debian") {
-        notifyBuild('STARTED', "${gitcmd}")
+        notifyBuild('INFO', "Extra: ${gitcmd}")
         stage("Packaging for Debian")
         notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
 
@@ -270,6 +270,10 @@ def notifyBuild(String buildStatus = 'STARTED', String details = '') {
   if (buildStatus == 'STARTED') {
     color = 'YELLOW'
     colorCode = '#FFFF00'  
+  } else if (buildStatus == 'INFO') {
+    color = 'GREY'
+    colorCode = '#555555'
+    summary = "${subject}: ${details}"
   } else if (buildStatus == 'SUCCESSFUL') {
     color = 'GREEN'
     colorCode = '#00FF00'
