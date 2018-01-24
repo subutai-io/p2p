@@ -1,7 +1,6 @@
 package ptp
 
 import (
-	"net"
 	"testing"
 )
 
@@ -34,24 +33,6 @@ func TestParseIntroString(t *testing.T) {
 	id, mac, ip := p.ParseIntroString("id,01:02:03:04:05:06,127.0.0.1")
 	if id != "id" || mac.String() != "01:02:03:04:05:06" || ip.String() != "127.0.0.1" {
 		t.Errorf("Failed to parse intro string")
-	}
-}
-
-func TestGenerateMac(t *testing.T) {
-	macs := make(map[string]net.HardwareAddr)
-
-	for i := 0; i < 10000; i++ {
-		smac, mac := GenerateMAC()
-		if smac == "" {
-			t.Errorf("Failed to generate mac")
-			return
-		}
-		_, e := macs[smac]
-		if e {
-			t.Errorf("Same MAC was generated")
-			return
-		}
-		macs[smac] = mac
 	}
 }
 
