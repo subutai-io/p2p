@@ -60,7 +60,7 @@ func TestGetInfohash(t *testing.T) {
 		dht.Infohash = Infohashs[i]
 		get := dht.GetInfohash()
 		if get != Infohashs[i] {
-			t.Error("Error.")
+			t.Errorf("Error.Wait %v, get %v", dht.Data, get)
 		}
 	}
 }
