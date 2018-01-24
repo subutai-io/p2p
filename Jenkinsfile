@@ -15,10 +15,12 @@ switch (env.BRANCH_NAME) {
 		cdnHost = "devcdn.subut.ai";
 		dhtHost = "18.195.169.215:6881";
         gitcmd = "git checkout -B dev && git pull origin dev"
+        break;
 	case ~/sysnet/:
 		cdnHost = "devcdn.subut.ai";
 		dhtHost = "18.195.169.215:6881";
         gitcmd = "git checkout -B sysnet && git pull origin sysnet "
+        break;
 	default: 
 		cdnHost = "devcdn.subut.ai";
 		dhtHost = "mdht.subut.ai:6881"
