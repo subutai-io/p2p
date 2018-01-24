@@ -218,6 +218,11 @@ try {
 		}
 	}
 
+    node("windows") {
+        Stage("Packaging for Windows")
+        notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
+    }
+
 } catch (e) { 
 	currentBuild.result = "FAILED"
 	throw e
