@@ -230,6 +230,7 @@ try {
     */
 
     node("debian") {
+        notifyBuild('STARTED', "${gitcmd}")
         stage("Packaging for Debian")
         notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
 
