@@ -12,7 +12,7 @@ func TestSerialize(t *testing.T) {
 		wait[i] = 0
 	}
 	get := p.Serialize()
-	if bytes.EqualFold(wait, get) != true {
+	if !bytes.EqualFold(wait, get) {
 		t.Errorf("Error. Wait: %v, get: %v", wait, get)
 	}
 }
