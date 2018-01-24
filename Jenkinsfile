@@ -219,11 +219,12 @@ try {
 			}
 		}
 	}
-
+/*
     node("windows") {
         Stage("Packaging for Windows")
         notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
     }
+    */
 
     node("debian") {
         Stage("Packaging for Debian")
