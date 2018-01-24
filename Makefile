@@ -15,15 +15,7 @@ SOURCES=help.go instance.go main.go rest.go start.go stop.go show.go set.go stat
 #else
 #	SCHEME=-$(BRANCH)
 #endif
-#ifeq ($(BRANCH),dev)
-#	DHT=18.195.169.215:6881
-#endif
-#ifeq ($(BRANCH),master)
-#	DHT=54.93.172.70:6881
-#endif
-#ifeq ($(BRANCH),sysnet)
-#	DHT=18.195.169.215:6881
-#endif
+
 
 sinclude config.make
 ifdef DHT_ENDPOINTS
@@ -32,6 +24,16 @@ else
 	DHT=mdht.subut.ai:6881
 endif
 APP=$(NAME_BASE)
+
+ifeq ($(BRANCH),dev)
+	DHT=18.195.169.215:6881
+endif
+ifeq ($(BRANCH),master)
+	DHT=54.93.172.70:6881
+endif
+ifeq ($(BRANCH),sysnet)
+	DHT=18.195.169.215:6881
+endif
 
 
 build: $(APP)
