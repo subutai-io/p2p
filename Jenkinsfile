@@ -4,6 +4,7 @@ notifyBuildDetails = ""
 p2pCommitId = ""
 cdnHost = ""
 dhtHost = ""
+gitcmd = ""
 
 switch (env.BRANCH_NAME) {
 	case ~/master/: 
@@ -13,9 +14,11 @@ switch (env.BRANCH_NAME) {
 	case ~/dev/:
 		cdnHost = "devcdn.subut.ai";
 		dhtHost = "18.195.169.215:6881";
+        gitcmd = "git checkout -B dev && git pull origin dev"
 	case ~/sysnet/:
 		cdnHost = "devcdn.subut.ai";
 		dhtHost = "18.195.169.215:6881";
+        gitcmd = "git checkout -B sysnet && git pull origin sysnet "
 	default: 
 		cdnHost = "devcdn.subut.ai";
 		dhtHost = "mdht.subut.ai:6881"
@@ -234,6 +237,8 @@ try {
             set -x
             rm -rf /tmp/devops
             git clone git@github.com:optdyn/devops.git /tmp/devops
+            cd /tmp/devops
+            ${gitcmd}
             cd /tmp/devops/p2p
             ./configure --debian --branch=${env.BRANCH_NAME}
             cd linux
