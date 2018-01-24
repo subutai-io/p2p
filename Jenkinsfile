@@ -159,7 +159,7 @@ try {
 			/* get p2p version */
 			String p2pVersion = sh (script: """
 				set +x
-				./p2p -v | cut -d " " -f 4 | tr -d '\n'
+				./p2p -v | cut -d " " -f 3
 				""", returnStdout: true)
 			String responseP2P = sh (script: """
 				set +x
@@ -217,6 +217,26 @@ try {
 			}
 		}
 	}
+
+    node("windows") {
+        Stage("Packaging for Windows")
+        notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
+    }
+
+    node("debian") {
+        Stage("Packaging for Debian")
+        notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
+
+        sh """
+            set -x
+            rm -rf /tmp/devops
+            git clone git@github.com:optdyn/devops.git /tmp/devops
+            cd /tmp/devops/p2p
+            ./configure --debian --branch=${env.BRANCH_NAME}
+            cd linux
+            debuild -B -d
+        """
+    }
 
 } catch (e) { 
 	currentBuild.result = "FAILED"
