@@ -227,7 +227,7 @@ try {
     */
 
     node("debian") {
-        Stage("Packaging for Debian")
+        stage("Packaging for Debian")
         notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
 
         sh """
