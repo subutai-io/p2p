@@ -232,7 +232,7 @@ try {
     */
 
     node("debian") {
-        notifyBuild('INFO', "Extra: ${gitcmd}")
+        notifyBuild('INFO', "Packaging P2P for Debian")
         stage("Packaging for Debian")
         notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
 
@@ -246,6 +246,18 @@ try {
             ./configure --debian --branch=${env.BRANCH_NAME}
             cd linux
             debuild -B -d
+        """
+
+        stage("Uploading debian packag")
+        notifyBuildDetails = "\nFailed on stage - Uploading Debian Package"
+
+		String debfile = sh (script: """
+			set +x
+			ls /tmp/devops/p2p | grep .deb | tr -d '\n'
+			""", returnStdout: true)
+
+        sh """
+            /tmp/devops/p2p/upload.sh debian ${env.BRANCH_NAME} ${debfile}
         """
     }
 
