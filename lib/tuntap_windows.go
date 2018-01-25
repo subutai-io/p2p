@@ -59,6 +59,7 @@ func GetConfigurationTool() string {
 }
 
 func newTAP(tool, ip, mac, mask string, mtu int) (*TAPWindows, error) {
+	Log(Info, "Acquiring TAP interface [Windows]")
 	nip := net.ParseIP(ip)
 	if nip == nil {
 		return nil, fmt.Errorf("Failed to parse IP during TAP creation")
