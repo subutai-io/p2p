@@ -46,4 +46,11 @@ func TestSetPeerAddr(t *testing.T) {
 	if !get {
 		t.Errorf("Error. Wait: %t, get: %t", true, get)
 	}
+
+	np2 := new(NetworkPeer)
+	wait2 := false
+	get2 := np2.SetPeerAddr()
+	if get2 != wait2 {
+		t.Errorf("Error: Wait %v, get %v", wait2, get2)
+	}
 }
