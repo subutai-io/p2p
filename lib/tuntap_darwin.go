@@ -1,3 +1,4 @@
+// +build darwin
 package ptp
 
 import (
@@ -107,6 +108,7 @@ func GetConfigurationTool() string {
 }
 
 func newTAP(tool, ip, mac, mask string, mtu int) (*TAPDarwin, error) {
+	Log(Info, "Acquiring TAP interface [Darwin]")
 	nip := net.ParseIP(ip)
 	if nip == nil {
 		return nil, fmt.Errorf("Failed to parse IP during TAP creation")

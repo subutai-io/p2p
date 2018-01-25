@@ -1,3 +1,4 @@
+// +build linux
 package ptp
 
 import (
@@ -129,7 +130,7 @@ const (
 
 // GetDeviceBase returns a default interface name
 func GetDeviceBase() string {
-	return "vptp"
+	return "evptp"
 }
 
 // GetConfigurationTool function will return path to configuration tool on specific platform
@@ -144,6 +145,7 @@ func GetConfigurationTool() string {
 }
 
 func newTAP(tool, ip, mac, mask string, mtu int) (*TAPLinux, error) {
+	Log(Info, "Acquiring TAP interface [Linux]")
 	nip := net.ParseIP(ip)
 	if nip == nil {
 		return nil, fmt.Errorf("Failed to parse IP during TAP creation")
@@ -226,12 +228,15 @@ func (t *TAPLinux) Init(name string) error {
 // Open will open a file descriptor for a new interface
 func (t *TAPLinux) Open() error {
 	var err error
+	if t.file != nil {
+		return fmt.Errorf("TAP device is already acquired")
+	}
 	t.file, err = os.OpenFile("/dev/net/tun", os.O_RDWR, 0)
 	if err != nil {
 		return err
 	}
-
-	if t.createInterface() != nil {
+	err = t.createInterface()
+	if err != nil {
 		return err
 	}
 	return nil

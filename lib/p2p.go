@@ -118,11 +118,8 @@ func (p *PeerToPeer) ListenInterface() {
 		}
 		packet, err := p.Interface.ReadPacket()
 		if err != nil {
-			Log(Error, "Reading packet %s", err)
+			Log(Error, "Reading packet: %s", err)
 			continue
-		}
-		if packet.Truncated {
-			Log(Debug, "Truncated packet")
 		}
 		go p.handlePacket(packet.Packet, packet.Protocol)
 	}
