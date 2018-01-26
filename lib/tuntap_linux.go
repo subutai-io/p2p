@@ -130,7 +130,7 @@ const (
 
 // GetDeviceBase returns a default interface name
 func GetDeviceBase() string {
-	return "evptp"
+	return "vptp"
 }
 
 // GetConfigurationTool function will return path to configuration tool on specific platform
