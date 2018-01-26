@@ -61,6 +61,24 @@ func TestString(t *testing.T) {
 	}
 }
 
+func TestEnumDescriptor(t *testing.T) {
+	var dht DHTPacketType
+	ints := make([]int, 1)
+	get1, get2 := dht.EnumDescriptor()
+	if !bytes.EqualFold(get1, fileDescriptor0) && !reflect.DeepEqual(get2, ints) {
+		t.Errorf("get1: %v, get2: %v", get1, get2)
+	}
+}
+
+func TestDescriptor(t *testing.T) {
+	dht := new(DHTPacket)
+	get1, get2 := dht.Descriptor()
+	i := make([]int, 1)
+	if !bytes.EqualFold(get1, fileDescriptor0) && !reflect.DeepEqual(get2, i) {
+		t.Error("Error", get1, get2)
+	}
+}
+
 func TestGetType(t *testing.T) {
 	dht := new(DHTPacket)
 	types := [...]int{
