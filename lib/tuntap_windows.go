@@ -10,24 +10,24 @@ import (
 	"os/exec"
 	"syscall"
 	"unicode/utf16"
-	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
 
 // Windows platform specific constants
 const (
-	ConfigDir        string        = "C:\\ProgramData\\Subutai\\etc"
-	DefaultMTU       int           = 1376
-	NetworkKey       string        = "SYSTEM\\CurrentControlSet\\Control\\Network\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
-	AdapterKey       string        = "SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
-	NoMoreItems      syscall.Errno = 259
-	UsermodDeviceDir string        = "\\\\.\\Global\\"
-	SysDeviceDir     string        = "\\Device\\"
-	UserDeviceDir    string        = "\\DosDevices\\Global\\"
-
-	InvalidHandle syscall.Handle = 0
+	ConfigDir        string         = "C:\\ProgramData\\Subutai\\etc"
+	DefaultMTU       int            = 1376
+	NetworkKey       string         = "SYSTEM\\CurrentControlSet\\Control\\Network\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
+	AdapterKey       string         = "SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
+	NoMoreItems      syscall.Errno  = 259
+	UsermodDeviceDir string         = "\\\\.\\Global\\"
+	SysDeviceDir     string         = "\\Device\\"
+	UserDeviceDir    string         = "\\DosDevices\\Global\\"
+	InvalidHandle    syscall.Handle = 0
 )
+
+var UsedInterfaces []string // List of interfaces currently in use by p2p daemon
 
 var (
 	TAP_IOCTL_GET_MAC               = tapControlCode(1, 0)
@@ -225,11 +225,11 @@ func (t *TAPWindows) ReadPacket() (*Packet, error) {
 	var pkt *Packet
 	pkt = &Packet{Packet: buf[0:n]}
 	pkt.Protocol = int(binary.BigEndian.Uint16(buf[p : p+2]))
-	flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
-	if flags&flagTruncated != 0 {
-		pkt.Truncated = true
-	}
-	pkt.Truncated = false
+	// flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
+	// if flags&flagTruncated != 0 {
+	// 	pkt.Truncated = true
+	// }
+	// pkt.Truncated = false
 	return pkt, nil
 }
 
