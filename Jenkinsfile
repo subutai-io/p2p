@@ -243,6 +243,8 @@ try {
             cd /tmp/devops
             ${gitcmd}
             cd /tmp/devops/p2p
+            wget https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p -O /tmp/devops/p2p/linux/debian/p2p
+            chmod +x /tmp/devops/p2p/linux/debian/p2p
             ./configure --debian --branch=${env.BRANCH_NAME}
             cd linux
             debuild -B -d
