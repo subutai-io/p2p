@@ -12,6 +12,6 @@ func TestLength(t *testing.T) {
 	}
 	get := l.Length()
 	if get != count {
-		t.Errorf("Error. Wait: %v, get: %v", &count, &get)
+		t.Errorf("Error. Wait: %v, get: %v", count, get)
 	}
 }

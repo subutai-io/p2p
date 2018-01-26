@@ -157,7 +157,7 @@ func (t *TAPDarwin) GetMask() net.IPMask {
 
 // GetBasename returns a prefix for automatically generated interface names
 func (t *TAPDarwin) GetBasename() string {
-	return "vptp"
+	return "tap"
 }
 
 // SetName will set interface name
@@ -189,7 +189,7 @@ func (t *TAPDarwin) Init(name string) error {
 // Open will open a file descriptor for a new interface
 func (t *TAPDarwin) Open() error {
 	var err error
-	t.file, err = os.OpenFile("/dev/tun", os.O_RDWR, 0)
+	t.file, err = os.OpenFile("/dev/"+t.Name, os.O_RDWR, 0)
 	if err != nil {
 		return err
 	}

@@ -3,10 +3,23 @@
 notifyBuildDetails = ""
 p2pCommitId = ""
 cdnHost = ""
+dhtHost = ""
 
 switch (env.BRANCH_NAME) {
-	case ~/master/: cdnHost = "mastercdn.subut.ai"; break;
-	default: cdnHost = "devcdn.subut.ai"
+	case ~/master/: 
+		cdnHost = "mastercdn.subut.ai"; 
+		dhtHost = "54.93.172.70:6881"
+		break;
+	case ~/dev/:
+		cdnHost = "devcdn.subut.ai";
+		dhtHost = "18.195.169.215:6881";
+	case ~/sysnet/:
+		cdnHost = "devcdn.subut.ai";
+		dhtHost = "18.195.169.215:6881";
+	default: 
+		cdnHost = "devcdn.subut.ai";
+		dhtHost = "mdht.subut.ai:6881"
+		break;
 }
 
 try {
@@ -43,7 +56,7 @@ try {
 		notifyBuildDetails = "\nFailed on Stage - Build p2p"
 
 		sh """
-            ./configure
+            ./configure --dht=${dhtHost} --branch=${env.BRANCH_NAME}
 		"""
 
 		sh """
