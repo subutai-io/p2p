@@ -23,7 +23,7 @@ type ShowOutput struct {
 }
 
 // Show outputs information about P2P instances and interfaces
-func CommandShow(queryPort int, hash, ip string, interfaces, all bool) {
+func CommandShow(queryPort int, hash, ip string, interfaces, all, bind bool) {
 	req := &request{}
 	if hash != "" {
 		req.Hash = hash
@@ -33,6 +33,7 @@ func CommandShow(queryPort int, hash, ip string, interfaces, all bool) {
 	req.IP = ip
 	req.Interfaces = interfaces
 	req.All = all
+	req.Bind = bind
 
 	out, err := sendRequestRaw(queryPort, "show", req)
 	if err != nil {
@@ -71,14 +72,21 @@ func CommandShow(queryPort int, hash, ip string, interfaces, all bool) {
 		}
 	}
 	if req.Interfaces {
-		for _, m := range show {
-			if m.Code != 0 {
-				fmt.Println(m.Error)
-				os.Exit(m.Code)
+		if req.Bind {
+			for _, m := range show {
+				fmt.Printf("%s|%s\n", m.Hash, m.InterfaceName)
 			}
-			fmt.Println(m.InterfaceName)
+			os.Exit(0)
+		} else {
+			for _, m := range show {
+				if m.Code != 0 {
+					fmt.Println(m.Error)
+					os.Exit(m.Code)
+				}
+				fmt.Println(m.InterfaceName)
+			}
+			os.Exit(0)
 		}
-		os.Exit(0)
 	}
 
 	for _, m := range show {
@@ -133,10 +141,13 @@ func (d *Daemon) Show(args *request) ([]byte, error) {
 			},
 		})
 	} else if args.Interfaces {
-		if !args.All {
-			return d.showInterfaces()
+		if args.All {
+			return d.showAllInterfaces()
 		}
-		return d.showAllInterfaces()
+		if args.Bind {
+			return d.showBindInterfaces()
+		}
+		return d.showInterfaces()
 	} else {
 		return d.showInstances()
 	}
@@ -203,6 +214,18 @@ func (d *Daemon) showAllInterfaces() ([]byte, error) {
 	for _, inf := range InterfaceNames {
 		s := ShowOutput{InterfaceName: inf}
 		out = append(out, s)
+	}
+	return d.showOutput(out)
+}
+
+func (d *Daemon) showBindInterfaces() ([]byte, error) {
+	instances := d.Instances.Get()
+	out := []ShowOutput{}
+	for _, inst := range instances {
+		if inst.PTP != nil && inst.PTP.Interface != nil {
+			s := ShowOutput{Hash: inst.PTP.Hash, InterfaceName: inst.PTP.Interface.GetName()}
+			out = append(out, s)
+		}
 	}
 	return d.showOutput(out)
 }
