@@ -263,6 +263,31 @@ try {
         """
     }
 
+    node("darwin") {
+        notifyBuild('INFO', "Packaging P2P for Darwin")
+        stage("Packaging for Darwin")
+        notifyBuildDetails = "\nFailed on stage - Starting Darwin Packaging"
+
+        sh """
+            set -x
+            rm -rf /tmp/devops
+            git clone git@github.com:optdyn/devops.git /tmp/devops
+            cd /tmp/devops
+            ${gitcmd}
+            cd /tmp/devops/p2p
+            curl -fsSL https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/devops/p2p/darwin/p2p_osx
+            chmod +x /tmp/devops/p2p/darwin/p2p_osx
+            /tmp/devops/p2p/darwin/pack.sh /tmp/devops/p2p/darwin/p2p_osx
+        """
+
+        stage("Uploading darwin package")
+        notifyBuildDetails = "\nFailed on stage - Uploading Darwin Package"
+
+        sh """
+            /tmp/devops/p2p/upload.sh darwin ${env.BRANCH_NAME} /tmp/devops/p2p/darwin/p2p.pkg
+        """
+    }
+
 } catch (e) { 
 	currentBuild.result = "FAILED"
 	throw e
