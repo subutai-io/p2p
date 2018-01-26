@@ -20,8 +20,6 @@ import (
 	"net"
 
 	"github.com/mdlayher/ethernet"
-	//"runtime"
-	//"crypto/md5"
 )
 
 // PacketType is a type of the IPv4 packet
@@ -173,11 +171,6 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		Log(Error, "Failed to Unmarshal ARP Binary")
-		return
-	}
-
-	if f.EtherType != ethernet.EtherTypeARP {
-		Log(Error, "Not ARP")
 		return
 	}
 
