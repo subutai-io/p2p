@@ -101,16 +101,13 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 }
 
 // ListenInterface - Listens TAP interface for incoming packets
+// Read packets received by TAP interface and send them to a handlePacket goroutine
+// This goroutine will execute a callback method based on packet type
 func (p *PeerToPeer) ListenInterface() {
-	// Read packets received by TUN/TAP device and send them to a handlePacket goroutine
-	// This goroutine will decide what to do with this packet
-
 	if p.Interface == nil {
 		Log(Error, "Failed to start TAP listener: nil object")
 		return
 	}
-
-	// Run is for windows only
 	p.Interface.Run()
 	for {
 		if p.Shutdown {
@@ -118,11 +115,8 @@ func (p *PeerToPeer) ListenInterface() {
 		}
 		packet, err := p.Interface.ReadPacket()
 		if err != nil {
-			Log(Error, "Reading packet %s", err)
+			Log(Error, "Reading packet: %s", err)
 			continue
-		}
-		if packet.Truncated {
-			Log(Debug, "Truncated packet")
 		}
 		go p.handlePacket(packet.Packet, packet.Protocol)
 	}
@@ -676,7 +670,6 @@ func (p *PeerToPeer) SyncForwarders() int {
 func (p *PeerToPeer) WriteToDevice(b []byte, proto uint16, truncated bool) {
 	var packet Packet
 	packet.Protocol = int(proto)
-	packet.Truncated = truncated
 	packet.Packet = b
 	if p.Interface == nil {
 		Log(Error, "TAP Interface not initialized")
