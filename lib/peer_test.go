@@ -34,6 +34,22 @@ func TestSetState(t *testing.T) {
 	}
 }
 
+func TestRun(t *testing.T) {
+	np := new(NetworkPeer)
+	ptp := new(PeerToPeer)
+	if np.Running == false {
+		if !true {
+			t.Error("Error in Run. np.Running is False")
+		}
+	}
+	np.Running = true
+	np.State = PeerStateStop
+	np.Run(ptp)
+	if !true {
+		t.Error("Error. Can't stop peer")
+	}
+}
+
 func TestSetPeerAddr(t *testing.T) {
 	np := new(NetworkPeer)
 
