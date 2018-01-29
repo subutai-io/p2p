@@ -61,6 +61,7 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 			}
 			if p.Proxies[i] != nil && proxy.Addr != nil && srcAddr != nil && proxy.Addr.String() == srcAddr.String() {
 				p.Proxies[i].LastUpdate = time.Now()
+				break
 			}
 		}
 		return
