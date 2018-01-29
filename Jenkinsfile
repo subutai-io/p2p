@@ -30,9 +30,6 @@ switch (env.BRANCH_NAME) {
 try {
 	notifyBuild('STARTED')
 
-	/* Building agent binary.
-	Node block used to separate agent and subos code.
-	*/
 	node() {
 		String goenvDir = ".goenv"
 		deleteDir()
@@ -92,38 +89,6 @@ try {
 			}
 		}
 	}
-
-	// if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
-	// 	node() {
-	// 		/* Checkout subos repo and push new subutai binary */
-	// 		deleteDir()
-
-	// 		stage("Push new p2p binary to subos repo")
-	// 		/* Get subutai binary from stage and push it to same branch of subos repo
-	// 		*/
-	// 		notifyBuildDetails = "\nFailed on Stage - Push new subutai binary to subos repo"
-
-	// 		String subosRepoName = "github.com/subutai-io/subos.git"
-
-	// 		git branch: "${env.BRANCH_NAME}", changelog: false, credentialsId: 'hub-optdyn-github-auth', poll: false, url: "https://${subosRepoName}"
-
-	// 		dir("p2p/bin") {
-	// 			unstash 'p2p'
-	// 		}
-
-	// 		withCredentials([[$class: 'UsernamePasswordMultiBinding', 
-	// 			credentialsId: 'hub-optdyn-github-auth', 
-	// 			passwordVariable: 'GIT_PASSWORD', 
-	// 			usernameVariable: 'GIT_USER']]) {
-	// 			sh """
-	// 				git config user.email jenkins@subut.ai
-	// 				git config user.name 'Jenkins Admin'
-	// 				git commit p2p/bin/p2p -m 'Push subutai version from subutai-io/p2p@${p2pCommitId}'
-	// 				git push https://${env.GIT_USER}:'${env.GIT_PASSWORD}'@${subosRepoName} ${env.BRANCH_NAME}
-	// 			"""
-	// 		}
-	// 	}
-	// }
 	
 	/*
 	** Trigger subutai-io/snap build on commit to p2p/dev
@@ -224,12 +189,6 @@ try {
 			}
 		}
 	}
-/*
-    node("windows") {
-        Stage("Packaging for Windows")
-        notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
-    }
-    */
 
     node("debian") {
         notifyBuild('INFO', "Packaging P2P for Debian")
@@ -267,6 +226,11 @@ try {
         stage("Packaging for Darwin")
         notifyBuildDetails = "\nFailed on stage - Starting Darwin Packaging"
 
+		String p2pVersion = sh (script: """
+				set +x
+				./p2p_osx -v | cut -d " " -f 3 | tr -d '\n'
+				""", returnStdout: true)
+
         sh """
             set -x
             rm -rf /tmp/devops
@@ -276,7 +240,7 @@ try {
             cd /tmp/devops/p2p
             curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/devops/p2p/darwin/p2p_osx
             chmod +x /tmp/devops/p2p/darwin/p2p_osx
-            /tmp/devops/p2p/darwin/pack.sh /tmp/devops/p2p/darwin/p2p_osx
+            /tmp/devops/p2p/darwin/pack.sh /tmp/devops/p2p/darwin/p2p_osx ${p2pVersion} ${env.BRANCH_NAME}
         """
 
         notifyBuildDetails = "\nFailed on stage - Uploading Darwin Package"
