@@ -286,6 +286,28 @@ try {
         """
     }
 
+	node("windows") {
+        notifyBuild('INFO', "Packaging P2P for Windows")
+        stage("Packaging for Windows")
+        notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
+
+        sh """
+            set -x
+            rm -rf /c/tmp/devops
+            git clone git@github.com:optdyn/devops.git /c/tmp/devops
+            cd /c/tmp/devops
+            ${gitcmd}
+            cd /c/tmp/devops/p2p
+            curl -fsSL https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /c/tmp/devops/p2p/windows/p2p.exe
+        """
+
+        notifyBuildDetails = "\nFailed on stage - Uploading Windows Package"
+
+        sh """
+            /c/tmp/devops/p2p/upload.sh windows ${env.BRANCH_NAME} /c/tmp/P2PInstaller.msi
+        """
+    }
+
 } catch (e) { 
 	currentBuild.result = "FAILED"
 	throw e
