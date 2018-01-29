@@ -50,6 +50,15 @@ func TestRun(t *testing.T) {
 	}
 }
 
+func TestStateInit(t *testing.T) {
+	np := new(NetworkPeer)
+	ptp := new(PeerToPeer)
+	err := np.stateInit(ptp)
+	if err != nil {
+		t.Error("Error in initializing peer")
+	}
+}
+
 func TestSetPeerAddr(t *testing.T) {
 	np := new(NetworkPeer)
 
