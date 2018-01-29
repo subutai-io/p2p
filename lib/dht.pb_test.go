@@ -70,6 +70,52 @@ func TestEnumDescriptor(t *testing.T) {
 	}
 }
 
+func TestReset(t *testing.T) {
+	dht := new(DHTPacket)
+	dhtarguments := []string{"1", "2", "3"}
+	dhtproxies := []string{"proxy1", "proxy2", "proxy3"}
+	dhtpayloads := []byte("payloads")
+	dht.Type = DHTPacketType_Connect
+	dht.Id = "1"
+	dht.Infohash = "infohash"
+	dht.Data = "data"
+	dht.Query = "query"
+	dht.Arguments = dhtarguments
+	dht.Proxies = dhtproxies
+	dht.Extra = "extra"
+	dht.Payload = dhtpayloads
+
+	dht.Reset()
+
+	var dht2args []string
+	var dht2proxies []string
+	var dht2payloads []byte
+
+	dht2 := new(DHTPacket)
+	dht2.Type = DHTPacketType_Undefined
+	dht2.Id = ""
+	dht2.Infohash = ""
+	dht2.Data = ""
+	dht2.Query = ""
+	dht.Arguments = dht2args
+	dht2.Proxies = dht2proxies
+	dht2.Extra = ""
+	dht2.Payload = dht2payloads
+
+	if dht.Type != dht2.Type && dht.Id != dht2.Id && dht.Infohash != dht2.Infohash && dht.Data != dht2.Data && dht.Query != dht2.Query && !reflect.DeepEqual(dht.Arguments, dht2.Arguments) && !reflect.DeepEqual(dht.Proxies, dht2.Proxies) && !reflect.DeepEqual(dht.Extra, dht2.Extra) {
+		t.Error("Wait: ", dht.Type, dht.Id, dht.Infohash, dht.Data, dht.Query, dht.Arguments, dht.Proxies, dht.Extra, dht.Payload)
+		t.Error("Get: ", dht2.Type, dht2.Id, dht2.Infohash, dht2.Data, dht2.Query, dht2.Arguments, dht2.Proxies, dht2.Extra, dht2.Payload)
+	}
+}
+
+func TestString2(t *testing.T) {
+	dht := new(DHTPacket)
+	get := dht.String()
+	if get != "" {
+		t.Error("Error")
+	}
+}
+
 func TestDescriptor(t *testing.T) {
 	dht := new(DHTPacket)
 	get1, get2 := dht.Descriptor()
