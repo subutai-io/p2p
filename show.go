@@ -109,6 +109,7 @@ func (d *Daemon) execRESTShow(w http.ResponseWriter, r *http.Request) {
 		Hash:       args.Hash,
 		IP:         args.IP,
 		Interfaces: args.Interfaces,
+		Bind:       args.Bind,
 		All:        args.All,
 	})
 	if err != nil {
@@ -223,7 +224,7 @@ func (d *Daemon) showBindInterfaces() ([]byte, error) {
 	out := []ShowOutput{}
 	for _, inst := range instances {
 		if inst.PTP != nil && inst.PTP.Interface != nil {
-			s := ShowOutput{Hash: inst.PTP.Hash, InterfaceName: inst.PTP.Interface.GetName()}
+			s := ShowOutput{Hash: inst.PTP.Dht.NetworkHash, InterfaceName: inst.PTP.Interface.GetName()}
 			out = append(out, s)
 		}
 	}
