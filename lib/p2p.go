@@ -47,6 +47,7 @@ type PeerToPeer struct {
 	HolePunching sync.Mutex     // Mutex for hole punching sync
 	Proxies      []*proxyServer // List of proxies
 	outboundIP   net.IP         // Outbound IP
+	proxyLock    sync.Mutex
 }
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
@@ -625,6 +626,8 @@ func (p *PeerToPeer) removeStoppedPeers() {
 }
 
 func (p *PeerToPeer) checkProxies() {
+	p.proxyLock.Lock()
+	defer p.proxyLock.Unlock()
 	lifetime := time.Duration(time.Second * 30)
 	for i, proxy := range p.Proxies {
 		if p.Proxies[i].Status == proxyDisconnected {

@@ -53,6 +53,8 @@ func (p *PeerToPeer) HandleNotEncryptedMessage(msg *P2PMessage, srcAddr *net.UDP
 // HandlePingMessage is a PING message from a proxy handler
 func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	addr, err := net.ResolveUDPAddr("udp4", string(msg.Data))
+	p.proxyLock.Lock()
+	defer p.proxyLock.Unlock()
 	if err != nil {
 		p.UDPSocket.SendMessage(msg, srcAddr)
 		for i, proxy := range p.Proxies {
