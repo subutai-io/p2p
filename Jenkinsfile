@@ -274,7 +274,7 @@ try {
             cd /tmp/devops
             ${gitcmd}
             cd /tmp/devops/p2p
-            curl -fsSL https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/devops/p2p/darwin/p2p_osx
+            curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/devops/p2p/darwin/p2p_osx
             chmod +x /tmp/devops/p2p/darwin/p2p_osx
             /tmp/devops/p2p/darwin/pack.sh /tmp/devops/p2p/darwin/p2p_osx
         """
@@ -298,7 +298,7 @@ try {
             cd /c/tmp/devops
             ${gitcmd}
             cd /c/tmp/devops/p2p
-            curl -fsSL https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /c/tmp/devops/p2p/windows/p2p.exe
+            curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /c/tmp/devops/p2p/windows/p2p.exe
         """
 
         notifyBuildDetails = "\nFailed on stage - Uploading Windows Package"
