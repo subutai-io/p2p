@@ -250,7 +250,6 @@ try {
             debuild -B -d
         """
 
-        stage("Uploading debian packag")
         notifyBuildDetails = "\nFailed on stage - Uploading Debian Package"
 
 		String debfile = sh (script: """
@@ -263,7 +262,7 @@ try {
         """
     }
 
-    node("darwin") {
+    node("mac") {
         notifyBuild('INFO', "Packaging P2P for Darwin")
         stage("Packaging for Darwin")
         notifyBuildDetails = "\nFailed on stage - Starting Darwin Packaging"
@@ -280,7 +279,6 @@ try {
             /tmp/devops/p2p/darwin/pack.sh /tmp/devops/p2p/darwin/p2p_osx
         """
 
-        stage("Uploading darwin package")
         notifyBuildDetails = "\nFailed on stage - Uploading Darwin Package"
 
         sh """
