@@ -108,14 +108,6 @@ func TestReset(t *testing.T) {
 	}
 }
 
-func TestString2(t *testing.T) {
-	dht := new(DHTPacket)
-	get := dht.String()
-	if get != "" {
-		t.Error("Error")
-	}
-}
-
 func TestDescriptor(t *testing.T) {
 	dht := new(DHTPacket)
 	get1, get2 := dht.Descriptor()
