@@ -41,13 +41,12 @@ type PeerToPeer struct {
 	PeersLock       sync.Mutex                           // Lock for peers map
 	Hash            string                               // Infohash for this instance
 	Routers         string                               // Comma-separated list of Bootstrap nodes
-	//Interface       NetworkInterface                     // TAP Interface
-	Interface    TAP
-	Peers        *PeerList      // Known peers
-	HolePunching sync.Mutex     // Mutex for hole punching sync
-	Proxies      []*proxyServer // List of proxies
-	outboundIP   net.IP         // Outbound IP
-	proxyLock    sync.Mutex
+	Interface       TAP                                  // TAP Interface
+	Peers           *PeerList                            // Known peers
+	HolePunching    sync.Mutex                           // Mutex for hole punching sync
+	Proxies         []*proxyServer                       // List of proxies
+	outboundIP      net.IP                               // Outbound IP
+	proxyLock       sync.Mutex
 }
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
