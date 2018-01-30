@@ -23,6 +23,8 @@ type proxyServer struct {
 
 func (p *PeerToPeer) initProxy(addr string) error {
 	var err error
+	p.proxyLock.Lock()
+	defer p.proxyLock.Unlock()
 
 	pAddr, err := net.ResolveUDPAddr("udp4", addr)
 	if err != nil {
