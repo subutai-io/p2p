@@ -56,13 +56,13 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	p.proxyLock.Lock()
 	defer p.proxyLock.Unlock()
 	if err != nil {
-		p.UDPSocket.SendMessage(msg, srcAddr)
 		for i, proxy := range p.Proxies {
 			if proxy == nil {
 				continue
 			}
 			if p.Proxies[i] != nil && proxy.Addr != nil && srcAddr != nil && proxy.Addr.String() == srcAddr.String() {
 				p.Proxies[i].LastUpdate = time.Now()
+				p.UDPSocket.SendMessage(msg, srcAddr)
 				break
 			}
 		}
@@ -195,6 +195,8 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 // Proxy packets comes in format of UDP connection address
 func (p *PeerToPeer) HandleProxyMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	Log(Debug, "New proxy message from %s", srcAddr)
+	p.proxyLock.Lock()
+	defer p.proxyLock.Unlock()
 	for i, proxy := range p.Proxies {
 		if proxy.Addr.String() == srcAddr.String() && proxy.Status == proxyConnecting {
 			p.Proxies[i].Status = proxyActive
@@ -205,6 +207,7 @@ func (p *PeerToPeer) HandleProxyMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 			}
 			Log(Debug, "This peer is now available over %s", addr.String())
 			p.Dht.sendReportProxy(addr)
+			break
 		}
 	}
 }
