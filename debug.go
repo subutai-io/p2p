@@ -81,10 +81,11 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 		resp.Output += fmt.Sprintf("UDP Port: %d\n", inst.PTP.UDPSocket.GetPort())
 		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", inst.PTP.Interface.GetName(), inst.PTP.Interface.GetHardwareAddress().String(), inst.PTP.Interface.GetIP().String())
 		resp.Output += fmt.Sprintf("Proxies:\n")
-		if len(inst.PTP.Proxies) == 0 {
+		proxyList := inst.PTP.ProxyManager.GetList()
+		if len(proxyList) == 0 {
 			resp.Output += fmt.Sprintf("\tNo proxies in use\n")
 		}
-		for _, proxy := range inst.PTP.Proxies {
+		for _, proxy := range proxyList {
 			resp.Output += fmt.Sprintf("\tProxy address: %s\n", proxy.Addr.String())
 		}
 		resp.Output += fmt.Sprintf("Peers:\n")
