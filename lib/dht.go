@@ -320,12 +320,16 @@ func (dht *DHTClient) sendRequestProxy(id string) error {
 	return dht.send(data)
 }
 
-func (dht *DHTClient) sendReportProxy(addr *net.UDPAddr) error {
+func (dht *DHTClient) sendReportProxy(addr []*net.UDPAddr) error {
+	list := []string{}
+	for _, proxy := range addr {
+		list = append(list, proxy.String())
+	}
 	packet := &DHTPacket{
 		Type:     DHTPacketType_ReportProxy,
 		Id:       dht.ID,
 		Infohash: dht.NetworkHash,
-		Data:     addr.String(),
+		Proxies:  list,
 	}
 	data, err := proto.Marshal(packet)
 	if err != nil {

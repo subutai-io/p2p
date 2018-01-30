@@ -52,21 +52,25 @@ func (p *PeerToPeer) HandleNotEncryptedMessage(msg *P2PMessage, srcAddr *net.UDP
 
 // HandlePingMessage is a PING message from a proxy handler
 func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
+
 	addr, err := net.ResolveUDPAddr("udp4", string(msg.Data))
-	p.proxyLock.Lock()
-	defer p.proxyLock.Unlock()
+	// p.proxyLock.Lock()
+	// defer p.proxyLock.Unlock()
 	if err != nil {
-		for i, proxy := range p.Proxies {
-			if proxy == nil {
-				continue
-			}
-			if p.Proxies[i] != nil && proxy.Addr != nil && srcAddr != nil && proxy.Addr.String() == srcAddr.String() {
-				p.Proxies[i].LastUpdate = time.Now()
-				p.UDPSocket.SendMessage(msg, srcAddr)
-				break
-			}
+		if p.ProxyManager.touch(string(msg.Data)) {
+			p.UDPSocket.SendMessage(msg, srcAddr)
 		}
-		return
+		// for i, proxy := range p.Proxies {
+		// 	if proxy == nil {
+		// 		continue
+		// 	}
+		// 	if p.Proxies[i] != nil && proxy.Addr != nil && srcAddr != nil && proxy.Addr.String() == srcAddr.String() {
+		// 		p.Proxies[i].LastUpdate = time.Now()
+		// 		p.UDPSocket.SendMessage(msg, srcAddr)
+		// 		break
+		// 	}
+		// }
+		// return
 	}
 	port := addr.Port
 	if p.UDPSocket.remotePort == 0 {
@@ -195,21 +199,32 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 // Proxy packets comes in format of UDP connection address
 func (p *PeerToPeer) HandleProxyMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	Log(Debug, "New proxy message from %s", srcAddr)
-	p.proxyLock.Lock()
-	defer p.proxyLock.Unlock()
-	for i, proxy := range p.Proxies {
-		if proxy.Addr.String() == srcAddr.String() && proxy.Status == proxyConnecting {
-			p.Proxies[i].Status = proxyActive
-			addr, err := net.ResolveUDPAddr("udp4", string(msg.Data))
-			if err != nil {
-				Log(Error, "Failed to resolve proxy address: %s", err)
-				return
-			}
-			Log(Debug, "This peer is now available over %s", addr.String())
-			p.Dht.sendReportProxy(addr)
-			break
-		}
+
+	ep, err := net.ResolveUDPAddr("udp4", string(msg.Data))
+	if err != nil {
+		Log(Error, "Failed to resolve proxy address: %s", err)
+		return
 	}
+	rc := p.ProxyManager.activate(srcAddr.String(), ep)
+	if rc {
+		Log(Debug, "This peer is now available over %s", ep.String())
+	}
+
+	// p.proxyLock.Lock()
+	// defer p.proxyLock.Unlock()
+	// for i, proxy := range p.Proxies {
+	// 	if proxy.Addr.String() == srcAddr.String() && proxy.Status == proxyConnecting {
+	// 		p.Proxies[i].Status = proxyActive
+	// 		addr, err := net.ResolveUDPAddr("udp4", string(msg.Data))
+	// 		if err != nil {
+	// 			Log(Error, "Failed to resolve proxy address: %s", err)
+	// 			return
+	// 		}
+	// 		Log(Debug, "This peer is now available over %s", addr.String())
+	// 		p.Dht.sendReportProxy(addr)
+	// 		break
+	// 	}
+	// }
 }
 
 // HandleBadTun notified peer about proxy being malfunction
