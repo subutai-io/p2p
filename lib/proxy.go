@@ -47,6 +47,7 @@ func (p *PeerToPeer) initProxy(addr string) error {
 
 	msg := CreateProxyP2PMessage(0, p.Dht.ID, 1)
 	p.UDPSocket.SendMessage(msg, proxy.Addr)
+	p.proxyLock.Unlock()
 	for proxy.Status == proxyConnecting {
 		time.Sleep(100 * time.Millisecond)
 		if time.Duration(3*time.Second) < time.Since(initStarted) {
