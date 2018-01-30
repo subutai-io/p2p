@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"runtime/pprof"
+	"time"
 
 	ptp "github.com/subutai-io/p2p/lib"
 	"github.com/urfave/cli"
@@ -24,6 +25,8 @@ var OutboundIP net.IP
 var SignalChannel chan os.Signal
 
 var ReadyToServe bool
+
+var StartTime time.Time
 
 // StartProfiling will create a .prof file to analyze p2p app performance
 func StartProfiling(profile string) {
