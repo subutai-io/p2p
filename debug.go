@@ -29,6 +29,7 @@ type DaemonArgs struct {
 	Command    string `json:"command"`
 	Args       string `json:"args"`
 	Log        string `json:"log"`
+	Bind       bool   `json:"bind"`
 }
 
 // Debug prints debug information

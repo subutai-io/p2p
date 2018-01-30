@@ -186,37 +186,27 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
 		Log(Error, "Failed to unmarshal arp")
 		return
 	}
-	//Log(Trace, "Peers: %v, Target IP: %s", p.NetworkPeers, packet.TargetIP.String())
-	//var hwAddr net.HardwareAddr
 	id, err := p.Peers.GetID(packet.TargetIP.String())
-	/*id, exists := p.IPIDTable[packet.TargetIP.String()]
-	if !exists {*/
 	if err != nil {
 		Log(Debug, "Unknown IP requested")
 		return
 	}
 	peer := p.Peers.GetPeer(id)
-	/*peer, exists := p.NetworkPeers[id]
-	if !exists {*/
 	if peer == nil {
 		Log(Debug, "Can't lookup address: Specified peer was not found")
 		return
 	}
 	hwAddr := peer.PeerHW
-	// TODO: Put there normal IP from list of ips
-	// Send a reply
 	if hwAddr == nil {
 		Log(Error, "Cannot find hardware address for requested IP")
 		_, hwAddr = GenerateMAC()
 		peer.PeerHW = hwAddr
 		p.Peers.Update(id, peer)
-		//p.NetworkPeers[id] = peer
 	}
 	if hwAddr.String() == "00:00:00:00:00:00" {
 		_, hwAddr = GenerateMAC()
 		peer.PeerHW = hwAddr
 		p.Peers.Update(id, peer)
-		//p.NetworkPeers[id] = peer
 	}
 	var reply ARPPacket
 	ip := net.ParseIP(packet.TargetIP.String())
