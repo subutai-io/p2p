@@ -70,7 +70,7 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 		// 		break
 		// 	}
 		// }
-		// return
+		return
 	}
 	port := addr.Port
 	if p.UDPSocket.remotePort == 0 {
