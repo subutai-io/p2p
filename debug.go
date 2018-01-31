@@ -67,7 +67,7 @@ func (d *Daemon) execRESTDebug(w http.ResponseWriter, r *http.Request) {
 // Debug output debug information
 func (p *Daemon) Debug(args *Args, resp *Response) error {
 	resp.Output = fmt.Sprintf("Version: %s Build: %s\n", AppVersion, BuildID)
-	resp.Output += fmt.Sprintf("Uptime: %d h %d m %d s\n", int(time.Since(StartTime).Hours()), int(time.Since(StartTime).Minutes()), int(time.Since(StartTime).Seconds()))
+	resp.Output += fmt.Sprintf("Uptime: %d h %d m %d s\n", int(time.Since(StartTime).Hours()), int(time.Since(StartTime).Minutes())%60, int(time.Since(StartTime).Seconds())%60)
 	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())
 	resp.Output += fmt.Sprintf("Instances information:\n")
 	instances := p.Instances.Get()
@@ -86,7 +86,7 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 			resp.Output += fmt.Sprintf("\tNo proxies in use\n")
 		}
 		for _, proxy := range proxyList {
-			resp.Output += fmt.Sprintf("\tProxy address: %s\n", proxy.Addr.String())
+			resp.Output += fmt.Sprintf("\tProxy address: %s Assigned Endpoint: %s\n", proxy.Addr.String(), proxy.Endpoint.String())
 		}
 		resp.Output += fmt.Sprintf("Peers:\n")
 
