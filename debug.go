@@ -2,14 +2,11 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"runtime"
-	"runtime/pprof"
+	"time"
 
-	"github.com/ccding/go-stun/stun"
 	ptp "github.com/subutai-io/p2p/lib"
 )
 
@@ -29,6 +26,7 @@ type DaemonArgs struct {
 	Command    string `json:"command"`
 	Args       string `json:"args"`
 	Log        string `json:"log"`
+	Bind       bool   `json:"bind"`
 }
 
 // Debug prints debug information
@@ -41,63 +39,6 @@ func CommandDebug(restPort int) {
 
 	fmt.Println(out.Message)
 	os.Exit(out.Code)
-}
-
-// ExecDaemon starts P2P daemon
-func ExecDaemon(port int, sFile, profiling, syslog string) {
-	if syslog != "" {
-		ptp.SetSyslogSocket(syslog)
-	}
-	StartProfiling(profiling)
-	go ptp.InitPlatform()
-	ptp.InitErrors()
-
-	if !ptp.CheckPermissions() {
-		os.Exit(1)
-	}
-
-	ReadyToServe = false
-	proc := new(Daemon)
-	proc.Initialize(sFile)
-	setupRESTHandlers(port, proc)
-
-	ptp.Log(ptp.Info, "Determining outbound IP")
-	nat, host, err := stun.NewClient().Discover()
-	if err != nil {
-		ptp.Log(ptp.Error, "Failed to discover outbound IP: %s", err)
-		OutboundIP = nil
-	} else {
-		OutboundIP = net.ParseIP(host.IP())
-		ptp.Log(ptp.Info, "Public IP is %s. %s", OutboundIP.String(), nat)
-	}
-
-	if sFile != "" {
-		ptp.Log(ptp.Info, "Restore file provided")
-		// Try to restore from provided file
-		instances, err := proc.Instances.LoadInstances(proc.SaveFile)
-		if err != nil {
-			ptp.Log(ptp.Error, "Failed to load instances: %v", err)
-		} else {
-			ptp.Log(ptp.Info, "%d instances were loaded from file", len(instances))
-			for _, inst := range instances {
-				proc.run(&inst, new(Response))
-			}
-		}
-	}
-
-	ReadyToServe = true
-
-	SignalChannel = make(chan os.Signal, 1)
-	signal.Notify(SignalChannel, os.Interrupt)
-
-	go func() {
-		for sig := range SignalChannel {
-			fmt.Println("Received signal: ", sig)
-			pprof.StopCPUProfile()
-			os.Exit(0)
-		}
-	}()
-	select {}
 }
 
 func (d *Daemon) execRESTDebug(w http.ResponseWriter, r *http.Request) {
@@ -125,9 +66,8 @@ func (d *Daemon) execRESTDebug(w http.ResponseWriter, r *http.Request) {
 
 // Debug output debug information
 func (p *Daemon) Debug(args *Args, resp *Response) error {
-	ptp.Log(ptp.Info, "Preparing Debug output")
-	resp.Output = "DEBUG INFO:\n"
 	resp.Output = fmt.Sprintf("Version: %s Build: %s\n", AppVersion, BuildID)
+	resp.Output += fmt.Sprintf("Uptime: %d h %d m %d s\n", int(time.Since(StartTime).Hours()), int(time.Since(StartTime).Minutes())%60, int(time.Since(StartTime).Seconds())%60)
 	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())
 	resp.Output += fmt.Sprintf("Instances information:\n")
 	instances := p.Instances.Get()
@@ -141,10 +81,11 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 		resp.Output += fmt.Sprintf("UDP Port: %d\n", inst.PTP.UDPSocket.GetPort())
 		resp.Output += fmt.Sprintf("Interface %s, HW Addr: %s, IP: %s\n", inst.PTP.Interface.GetName(), inst.PTP.Interface.GetHardwareAddress().String(), inst.PTP.Interface.GetIP().String())
 		resp.Output += fmt.Sprintf("Proxies:\n")
-		if len(inst.PTP.Proxies) == 0 {
+		proxyList := inst.PTP.ProxyManager.GetList()
+		if len(proxyList) == 0 {
 			resp.Output += fmt.Sprintf("\tNo proxies in use\n")
 		}
-		for _, proxy := range inst.PTP.Proxies {
+		for _, proxy := range proxyList {
 			resp.Output += fmt.Sprintf("\tProxy address: %s\n", proxy.Addr.String())
 		}
 		resp.Output += fmt.Sprintf("Peers:\n")

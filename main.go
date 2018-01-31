@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"runtime/pprof"
+	"time"
 
 	ptp "github.com/subutai-io/p2p/lib"
 	"github.com/urfave/cli"
@@ -24,6 +25,8 @@ var OutboundIP net.IP
 var SignalChannel chan os.Signal
 
 var ReadyToServe bool
+
+var StartTime time.Time
 
 // StartProfiling will create a .prof file to analyze p2p app performance
 func StartProfiling(profile string) {
@@ -72,6 +75,7 @@ func main() {
 		UseForwarders  bool   // Whether or not p2p should force usage of proxy servers for this instance
 		ShowInterfaces bool   // Whether or not p2p show command should return information about interfaces in use
 		ShowAll        bool   //
+		ShowBind       bool   // used with show --interfaces
 		LogLevel       string // Log level
 		RemoveService  bool   // If yes - service will be removed (used with service)
 		InstallService bool   // If yes - service will be installed (used with service)
@@ -286,13 +290,18 @@ func main() {
 					Destination: &ShowInterfaces,
 				},
 				cli.BoolFlag{
+					Name:        "bind",
+					Usage:       "Show swarm names along with interfaces",
+					Destination: &ShowBind,
+				},
+				cli.BoolFlag{
 					Name:        "all",
 					Usage:       "In combination with -interfaces this will show all interfaces used by p2p, even those that is already not in use",
 					Destination: &ShowAll,
 				},
 			},
 			Action: func(c *cli.Context) error {
-				CommandShow(RPCPort, Infohash, IP, ShowInterfaces, ShowAll)
+				CommandShow(RPCPort, Infohash, IP, ShowInterfaces, ShowAll, ShowBind)
 				return nil
 			},
 		},
