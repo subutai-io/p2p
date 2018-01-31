@@ -1,7 +1,6 @@
 package ptp
 
 import (
-	"net"
 	"testing"
 )
 
@@ -13,29 +12,33 @@ func TestGenerateDeviceName(t *testing.T) {
 	}
 }
 
+func TestIsIPv4(t *testing.T) {
+	ip1 := "194.152.36.143"
+	ip2 := "2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d"
+	ip3 := ""
+	ptp := new(PeerToPeer)
+	wait1 := true
+	get1 := ptp.IsIPv4(ip1)
+	if get1 != wait1 {
+		t.Errorf("Error: wait %v, get %v", wait1, get1)
+	}
+	wait2 := false
+	get2 := ptp.IsIPv4(ip2)
+	if get2 != wait2 {
+		t.Errorf("Error: wait %v, get %v", wait2, get2)
+	}
+	wait3 := false
+	get3 := ptp.IsIPv4(ip3)
+	if get3 != wait3 {
+		t.Errorf("Error: wait %v, get %v", wait3, get3)
+	}
+}
+
 func TestParseIntroString(t *testing.T) {
 	p := new(PeerToPeer)
 	id, mac, ip := p.ParseIntroString("id,01:02:03:04:05:06,127.0.0.1")
 	if id != "id" || mac.String() != "01:02:03:04:05:06" || ip.String() != "127.0.0.1" {
 		t.Errorf("Failed to parse intro string")
-	}
-}
-
-func TestGenerateMac(t *testing.T) {
-	macs := make(map[string]net.HardwareAddr)
-
-	for i := 0; i < 10000; i++ {
-		smac, mac := GenerateMAC()
-		if smac == "" {
-			t.Errorf("Failed to generate mac")
-			return
-		}
-		_, e := macs[smac]
-		if e {
-			t.Errorf("Same MAC was generated")
-			return
-		}
-		macs[smac] = mac
 	}
 }
 

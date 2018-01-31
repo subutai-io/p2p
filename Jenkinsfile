@@ -4,6 +4,7 @@ notifyBuildDetails = ""
 p2pCommitId = ""
 cdnHost = ""
 dhtHost = ""
+gitcmd = ""
 
 switch (env.BRANCH_NAME) {
 	case ~/master/: 
@@ -13,9 +14,13 @@ switch (env.BRANCH_NAME) {
 	case ~/dev/:
 		cdnHost = "devcdn.subut.ai";
 		dhtHost = "18.195.169.215:6881";
+        gitcmd = "git checkout -B dev && git pull origin dev"
+        break;
 	case ~/sysnet/:
 		cdnHost = "devcdn.subut.ai";
 		dhtHost = "18.195.169.215:6881";
+        gitcmd = "git checkout -B sysnet && git pull origin sysnet "
+        break;
 	default: 
 		cdnHost = "devcdn.subut.ai";
 		dhtHost = "mdht.subut.ai:6881"
@@ -25,9 +30,6 @@ switch (env.BRANCH_NAME) {
 try {
 	notifyBuild('STARTED')
 
-	/* Building agent binary.
-	Node block used to separate agent and subos code.
-	*/
 	node() {
 		String goenvDir = ".goenv"
 		deleteDir()
@@ -87,43 +89,12 @@ try {
 			}
 		}
 	}
-
-	// if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
-	// 	node() {
-	// 		/* Checkout subos repo and push new subutai binary */
-	// 		deleteDir()
-
-	// 		stage("Push new p2p binary to subos repo")
-	// 		/* Get subutai binary from stage and push it to same branch of subos repo
-	// 		*/
-	// 		notifyBuildDetails = "\nFailed on Stage - Push new subutai binary to subos repo"
-
-	// 		String subosRepoName = "github.com/subutai-io/subos.git"
-
-	// 		git branch: "${env.BRANCH_NAME}", changelog: false, credentialsId: 'hub-optdyn-github-auth', poll: false, url: "https://${subosRepoName}"
-
-	// 		dir("p2p/bin") {
-	// 			unstash 'p2p'
-	// 		}
-
-	// 		withCredentials([[$class: 'UsernamePasswordMultiBinding', 
-	// 			credentialsId: 'hub-optdyn-github-auth', 
-	// 			passwordVariable: 'GIT_PASSWORD', 
-	// 			usernameVariable: 'GIT_USER']]) {
-	// 			sh """
-	// 				git config user.email jenkins@subut.ai
-	// 				git config user.name 'Jenkins Admin'
-	// 				git commit p2p/bin/p2p -m 'Push subutai version from subutai-io/p2p@${p2pCommitId}'
-	// 				git push https://${env.GIT_USER}:'${env.GIT_PASSWORD}'@${subosRepoName} ${env.BRANCH_NAME}
-	// 			"""
-	// 		}
-	// 	}
-	// }
 	
 	/*
 	** Trigger subutai-io/snap build on commit to p2p/dev
 	*/
 
+    /*
 	if (env.BRANCH_NAME == 'dev') {
 		build job: 'snap.subutai-io.pipeline/dev/', propagate: false, wait: false
 	}
@@ -131,6 +102,7 @@ try {
 	if (env.BRANCH_NAME == 'master') {
 		build job: 'snap.subutai-io.pipeline/master/', propagate: false, wait: false
 	}
+    */
 
 	if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 		node() {
@@ -159,7 +131,7 @@ try {
 			/* get p2p version */
 			String p2pVersion = sh (script: """
 				set +x
-				./p2p -v | cut -d " " -f 4 | tr -d '\n'
+				./p2p -v | cut -d " " -f 3 | tr -d '\n'
 				""", returnStdout: true)
 			String responseP2P = sh (script: """
 				set +x
@@ -218,6 +190,81 @@ try {
 		}
 	}
 
+    node("debian") {
+        notifyBuild('INFO', "Packaging P2P for Debian")
+        stage("Packaging for Debian")
+        notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
+
+        sh """
+            set -x
+            rm -rf /tmp/p2p-packaging
+            git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
+            cd /tmp/p2p-packaging
+            ${gitcmd}
+            wget --no-check-certificate https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p -O /tmp/p2p-packaging/linux/debian/p2p
+            chmod +x /tmp/p2p-packaging/linux/debian/p2p
+            ./configure --debian --branch=${env.BRANCH_NAME}
+            cd linux
+            debuild -B -d
+        """
+
+        notifyBuildDetails = "\nFailed on stage - Uploading Debian Package"
+
+		String debfile = sh (script: """
+			set +x
+			ls /tmp/p2p-packaging | grep .deb | tr -d '\n'
+			""", returnStdout: true)
+
+        sh """
+            /tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} ${debfile}
+        """
+    }
+
+    node("mac") {
+        notifyBuild('INFO', "Packaging P2P for Darwin")
+        stage("Packaging for Darwin")
+        notifyBuildDetails = "\nFailed on stage - Starting Darwin Packaging"
+
+        sh """
+            set -x
+            rm -rf /tmp/p2p-packaging
+            git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
+            cd /tmp/p2p-packaging
+            ${gitcmd}
+            curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/p2p-packaging/darwin/p2p_osx
+            chmod +x /tmp/p2p-packaging/darwin/p2p_osx
+            /tmp/p2p-packaging/darwin/pack.sh /tmp/p2p-packaging/darwin/p2p_osx ${env.BRANCH_NAME}
+        """
+
+        notifyBuildDetails = "\nFailed on stage - Uploading Darwin Package"
+
+        sh """
+            /tmp/p2p-packaging/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
+        """
+    }
+
+	node("windows") {
+        notifyBuild('INFO', "Packaging P2P for Windows")
+        stage("Packaging for Windows")
+        notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
+
+        sh """
+            set -x
+            rm -rf /c/tmp/devops
+            git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
+            cd /c/tmp/devops
+            ${gitcmd}
+            cd /c/tmp/devops/p2p
+            curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /c/tmp/devops/p2p/windows/p2p.exe
+        """
+
+        notifyBuildDetails = "\nFailed on stage - Uploading Windows Package"
+
+        sh """
+            /c/tmp/devops/p2p/upload.sh windows ${env.BRANCH_NAME} /c/tmp/P2PInstaller.msi
+        """
+    }
+
 } catch (e) { 
 	currentBuild.result = "FAILED"
 	throw e
@@ -241,6 +288,10 @@ def notifyBuild(String buildStatus = 'STARTED', String details = '') {
   if (buildStatus == 'STARTED') {
     color = 'YELLOW'
     colorCode = '#FFFF00'  
+  } else if (buildStatus == 'INFO') {
+    color = 'GREY'
+    colorCode = '#555555'
+    summary = "${subject}: ${details}"
   } else if (buildStatus == 'SUCCESSFUL') {
     color = 'GREEN'
     colorCode = '#00FF00'
