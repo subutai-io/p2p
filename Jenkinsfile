@@ -197,13 +197,12 @@ try {
 
         sh """
             set -x
-            rm -rf /tmp/devops
-            git clone git@github.com:optdyn/devops.git /tmp/devops
-            cd /tmp/devops
+            rm -rf /tmp/p2p-packaging
+            git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
+            cd /tmp/p2p-packaging
             ${gitcmd}
-            cd /tmp/devops/p2p
-            wget --no-check-certificate https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p -O /tmp/devops/p2p/linux/debian/p2p
-            chmod +x /tmp/devops/p2p/linux/debian/p2p
+            wget --no-check-certificate https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p -O /tmp/p2p-packaging/linux/debian/p2p
+            chmod +x /tmp/p2p-packaging/linux/debian/p2p
             ./configure --debian --branch=${env.BRANCH_NAME}
             cd linux
             debuild -B -d
@@ -213,11 +212,11 @@ try {
 
 		String debfile = sh (script: """
 			set +x
-			ls /tmp/devops/p2p | grep .deb | tr -d '\n'
+			ls /tmp/p2p-packaging | grep .deb | tr -d '\n'
 			""", returnStdout: true)
 
         sh """
-            /tmp/devops/p2p/upload.sh debian ${env.BRANCH_NAME} ${debfile}
+            /tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} ${debfile}
         """
     }
 
@@ -226,27 +225,21 @@ try {
         stage("Packaging for Darwin")
         notifyBuildDetails = "\nFailed on stage - Starting Darwin Packaging"
 
-		String p2pVersion = sh (script: """
-				set +x
-				./p2p_osx -v | cut -d " " -f 3 | tr -d '\n'
-				""", returnStdout: true)
-
         sh """
             set -x
-            rm -rf /tmp/devops
-            git clone git@github.com:optdyn/devops.git /tmp/devops
-            cd /tmp/devops
+            rm -rf /tmp/p2p-packaging
+            git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
+            cd /tmp/p2p-packaging
             ${gitcmd}
-            cd /tmp/devops/p2p
-            curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/devops/p2p/darwin/p2p_osx
-            chmod +x /tmp/devops/p2p/darwin/p2p_osx
-            /tmp/devops/p2p/darwin/pack.sh /tmp/devops/p2p/darwin/p2p_osx ${p2pVersion} ${env.BRANCH_NAME}
+            curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/p2p-packaging/darwin/p2p_osx
+            chmod +x /tmp/p2p-packaging/darwin/p2p_osx
+            /tmp/p2p-packaging/darwin/pack.sh /tmp/p2p-packaging/darwin/p2p_osx ${env.BRANCH_NAME}
         """
 
         notifyBuildDetails = "\nFailed on stage - Uploading Darwin Package"
 
         sh """
-            /tmp/devops/p2p/upload.sh darwin ${env.BRANCH_NAME} /tmp/devops/p2p/darwin/p2p.pkg
+            /tmp/devops/p2p/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
         """
     }
 
@@ -258,7 +251,7 @@ try {
         sh """
             set -x
             rm -rf /c/tmp/devops
-            git clone git@github.com:optdyn/devops.git /c/tmp/devops
+            git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
             cd /c/tmp/devops
             ${gitcmd}
             cd /c/tmp/devops/p2p
