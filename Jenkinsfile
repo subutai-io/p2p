@@ -239,7 +239,7 @@ try {
         notifyBuildDetails = "\nFailed on stage - Uploading Darwin Package"
 
         sh """
-            /tmp/devops/p2p/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
+            /tmp/p2p-packaging/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
         """
     }
 
