@@ -41,13 +41,13 @@ type PeerToPeer struct {
 	PeersLock       sync.Mutex                           // Lock for peers map
 	Hash            string                               // Infohash for this instance
 	Routers         string                               // Comma-separated list of Bootstrap nodes
-	//Interface       NetworkInterface                     // TAP Interface
-	Interface    TAP
-	Peers        *PeerList      // Known peers
-	HolePunching sync.Mutex     // Mutex for hole punching sync
-	Proxies      []*proxyServer // List of proxies
-	outboundIP   net.IP         // Outbound IP
-	proxyLock    sync.Mutex
+	Interface       TAP                                  // TAP Interface
+	Peers           *PeerList                            // Known peers
+	HolePunching    sync.Mutex                           // Mutex for hole punching sync
+	ProxyManager    *ProxyManager                        // Proxy manager
+	outboundIP      net.IP                               // Outbound IP
+	//Proxies         []*proxyServer                       // List of proxies
+	//proxyLock       sync.Mutex
 }
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
@@ -309,6 +309,8 @@ func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, 
 	}
 
 	go p.ListenInterface()
+	p.ProxyManager = new(ProxyManager)
+	p.ProxyManager.init()
 	return p
 }
 
@@ -577,7 +579,15 @@ func (p *PeerToPeer) Run() {
 			}
 		case proxy, pr := <-p.Dht.ProxyChannel:
 			if pr {
-				go p.initProxy(proxy)
+				proxyAddr, err := net.ResolveUDPAddr("udp4", proxy)
+				if err == nil {
+					if p.ProxyManager.new(proxyAddr) == nil {
+						go func() {
+							msg := CreateProxyP2PMessage(0, p.Dht.ID, 1)
+							p.UDPSocket.SendMessage(msg, proxyAddr)
+						}()
+					}
+				}
 			}
 		default:
 			p.removeStoppedPeers()
@@ -626,19 +636,30 @@ func (p *PeerToPeer) removeStoppedPeers() {
 }
 
 func (p *PeerToPeer) checkProxies() {
-	p.proxyLock.Lock()
-	defer p.proxyLock.Unlock()
-	lifetime := time.Duration(time.Second * 30)
-	for i, proxy := range p.Proxies {
-		if p.Proxies[i].Status == proxyDisconnected {
-			p.Proxies = append(p.Proxies[:i], p.Proxies[:i+1]...)
-			break
-		}
-		if time.Since(proxy.LastUpdate) > lifetime {
-			Log(Info, "Proxy connection with %s [EP: %s] has died", proxy.Addr.String(), proxy.Endpoint.String())
-			p.Proxies[i].Close()
+	p.ProxyManager.check()
+	// Unlink dead proxies
+	proxies := p.ProxyManager.get()
+	list := []*net.UDPAddr{}
+	for _, proxy := range proxies {
+		if proxy.Endpoint != nil && proxy.Status == proxyActive {
+			list = append(list, proxy.Endpoint)
 		}
 	}
+	p.Dht.sendReportProxy(list)
+
+	// p.proxyLock.Lock()
+	// defer p.proxyLock.Unlock()
+	// lifetime := time.Duration(time.Second * 30)
+	// for i, proxy := range p.Proxies {
+	// 	if p.Proxies[i].Status == proxyDisconnected {
+	// 		p.Proxies = append(p.Proxies[:i], p.Proxies[:i+1]...)
+	// 		break
+	// 	}
+	// 	if time.Since(proxy.LastUpdate) > lifetime {
+	// 		Log(Info, "Proxy connection with %s [EP: %s] has died", proxy.Addr.String(), proxy.Endpoint.String())
+	// 		p.Proxies[i].Close()
+	// 	}
+	// }
 }
 
 // PrepareIntroductionMessage collects client ID, mac and IP address
