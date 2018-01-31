@@ -79,14 +79,17 @@ func (p *ProxyManager) check() {
 			if err != nil {
 				Log(Debug, "Failed to close proxy: %s", err)
 			}
+			Log(Debug, "Failed to connect to proxy %s", id)
 		}
 		if proxy.Status == proxyActive && time.Since(proxy.LastUpdate) > time.Duration(30*time.Second) {
 			err := proxy.Close()
 			if err != nil {
 				Log(Debug, "Failed to close proxy: %s", err)
 			}
+			Log(Debug, "Proxy %s has been disconnected by timeout", id)
 		}
 		if proxy.Status == proxyDisconnected {
+			Log(Debug, "Removing proxy %s", id)
 			p.operate(OperateDelete, id, nil)
 		}
 	}
