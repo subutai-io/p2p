@@ -86,7 +86,7 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 			resp.Output += fmt.Sprintf("\tNo proxies in use\n")
 		}
 		for _, proxy := range proxyList {
-			resp.Output += fmt.Sprintf("\tProxy address: %s\n", proxy.Addr.String())
+			resp.Output += fmt.Sprintf("\tProxy address: %s Assigned Endpoint: %s\n", proxy.Addr.String(), proxy.Endpoint.String())
 		}
 		resp.Output += fmt.Sprintf("Peers:\n")
 
