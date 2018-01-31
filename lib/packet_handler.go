@@ -31,7 +31,8 @@ func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error
 		var decErr error
 		msg.Data, decErr = p.Crypter.decrypt(p.Crypter.ActiveKey.Key, msg.Data)
 		if decErr != nil {
-			Log(Error, "Failed to decrypt message")
+			Log(Error, "Failed to decrypt message: %s", decErr)
+			return
 		}
 		msg.Data = msg.Data[:msg.Header.Length]
 
@@ -57,7 +58,7 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	// p.proxyLock.Lock()
 	// defer p.proxyLock.Unlock()
 	if err != nil {
-		if p.ProxyManager.touch(string(msg.Data)) {
+		if p.ProxyManager.touch(srcAddr.String()) {
 			p.UDPSocket.SendMessage(msg, srcAddr)
 		}
 		// for i, proxy := range p.Proxies {

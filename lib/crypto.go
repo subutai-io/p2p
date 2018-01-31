@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"fmt"
 	"io/ioutil"
 	"strconv"
 	"time"
@@ -98,7 +99,9 @@ func (c Crypto) decrypt(key []byte, data []byte) ([]byte, error) {
 		return nil, err
 	}
 	encData := data[aes.BlockSize:]
-
+	if len(data)%aes.BlockSize != 0 {
+		return nil, fmt.Errorf("Input not full blocks: %s", string(data))
+	}
 	mode := cipher.NewCBCDecrypter(block, data[:aes.BlockSize])
 	mode.CryptBlocks(encData, encData)
 
