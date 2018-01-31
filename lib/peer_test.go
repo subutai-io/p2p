@@ -50,6 +50,64 @@ func TestRun(t *testing.T) {
 	}
 }
 
+func TestStateInit(t *testing.T) {
+	np := new(NetworkPeer)
+	ptp := new(PeerToPeer)
+	err := np.stateInit(ptp)
+	if err != nil {
+		t.Error("Error in initializing peer")
+	}
+}
+
+func TestStateConnecting(t *testing.T) {
+	np := new(NetworkPeer)
+	ptp := new(PeerToPeer)
+	np.stateConnecting(ptp)
+	if np.State != PeerStateConnectingDirectlyWait {
+		t.Errorf("Error. Wait %v, get %v", PeerStateConnectingDirectlyWait, np.State)
+	}
+}
+
+func TestStateConnected(t *testing.T) {
+	np := new(NetworkPeer)
+	ptp := new(PeerToPeer)
+	np.RemoteState = PeerStateDisconnect
+	err := np.stateDisconnect(ptp)
+	if err != nil && np.State != PeerStateDisconnect {
+		t.Error("Error. Peer can't disconnect")
+	}
+	np.RemoteState = PeerStateStop
+	err2 := np.stateConnected(ptp)
+	if err2 != nil && np.State != PeerStateDisconnect {
+		t.Error("Error. Peer can't stop")
+	}
+	np.RemoteState = PeerStateInit
+	err3 := np.stateConnected(ptp)
+	if err3 != nil && np.State != PeerStateInit {
+		t.Error("Error. Remote peer can't to reconnect")
+	}
+}
+
+func TestStateDisconnect(t *testing.T) {
+	np := new(NetworkPeer)
+	ptp := new(PeerToPeer)
+	np.ID = "1"
+	err := np.stateDisconnect(ptp)
+	if err != nil && np.State == PeerStateStop {
+		t.Error("Error. Can't disconnect peer")
+	}
+}
+
+func TestStateStop(t *testing.T) {
+	np := new(NetworkPeer)
+	ptp := new(PeerToPeer)
+	np.ID = "1"
+	err := np.stateStop(ptp)
+	if err != nil && np.State == PeerStateStop {
+		t.Error("Error")
+	}
+}
+
 func TestSetPeerAddr(t *testing.T) {
 	np := new(NetworkPeer)
 
