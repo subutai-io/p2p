@@ -250,7 +250,6 @@ try {
         notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
 
         sh """
-            set -x
             rm -rf /c/tmp/p2p-packaging
             git clone git@github.com:optdyn/p2p-packaging.git /c/tmp/p2p-packaging
             cd /c/tmp/p2p-packaging
