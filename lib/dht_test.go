@@ -1,5 +1,7 @@
 package ptp
 
+import "testing"
+
 // import (
 // 	"testing"
 // )
@@ -43,3 +45,15 @@ package ptp
 // 		t.Errorf("EncodeRequest failed (3)")
 // 	}
 // }
+
+func TestTCPInit(t *testing.T) {
+	dht := new(DHTClient)
+	err := dht.TCPInit("hash", "router")
+	if err != nil {
+		t.Errorf("Error in TCPInit")
+	}
+	err1 := dht.TCPInit("hash", "")
+	if err1 != nil {
+		t.Errorf("Error. Wait %v, get %v", "dht.cdn.subut.ai:6881", dht.Routers)
+	}
+}

@@ -16,3 +16,13 @@ func TestSerialize(t *testing.T) {
 		t.Errorf("Error. Wait: %v, get: %v", wait, get)
 	}
 }
+
+func TestGetProxyAttributes(t *testing.T) {
+	bytes := []byte("12345678910")
+	var wait1 uint16 = 14641
+	var wait2 uint16 = 13108
+	get1, get2 := GetProxyAttributes(bytes)
+	if get1 != wait1 && get2 != wait2 {
+		t.Error(get1, get2)
+	}
+}
