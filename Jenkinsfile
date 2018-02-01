@@ -250,6 +250,8 @@ try {
         notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
 
 		bat """
+			if exist "C:\\tmp" RD /S /Q "c:\\tmp"
+			mkdir "C:\\tmp"
             echo rm -rf /c/tmp/p2p-packaging > c:\\tmp\\p2p-win.do
             echo git clone git@github.com:optdyn/p2p-packaging.git /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
             echo cd /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
@@ -257,19 +259,24 @@ try {
             echo cd /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
             echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /c/tmp/p2p-packaging/windows/p2p.exe >> c:\\tmp\\p2p-win.do
 			echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o /c/tmp/p2p-packaging/windows/tap-windows-9.21.2.exe >> c:\\tmp\\p2p-win.do
+
+			echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi > c:\\tmp\\p2p-win-upload.do
 		"""
 		/*
 			echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi >> c:\\tmp\\p2p-win.do
         """*/
 
+		notifyBuildDetails = "\nFailed on stage - Deploying DevOps"
 		bat "c:\\tmp\\p2p-win.do"
 
-		/*
-        notifyBuildDetails = "\nFailed on stage - Uploading Windows Package"
+		notifyBuildDetails = "\nFailed on stage - Building package"
+		bat """
+			cd c:\\tmp\\p2p-packaging\\windows
+			devenv win.sln /Rebuild Release
+		"""
 
-        sh """
-            /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi
-        """*/
+		notifyBuildDetails = "\nFailed on stage - Uploading Windows package"
+		bat "c:\\tmp\\p2p-win-upload.do"
     }
 
 } catch (e) { 
