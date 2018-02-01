@@ -217,7 +217,7 @@ try {
 			""", returnStdout: true)
 
         sh """
-            /tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} ${debfile}
+            /tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} /tmp/p2p-packaging/${debfile}
         """
     }
 
