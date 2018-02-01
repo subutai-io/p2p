@@ -66,6 +66,7 @@ try {
 			export GOBIN=${workspace}/${goenvDir}/bin
 			go get
 			go get golang.org/x/sys/windows
+			./configure
 			make all
 		"""
 
