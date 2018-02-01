@@ -271,6 +271,7 @@ try {
 
 		notifyBuildDetails = "\nFailed on stage - Building package"
 		bat """
+			"C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat"
 			cd c:\\tmp\\p2p-packaging\\windows
 			devenv win.sln /Rebuild Release
 		"""
