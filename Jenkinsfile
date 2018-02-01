@@ -249,14 +249,21 @@ try {
         stage("Packaging for Windows")
         notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
 
+		switch (env.BRANCH_NAME) {
+			case ~/dev/:
+				gitcmd = "git checkout -B dev && git pull origin dev"
+				break;
+			default: 
+				break;
+		}
+
 		bat """
 			if exist "C:\\tmp" RD /S /Q "c:\\tmp"
-			mkdir "C:\\tmp"
+			if not exist "C:\\tmp" mkdir "C:\\tmp"
             echo rm -rf /c/tmp/p2p-packaging > c:\\tmp\\p2p-win.do
             echo git clone git@github.com:optdyn/p2p-packaging.git /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
             echo cd /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
             echo ${gitcmd} >> c:\\tmp\\p2p-win.do
-            echo cd /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
             echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /c/tmp/p2p-packaging/windows/p2p.exe >> c:\\tmp\\p2p-win.do
 			echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o /c/tmp/p2p-packaging/windows/tap-windows-9.21.2.exe >> c:\\tmp\\p2p-win.do
 
