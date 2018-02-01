@@ -251,18 +251,19 @@ try {
 
         sh """
             set -x
-            rm -rf /c/tmp/devops
-            git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
-            cd /c/tmp/devops
+            rm -rf /c/tmp/p2p-packaging
+            git clone git@github.com:optdyn/p2p-packaging.git /c/tmp/p2p-packaging
+            cd /c/tmp/p2p-packaging
             ${gitcmd}
-            cd /c/tmp/devops/p2p
-            curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /c/tmp/devops/p2p/windows/p2p.exe
+            cd /c/tmp/p2p-packaging
+            curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /c/tmp/p2p-packaging/windows/p2p.exe
+			curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o /c/tmp/p2p-packaging/windows/tap-windows-9.21.2.exe
         """
 
         notifyBuildDetails = "\nFailed on stage - Uploading Windows Package"
 
         sh """
-            /c/tmp/devops/p2p/upload.sh windows ${env.BRANCH_NAME} /c/tmp/P2PInstaller.msi
+            /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi
         """
     }
 
