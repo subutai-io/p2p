@@ -268,6 +268,10 @@ try {
 			echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o /c/tmp/p2p-packaging/tap-windows-9.21.2.exe >> c:\\tmp\\p2p-win.do
 
 			echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi > c:\\tmp\\p2p-win-upload.do
+
+			echo "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat" > c:\\tmp\\p2p-pack.bat
+			echo cd c:\\tmp\\p2p-packaging\\windows >> c:\\tmp\\p2p-pack.bat
+			devenv win.sln /Rebuild Release >> c:\\tmp\\p2p-pack.bat
 		"""
 		/*
 			echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi >> c:\\tmp\\p2p-win.do
@@ -277,11 +281,12 @@ try {
 		bat "c:\\tmp\\p2p-win.do"
 
 		notifyBuildDetails = "\nFailed on stage - Building package"
-		bat """
+		bat "c:\\tmp\\p2p-pack.bat"
+		/*bat """
 			"C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat"
 			cd c:\\tmp\\p2p-packaging\\windows
 			devenv win.sln /Rebuild Release
-		"""
+		"""*/
 
 		notifyBuildDetails = "\nFailed on stage - Uploading Windows package"
 		bat "c:\\tmp\\p2p-win-upload.do"
