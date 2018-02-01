@@ -262,7 +262,7 @@ try {
 			echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi >> c:\\tmp\\p2p-win.do
         """*/
 
-		bat c:\\tmp\\p2p-win.do
+		bat "c:\\tmp\\p2p-win.do"
 
 		/*
         notifyBuildDetails = "\nFailed on stage - Uploading Windows Package"
