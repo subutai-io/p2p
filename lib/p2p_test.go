@@ -1,8 +1,24 @@
 package ptp
 
 import (
+	"bytes"
+	"net"
 	"testing"
 )
+
+func TestIsDeviceExists(t *testing.T) {
+	ptp := new(PeerToPeer)
+	dev1 := "lo"
+	get1 := ptp.IsDeviceExists(dev1)
+	if !get1 {
+		t.Error("Error. Device exists.")
+	}
+	dev2 := "device"
+	get2 := ptp.IsDeviceExists(dev2)
+	if get2 {
+		t.Errorf("Error. There no network interface such %v", dev2)
+	}
+}
 
 func TestGenerateDeviceName(t *testing.T) {
 	p := new(PeerToPeer)
@@ -34,11 +50,50 @@ func TestIsIPv4(t *testing.T) {
 	}
 }
 
+func TestFindNetworkAddresses(t *testing.T) {
+	ptp := new(PeerToPeer)
+	ptp.FindNetworkAddresses()
+	if !true {
+		t.Error("Error in function")
+	}
+}
+
+func TestRetrieveFirstDHTRouters(t *testing.T) {
+	ptp := new(PeerToPeer)
+	wait, err := net.ResolveUDPAddr("udp4", "192.168.11.5:6882")
+	if err != nil {
+		t.Error("error")
+	}
+	ptp.Routers = ""
+	get := ptp.retrieveFirstDHTRouter()
+	if get != nil {
+		t.Error("Length of ptp routers is nil")
+	}
+	ptp.Routers = "192.168.11.5:24,192.168.22.1:22"
+	get2 := ptp.retrieveFirstDHTRouter()
+
+	if bytes.EqualFold(get2.IP, wait.IP) && get2.Port != wait.Port && get2.Zone != wait.Zone {
+		t.Errorf("Error.Wait %v, get %v", wait, get2)
+	}
+}
+
 func TestParseIntroString(t *testing.T) {
 	p := new(PeerToPeer)
 	id, mac, ip := p.ParseIntroString("id,01:02:03:04:05:06,127.0.0.1")
 	if id != "id" || mac.String() != "01:02:03:04:05:06" || ip.String() != "127.0.0.1" {
 		t.Errorf("Failed to parse intro string")
+	}
+	id2, mac2, ip2 := p.ParseIntroString("id,192.168.14.1")
+	if id2 != "" && mac2 != nil && ip2 != nil {
+		t.Error("Insufficient number of parameters")
+	}
+	id3, mac3, ip3 := p.ParseIntroString("id,mac,192.168.14.1")
+	if id3 != "" && mac3 != nil && ip3 != nil {
+		t.Error("Error in parse MAC")
+	}
+	id4, mac4, ip4 := p.ParseIntroString("id,01:02:03:04:05:06,ip")
+	if id4 != "" && mac4 != nil && ip4 != nil {
+		t.Error("Error in parse ip")
 	}
 }
 
