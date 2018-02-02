@@ -23,7 +23,7 @@ ifdef DHT_ENDPOINTS
 else
 	DHT=mdht.subut.ai:6881
 endif
-APP=$(NAME_BASE)
+APP=$(NAME_PREFIX)
 
 # ifeq ($(BRANCH),dev)
 # 	DHT=18.195.169.215:6881
