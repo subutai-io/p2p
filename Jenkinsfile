@@ -95,7 +95,6 @@ try {
 	** Trigger subutai-io/snap build on commit to p2p/dev
 	*/
 
-    /*
 	if (env.BRANCH_NAME == 'dev') {
 		build job: 'snap.subutai-io.pipeline/dev/', propagate: false, wait: false
 	}
@@ -103,7 +102,6 @@ try {
 	if (env.BRANCH_NAME == 'master') {
 		build job: 'snap.subutai-io.pipeline/master/', propagate: false, wait: false
 	}
-    */
 
 	if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 		node() {
@@ -191,7 +189,6 @@ try {
 		}
 	}
 
-    /*
     node("debian") {
         notifyBuild('INFO', "Packaging P2P for Debian")
         stage("Packaging for Debian")
@@ -220,9 +217,8 @@ try {
         sh """
             /tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} /tmp/p2p-packaging/${debfile}
         """
-    }*/
+    }
 
-    /*
     node("mac") {
         notifyBuild('INFO', "Packaging P2P for Darwin")
         stage("Packaging for Darwin")
@@ -233,7 +229,6 @@ try {
             rm -rf /tmp/p2p-packaging
             git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
             cd /tmp/p2p-packaging
-            ${gitcmd}
             curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/p2p-packaging/darwin/p2p_osx
             chmod +x /tmp/p2p-packaging/darwin/p2p_osx
             /tmp/p2p-packaging/darwin/pack.sh /tmp/p2p-packaging/darwin/p2p_osx ${env.BRANCH_NAME}
@@ -245,20 +240,11 @@ try {
             /tmp/p2p-packaging/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
         """
     }
-    */
 
 	node("windows") {
         notifyBuild('INFO', "Packaging P2P for Windows")
         stage("Packaging for Windows")
         notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
-
-		switch (env.BRANCH_NAME) {
-			case ~/dev/:
-				gitcmd = "git checkout -B dev && git pull origin dev"
-				break;
-			default: 
-				break;
-		}
 
 		bat """
 			if exist "C:\\tmp" RD /S /Q "c:\\tmp"
@@ -266,7 +252,6 @@ try {
             echo rm -rf /c/tmp/p2p-packaging > c:\\tmp\\p2p-win.do
             echo git clone git@github.com:optdyn/p2p-packaging.git /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
             echo cd /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
-            echo ${gitcmd} >> c:\\tmp\\p2p-win.do
             echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /c/tmp/p2p-packaging/p2p.exe >> c:\\tmp\\p2p-win.do
 			echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o /c/tmp/p2p-packaging/tap-windows-9.21.2.exe >> c:\\tmp\\p2p-win.do
 
