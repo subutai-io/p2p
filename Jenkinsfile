@@ -273,7 +273,7 @@ try {
 			echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi > c:\\tmp\\p2p-win-upload.do
 
 			echo cd c:\\tmp\\p2p-packaging\\windows > c:\\tmp\\p2p-pack.bat
-			echo call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\VsDevCmd.bat; devenv.com win.sln /Rebuild Release" >> c:\\tmp\\p2p-pack.bat
+			echo call "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\Common7\\Tools\\VsDevCmd.bat; devenv.com win.sln /Rebuild Release" >> c:\\tmp\\p2p-pack.bat
 		"""
 
 		notifyBuildDetails = "\nFailed on stage - Deploying DevOps"
