@@ -58,15 +58,11 @@ try {
 		notifyBuildDetails = "\nFailed on Stage - Build p2p"
 
 		sh """
-            ./configure --dht=${dhtHost} --branch=${env.BRANCH_NAME}
-		"""
-
-		sh """
 			export GOPATH=${workspace}/${goenvDir}
 			export GOBIN=${workspace}/${goenvDir}/bin
 			go get
 			go get golang.org/x/sys/windows
-			./configure
+			./configure --dht=${dhtHost} --branch=${env.BRANCH_NAME}
 			make all
 		"""
 
