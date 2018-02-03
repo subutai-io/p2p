@@ -58,15 +58,11 @@ try {
 		notifyBuildDetails = "\nFailed on Stage - Build p2p"
 
 		sh """
-            ./configure --dht=${dhtHost} --branch=${env.BRANCH_NAME}
-		"""
-
-		sh """
 			export GOPATH=${workspace}/${goenvDir}
 			export GOBIN=${workspace}/${goenvDir}/bin
 			go get
 			go get golang.org/x/sys/windows
-			./configure
+			./configure --dht=${dhtHost} --branch=${env.BRANCH_NAME}
 			make all
 		"""
 
@@ -95,7 +91,6 @@ try {
 	** Trigger subutai-io/snap build on commit to p2p/dev
 	*/
 
-    /*
 	if (env.BRANCH_NAME == 'dev') {
 		build job: 'snap.subutai-io.pipeline/dev/', propagate: false, wait: false
 	}
@@ -103,7 +98,6 @@ try {
 	if (env.BRANCH_NAME == 'master') {
 		build job: 'snap.subutai-io.pipeline/master/', propagate: false, wait: false
 	}
-    */
 
 	if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 		node() {
@@ -217,7 +211,7 @@ try {
 			""", returnStdout: true)
 
         sh """
-            /tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} ${debfile}
+            /tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} /tmp/p2p-packaging/${debfile}
         """
     }
 
@@ -231,7 +225,6 @@ try {
             rm -rf /tmp/p2p-packaging
             git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
             cd /tmp/p2p-packaging
-            ${gitcmd}
             curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/p2p-packaging/darwin/p2p_osx
             chmod +x /tmp/p2p-packaging/darwin/p2p_osx
             /tmp/p2p-packaging/darwin/pack.sh /tmp/p2p-packaging/darwin/p2p_osx ${env.BRANCH_NAME}
@@ -249,21 +242,29 @@ try {
         stage("Packaging for Windows")
         notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
 
-        sh """
-            set -x
-            rm -rf /c/tmp/devops
-            git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
-            cd /c/tmp/devops
-            ${gitcmd}
-            cd /c/tmp/devops/p2p
-            curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /c/tmp/devops/p2p/windows/p2p.exe
-        """
+		bat """
+			if exist "C:\\tmp" RD /S /Q "c:\\tmp"
+			if not exist "C:\\tmp" mkdir "C:\\tmp"
+            echo rm -rf /c/tmp/p2p-packaging > c:\\tmp\\p2p-win.do
+            echo git clone git@github.com:optdyn/p2p-packaging.git /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
+            echo cd /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
+            echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /c/tmp/p2p-packaging/p2p.exe >> c:\\tmp\\p2p-win.do
+			echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o /c/tmp/p2p-packaging/tap-windows-9.21.2.exe >> c:\\tmp\\p2p-win.do
 
-        notifyBuildDetails = "\nFailed on stage - Uploading Windows Package"
+			echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi > c:\\tmp\\p2p-win-upload.do
 
-        sh """
-            /c/tmp/devops/p2p/upload.sh windows ${env.BRANCH_NAME} /c/tmp/P2PInstaller.msi
-        """
+			echo call "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\Common7\\Tools\\VsDevCmd.bat" > c:\\tmp\\p2p-pack.bat
+			echo devenv.com c:\\tmp\\p2p-packaging\\windows\\win.sln /Rebuild Release >> c:\\tmp\\p2p-pack.bat
+		"""
+
+		notifyBuildDetails = "\nFailed on stage - Deploying DevOps"
+		bat "c:\\tmp\\p2p-win.do"
+
+		notifyBuildDetails = "\nFailed on stage - Building package"
+		bat "c:\\tmp\\p2p-pack.bat"
+
+		notifyBuildDetails = "\nFailed on stage - Uploading Windows package"
+		bat "c:\\tmp\\p2p-win-upload.do"
     }
 
 } catch (e) { 

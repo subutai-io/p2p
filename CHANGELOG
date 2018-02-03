@@ -1,5 +1,18 @@
 # Change Log
 
+## [6.2.15] 02/03/2018
+
+* Fixed proxies loop
+
+## [6.2.12] 02/02/2018
+
+* Fixes in TURN server communication
+* Fixed crash on incoming ping packet from TURN server
+* Fixed crash on peer handshake requrest
+* Fixed crash on peer handshake confirmation
+* Refactored code
+* DevOps builder for 3 platforms
+
 ## [6.2.9] 01/12/2017
 
 * New option to remove interface from p2p history using `stop` command

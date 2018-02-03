@@ -23,29 +23,23 @@ ifdef DHT_ENDPOINTS
 else
 	DHT=mdht.subut.ai:6881
 endif
-APP=$(NAME_BASE)
+APP=$(NAME_PREFIX)
 
-ifeq ($(BRANCH),dev)
-	DHT=18.195.169.215:6881
-endif
-ifeq ($(BRANCH),master)
-	DHT=54.93.172.70:6881
-endif
-ifeq ($(BRANCH),sysnet)
-	DHT=18.195.169.215:6881
-endif
+# ifeq ($(BRANCH),dev)
+# 	DHT=18.195.169.215:6881
+# endif
+# ifeq ($(BRANCH),master)
+# 	DHT=54.93.172.70:6881
+# endif
+# ifeq ($(BRANCH),sysnet)
+# 	DHT=18.195.169.215:6881
+# endif
 
 
 build: $(APP)
-ifdef UPX_BIN
-release: pack
-endif
-
 linux: $(APP)
 windows: $(APP).exe
 macos: $(APP)_osx
-
-
 all: linux windows macos
 
 $(APP): $(SOURCES) service_posix.go
@@ -59,11 +53,6 @@ $(APP).exe: $(SOURCES) service_windows.go
 $(APP)_osx: $(SOURCES) service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
-
-ifdef UPX_BIN
-pack: $(APP)
-	$(PACK) $(APP)
-endif
 
 clean:
 	-rm -f $(APP)
@@ -80,15 +69,8 @@ mrproper: clean
 mrproper:
 	-rm -f config.make
 
-ifeq ($(BUILD_DEB), 1)
 test:  $(APP)
-	go test ./...
-else
-test: skip-test
-endif
-
-skip-test: $(APP)
-	@echo "Test skipped"
+	go test -v ./...
 
 release: build
 release:
@@ -100,18 +82,6 @@ install:
 
 uninstall:
 	@rm -f $(DESTDIR)/bin/$(NAME_PREFIX)
-
-ifeq ($(BUILD_DEB), 1)
-debian: *.deb
-
-*.deb:
-	debuild --preserve-env -B -d
-
-debian-source: *.changes
-
-*.changes:
-	debuild --preserve-env -S -d
-endif
 
 snapcraft: $(SOURCES) service_posix.go
 	$(eval export GOPATH=$(shell pwd)/../go)

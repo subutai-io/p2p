@@ -11,21 +11,6 @@ Options:
     --scheme=<build_scheme>
         Builds p2p with specified build scheme. Supported schemes is: master, dev, branch. Default: master
 
-    --no-debian
-        Disables build of deb file
-
-    --maintainer=<name>
-        Name of package maintainer
-
-    --maintainer-email=<email>
-        Email of package maintainer email. Appropriate GPG key should exist in the system
-
-    --version-postfix=<postfix>
-	    Place an extra version number of debian package
-
-    --debian-release=<codename>
-	    Codename of target Debian/Ubuntu release
-
     --dht=<url>
         Default DHT url
 
@@ -43,14 +28,7 @@ gopath=
 upx_go=$GOPATH/bin/goupx
 name_prefix=p2p
 scheme="master"
-#branch=`git branch | grep \* | cut -d ' ' -f2`
 branch=`git rev-parse --abbrev-ref HEAD`
-maintainer="Subutai Social"
-maintainer_email="jenkins@subut.ai"
-build_deb=1
-prefix=/usr
-debian_release=trusty
-version_postfix=
 dht=""
 
 while [ $# -ge 1 ]; do
@@ -59,36 +37,12 @@ while [ $# -ge 1 ]; do
             scheme="`echo ${1} | awk '{print substr($0,10)}'`" ;;
         --branch=*)
             branch="`echo ${1} | awk '{print substr($0,10)}'`" ;;
-        --maintainer=*)
-            maintainer="`echo ${1} | awk '{print substr($0,14)}'`" ;;
-        --maintainer-email=*)
-            maintainer_email="`echo ${1} | awk '{print substr($0,20)}'`" ;;
-        --no-debian)
-            build_deb=0 ;;
         --dht=*)
             dht="`echo ${1} | awk '{print substr($0,7)}'`" ;;
-        --debian-release=*)
-            debian_release="`echo ${1} | awk '{print substr($0,18)}'`" ;;
-        --version-postfix=*)
-            version_postfix=-"`echo ${1} | awk '{print substr($0,19)}'`" ;;
         --help)
             showhelp
             exit 0
             ;;
-        --build=*) ;;
-        --prefix=*) 
-            prefix=`echo ${1} | awk '{print substr($0,10)}'`
-            ;;
-        --includedir=*) ;;
-        --mandir=*) ;;
-        --infodir=*) ;;
-        --sysconfdir=*) ;;
-        --localstatedir=*) ;;
-        --disable-silent-rules) ;;
-        --libdir=*) ;;
-        --libexecdir=*) ;;
-        --disable-maintainer-mode) ;;
-        --disable-dependency-tracking) ;;
         *)
             echo "ERROR: Unknown argument: $1"
             showhelp
@@ -101,21 +55,11 @@ done
 
 echo "Preparing $scheme build"
 
-if [ "$scheme" == "branch" ]; then
-    # Configure output binary name
-    echo "Current branch is $branch"
-    if [ "$branch" != "master" ]; then
-        name_base="$name_prefix-$branch"
-    fi
-elif [ "$scheme" == "dev" ]; then
-    name_base="$name_prefix-dev"
-elif [ "$scheme" == "master" ]; then
-    name_base="$name_prefix"
-else
-    echo "ERROR! $scheme scheme is not supported"
-    showhelp
-    exit 1
+name_base="$name_prefix"
+if [ "$branch" != "HEAD" ]; then
+    name_base=$name_prefix-$branch
 fi
+
 echo "Building $name_base"
 
 if [ "$dht" == "" ]; then
@@ -132,102 +76,11 @@ else
     echo "DHT is set to $dht"
 fi
 
-echo "checking go environment"
+echo "Checking go environment"
 if [ "$GOPATH" == "" ]; then
-    echo "GOPATH is not set. Setting to home directory"
-	gopath=~
+    echo "GOPATH is not set. Setting to /tmp/go-path-tmp directory"
+	gopath=/tmp/go-path-tmp
 fi
-
-# GO UPX
-echo "checking upx"
-hash upx 2>/dev/null || { echo >&2 "upx is not installed" ; upx_bin="" ; }
-
-echo "checking goupx"
-if [ ! -x $upx_go ]; then
-    echo "upxgo was not found"
-    upx_go=""
-fi
-
-# Configure Debian packager
-echo "checking debuild"
-which debuild
-if [ $? != 0 ]; then
-    echo "debuild was not found"
-elif [ $build_deb == 0 ]; then
-    echo "skipping deb package"
-else
-    if [ "$maintainer" == "" ]; then
-        echo "Maintainer name should not be empty"
-        showhelp
-        exit 1
-    fi
-    echo "Checking GPG"
-    gpg_bin=`which gpg`
-    if [ $? != 0 ]; then
-        echo "GPG is not installed on this computer. Aborting"
-        exit 2
-    fi
-    echo "Checking GPG key"
-    key=`gpg --list-keys "$maintainer_email"`
-    if [ $? != 0 ]; then
-        echo "Failed to find GPG key for $maintainer_email"
-        exit 2
-    fi
-    # Preparing changelog
-    rm -f deb-changelog.tmp
-    started=0
-    while IFS='' read -r line || [[ -n "$line" ]]; do
-        st=${line:0:2}
-        if [ "$st" == "##" ]; then
-            if [ $started -eq 1 ]; then
-                date_formatted=`date -d"$release_date" "+%a, %d %b %Y %H:%M:%S %z"`
-                echo "" >> deb-changelog.tmp
-                echo " -- $maintainer <$maintainer_email>  $date_formatted" >> deb-changelog.tmp
-                echo "" >> deb-changelog.tmp
-                started=0
-            fi
-            started=1
-            release_date=`echo $line | cut -d "]" -f2 | sed -e 's/^[[:space:]]*//'`
-            version_num=`echo $line | cut -d "[" -f2 | cut -d "]" -f1`
-            echo "subutai-$name_base ($version_num$version_postfix-0ubuntu1~$debian_release) $debian_release; urgency=medium" >> deb-changelog.tmp
-            echo "" >> deb-changelog.tmp
-        elif [ "$st" == "* " ]; then
-            echo "  $line" >> deb-changelog.tmp
-        fi
-    done < CHANGELOG
-    if [ $started -eq 1 ]; then
-        date_formatted=`date -d"$release_date" "+%a, %d %b %Y %H:%M:%S %z"`
-        echo "" >> deb-changelog.tmp
-        echo " -- $maintainer <$maintainer_email>  $date_formatted" >> deb-changelog.tmp
-        echo "" >> deb-changelog.tmp
-        started=0
-    fi
-    mv deb-changelog.tmp debian/changelog
-
-    # Generatin control file
-    echo "Source: subutai-$name_base" > debian/control
-    echo "Section: net" >> debian/control
-    echo "Priority: optional" >> debian/control
-    echo "Maintainer: $maintainer <$maintainer_email>" >> debian/control
-    echo "Build-Depends: git (>=2), golang (>=1.5), debhelper (>=9)" >> debian/control
-    echo "Standards-Version: 3.9.6" >> debian/control
-    echo "Homepage: https://subut.ai" >> debian/control
-    echo "" >> debian/control
-    echo "Package: subutai-$name_base" >> debian/control
-    echo "Architecture: any" >> debian/control
-    echo "Depends: \${shlibs:Depends}, \${misc:Depends}" >> debian/control
-    echo "Description: P2P Network for Subutai" >> debian/control
-
-    echo $control_file
-
-    # Prepare postinst script
-    if [ "$branch" == "master" ]; then
-        cp debian/master-postinst debian/postinst
-    else
-        cp debian/dev-postinst debian/postinst
-    fi
-fi
-
 
 echo "Downloading necessary packages"
 if [ ! -z $gopath ]; then
@@ -235,66 +88,26 @@ if [ ! -z $gopath ]; then
     export GOBIN=$HOME/go-bin
 fi
 
-# Download necessary package
-if [ "$build_deb" == "1" ]; then
-    go get github.com/subutai-io/p2p
-    go get github.com/subutai-io/p2p/lib
-    go get github.com/mdlayher/ethernet
-    go get github.com/jackpal/bencode-go
-    go get gopkg.in/check.v1
-    go get gopkg.in/yaml.v2
-
-    rm -rf debian/extra-code
-    mkdir -p debian/extra-code
-    #mkdir -p debian/extra-code/src/github.com/subutai-io
-    #cp -r $GOPATH/src/github.com/subutai-io/p2p debian/extra-code/src/github.com/subutai-io
-    mkdir -p debian/extra-code/src/github.com/mdlayher
-    cp -r $GOPATH/src/github.com/mdlayher/ethernet debian/extra-code/src/github.com/mdlayher
-    mkdir -p debian/extra-code/src/github.com/jackpal
-    cp -r $GOPATH/src/github.com/jackpal/bencode-go debian/extra-code/src/github.com/jackpal
-    mkdir -p debian/extra-code/src/gopkg.in
-    cp -r $GOPATH/src/gopkg.in/yaml.v2 debian/extra-code/src/gopkg.in
-    mkdir -p debian/extra-code/src/gopkg.in
-    cp -r $GOPATH/src/gopkg.in/check.v1 debian/extra-code/src/gopkg.in
-else
-    echo "Copying extra-code to GOPATH: $GOPATH"
-    cp -r debian/extra-code/* $GOPATH
-fi
-
-if [ $? != 0 ]; then
-    echo "Failed to get required packages. go get exited with error code $?"
-fi
+go get
 
 # generating config.make file
 echo "# config.make generated by configure script" > config.make
-echo "UPX_GO = $upx_go" >> config.make
 echo "NAME_BASE = $name_base" >> config.make
 echo "NAME_PREFIX = $name_prefix" >> config.make
-echo "BUILD_DEB = $build_deb" >> config.make
-echo "PREFIX = $prefix" >> config.make
 echo "DHT_ENDPOINTS = $dht" >> config.make
 if [ "$dht" != "" ]; then
     echo "DHT = $dht" >> config.make
-fi
-if [ "$upx_bin" != "" ]; then
-    echo "UPX_BIN = $upx_bin" >> config.make
 fi
 if [ "$branch" != "HEAD" ]; then
     echo "BRANCH_POSTFIX = -$branch" >> config.make
 fi
 #
-echo "export UPX_GO" >> config.make
 echo "export NAME_BASE" >> config.make
-echo "export BUILD_DEB" >> config.make
 echo "export NAME_PREFIX" >> config.make
-echo "export PREFIX" >> config.make
 echo "export DHT_ENDPOINTS" >> config.make
 if [ ! -z "$gopath" ]; then
 echo "GOPATH = $HOME" >> config.make
 echo "export GOPATH" >> config.make
-fi
-if [ "$upx_bin" != "" ]; then
-    echo "export UPX_BIN" >> config.make
 fi
 if [ "$branch" != "HEAD" ]; then
     echo "export BRANCH_POSTFIX" >> config.make
