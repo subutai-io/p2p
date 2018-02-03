@@ -645,7 +645,9 @@ func (p *PeerToPeer) checkProxies() {
 			list = append(list, proxy.Endpoint)
 		}
 	}
-	p.Dht.sendReportProxy(list)
+	if len(list) > 0 {
+		p.Dht.sendReportProxy(list)
+	}
 
 	// p.proxyLock.Lock()
 	// defer p.proxyLock.Unlock()
