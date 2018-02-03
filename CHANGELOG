@@ -1,5 +1,9 @@
 # Change Log
 
+## [6.2.15] 02/03/2018
+
+* Fixed proxies loop
+
 ## [6.2.12] 02/02/2018
 
 * Fixes in TURN server communication
