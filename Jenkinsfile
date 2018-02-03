@@ -183,89 +183,89 @@ try {
 				"""
 			}
 		}
+
+		node("debian") {
+			notifyBuild('INFO', "Packaging P2P for Debian")
+			stage("Packaging for Debian")
+			notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
+
+			sh """
+				set -x
+				rm -rf /tmp/p2p-packaging
+				git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
+				cd /tmp/p2p-packaging
+				${gitcmd}
+				wget --no-check-certificate https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p -O /tmp/p2p-packaging/linux/debian/p2p
+				chmod +x /tmp/p2p-packaging/linux/debian/p2p
+				./configure --debian --branch=${env.BRANCH_NAME}
+				cd linux
+				debuild -B -d
+			"""
+
+			notifyBuildDetails = "\nFailed on stage - Uploading Debian Package"
+
+			String debfile = sh (script: """
+				set +x
+				ls /tmp/p2p-packaging | grep .deb | tr -d '\n'
+				""", returnStdout: true)
+
+			sh """
+				/tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} /tmp/p2p-packaging/${debfile}
+			"""
+		}
+
+		node("mac") {
+			notifyBuild('INFO', "Packaging P2P for Darwin")
+			stage("Packaging for Darwin")
+			notifyBuildDetails = "\nFailed on stage - Starting Darwin Packaging"
+
+			sh """
+				set -x
+				rm -rf /tmp/p2p-packaging
+				git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
+				cd /tmp/p2p-packaging
+				curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/p2p-packaging/darwin/p2p_osx
+				chmod +x /tmp/p2p-packaging/darwin/p2p_osx
+				/tmp/p2p-packaging/darwin/pack.sh /tmp/p2p-packaging/darwin/p2p_osx ${env.BRANCH_NAME}
+			"""
+
+			notifyBuildDetails = "\nFailed on stage - Uploading Darwin Package"
+
+			sh """
+				/tmp/p2p-packaging/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
+			"""
+		}
+
+		node("windows") {
+			notifyBuild('INFO', "Packaging P2P for Windows")
+			stage("Packaging for Windows")
+			notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
+
+			bat """
+				if exist "C:\\tmp" RD /S /Q "c:\\tmp"
+				if not exist "C:\\tmp" mkdir "C:\\tmp"
+				echo rm -rf /c/tmp/p2p-packaging > c:\\tmp\\p2p-win.do
+				echo git clone git@github.com:optdyn/p2p-packaging.git /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
+				echo cd /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
+				echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /c/tmp/p2p-packaging/p2p.exe >> c:\\tmp\\p2p-win.do
+				echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o /c/tmp/p2p-packaging/tap-windows-9.21.2.exe >> c:\\tmp\\p2p-win.do
+
+				echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi > c:\\tmp\\p2p-win-upload.do
+
+				echo call "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\Common7\\Tools\\VsDevCmd.bat" > c:\\tmp\\p2p-pack.bat
+				echo devenv.com c:\\tmp\\p2p-packaging\\windows\\win.sln /Rebuild Release >> c:\\tmp\\p2p-pack.bat
+			"""
+
+			notifyBuildDetails = "\nFailed on stage - Deploying DevOps"
+			bat "c:\\tmp\\p2p-win.do"
+
+			notifyBuildDetails = "\nFailed on stage - Building package"
+			bat "c:\\tmp\\p2p-pack.bat"
+
+			notifyBuildDetails = "\nFailed on stage - Uploading Windows package"
+			bat "c:\\tmp\\p2p-win-upload.do"
+		}
 	}
-
-    node("debian") {
-        notifyBuild('INFO', "Packaging P2P for Debian")
-        stage("Packaging for Debian")
-        notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
-
-        sh """
-            set -x
-            rm -rf /tmp/p2p-packaging
-            git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
-            cd /tmp/p2p-packaging
-            ${gitcmd}
-            wget --no-check-certificate https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p -O /tmp/p2p-packaging/linux/debian/p2p
-            chmod +x /tmp/p2p-packaging/linux/debian/p2p
-            ./configure --debian --branch=${env.BRANCH_NAME}
-            cd linux
-            debuild -B -d
-        """
-
-        notifyBuildDetails = "\nFailed on stage - Uploading Debian Package"
-
-		String debfile = sh (script: """
-			set +x
-			ls /tmp/p2p-packaging | grep .deb | tr -d '\n'
-			""", returnStdout: true)
-
-        sh """
-            /tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} /tmp/p2p-packaging/${debfile}
-        """
-    }
-
-    node("mac") {
-        notifyBuild('INFO', "Packaging P2P for Darwin")
-        stage("Packaging for Darwin")
-        notifyBuildDetails = "\nFailed on stage - Starting Darwin Packaging"
-
-        sh """
-            set -x
-            rm -rf /tmp/p2p-packaging
-            git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
-            cd /tmp/p2p-packaging
-            curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/p2p-packaging/darwin/p2p_osx
-            chmod +x /tmp/p2p-packaging/darwin/p2p_osx
-            /tmp/p2p-packaging/darwin/pack.sh /tmp/p2p-packaging/darwin/p2p_osx ${env.BRANCH_NAME}
-        """
-
-        notifyBuildDetails = "\nFailed on stage - Uploading Darwin Package"
-
-        sh """
-            /tmp/p2p-packaging/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
-        """
-    }
-
-	node("windows") {
-        notifyBuild('INFO', "Packaging P2P for Windows")
-        stage("Packaging for Windows")
-        notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
-
-		bat """
-			if exist "C:\\tmp" RD /S /Q "c:\\tmp"
-			if not exist "C:\\tmp" mkdir "C:\\tmp"
-            echo rm -rf /c/tmp/p2p-packaging > c:\\tmp\\p2p-win.do
-            echo git clone git@github.com:optdyn/p2p-packaging.git /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
-            echo cd /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
-            echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /c/tmp/p2p-packaging/p2p.exe >> c:\\tmp\\p2p-win.do
-			echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o /c/tmp/p2p-packaging/tap-windows-9.21.2.exe >> c:\\tmp\\p2p-win.do
-
-			echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi > c:\\tmp\\p2p-win-upload.do
-
-			echo call "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\Common7\\Tools\\VsDevCmd.bat" > c:\\tmp\\p2p-pack.bat
-			echo devenv.com c:\\tmp\\p2p-packaging\\windows\\win.sln /Rebuild Release >> c:\\tmp\\p2p-pack.bat
-		"""
-
-		notifyBuildDetails = "\nFailed on stage - Deploying DevOps"
-		bat "c:\\tmp\\p2p-win.do"
-
-		notifyBuildDetails = "\nFailed on stage - Building package"
-		bat "c:\\tmp\\p2p-pack.bat"
-
-		notifyBuildDetails = "\nFailed on stage - Uploading Windows package"
-		bat "c:\\tmp\\p2p-win-upload.do"
-    }
 
 } catch (e) { 
 	currentBuild.result = "FAILED"
