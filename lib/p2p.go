@@ -604,7 +604,10 @@ func (p *PeerToPeer) checkLastDHTUpdate() {
 	passed := time.Since(p.Dht.LastUpdate)
 	if passed > time.Duration(30*time.Second) {
 		Log(Debug, "DHT Last Update timeout passed")
-		p.Dht.sendProxy()
+		// Request new proxies if we don't have any more
+		if len(p.ProxyManager.get()) == 0 {
+			p.Dht.sendProxy()
+		}
 		err := p.Dht.sendFind()
 		if err != nil {
 			Log(Error, "Failed to send update: %s", err)
