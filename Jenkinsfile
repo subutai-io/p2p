@@ -67,24 +67,9 @@ try {
 		"""
 
 		/* stash p2p binary to use it in next node() */
-		stash includes: 'p2p', name: 'p2p'
-		stash includes: 'p2p.exe', name: 'p2p.exe'
-		stash includes: 'p2p_osx', name: 'p2p_osx'
-
-		if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
-			for (codeName in [ 'trusty', 'vivid', 'xenial', 'yakkety', 'zesty']) {
-				sh """
-					find ../ -maxdepth 1 -type f -name subutai-p2p*.dsc -delete
-					find ../ -maxdepth 1 -type f -name subutai-p2p*.build -delete
-					find ../ -maxdepth 1 -type f -name subutai-p2p*.tar.gz -delete
-					find ../ -maxdepth 1 -type f -name subutai-p2p*.changes -delete
-					find ../ -maxdepth 1 -type f -name subutai-p2p*.ppa.upload -delete
-					#./configure --maintainer='Jenkins Admin' --maintainer-email='jenkins@subut.ai' --debian-release=${codeName} --scheme=${env.BRANCH_NAME} --version-postfix=${env.BUILD_NUMBER}
-					#make debian-source
-					#dput ppa:subutai-social/subutai \$(ls ../subutai-p2p*changes)
-				"""			
-			}
-		}
+		stash includes: 'bin/p2p', name: 'p2p'
+		stash includes: 'bin/p2p.exe', name: 'p2p.exe'
+		stash includes: 'bin/p2p_osx', name: 'p2p_osx'
 	}
 	
 	/*
@@ -126,7 +111,7 @@ try {
 			/* get p2p version */
 			String p2pVersion = sh (script: """
 				set +x
-				./p2p -v | cut -d " " -f 3 | tr -d '\n'
+				./bin/p2p -v | cut -d " " -f 3 | tr -d '\n'
 				""", returnStdout: true)
 			String responseP2P = sh (script: """
 				set +x
@@ -134,7 +119,7 @@ try {
 				""", returnStdout: true)
 			sh """
 				set +x
-				curl -s -k -H "token: ${token}" -Ffile=@p2p -Fversion=${p2pVersion} ${url}/raw/upload
+				curl -s -k -H "token: ${token}" -Ffile=@bin/p2p -Fversion=${p2pVersion} ${url}/raw/upload
 			"""
 			/* delete old p2p */
 			if (responseP2P != "Not found") {
@@ -153,7 +138,7 @@ try {
 				""", returnStdout: true)
 			sh """
 				set +x
-				curl -s -k -H "token: ${token}" -Ffile=@p2p.exe -Fversion=${p2pVersion} ${url}/raw/upload
+				curl -s -k -H "token: ${token}" -Ffile=@bin/p2p.exe -Fversion=${p2pVersion} ${url}/raw/upload
 			"""
 			/* delete old p2p.exe */
 			if (responseP2Pexe != "Not found") {
@@ -172,7 +157,7 @@ try {
 				""", returnStdout: true)
 			sh """
 				set +x
-				curl -s -k -H "token: ${token}" -Ffile=@p2p_osx -Fversion=${p2pVersion} ${url}/raw/upload
+				curl -s -k -H "token: ${token}" -Ffile=@bin/p2p_osx -Fversion=${p2pVersion} ${url}/raw/upload
 			"""
 			/* delete old p2p */
 			if (responseP2Posx != "Not found") {
@@ -303,7 +288,7 @@ def notifyBuild(String buildStatus = 'STARTED', String details = '') {
 	summary = "${subject} (${env.BUILD_URL})${details}"
   }
   // Get token
-  def slackToken = getSlackToken('sysnet')
+  def slackToken = getSlackToken('p2p-bots')
   // Send notifications
   slackSend (color: colorCode, message: summary, teamDomain: 'optdyn', token: "${slackToken}")
 }

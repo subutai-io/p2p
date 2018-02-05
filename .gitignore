@@ -18,6 +18,7 @@ tests/*
 *.zip
 *.tmp
 *.msi
+/bin/*
 
 # Logs
 *.log
