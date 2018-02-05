@@ -67,9 +67,9 @@ try {
 		"""
 
 		/* stash p2p binary to use it in next node() */
-		stash includes: 'p2p', name: 'p2p'
-		stash includes: 'p2p.exe', name: 'p2p.exe'
-		stash includes: 'p2p_osx', name: 'p2p_osx'
+		stash includes: 'bin/p2p', name: 'p2p'
+		stash includes: 'bin/p2p.exe', name: 'p2p.exe'
+		stash includes: 'bin/p2p_osx', name: 'p2p_osx'
 
 		if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 			for (codeName in [ 'trusty', 'vivid', 'xenial', 'yakkety', 'zesty']) {
