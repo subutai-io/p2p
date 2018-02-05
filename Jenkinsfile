@@ -119,7 +119,7 @@ try {
 				""", returnStdout: true)
 			sh """
 				set +x
-				curl -s -k -H "token: ${token}" -Ffile=@p2p -Fversion=${p2pVersion} ${url}/raw/upload
+				curl -s -k -H "token: ${token}" -Ffile=@bin/p2p -Fversion=${p2pVersion} ${url}/raw/upload
 			"""
 			/* delete old p2p */
 			if (responseP2P != "Not found") {
@@ -138,7 +138,7 @@ try {
 				""", returnStdout: true)
 			sh """
 				set +x
-				curl -s -k -H "token: ${token}" -Ffile=@p2p.exe -Fversion=${p2pVersion} ${url}/raw/upload
+				curl -s -k -H "token: ${token}" -Ffile=@bin/p2p.exe -Fversion=${p2pVersion} ${url}/raw/upload
 			"""
 			/* delete old p2p.exe */
 			if (responseP2Pexe != "Not found") {
@@ -157,7 +157,7 @@ try {
 				""", returnStdout: true)
 			sh """
 				set +x
-				curl -s -k -H "token: ${token}" -Ffile=@p2p_osx -Fversion=${p2pVersion} ${url}/raw/upload
+				curl -s -k -H "token: ${token}" -Ffile=@bin/p2p_osx -Fversion=${p2pVersion} ${url}/raw/upload
 			"""
 			/* delete old p2p */
 			if (responseP2Posx != "Not found") {
