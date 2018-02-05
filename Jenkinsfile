@@ -70,21 +70,6 @@ try {
 		stash includes: 'bin/p2p', name: 'p2p'
 		stash includes: 'bin/p2p.exe', name: 'p2p.exe'
 		stash includes: 'bin/p2p_osx', name: 'p2p_osx'
-
-		if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
-			for (codeName in [ 'trusty', 'vivid', 'xenial', 'yakkety', 'zesty']) {
-				sh """
-					find ../ -maxdepth 1 -type f -name subutai-p2p*.dsc -delete
-					find ../ -maxdepth 1 -type f -name subutai-p2p*.build -delete
-					find ../ -maxdepth 1 -type f -name subutai-p2p*.tar.gz -delete
-					find ../ -maxdepth 1 -type f -name subutai-p2p*.changes -delete
-					find ../ -maxdepth 1 -type f -name subutai-p2p*.ppa.upload -delete
-					#./configure --maintainer='Jenkins Admin' --maintainer-email='jenkins@subut.ai' --debian-release=${codeName} --scheme=${env.BRANCH_NAME} --version-postfix=${env.BUILD_NUMBER}
-					#make debian-source
-					#dput ppa:subutai-social/subutai \$(ls ../subutai-p2p*changes)
-				"""			
-			}
-		}
 	}
 	
 	/*
@@ -126,7 +111,7 @@ try {
 			/* get p2p version */
 			String p2pVersion = sh (script: """
 				set +x
-				./p2p -v | cut -d " " -f 3 | tr -d '\n'
+				./bin/p2p -v | cut -d " " -f 3 | tr -d '\n'
 				""", returnStdout: true)
 			String responseP2P = sh (script: """
 				set +x
