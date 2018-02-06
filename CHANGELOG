@@ -1,5 +1,9 @@
 # Change Log
 
+## [6.2.16] 02/06/2018
+
+* Fixed proxy management
+
 ## [6.2.15] 02/03/2018
 
 * Fixed proxies loop
