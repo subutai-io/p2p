@@ -7,6 +7,9 @@ import (
 
 // Handlers for P2P packets received from other network peers or TURN servers
 
+// MessageHandler is a messages callback
+type MessageHandler func(message *P2PMessage, srcAddr *net.UDPAddr)
+
 // HandleP2PMessage is a handler for new messages received from P2P network
 func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error, rcvBytes []byte) {
 	if err != nil {

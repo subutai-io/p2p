@@ -12,18 +12,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// MessageHandler is a messages callback
-type MessageHandler func(message *P2PMessage, srcAddr *net.UDPAddr)
-
-// NetworkInterface keeps information about P2P network interface
-// type NetworkInterface struct {
-// 	IP        net.IP           // IP
-// 	Mask      net.IPMask       // Mask
-// 	Mac       net.HardwareAddr // Hardware Address
-// 	Name      string           // Network interface name
-// 	Interface *Interface       // TAP Interface
-// }
-
 // PeerToPeer - Main structure
 type PeerToPeer struct {
 	IPTool          string                               `yaml:"iptool"`  // Network interface configuration tool
@@ -46,8 +34,6 @@ type PeerToPeer struct {
 	HolePunching    sync.Mutex                           // Mutex for hole punching sync
 	ProxyManager    *ProxyManager                        // Proxy manager
 	outboundIP      net.IP                               // Outbound IP
-	//Proxies         []*proxyServer                       // List of proxies
-	//proxyLock       sync.Mutex
 }
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
@@ -548,6 +534,10 @@ func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
 
 // Run is a main loop
 func (p *PeerToPeer) Run() {
+	// Request proxies from DHT
+	p.Dht.sendProxy()
+	initialRequestSent := false
+	started := time.Now()
 	// p.Dht.LastUpdate = time.Unix(1, 1)
 	p.Dht.LastUpdate = time.Now()
 	for {
@@ -595,6 +585,10 @@ func (p *PeerToPeer) Run() {
 			p.checkLastDHTUpdate()
 			p.checkProxies()
 			time.Sleep(100 * time.Millisecond)
+			if !initialRequestSent && time.Since(started) > time.Duration(time.Millisecond*5000) {
+				initialRequestSent = true
+				p.Dht.sendFind()
+			}
 		}
 	}
 	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)
