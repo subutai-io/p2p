@@ -25,36 +25,38 @@ else
 endif
 APP=$(NAME_PREFIX)
 
-# ifeq ($(BRANCH),dev)
-# 	DHT=18.195.169.215:6881
-# endif
-# ifeq ($(BRANCH),master)
-# 	DHT=54.93.172.70:6881
-# endif
-# ifeq ($(BRANCH),sysnet)
-# 	DHT=18.195.169.215:6881
-# endif
+SNAPDHT=mdht.subut.ai
+ifeq ($(BRANCH),dev)
+	SNAPDHT=18.195.169.215:6881
+endif
+ifeq ($(BRANCH),master)
+	SNAPDHT=54.93.172.70:6881
+endif
+ifeq ($(BRANCH),sysnet)
+	SNAPDHT=18.195.169.215:6881
+endif
 
-
-build: $(APP)
-linux: $(APP)
-windows: $(APP).exe
-macos: $(APP)_osx
+build: directories
+build: bin/$(APP)
+linux: bin/$(APP)
+windows: bin/$(APP).exe
+macos: bin/$(APP)_osx
 all: linux windows macos
 
-$(APP): $(SOURCES) service_posix.go
+bin/$(APP): $(SOURCES) service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	$(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 
-$(APP).exe: $(SOURCES) service_windows.go
+bin/$(APP).exe: $(SOURCES) service_windows.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	GOOS=windows $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 	
-$(APP)_osx: $(SOURCES) service_posix.go
+bin/$(APP)_osx: $(SOURCES) service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $@ -v $^
 
 clean:
+	-rm -f bin/$(APP)
 	-rm -f $(APP)
 	-rm -f $(APP)_osx
 	-rm -f $(APP).exe
@@ -67,6 +69,7 @@ clean:
 
 mrproper: clean
 mrproper:
+	-rm -rf bin
 	-rm -f config.make
 
 test:  $(APP)
@@ -83,9 +86,12 @@ install:
 uninstall:
 	@rm -f $(DESTDIR)/bin/$(NAME_PREFIX)
 
+directories:
+	@mkdir -p bin
+
 snapcraft: $(SOURCES) service_posix.go
 	$(eval export GOPATH=$(shell pwd)/../go)
 	$(eval export GOBIN=$(shell pwd)/../go/bin)
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	$(CC) get -d
-	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $(APP) -v $^
+	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.DefaultDHT=$(SNAPDHT) -X main.BuildID=$(BUILD)" -o $(APP) -v $^
