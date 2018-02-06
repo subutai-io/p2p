@@ -25,15 +25,16 @@ else
 endif
 APP=$(NAME_PREFIX)
 
-# ifeq ($(BRANCH),dev)
-# 	DHT=18.195.169.215:6881
-# endif
-# ifeq ($(BRANCH),master)
-# 	DHT=54.93.172.70:6881
-# endif
-# ifeq ($(BRANCH),sysnet)
-# 	DHT=18.195.169.215:6881
-# endif
+SNAPDHT=mdht.subut.ai
+ifeq ($(BRANCH),dev)
+	SNAPDHT=18.195.169.215:6881
+endif
+ifeq ($(BRANCH),master)
+	SNAPDHT=54.93.172.70:6881
+endif
+ifeq ($(BRANCH),sysnet)
+	SNAPDHT=18.195.169.215:6881
+endif
 
 build: directories
 build: bin/$(APP)
@@ -93,4 +94,4 @@ snapcraft: $(SOURCES) service_posix.go
 	$(eval export GOBIN=$(shell pwd)/../go/bin)
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	$(CC) get -d
-	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD)" -o $(APP) -v $^
+	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.DefaultDHT=$(SNAPDHT) -X main.BuildID=$(BUILD)" -o $(APP) -v $^
