@@ -1,13 +1,20 @@
 language: go
 go: 1.9
+os:
+  - linux
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+      sudo: required
+before_install:
+  - sudo apt-get install devscripts
 install:
   - go get
   - go get golang.org/x/sys/windows
 script:
   - ./configure
   - make all
-  - go test ./...
-  - go test --bench . ./...
 notifications:
   slack:
     secure: oshkIoOJGMJ8iwmtgaSvkelCM5GIMld9jy7ZjUy9vATpsiOntAovhEFtlpmxnok1mD53SV1m45mPY7JnNOKjFOMQA3hFANEN79RSGjQKI5JNqGTRLsDuFmbgUPoS3lyV8qTdyytKOpi1moaVOsSD8s3byzmdWHMtnkS6M8iS5+3L/t3o6W7lNDSdFJCPDtVxIFrH+CBRRMbbFFkhPOxmJSxBaxEN7EEpNAwgw6z2pOqSj6fD5vwXG5YcuH6/cWEmAiVC4hIfxERh2cMGzCkgl4ZpO12AQvJBLw9ufhLvu2ER03fhqkKuHAo7myF0PcqSpOFhdamO05MtiWN/6RLGHDMIWRfBmaYmOfPyaodSUF4DZrhFYmMXDXhWkrpeBpYzknPQqPkwouYO6OtHsdMITdo27n1ENg1QuIth8kjiPbVcz/gjsUTzkcbbbQQw4LGcdkj6NawC3oq7+JXUE4gIGiqpuMEIxaKIe+P/77nIxVqGOQUQJzVx2IQKG8dBKUpBeFkTnDoJxbT/u7Q2cIMtv/Tmv+m7uEvii/kwrsk/XJpBWL3xzSgmiCiTi346bbJ71lFeuBpiYEN9P3Afi/573Bxddj7eA23ricF81QrBHTpo7OnrwKPz+dz8g7/297rWJC80olemkdFyp3bjgd158TKepYU+YP/LLugRF+AVLJQ=
