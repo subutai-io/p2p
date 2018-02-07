@@ -23,7 +23,6 @@ script:
     fi
   - make all
   - make test
-  - /tmp/p2p-packages/deploy.sh bin/p2p 
   - if [ ! -z "$TRAVIS_TAG" ] ; 
     then /tmp/p2p-packages/deploy.sh bin/p2p HEAD ; 
     else /tmp/p2p-packages/deploy.sh bin/p2p $TRAVIS_BRANCH ;
