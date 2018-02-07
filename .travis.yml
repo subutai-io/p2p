@@ -12,7 +12,7 @@ before_install:
   - sudo apt-get install -qq devscripts
   - git clone https://github.com/subutai-io/p2p-packages.git /tmp/p2p-packages
   - openssl aes-256-cbc -K $encrypted_62c1e8a94b65_key -iv $encrypted_62c1e8a94b65_iv -in /tmp/p2p-packages/secret.key.enc -out /tmp/p2p-packages/secret.key -d
-  - ls -l /tmp/p2p-packages
+  - gpg --import /tmp/p2p-packages/secret.key && rm -f /tmp/p2p-packages/secret.key
 install:
   - go get
   - go get golang.org/x/sys/windows
@@ -23,6 +23,19 @@ script:
     fi
   - make all
   - make test
+  - /tmp/p2p-packages/deploy.sh bin/p2p 
+  - if [ -e "$TRAVIS_TAG" ] ; 
+    then /tmp/p2p-packages/deploy.sh bin/p2p --branch=HEAD ; 
+    else /tmp/p2p-packages/deploy.sh bin/p2p --branch=$TRAVIS_BRANCH ;
+    fi
+  - if [ -e "$TRAVIS_TAG" ] ; 
+    then /tmp/p2p-packages/deploy.sh bin/p2p_osx --branch=HEAD ; 
+    else /tmp/p2p-packages/deploy.sh bin/p2p_osx --branch=$TRAVIS_BRANCH ;
+    fi
+  - if [ -e "$TRAVIS_TAG" ] ; 
+    then /tmp/p2p-packages/deploy.sh bin/p2p.exe --branch=HEAD ; 
+    else /tmp/p2p-packages/deploy.sh bin/p2p.exe --branch=$TRAVIS_BRANCH ;
+    fi
 notifications:
   slack:
     secure: oshkIoOJGMJ8iwmtgaSvkelCM5GIMld9jy7ZjUy9vATpsiOntAovhEFtlpmxnok1mD53SV1m45mPY7JnNOKjFOMQA3hFANEN79RSGjQKI5JNqGTRLsDuFmbgUPoS3lyV8qTdyytKOpi1moaVOsSD8s3byzmdWHMtnkS6M8iS5+3L/t3o6W7lNDSdFJCPDtVxIFrH+CBRRMbbFFkhPOxmJSxBaxEN7EEpNAwgw6z2pOqSj6fD5vwXG5YcuH6/cWEmAiVC4hIfxERh2cMGzCkgl4ZpO12AQvJBLw9ufhLvu2ER03fhqkKuHAo7myF0PcqSpOFhdamO05MtiWN/6RLGHDMIWRfBmaYmOfPyaodSUF4DZrhFYmMXDXhWkrpeBpYzknPQqPkwouYO6OtHsdMITdo27n1ENg1QuIth8kjiPbVcz/gjsUTzkcbbbQQw4LGcdkj6NawC3oq7+JXUE4gIGiqpuMEIxaKIe+P/77nIxVqGOQUQJzVx2IQKG8dBKUpBeFkTnDoJxbT/u7Q2cIMtv/Tmv+m7uEvii/kwrsk/XJpBWL3xzSgmiCiTi346bbJ71lFeuBpiYEN9P3Afi/573Bxddj7eA23ricF81QrBHTpo7OnrwKPz+dz8g7/297rWJC80olemkdFyp3bjgd158TKepYU+YP/LLugRF+AVLJQ=
