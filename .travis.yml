@@ -17,24 +17,24 @@ install:
   - go get
   - go get golang.org/x/sys/windows
 script:
-  - if [ -e "$TRAVIS_TAG" ] ; 
+  - if [ ! -z "$TRAVIS_TAG" ] ; 
     then ./configure --branch=HEAD ; 
     else ./configure --branch=$TRAVIS_BRANCH ;
     fi
   - make all
   - make test
   - /tmp/p2p-packages/deploy.sh bin/p2p 
-  - if [ -e "$TRAVIS_TAG" ] ; 
-    then /tmp/p2p-packages/deploy.sh bin/p2p --branch=HEAD ; 
-    else /tmp/p2p-packages/deploy.sh bin/p2p --branch=$TRAVIS_BRANCH ;
+  - if [ ! -z "$TRAVIS_TAG" ] ; 
+    then /tmp/p2p-packages/deploy.sh bin/p2p HEAD ; 
+    else /tmp/p2p-packages/deploy.sh bin/p2p $TRAVIS_BRANCH ;
     fi
-  - if [ -e "$TRAVIS_TAG" ] ; 
-    then /tmp/p2p-packages/deploy.sh bin/p2p_osx --branch=HEAD ; 
-    else /tmp/p2p-packages/deploy.sh bin/p2p_osx --branch=$TRAVIS_BRANCH ;
+  - if [ ! -z "$TRAVIS_TAG" ] ; 
+    then /tmp/p2p-packages/deploy.sh bin/p2p_osx HEAD ; 
+    else /tmp/p2p-packages/deploy.sh bin/p2p_osx $TRAVIS_BRANCH ;
     fi
-  - if [ -e "$TRAVIS_TAG" ] ; 
-    then /tmp/p2p-packages/deploy.sh bin/p2p.exe --branch=HEAD ; 
-    else /tmp/p2p-packages/deploy.sh bin/p2p.exe --branch=$TRAVIS_BRANCH ;
+  - if [ ! -z "$TRAVIS_TAG" ] ; 
+    then /tmp/p2p-packages/deploy.sh bin/p2p.exe HEAD ; 
+    else /tmp/p2p-packages/deploy.sh bin/p2p.exe $TRAVIS_BRANCH ;
     fi
 notifications:
   slack:
