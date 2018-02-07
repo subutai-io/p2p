@@ -2,6 +2,7 @@ language: go
 go: 1.9
 install:
   - go get
+  - go get golang.org/x/sys/windows
 script:
   - ./configure
   - make all
