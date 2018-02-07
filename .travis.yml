@@ -14,7 +14,10 @@ install:
   - go get
   - go get golang.org/x/sys/windows
 script:
-  - ./configure
+  - if [ -e "$TRAVIS_TAG" ] ; 
+    then ./configure --branch=HEAD ; 
+    else ./configure --branch=$TRAVIS_BRANCH ;
+    fi
   - make all
   - make test
 notifications:
