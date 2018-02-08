@@ -1,15 +1,74 @@
 language: go
-
 go: 1.9
-
+os:
+  - linux
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+      sudo: required
 before_install:
-    - go get github.com/danderson/tuntap
-    - go get github.com/mdlayher/ethernet
-    - go get gopkg.in/yaml.v2
-    - go get github.com/jackpal/bencode-go
-    - go get github.com/wayn3h0/go-uuid
-    - go get
-
-script: 
-    - go test ./... 
-    - go test --bench . ./...
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq devscripts
+  - git clone https://github.com/subutai-io/p2p-packages.git /tmp/p2p-packages
+  - openssl aes-256-cbc -K $encrypted_62c1e8a94b65_key -iv $encrypted_62c1e8a94b65_iv -in /tmp/p2p-packages/secret.key.enc -out /tmp/p2p-packages/secret.key -d
+  - gpg --import /tmp/p2p-packages/secret.key && rm -f /tmp/p2p-packages/secret.key
+install:
+  - go get
+  - go get golang.org/x/sys/windows
+script:
+  - if [ ! -z "$TRAVIS_TAG" ] ; 
+    then ./configure --branch=HEAD ; 
+    else ./configure --branch=$TRAVIS_BRANCH ;
+    fi
+  - make all
+  - make test
+deploy:
+  - provider: script
+    script: /tmp/p2p-packages/deploy.sh bin/p2p dev
+    skip_cleanup: true
+    on:
+      branch: dev
+  - provider: script
+    script: /tmp/p2p-packages/deploy.sh bin/p2p_osx dev
+    skip_cleanup: true
+    on:
+      branch: dev
+  - provider: script
+    script: /tmp/p2p-packages/deploy.sh bin/p2p.exe dev
+    skip_cleanup: true
+    on:
+      branch: dev
+  - provider: script
+    script: /tmp/p2p-packages/deploy.sh bin/p2p master
+    skip_cleanup: true
+    on:
+      branch: master
+  - provider: script
+    script: /tmp/p2p-packages/deploy.sh bin/p2p_osx master
+    skip_cleanup: true
+    on:
+      branch: master
+  - provider: script
+    script: /tmp/p2p-packages/deploy.sh bin/p2p.exe master
+    skip_cleanup: true
+    on:
+      branch: master
+  - provider: script
+    script: /tmp/p2p-packages/deploy.sh bin/p2p HEAD
+    skip_cleanup: true
+    on:
+      tags: true
+  - provider: script
+    script: /tmp/p2p-packages/deploy.sh bin/p2p_osx HEAD
+    skip_cleanup: true
+    on:
+      tags: true
+  - provider: script
+    script: /tmp/p2p-packages/deploy.sh bin/p2p.exe HEAD
+    skip_cleanup: true
+    on:
+      tags: true
+notifications:
+  slack:
+    secure: oshkIoOJGMJ8iwmtgaSvkelCM5GIMld9jy7ZjUy9vATpsiOntAovhEFtlpmxnok1mD53SV1m45mPY7JnNOKjFOMQA3hFANEN79RSGjQKI5JNqGTRLsDuFmbgUPoS3lyV8qTdyytKOpi1moaVOsSD8s3byzmdWHMtnkS6M8iS5+3L/t3o6W7lNDSdFJCPDtVxIFrH+CBRRMbbFFkhPOxmJSxBaxEN7EEpNAwgw6z2pOqSj6fD5vwXG5YcuH6/cWEmAiVC4hIfxERh2cMGzCkgl4ZpO12AQvJBLw9ufhLvu2ER03fhqkKuHAo7myF0PcqSpOFhdamO05MtiWN/6RLGHDMIWRfBmaYmOfPyaodSUF4DZrhFYmMXDXhWkrpeBpYzknPQqPkwouYO6OtHsdMITdo27n1ENg1QuIth8kjiPbVcz/gjsUTzkcbbbQQw4LGcdkj6NawC3oq7+JXUE4gIGiqpuMEIxaKIe+P/77nIxVqGOQUQJzVx2IQKG8dBKUpBeFkTnDoJxbT/u7Q2cIMtv/Tmv+m7uEvii/kwrsk/XJpBWL3xzSgmiCiTi346bbJ71lFeuBpiYEN9P3Afi/573Bxddj7eA23ricF81QrBHTpo7OnrwKPz+dz8g7/297rWJC80olemkdFyp3bjgd158TKepYU+YP/LLugRF+AVLJQ=

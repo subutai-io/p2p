@@ -397,8 +397,8 @@ func (p *PeerToPeer) validateInterfaceName(name string) (string, error) {
 	if name == "" {
 		name = p.GenerateDeviceName(1)
 	} else {
-		if len(name) > 12 {
-			Log(Info, "Interface name length should be 12 symbols max")
+		if len(name) > MaximumInterfaceNameLength {
+			Log(Info, "Interface name length should be %d symbols max", MaximumInterfaceNameLength)
 			return "", fmt.Errorf("Interface name is too big")
 		}
 	}
