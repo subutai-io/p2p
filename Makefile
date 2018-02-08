@@ -25,7 +25,7 @@ else
 endif
 APP=$(NAME_PREFIX)
 
-SNAPDHT=mdht.subut.ai
+SNAPDHT=mdht.subut.ai:6881
 ifeq ($(BRANCH),dev)
 	SNAPDHT=18.195.169.215:6881
 endif
@@ -72,8 +72,9 @@ mrproper:
 	-rm -rf bin
 	-rm -f config.make
 
-test:  $(APP)
+test:
 	go test -v ./...
+	go test --bench . ./...
 
 release: build
 release:
