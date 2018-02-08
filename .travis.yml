@@ -26,38 +26,47 @@ script:
 deploy:
   - provider: script
     script: /tmp/p2p-packages/deploy.sh bin/p2p dev
+    skip_cleanup: true
     on:
       branch: dev
   - provider: script
     script: /tmp/p2p-packages/deploy.sh bin/p2p_osx dev
+    skip_cleanup: true
     on:
       branch: dev
   - provider: script
     script: /tmp/p2p-packages/deploy.sh bin/p2p.exe dev
+    skip_cleanup: true
     on:
       branch: dev
   - provider: script
     script: /tmp/p2p-packages/deploy.sh bin/p2p master
+    skip_cleanup: true
     on:
       branch: master
   - provider: script
     script: /tmp/p2p-packages/deploy.sh bin/p2p_osx master
+    skip_cleanup: true
     on:
       branch: master
   - provider: script
     script: /tmp/p2p-packages/deploy.sh bin/p2p.exe master
+    skip_cleanup: true
     on:
       branch: master
   - provider: script
     script: /tmp/p2p-packages/deploy.sh bin/p2p HEAD
+    skip_cleanup: true
     on:
       tags: true
   - provider: script
     script: /tmp/p2p-packages/deploy.sh bin/p2p_osx HEAD
+    skip_cleanup: true
     on:
       tags: true
   - provider: script
     script: /tmp/p2p-packages/deploy.sh bin/p2p.exe HEAD
+    skip_cleanup: true
     on:
       tags: true
 notifications:
