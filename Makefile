@@ -72,8 +72,9 @@ mrproper:
 	-rm -rf bin
 	-rm -f config.make
 
-test:  $(APP)
+test:
 	go test -v ./...
+	go test --bench . ./...
 
 release: build
 release:

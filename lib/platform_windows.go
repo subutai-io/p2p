@@ -23,6 +23,10 @@ const (
 	TapID     string = "tap0901"
 )
 
+const (
+	MaximumInterfaceNameLength int = 128
+)
+
 func InitPlatform() {
 	Log(Info, "Initializing Windows Platform")
 	// Remove interfaces
@@ -90,6 +94,17 @@ func closeInterface(file syscall.Handle) {
 
 // SetupPlatform will install Windows Service and exit immediatelly
 func SetupPlatform(remove bool) {
+	// Opening log
+	// f, err := os.OpenFile("C:\\ProgramData\\subutai\\log\\service-setup.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	// if err != nil {
+	// 	Log(Error, "Failed to open log file")
+	// 	f = nil
+	// }
+	// if f != nil {
+	// 	defer f.Close()
+	// 	log.SetOutput(f)
+	// }
+
 	name := "Subutai P2P"
 	desc := "Subutai networking service"
 	Log(Info, "Setting up Windows Service")
