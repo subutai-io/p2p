@@ -24,6 +24,7 @@ script:
   - make all
   - make test
 deploy:
+  skip_cleanup: true
   - provider: script
     script: /tmp/p2p-packages/deploy.sh bin/p2p dev
     on:

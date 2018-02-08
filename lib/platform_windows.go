@@ -23,6 +23,10 @@ const (
 	TapID     string = "tap0901"
 )
 
+const (
+	MaximumInterfaceNameLength int = 128
+)
+
 func InitPlatform() {
 	Log(Info, "Initializing Windows Platform")
 	// Remove interfaces

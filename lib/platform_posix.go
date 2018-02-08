@@ -8,6 +8,10 @@ import (
 	"os"
 )
 
+const (
+	MaximumInterfaceNameLength int = 12
+)
+
 var syslogLevel = [...]syslog.Priority{syslog.LOG_DEBUG, syslog.LOG_DEBUG, syslog.LOG_INFO, syslog.LOG_WARNING, syslog.LOG_ERR}
 
 // InitPlatform does a platform specific preparation
