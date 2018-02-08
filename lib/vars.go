@@ -77,6 +77,11 @@ const (
 	PeerStateHandshakingForwarder             = iota // Forwarder has been received and we're trying to handshake it
 	PeerStateDisconnect                       = iota // We're disconnecting
 	PeerStateStop                             = iota // Peer has been stopped and now can be removed from list of peers
+
+	PeerStateRequestingProxy  = iota // Requesting proxies for this peer
+	PeerStateWaitingForProxy  = iota // Waiting for proxies
+	PeerStateWaitingToConnect = iota // Waiting for other peer to start establishing connection
+	PeerStateRouting          = iota // (Re)Routing
 )
 
 // Ping types

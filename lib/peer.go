@@ -84,6 +84,11 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 		np.stateHandlers[PeerStateDisconnect] = np.stateDisconnect
 		np.stateHandlers[PeerStateStop] = np.stateStop
 
+		np.stateHandlers[PeerStateRequestingProxy] = np.stateRequestingProxy
+		np.stateHandlers[PeerStateWaitingForProxy] = np.stateWaitingForProxy
+		np.stateHandlers[PeerStateWaitingToConnect] = np.stateWaitingToConnect
+		np.stateHandlers[PeerStateRouting] = np.stateRouting
+
 		callback, exists := np.stateHandlers[np.State]
 		if !exists {
 			Log(Error, "Peer %s is in unknown state: %d", np.ID, int(np.State))
@@ -596,4 +601,22 @@ func (np *NetworkPeer) SetPeerAddr() bool {
 	Log(Info, "Setting peer address as %s for %s", np.KnownIPs[0].String(), np.ID)
 	np.PeerAddr = np.KnownIPs[0]
 	return true
+}
+
+// New states. Experimental
+
+func (np *NetworkPeer) stateRequestingProxy(ptpc *PeerToPeer) error {
+	return nil
+}
+
+func (np *NetworkPeer) stateWaitingForProxy(ptpc *PeerToPeer) error {
+	return nil
+}
+
+func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
+	return nil
+}
+
+func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
+	return nil
 }
