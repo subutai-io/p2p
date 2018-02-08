@@ -222,6 +222,48 @@ func CreateIntroRequest(c Crypto, id string) *P2PMessage {
 	return msg
 }
 
+func CreateHandshakeInitial(c Crypto, id string, endpoint *net.UDPAddr) *P2PMessage {
+	msg := new(P2PMessage)
+	msg.Header = new(P2PMessageHeader)
+	msg.Header.Magic = MagicCookie
+	msg.Header.Type = uint16(MsgTypeIntroReq)
+	msg.Header.NetProto = 0
+	msg.Header.Length = uint16(len(id))
+	msg.Header.Complete = 1
+	msg.Header.ID = 0
+	if c.Active {
+		var err error
+		msg.Data, err = c.encrypt(c.ActiveKey.Key, []byte(id+endpoint.String()))
+		if err != nil {
+			Log(Error, "Failed to encrypt data")
+		}
+	} else {
+		msg.Data = []byte(id)
+	}
+	return msg
+}
+
+func (p *PeerToPeer) CreateMessage(msgType MsgType, payload []byte) (*P2PMessage, error) {
+	msg := new(P2PMessage)
+	msg.Header = new(P2PMessageHeader)
+	msg.Header.Magic = MagicCookie
+	msg.Header.Type = uint16(msgType)
+	msg.Header.NetProto = 0
+	msg.Header.Length = uint16(len(payload))
+	msg.Header.Complete = 1
+	msg.Header.ID = 0
+	if p.Crypter.Active {
+		var err error
+		msg.Data, err = p.Crypter.encrypt(p.Crypter.ActiveKey.Key, payload)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		msg.Data = payload
+	}
+	return msg, nil
+}
+
 // CreateNencP2PMessage creates a normal message with encryption
 func CreateNencP2PMessage(c Crypto, data []byte, netProto, complete, id, seq uint16) *P2PMessage {
 	msg := new(P2PMessage)
