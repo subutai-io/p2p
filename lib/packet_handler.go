@@ -50,7 +50,7 @@ func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error
 
 // HandleNotEncryptedMessage is a normal message sent over p2p network
 func (p *PeerToPeer) HandleNotEncryptedMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
-	Log(Trace, "Data: %s, Proto: %d, From: %s", msg.Data, msg.Header.NetProto, srcAddr.String())
+	Log(Trace, "Data: %s, From: %s", msg.Data, srcAddr.String())
 	p.WriteToDevice(msg.Data, msg.Header.NetProto, false)
 }
 
@@ -89,18 +89,29 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 
 // HandleXpeerPingMessage receives a cross-peer ping message
 func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
+
+	query := string(msg.Data)[:3]
+	if query == "req" {
+
+	} else if query == "res" {
+
+	} else {
+		Log(Debug, "Wrong xpeer ping message")
+	}
+
 	pt := PingType(msg.Header.NetProto)
 	if pt == PingReq {
-		Log(Debug, "Ping request received: %s. Responding with %s", string(msg.Data), p.Interface.GetHardwareAddress().String())
-		// Send a PING response
-		r := CreateXpeerPingMessage(p.Crypter, PingResp, p.Interface.GetHardwareAddress().String())
-		addr, err := net.ParseMAC(string(msg.Data))
-		if err != nil {
-			Log(Error, "Failed to parse MAC address in crosspeer ping message")
-		} else {
-			p.SendTo(addr, r)
-			Log(Debug, "Sending crosspeer PING response to %s", addr.String())
-		}
+		msg, err := p.CreateMessage()
+		// Log(Debug, "Ping request received: %s. Responding with %s", string(msg.Data), p.Interface.GetHardwareAddress().String())
+		// // Send a PING response
+		// r := CreateXpeerPingMessage(p.Crypter, PingResp, p.Interface.GetHardwareAddress().String())
+		// addr, err := net.ParseMAC(string(msg.Data))
+		// if err != nil {
+		// 	Log(Error, "Failed to parse MAC address in crosspeer ping message")
+		// } else {
+		// 	p.SendTo(addr, r)
+		// 	Log(Debug, "Sending crosspeer PING response to %s", addr.String())
+		// }
 	} else {
 		Log(Debug, "Ping response received")
 		// Handle PING response

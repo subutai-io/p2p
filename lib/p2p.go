@@ -573,8 +573,11 @@ func (p *PeerToPeer) Run() {
 				if err == nil {
 					if p.ProxyManager.new(proxyAddr) == nil {
 						go func() {
-							msg := CreateProxyP2PMessage(0, p.Dht.ID, 1)
-							p.UDPSocket.SendMessage(msg, proxyAddr)
+							//msg := CreateProxyP2PMessage(0, p.Dht.ID, 1)
+							msg, err := p.CreateMessage(MsgTypeProxy, []byte(p.Dht.ID), 0, false)
+							if err == nil {
+								p.UDPSocket.SendMessage(msg, proxyAddr)
+							}
 						}()
 					}
 				}
@@ -665,7 +668,11 @@ func (p *PeerToPeer) checkProxies() {
 // and create a comma-separated line
 func (p *PeerToPeer) PrepareIntroductionMessage(id string) *P2PMessage {
 	var intro = id + "," + p.Interface.GetHardwareAddress().String() + "," + p.Interface.GetIP().String()
-	msg := CreateIntroP2PMessage(p.Crypter, intro, 0)
+	//msg := CreateIntroP2PMessage(p.Crypter, intro, 0)
+	msg, err := p.CreateMessage(MsgTypeIntro, []byte(intro), 0, true)
+	if err != nil {
+		return nil
+	}
 	return msg
 }
 
@@ -736,7 +743,7 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 	endpoint, proxy, err := p.Peers.GetEndpointAndProxy(dst.String())
 	if err == nil && endpoint != nil {
 		Log(Debug, "Sending to %s via proxy id %d", dst.String(), proxy)
-		msg.Header.ProxyID = uint16(proxy)
+		//msg.Header.ProxyID = uint16(proxy)
 		size, err := p.UDPSocket.SendMessage(msg, endpoint)
 		return size, err
 	}
