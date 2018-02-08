@@ -23,7 +23,6 @@ script:
     fi
   - make all
   - make test
-before_deploy:
   - cd $P2P_PACKAGE_DIR && ./configure --debian
   - cd $P2P_PACKAGE_DIR/linux && cp ${TRAVIS_BUILD_DIR}/bin/p2p $P2P_PACKAGE_DIR/linux/debian/ && debuild -B -d
   - cd $P2P_PACKAGE_DIR && ./configure --darwin
