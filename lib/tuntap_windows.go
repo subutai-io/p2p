@@ -174,7 +174,7 @@ func (t *TAPWindows) Configure() error {
 	setip := exec.Command("netsh")
 	setip.SysProcAttr = &syscall.SysProcAttr{}
 	// TODO: Unhardcode mask
-	cmd := fmt.Sprintf(`netsh interface ip set address "%s" static %s %s`, t.Interface.Name, t.IP.String(), "255.255.255.0")
+	cmd := fmt.Sprintf(`netsh interface ip set address "%s" static %s %s`, t.Interface, t.IP.String(), "255.255.255.0")
 	Log(Debug, "Executing: %s", cmd)
 	setip.SysProcAttr.CmdLine = cmd
 	err := setip.Run()
@@ -298,7 +298,7 @@ func (t *TAPWindows) queryAdapters(handle syscall.Handle) error {
 		err := syscall.RegEnumKeyEx(handle, index, &adapter[0], &length, nil, nil, nil, nil)
 		if err == NoMoreItems {
 			Log(Warning, "No more items in Windows Registry")
-			break
+			return nil
 		}
 		index++
 		adapterID := string(utf16.Decode(adapter[0:length]))
