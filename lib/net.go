@@ -11,7 +11,7 @@ import (
 // Constants
 const (
 	MagicCookie uint16 = 0xabcd
-	HeaderSize  int    = 8
+	HeaderSize  int    = 10
 )
 
 // P2PMessageHeader is header used in cross-peer packets

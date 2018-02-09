@@ -36,6 +36,13 @@ type PeerToPeer struct {
 	outboundIP      net.IP                               // Outbound IP
 }
 
+type PeerHandshake struct {
+	ID           string
+	IP           net.IP
+	HardwareAddr net.HardwareAddr
+	Endpoint     *net.UDPAddr
+}
+
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
 func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	var err error
@@ -666,8 +673,9 @@ func (p *PeerToPeer) checkProxies() {
 
 // PrepareIntroductionMessage collects client ID, mac and IP address
 // and create a comma-separated line
-func (p *PeerToPeer) PrepareIntroductionMessage(id string) *P2PMessage {
-	var intro = id + "," + p.Interface.GetHardwareAddress().String() + "," + p.Interface.GetIP().String()
+// endpoint is an address that received this introduction message
+func (p *PeerToPeer) PrepareIntroductionMessage(id, endpoint string) *P2PMessage {
+	var intro = id + "," + p.Interface.GetHardwareAddress().String() + "," + p.Interface.GetIP().String() + "," + endpoint
 	//msg := CreateIntroP2PMessage(p.Crypter, intro, 0)
 	msg, err := p.CreateMessage(MsgTypeIntro, []byte(intro), 0, true)
 	if err != nil {
@@ -713,28 +721,30 @@ func (p *PeerToPeer) WriteToDevice(b []byte, proto uint16, truncated bool) {
 
 // ParseIntroString receives a comma-separated string with ID, MAC and IP of a peer
 // and returns this data
-func (p *PeerToPeer) ParseIntroString(intro string) (string, net.HardwareAddr, net.IP) {
+func (p *PeerToPeer) ParseIntroString(intro string) (*PeerHandshake, error) {
+	hs := &PeerHandshake{}
 	parts := strings.Split(intro, ",")
-	if len(parts) != 3 {
-		Log(Error, "Failed to parse introduction string: %s", intro)
-		return "", nil, nil
+	if len(parts) != 4 {
+		return nil, fmt.Errorf("Failed to parse introduction string: %s", intro)
 	}
-	var id string
-	id = parts[0]
+	hs.ID = parts[0]
 	// Extract MAC
-	mac, err := net.ParseMAC(parts[1])
+	var err error
+	hs.HardwareAddr, err = net.ParseMAC(parts[1])
 	if err != nil {
-		Log(Error, "Failed to parse MAC address from introduction packet: %v", err)
-		return "", nil, nil
+		return nil, fmt.Errorf("Failed to parse MAC address from introduction packet: %v", err)
 	}
 	// Extract IP
-	ip := net.ParseIP(parts[2])
-	if ip == nil {
-		Log(Error, "Failed to parse IP address from introduction packet")
-		return "", nil, nil
+	hs.IP = net.ParseIP(parts[2])
+	if hs.IP == nil {
+		return nil, fmt.Errorf("Failed to parse IP address from introduction packet")
+	}
+	hs.Endpoint, err = net.ResolveUDPAddr("udp4", parts[3])
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse handshake endpoint: %s")
 	}
 
-	return id, mac, ip
+	return hs, nil
 }
 
 // SendTo sends a p2p packet by MAC address

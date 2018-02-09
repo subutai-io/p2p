@@ -649,6 +649,7 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 				time.Sleep(time.Millisecond * 5)
 			}
 			time.Sleep(time.Millisecond * 20)
+			round++
 		}
 	}()
 	np.SetState(PeerStateRouting, ptpc)
@@ -731,6 +732,7 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 		np.Endpoint = np.Endpoints[0].Addr
 		np.SetState(PeerStateConnected, ptpc)
 	} else {
+		np.LastError = "No more endpoints"
 		np.SetState(PeerStateDisconnect, ptpc)
 	}
 	return nil

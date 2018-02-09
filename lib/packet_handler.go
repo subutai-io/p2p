@@ -148,48 +148,49 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 // HandleIntroMessage receives an introduction string from another peer during handshake
 func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	Log(Debug, "Introduction string from %s", srcAddr)
-	id, mac, ip := p.ParseIntroString(string(msg.Data))
-	if len(id) != 36 {
-		Log(Debug, "Received wrong ID in introduction message: %s", id)
+	hs, err := p.ParseIntroString(string(msg.Data))
+	if err != nil {
+		Log(Debug, "Failed to parse handshake response: %s", err)
 		return
 	}
-	peer := p.Peers.GetPeer(id)
+	if len(hs.ID) != 36 {
+		Log(Debug, "Received wrong ID in introduction message: %s", hs.ID)
+		return
+	}
+	peer := p.Peers.GetPeer(hs.ID)
 	if peer == nil {
-		return
-	}
-	// Do nothing when handshaking already done
-	if peer.State != PeerStateHandshaking && peer.State != PeerStateHandshakingForwarder {
-		return
-	}
-	if peer == nil {
-		Log(Debug, "Received introduction confirmation from unknown peer: %s", id)
-		//p.Dht.sendFind()
+		Log(Trace, "Unknown peer in handshke response")
 		return
 	}
 
-	if mac == nil {
+	if hs.HardwareAddr == nil {
 		Log(Debug, "Received empty MAC address. Skipping")
 		return
 	}
-	if ip == nil {
+	if hs.IP == nil {
 		Log(Debug, "No IP received. Skipping")
 		return
 	}
-	peer.PeerHW = mac
-	peer.PeerLocalIP = ip
+	peer.PeerHW = hs.HardwareAddr
+	peer.PeerLocalIP = hs.IP
 	peer.LastContact = time.Now()
-	peer.SetState(PeerStateConnected, p)
-	p.Peers.Update(id, peer)
-	Log(Info, "Connection with peer %s has been established", id)
+	peer.Endpoints = append(peer.Endpoints, PeerEndpoint{Addr: hs.Endpoint, LastContact: time.Now()})
+	// peer.SetState(PeerStateConnected, p)
+	p.Peers.Update(hs.ID, peer)
+	Log(Info, "Connection with peer %s has been established", hs.ID)
 }
 
 // HandleIntroRequestMessage is a handshake request from another peer
+// First 36 bytes is an ID of original sender, data after byte 36 is an
+// endpoint on which sender was trying to communicate with this peer.
+// We need to send this data back to him, so he knows which endpoint
+// replied
 func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
-	id := string(msg.Data)
-	if len(id) != 36 {
-		Log(Debug, "Introduction request with malformed ID [%s] from %s", id, srcAddr.String())
-		return
-	}
+	id := string(msg.Data[0:36])
+	// if len(id) != 36 {
+	// 	Log(Debug, "Introduction request with malformed ID [%s] from %s", id, srcAddr.String())
+	// 	return
+	// }
 	peer := p.Peers.GetPeer(id)
 	if peer == nil {
 		Log(Debug, "Introduction request came from unknown peer: %s [%s]", id, srcAddr.String())
@@ -209,7 +210,7 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 	// 	Log(Debug, "Received introduction request directly")
 	// }
 
-	response := p.PrepareIntroductionMessage(p.Dht.ID)
+	response := p.PrepareIntroductionMessage(p.Dht.ID, string(msg.Data[36:]))
 	// if proxy {
 	// 	response.Header.ProxyID = 1
 	// 	for _, peerProxy := range peer.Proxies {
