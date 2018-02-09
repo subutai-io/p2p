@@ -1,7 +1,6 @@
 package ptp
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -78,15 +77,15 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 		np.stateHandlers[PeerStateInit] = np.stateInit
 		np.stateHandlers[PeerStateRequestedIP] = np.stateRequestedIP
 		np.stateHandlers[PeerStateConnecting] = np.stateConnecting
-		np.stateHandlers[PeerStateConnectingDirectlyWait] = np.stateConnectingDirectlyWait
-		np.stateHandlers[PeerStateConnectingDirectly] = np.stateConnectingDirectly
-		np.stateHandlers[PeerStateConnectingInternetWait] = np.stateConnectingInternetWait
-		np.stateHandlers[PeerStateConnectingInternet] = np.stateConnectingInternet
+		// np.stateHandlers[PeerStateConnectingDirectlyWait] = np.stateConnectingDirectlyWait
+		// np.stateHandlers[PeerStateConnectingDirectly] = np.stateConnectingDirectly
+		// np.stateHandlers[PeerStateConnectingInternetWait] = np.stateConnectingInternetWait
+		// np.stateHandlers[PeerStateConnectingInternet] = np.stateConnectingInternet
 		np.stateHandlers[PeerStateConnected] = np.stateConnected
-		np.stateHandlers[PeerStateHandshaking] = np.stateHandshaking
-		np.stateHandlers[PeerStateWaitingForwarder] = np.stateWaitingForwarder
-		np.stateHandlers[PeerStateHandshakingForwarder] = np.stateHandshakingForwarder
-		np.stateHandlers[PeerStateHandshakingFailed] = np.stateHandshakingFailed
+		// np.stateHandlers[PeerStateHandshaking] = np.stateHandshaking
+		// np.stateHandlers[PeerStateWaitingForwarder] = np.stateWaitingForwarder
+		// np.stateHandlers[PeerStateHandshakingForwarder] = np.stateHandshakingForwarder
+		// np.stateHandlers[PeerStateHandshakingFailed] = np.stateHandshakingFailed
 		np.stateHandlers[PeerStateDisconnect] = np.stateDisconnect
 		np.stateHandlers[PeerStateStop] = np.stateStop
 
@@ -181,28 +180,28 @@ func (np *NetworkPeer) stateRequestedIP(ptpc *PeerToPeer) error {
 // or required state.
 // Once other peer reached reqiuired state peer will switch to PeerStateConnectingDirectly
 // If timeout has passed it will switch to same state to force direct connection
-func (np *NetworkPeer) stateConnectingDirectlyWait(ptpc *PeerToPeer) error {
-	// We don't want to do this for more than 5 minutes
-	Log(Info, "Waiting for other peer to start connecting directly")
-	started := time.Now()
-	for {
-		if np.State != PeerStateConnectingDirectlyWait {
-			return nil
-		}
-		if np.RemoteState == PeerStateConnectingDirectlyWait || np.RemoteState == PeerStateConnectingDirectly {
-			Log(Info, "Second peer has joined required state")
-			np.SetState(PeerStateConnectingDirectly, ptpc)
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-		passed := time.Since(started)
-		if passed > time.Duration(1*time.Minute) {
-			np.SetState(PeerStateConnectingDirectly, ptpc)
-			return fmt.Errorf("Wait for direct connection failed: Peer doesn't responded in a timely manner")
-		}
-	}
-	return nil
-}
+// func (np *NetworkPeer) stateConnectingDirectlyWait(ptpc *PeerToPeer) error {
+// 	// We don't want to do this for more than 5 minutes
+// 	Log(Info, "Waiting for other peer to start connecting directly")
+// 	started := time.Now()
+// 	for {
+// 		if np.State != PeerStateConnectingDirectlyWait {
+// 			return nil
+// 		}
+// 		if np.RemoteState == PeerStateConnectingDirectlyWait || np.RemoteState == PeerStateConnectingDirectly {
+// 			Log(Info, "Second peer has joined required state")
+// 			np.SetState(PeerStateConnectingDirectly, ptpc)
+// 			break
+// 		}
+// 		time.Sleep(100 * time.Millisecond)
+// 		passed := time.Since(started)
+// 		if passed > time.Duration(1*time.Minute) {
+// 			np.SetState(PeerStateConnectingDirectly, ptpc)
+// 			return fmt.Errorf("Wait for direct connection failed: Peer doesn't responded in a timely manner")
+// 		}
+// 	}
+// 	return nil
+// }
 
 // State: Establishing direct connection over LAN
 // This method will switch peer to PeerStateWaitingForwarder if forced
@@ -211,35 +210,35 @@ func (np *NetworkPeer) stateConnectingDirectlyWait(ptpc *PeerToPeer) error {
 // taking private IP addresses for a list of known endpoints.
 // If LAN connection is established this method will switch to PeerStateHandshaking
 // Otherwise it will switch to PeerStateConnectingInternetWait
-func (np *NetworkPeer) stateConnectingDirectly(ptpc *PeerToPeer) error {
-	np.IsUsingTURN = false
-	Log(Info, "Trying direct connection with peer: %s", np.ID)
-	if len(np.KnownIPs) == 0 {
-		np.SetState(PeerStateInit, ptpc)
-		np.LastError = fmt.Sprintf("Didn't received any IP addresses")
-		return errors.New("Joined connection state without knowing any IPs")
-	}
-	// If forward mode was activated - skip direct connection attempts
-	if ptpc.ForwardMode || np.ForceProxy {
-		Log(Info, "Forcing switch to proxy usage")
-		np.SetPeerAddr()
-		np.SetState(PeerStateWaitingForwarder, ptpc)
-		return nil
-	}
-	// Try to connect locally
-	isLocal := np.ProbeLocalConnection(ptpc)
+// func (np *NetworkPeer) stateConnectingDirectly(ptpc *PeerToPeer) error {
+// 	np.IsUsingTURN = false
+// 	Log(Info, "Trying direct connection with peer: %s", np.ID)
+// 	if len(np.KnownIPs) == 0 {
+// 		np.SetState(PeerStateInit, ptpc)
+// 		np.LastError = fmt.Sprintf("Didn't received any IP addresses")
+// 		return errors.New("Joined connection state without knowing any IPs")
+// 	}
+// 	// If forward mode was activated - skip direct connection attempts
+// 	if ptpc.ForwardMode || np.ForceProxy {
+// 		Log(Info, "Forcing switch to proxy usage")
+// 		np.SetPeerAddr()
+// 		np.SetState(PeerStateWaitingForwarder, ptpc)
+// 		return nil
+// 	}
+// 	// Try to connect locally
+// 	isLocal := np.ProbeLocalConnection(ptpc)
 
-	if isLocal {
-		np.PeerAddr = np.Endpoint
-		Log(Info, "Connected with %s over LAN", np.ID)
-		np.SetState(PeerStateHandshaking, ptpc)
-		return nil
-	}
-	Log(Info, "Can't connect with %s over LAN", np.ID)
+// 	if isLocal {
+// 		np.PeerAddr = np.Endpoint
+// 		Log(Info, "Connected with %s over LAN", np.ID)
+// 		np.SetState(PeerStateHandshaking, ptpc)
+// 		return nil
+// 	}
+// 	Log(Info, "Can't connect with %s over LAN", np.ID)
 
-	np.SetState(PeerStateConnectingInternetWait, ptpc)
-	return nil
-}
+// 	np.SetState(PeerStateConnectingInternetWait, ptpc)
+// 	return nil
+// }
 
 // State: Waiting for internet connection with peer.
 // This method will wait for other peer to join the same state to start
@@ -247,152 +246,152 @@ func (np *NetworkPeer) stateConnectingDirectly(ptpc *PeerToPeer) error {
 // for UDP hole punching process to start connection process at the same time
 // When peer joins required state this method will switch to PeerStateConnectingInternet
 // Otherwise it will switch to the same state to force internet connection process
-func (np *NetworkPeer) stateConnectingInternetWait(ptpc *PeerToPeer) error {
-	// We don't want to do this for more than 5 minutes
-	Log(Info, "Waiting for other peer to start connecting over Internet")
-	started := time.Now()
-	for {
-		if np.State != PeerStateConnectingInternetWait {
-			return nil
-		}
-		if np.RemoteState == PeerStateConnectingInternetWait || np.RemoteState == PeerStateConnectingInternet {
-			newState := "Waiting for internet connection"
-			if np.RemoteState == PeerStateConnectingInternet {
-				newState = "Connecting over internet"
-			}
-			Log(Info, "Second peer joined required state: %s", newState)
-			np.SetState(PeerStateConnectingInternet, ptpc)
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-		passed := time.Since(started)
-		if passed > time.Duration(1*time.Minute) {
-			np.SetState(PeerStateConnectingInternet, ptpc)
-			return fmt.Errorf("Wait for internet connection failed: Peer doesn't responded in a timely manner")
-		}
-	}
-	return nil
-}
+// func (np *NetworkPeer) stateConnectingInternetWait(ptpc *PeerToPeer) error {
+// 	// We don't want to do this for more than 5 minutes
+// 	Log(Info, "Waiting for other peer to start connecting over Internet")
+// 	started := time.Now()
+// 	for {
+// 		if np.State != PeerStateConnectingInternetWait {
+// 			return nil
+// 		}
+// 		if np.RemoteState == PeerStateConnectingInternetWait || np.RemoteState == PeerStateConnectingInternet {
+// 			newState := "Waiting for internet connection"
+// 			if np.RemoteState == PeerStateConnectingInternet {
+// 				newState = "Connecting over internet"
+// 			}
+// 			Log(Info, "Second peer joined required state: %s", newState)
+// 			np.SetState(PeerStateConnectingInternet, ptpc)
+// 			break
+// 		}
+// 		time.Sleep(100 * time.Millisecond)
+// 		passed := time.Since(started)
+// 		if passed > time.Duration(1*time.Minute) {
+// 			np.SetState(PeerStateConnectingInternet, ptpc)
+// 			return fmt.Errorf("Wait for internet connection failed: Peer doesn't responded in a timely manner")
+// 		}
+// 	}
+// 	return nil
+// }
 
 // State: Establish connection with peer over Internet
 // This method will start UDP hole punching process to all public endpoints
 // of the peer.
 // If connection is established method will switch to PeerStateHandshaking
 // Otherwise it will switch to PeerStateWaitingForwarder
-func (np *NetworkPeer) stateConnectingInternet(ptpc *PeerToPeer) error {
-	np.IsUsingTURN = false
-	for _, addr := range np.KnownIPs {
-		ip := addr.IP
-		isPrivate, err := isPrivateIP(ip)
-		if err != nil {
-			Log(Error, "%s", err)
-			continue
-		}
-		if isPrivate {
-			Log(Debug, "Skipping private IP %s", ip.String())
-			continue
-		}
-		np.Endpoint = addr
-		Log(Info, "Attempting to connect with %s over Internet [%s]", np.ID, np.Endpoint.String())
-		success := np.holePunch(addr, ptpc)
-		if success {
-			np.PeerAddr = np.Endpoint
-			Log(Info, "Connected with %s over Internet", np.ID)
-			np.SetState(PeerStateHandshaking, ptpc)
-			return nil
-		}
-	}
-	np.SetPeerAddr()
-	np.SetState(PeerStateWaitingForwarder, ptpc)
-	return fmt.Errorf("Internet connection with %s failed", np.ID)
-}
+// func (np *NetworkPeer) stateConnectingInternet(ptpc *PeerToPeer) error {
+// 	np.IsUsingTURN = false
+// 	for _, addr := range np.KnownIPs {
+// 		ip := addr.IP
+// 		isPrivate, err := isPrivateIP(ip)
+// 		if err != nil {
+// 			Log(Error, "%s", err)
+// 			continue
+// 		}
+// 		if isPrivate {
+// 			Log(Debug, "Skipping private IP %s", ip.String())
+// 			continue
+// 		}
+// 		np.Endpoint = addr
+// 		Log(Info, "Attempting to connect with %s over Internet [%s]", np.ID, np.Endpoint.String())
+// 		success := np.holePunch(addr, ptpc)
+// 		if success {
+// 			np.PeerAddr = np.Endpoint
+// 			Log(Info, "Connected with %s over Internet", np.ID)
+// 			np.SetState(PeerStateHandshaking, ptpc)
+// 			return nil
+// 		}
+// 	}
+// 	np.SetPeerAddr()
+// 	np.SetState(PeerStateWaitingForwarder, ptpc)
+// 	return fmt.Errorf("Internet connection with %s failed", np.ID)
+// }
 
 // stateHandshaking is executed when we're waiting for handshake to complete
-func (np *NetworkPeer) stateHandshaking(ptpc *PeerToPeer) error {
-	Log(Info, "Sending handshake to %s", np.ID)
-	handshakeSentAt := time.Now()
-	for np.State == PeerStateHandshaking {
-		passed := time.Since(handshakeSentAt)
-		if passed > time.Duration(time.Second*14) {
-			np.SetState(PeerStateHandshakingFailed, ptpc)
-			return fmt.Errorf("Failed to handshake with peer %s", np.ID)
-		}
-		np.sendHandshake(ptpc, false)
-		time.Sleep(time.Millisecond * 500)
-	}
-	return nil
-}
+// func (np *NetworkPeer) stateHandshaking(ptpc *PeerToPeer) error {
+// 	Log(Info, "Sending handshake to %s", np.ID)
+// 	handshakeSentAt := time.Now()
+// 	for np.State == PeerStateHandshaking {
+// 		passed := time.Since(handshakeSentAt)
+// 		if passed > time.Duration(time.Second*14) {
+// 			np.SetState(PeerStateHandshakingFailed, ptpc)
+// 			return fmt.Errorf("Failed to handshake with peer %s", np.ID)
+// 		}
+// 		np.sendHandshake(ptpc, false)
+// 		time.Sleep(time.Millisecond * 500)
+// 	}
+// 	return nil
+// }
 
 // stateHandshakingFailed is executed when we've failed to handshake a peer
-func (np *NetworkPeer) stateHandshakingFailed(ptpc *PeerToPeer) error {
-	if np.Forwarder != nil {
-		np.LastError = "Failed to handshake with this peer over forwarder"
-		Log(Error, "Failed to handshake with %s via proxy %s", np.ID, np.Forwarder.String())
-		np.Forwarder = nil
-		np.SetState(PeerStateDisconnect, ptpc)
-	} else {
-		np.LastError = "Failed to handshake with this peer"
-		Log(Error, "Failed to handshake directly. Switching to proxy")
-	}
-	np.SetState(PeerStateWaitingForwarder, ptpc)
-	return nil
-}
+// func (np *NetworkPeer) stateHandshakingFailed(ptpc *PeerToPeer) error {
+// 	if np.Forwarder != nil {
+// 		np.LastError = "Failed to handshake with this peer over forwarder"
+// 		Log(Error, "Failed to handshake with %s via proxy %s", np.ID, np.Forwarder.String())
+// 		np.Forwarder = nil
+// 		np.SetState(PeerStateDisconnect, ptpc)
+// 	} else {
+// 		np.LastError = "Failed to handshake with this peer"
+// 		Log(Error, "Failed to handshake directly. Switching to proxy")
+// 	}
+// 	np.SetState(PeerStateWaitingForwarder, ptpc)
+// 	return nil
+// }
 
 // stateWaitingForwarder will wait for a proxy address
 // Proxy was requested from DHT. This state waits for proxy
 // address
-func (np *NetworkPeer) stateWaitingForwarder(ptpc *PeerToPeer) error {
-	Log(Info, "Looking in a list of cached proxies")
+// func (np *NetworkPeer) stateWaitingForwarder(ptpc *PeerToPeer) error {
+// 	Log(Info, "Looking in a list of cached proxies")
 
-	for _, fwd := range ptpc.Dht.Forwarders {
-		if fwd.DestinationID == np.ID {
-			np.Forwarder = fwd.Addr
-			np.Endpoint = fwd.Addr
-			np.SetState(PeerStateHandshakingForwarder, ptpc)
-			Log(Info, "Found cached forwarder")
-			return nil
-		}
-	}
+// 	for _, fwd := range ptpc.Dht.Forwarders {
+// 		if fwd.DestinationID == np.ID {
+// 			np.Forwarder = fwd.Addr
+// 			np.Endpoint = fwd.Addr
+// 			np.SetState(PeerStateHandshakingForwarder, ptpc)
+// 			Log(Info, "Found cached forwarder")
+// 			return nil
+// 		}
+// 	}
 
-	Log(Info, "Requesting proxy for %s", np.ID)
-	np.RequestForwarder(ptpc)
-	waitStart := time.Now()
-	for len(np.Proxies) == 0 {
-		time.Sleep(time.Millisecond * 100)
-		passed := time.Since(waitStart)
-		if passed > WaitProxyTimeout {
-			np.SetState(PeerStateDisconnect, ptpc)
-			np.LastError = "No forwarders received"
-			return fmt.Errorf("No proxy were received for %s", np.ID)
-		}
-	}
-	np.SetState(PeerStateHandshakingForwarder, ptpc)
-	return nil
-}
+// 	Log(Info, "Requesting proxy for %s", np.ID)
+// 	np.RequestForwarder(ptpc)
+// 	waitStart := time.Now()
+// 	for len(np.Proxies) == 0 {
+// 		time.Sleep(time.Millisecond * 100)
+// 		passed := time.Since(waitStart)
+// 		if passed > WaitProxyTimeout {
+// 			np.SetState(PeerStateDisconnect, ptpc)
+// 			np.LastError = "No forwarders received"
+// 			return fmt.Errorf("No proxy were received for %s", np.ID)
+// 		}
+// 	}
+// 	np.SetState(PeerStateHandshakingForwarder, ptpc)
+// 	return nil
+// }
 
 // stateHandshakingForwarder waits for handshake with a proxy to be completed
-func (np *NetworkPeer) stateHandshakingForwarder(ptpc *PeerToPeer) error {
-	np.IsUsingTURN = true
-	for _, proxy := range np.Proxies {
-		np.Endpoint = proxy
-		Log(Info, "Sending handshake to %s over forwarder %s", np.ID, np.Endpoint.String())
-		handshakeSentAt := time.Now()
-		for np.State == PeerStateHandshakingForwarder {
-			passed := time.Since(handshakeSentAt)
-			if passed > time.Duration(time.Second*10) {
-				// Stop attempts to connect over specified forwarder and switch to next
-				break
-			}
-			np.sendHandshake(ptpc, true)
-			time.Sleep(time.Millisecond * 500)
-		}
-		if np.State != PeerStateHandshakingForwarder {
-			return nil
-		}
-	}
-	np.SetState(PeerStateHandshakingFailed, ptpc)
-	return fmt.Errorf("Failed to handshake with peer %s over TURN", np.ID)
-}
+// func (np *NetworkPeer) stateHandshakingForwarder(ptpc *PeerToPeer) error {
+// 	np.IsUsingTURN = true
+// 	for _, proxy := range np.Proxies {
+// 		np.Endpoint = proxy
+// 		Log(Info, "Sending handshake to %s over forwarder %s", np.ID, np.Endpoint.String())
+// 		handshakeSentAt := time.Now()
+// 		for np.State == PeerStateHandshakingForwarder {
+// 			passed := time.Since(handshakeSentAt)
+// 			if passed > time.Duration(time.Second*10) {
+// 				// Stop attempts to connect over specified forwarder and switch to next
+// 				break
+// 			}
+// 			np.sendHandshake(ptpc, true)
+// 			time.Sleep(time.Millisecond * 500)
+// 		}
+// 		if np.State != PeerStateHandshakingForwarder {
+// 			return nil
+// 		}
+// 	}
+// 	np.SetState(PeerStateHandshakingFailed, ptpc)
+// 	return fmt.Errorf("Failed to handshake with peer %s over TURN", np.ID)
+// }
 
 // stateConnected is executed when connection was established and peer is operating normally
 func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
@@ -421,8 +420,8 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 	if time.Since(np.LastContact) > time.Duration(time.Millisecond*3000) {
 		np.LastContact = time.Now()
 		for _, ep := range np.Endpoints {
-			payload := []byte(ep.Addr.String())
-			msg, err := ptpc.CreateMessage(MsgTypeXpeerPing, payload)
+			payload := append([]byte("req"), []byte(ep.Addr.String())...)
+			msg, err := ptpc.CreateMessage(MsgTypeXpeerPing, payload, 0, true)
 			if err != nil {
 				continue
 			}
@@ -489,134 +488,135 @@ func (np *NetworkPeer) RequestForwarder(ptpc *PeerToPeer) {
 
 // ProbeLocalConnection will try to connect to every known IP addr
 // over local network interface
-func (np *NetworkPeer) ProbeLocalConnection(ptpc *PeerToPeer) bool {
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		Log(Error, "Failed to retrieve list of network interfaces in the system")
-		return false
-	}
+// func (np *NetworkPeer) ProbeLocalConnection(ptpc *PeerToPeer) bool {
+// 	interfaces, err := net.Interfaces()
+// 	if err != nil {
+// 		Log(Error, "Failed to retrieve list of network interfaces in the system")
+// 		return false
+// 	}
 
-	for _, inf := range interfaces {
-		if np.Endpoint != nil {
-			Log(Info, "Endpoint already set")
-			break
-		}
-		if inf.Name == ptpc.Interface.GetName() {
-			continue
-		}
-		addrs, _ := inf.Addrs()
-		for _, addr := range addrs {
-			netip, network, _ := net.ParseCIDR(addr.String())
-			if !netip.IsGlobalUnicast() {
-				continue
-			}
-			for _, kip := range np.KnownIPs {
-				Log(Debug, "Probing new IP %s against network %s", kip.IP.String(), network.String())
-				if network.Contains(kip.IP) {
-					result := np.holePunch(kip, ptpc)
-					if result {
-						np.Endpoint = kip
-						Log(Info, "Setting endpoint for %s to %s", np.ID, kip.String())
-						return true
-					}
-				}
-			}
-		}
-	}
-	return false
-}
+// 	for _, inf := range interfaces {
+// 		if np.Endpoint != nil {
+// 			Log(Info, "Endpoint already set")
+// 			break
+// 		}
+// 		if inf.Name == ptpc.Interface.GetName() {
+// 			continue
+// 		}
+// 		addrs, _ := inf.Addrs()
+// 		for _, addr := range addrs {
+// 			netip, network, _ := net.ParseCIDR(addr.String())
+// 			if !netip.IsGlobalUnicast() {
+// 				continue
+// 			}
+// 			for _, kip := range np.KnownIPs {
+// 				Log(Debug, "Probing new IP %s against network %s", kip.IP.String(), network.String())
+// 				if network.Contains(kip.IP) {
+// 					result := np.holePunch(kip, ptpc)
+// 					if result {
+// 						np.Endpoint = kip
+// 						Log(Info, "Setting endpoint for %s to %s", np.ID, kip.String())
+// 						return true
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// 	return false
+// }
 
-func (np *NetworkPeer) sendHandshake(ptpc *PeerToPeer, proxy bool) error {
-	Log(Debug, "Preparing introduction message for %s", np.ID)
-	if ptpc.Dht.ID == "" {
-		np.LastError = "DHT Disconnected"
-		return fmt.Errorf("ID is not set")
-	}
-	msg := CreateIntroRequest(ptpc.Crypter, ptpc.Dht.ID)
-	if proxy {
-		msg.Header.ProxyID = 1
-	}
-	_, err := ptpc.UDPSocket.SendMessage(msg, np.Endpoint)
-	if err != nil {
-		np.LastError = "Failed to send intoduction message"
-		Log(Error, "Failed to send introduction to %s", np.Endpoint.String())
-		return fmt.Errorf("Failed to send introduction to %s", np.Endpoint)
-	}
-	Log(Info, "Sent introduction handshake to %s [%s %d]", np.ID, np.Endpoint.String(), np.ProxyID)
-	return nil
-}
+// func (np *NetworkPeer) sendHandshake(ptpc *PeerToPeer, proxy bool) error {
+// 	Log(Debug, "Preparing introduction message for %s", np.ID)
+// 	if ptpc.Dht.ID == "" {
+// 		np.LastError = "DHT Disconnected"
+// 		return fmt.Errorf("ID is not set")
+// 	}
+
+// 	msg := CreateIntroRequest(ptpc.Crypter, ptpc.Dht.ID)
+// 	if proxy {
+// 		msg.Header.ProxyID = 1
+// 	}
+// 	_, err := ptpc.UDPSocket.SendMessage(msg, np.Endpoint)
+// 	if err != nil {
+// 		np.LastError = "Failed to send intoduction message"
+// 		Log(Error, "Failed to send introduction to %s", np.Endpoint.String())
+// 		return fmt.Errorf("Failed to send introduction to %s", np.Endpoint)
+// 	}
+// 	Log(Info, "Sent introduction handshake to %s [%s %d]", np.ID, np.Endpoint.String(), np.ProxyID)
+// 	return nil
+// }
 
 // SendProxyHandshake sends a handshake packet to a proxy
-func (np *NetworkPeer) SendProxyHandshake(ptpc *PeerToPeer) error {
-	if np.PeerAddr == nil {
-		for !np.SetPeerAddr() {
-			time.Sleep(time.Millisecond * 100)
-		}
-	}
-	Log(Info, "Handshaking with proxy %s for %s", np.Forwarder.String(), np.ID)
-	msg := CreateProxyP2PMessage(-1, np.PeerAddr.String(), uint16(ptpc.UDPSocket.GetPort()))
-	_, err := ptpc.UDPSocket.SendMessage(msg, np.Forwarder)
-	if err != nil {
-		a := np.Forwarder
-		np.Forwarder = nil
-		np.SetState(PeerStateWaitingForwarder, ptpc)
-		np.LastError = "Failed to send handshake to a forwarder"
-		return fmt.Errorf("%s failed to send handshake to a proxy %s: %v", np.ID, a.String(), err)
-	}
-	return nil
-}
+// func (np *NetworkPeer) SendProxyHandshake(ptpc *PeerToPeer) error {
+// 	if np.PeerAddr == nil {
+// 		for !np.SetPeerAddr() {
+// 			time.Sleep(time.Millisecond * 100)
+// 		}
+// 	}
+// 	Log(Info, "Handshaking with proxy %s for %s", np.Forwarder.String(), np.ID)
+// 	msg := CreateProxyP2PMessage(-1, np.PeerAddr.String(), uint16(ptpc.UDPSocket.GetPort()))
+// 	_, err := ptpc.UDPSocket.SendMessage(msg, np.Forwarder)
+// 	if err != nil {
+// 		a := np.Forwarder
+// 		np.Forwarder = nil
+// 		np.SetState(PeerStateWaitingForwarder, ptpc)
+// 		np.LastError = "Failed to send handshake to a forwarder"
+// 		return fmt.Errorf("%s failed to send handshake to a proxy %s: %v", np.ID, a.String(), err)
+// 	}
+// 	return nil
+// }
 
-func (np *NetworkPeer) holePunch(endpoint *net.UDPAddr, ptpc *PeerToPeer) bool {
-	if len(ptpc.Dht.ID) != 36 {
-		Log(Error, "No personal ID. Aborting connection")
-		np.SetState(PeerStateStop, ptpc)
-		return false
-	}
-	ptpc.HolePunching.Lock()
-	defer ptpc.HolePunching.Unlock()
-	Log(Info, "Starting UDP hole punching to %s", endpoint.String())
-	if endpoint == nil {
-		Log(Error, "Endpoint is not set")
-		return false
-	}
+// func (np *NetworkPeer) holePunch(endpoint *net.UDPAddr, ptpc *PeerToPeer) bool {
+// 	if len(ptpc.Dht.ID) != 36 {
+// 		Log(Error, "No personal ID. Aborting connection")
+// 		np.SetState(PeerStateStop, ptpc)
+// 		return false
+// 	}
+// 	ptpc.HolePunching.Lock()
+// 	defer ptpc.HolePunching.Unlock()
+// 	Log(Info, "Starting UDP hole punching to %s", endpoint.String())
+// 	if endpoint == nil {
+// 		Log(Error, "Endpoint is not set")
+// 		return false
+// 	}
 
-	punchStarted := time.Now()
-	c := uint16(0)
+// 	punchStarted := time.Now()
+// 	c := uint16(0)
 
-	for np.State == PeerStateConnectingDirectly || np.State == PeerStateConnectingInternet {
-		if np.TestPacketReceived {
-			np.TestPacketReceived = false
-			return true
-		}
+// 	for np.State == PeerStateConnectingDirectly || np.State == PeerStateConnectingInternet {
+// 		if np.TestPacketReceived {
+// 			np.TestPacketReceived = false
+// 			return true
+// 		}
 
-		msg := CreateTestP2PMessage(ptpc.Crypter, ptpc.Dht.ID, c)
-		packet := msg.Serialize()
-		c++
-		if c > 99 {
-			c = 0
-		}
+// 		msg := CreateTestP2PMessage(ptpc.Crypter, ptpc.Dht.ID, c)
+// 		packet := msg.Serialize()
+// 		c++
+// 		if c > 99 {
+// 			c = 0
+// 		}
 
-		if endpoint.IP == nil {
-			time.Sleep(200 * time.Millisecond)
-			continue
-		}
-		n, err := ptpc.UDPSocket.SendRawBytes(packet, endpoint)
-		if err != nil {
-			Log(Error, "Failed to send data: %s", err)
-			break
-		}
+// 		if endpoint.IP == nil {
+// 			time.Sleep(200 * time.Millisecond)
+// 			continue
+// 		}
+// 		n, err := ptpc.UDPSocket.SendRawBytes(packet, endpoint)
+// 		if err != nil {
+// 			Log(Error, "Failed to send data: %s", err)
+// 			break
+// 		}
 
-		Log(Trace, "Sending %d bytes. Sent %d. Endpoint: %s", len(packet), n, endpoint.String())
-		passed := time.Since(punchStarted)
-		if passed > time.Duration(10*time.Second) {
-			Log(Warning, "Stopping UDP hole punching to %s after timeout", endpoint.String())
-			break
-		}
+// 		Log(Trace, "Sending %d bytes. Sent %d. Endpoint: %s", len(packet), n, endpoint.String())
+// 		passed := time.Since(punchStarted)
+// 		if passed > time.Duration(10*time.Second) {
+// 			Log(Warning, "Stopping UDP hole punching to %s after timeout", endpoint.String())
+// 			break
+// 		}
 
-		time.Sleep(200 * time.Millisecond)
-	}
-	return false
-}
+// 		time.Sleep(200 * time.Millisecond)
+// 	}
+// 	return false
+// }
 
 // SetPeerAddr will update peer address
 func (np *NetworkPeer) SetPeerAddr() bool {
@@ -638,7 +638,7 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 		for round < 10 {
 			for _, ep := range np.KnownIPs {
 				payload := []byte(ptpc.Dht.ID + ep.String())
-				msg, err := ptpc.CreateMessage(MsgTypeIntroReq, payload)
+				msg, err := ptpc.CreateMessage(MsgTypeIntroReq, payload, 0, true)
 				if err != nil {
 					continue
 				}

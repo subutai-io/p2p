@@ -414,8 +414,8 @@ func (p *PeerToPeer) setupHandlers() {
 	p.MessageHandlers[MsgTypeIntro] = p.HandleIntroMessage
 	p.MessageHandlers[MsgTypeIntroReq] = p.HandleIntroRequestMessage
 	p.MessageHandlers[MsgTypeProxy] = p.HandleProxyMessage
-	p.MessageHandlers[MsgTypeTest] = p.HandleTestMessage
-	p.MessageHandlers[MsgTypeBadTun] = p.HandleBadTun
+	// p.MessageHandlers[MsgTypeTest] = p.HandleTestMessage
+	// p.MessageHandlers[MsgTypeBadTun] = p.HandleBadTun
 
 	// Register packet handlers
 	p.PacketHandlers = make(map[PacketType]PacketHandlerCallback)
