@@ -51,15 +51,15 @@ func GetDeviceBase() string {
 func GetConfigurationTool() string {
 	path, err := exec.LookPath("netsh")
 	if err != nil {
-		Log(Error, "Failed to find `ip` in path. Returning default /bin/ip")
-		return "/bin/ip"
+		Log(Error, "Failed to find `netsh` in path. Returning default netsh")
+		return "netsh"
 	}
 	Log(Info, "Network configuration tool found: %s", path)
 	return path
 }
 
 func newTAP(tool, ip, mac, mask string, mtu int) (*TAPWindows, error) {
-	Log(Info, "Acquiring TAP interface [Windows]")
+	Log(Debug, "Acquiring TAP interface [Windows]")
 	nip := net.ParseIP(ip)
 	if nip == nil {
 		return nil, fmt.Errorf("Failed to parse IP during TAP creation")
@@ -170,12 +170,12 @@ func (t *TAPWindows) Close() error {
 }
 
 func (t *TAPWindows) Configure() error {
-	Log(Info, "Configuring %s. IP: %s Mask: %s", t.Interface, t.IP.String(), t.Mask.String())
+	Log(Debug, "Configuring %s. IP: %s Mask: %s", t.Interface, t.IP.String(), t.Mask.String())
 	setip := exec.Command("netsh")
 	setip.SysProcAttr = &syscall.SysProcAttr{}
 	// TODO: Unhardcode mask
-	cmd := fmt.Sprintf(`netsh interface ip set address "%s" static %s %s`, t.Interface, t.IP.String(), "255.255.255.0")
-	Log(Info, "Executing: %s", cmd)
+	cmd := fmt.Sprintf(`netsh interface ip set address "%s" static %s %s`, t.Interface.Name, t.IP.String(), "255.255.255.0")
+	Log(Debug, "Executing: %s", cmd)
 	setip.SysProcAttr.CmdLine = cmd
 	err := setip.Run()
 	if err != nil {
