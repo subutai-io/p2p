@@ -58,7 +58,7 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	// TODO: Remove hard-coded path
 	yamlFile, err := ioutil.ReadFile(ConfigDir + "/p2p/config.yaml")
 	if err != nil {
-		Log(Warning, "Failed to load config: %v", err)
+		Log(Debug, "Failed to load config: %v", err)
 		p.IPTool = "/sbin/ip"
 		p.AddTap = "C:\\Program Files\\TAP-Windows\\bin\\tapinstall.exe"
 		p.InfFile = "C:\\Program Files\\TAP-Windows\\driver\\OemVista.inf"
@@ -155,7 +155,7 @@ func (p *PeerToPeer) IsIPv4(ip string) bool {
 // FindNetworkAddresses method lists interfaces available in the system and retrieves their
 // IP addresses
 func (p *PeerToPeer) FindNetworkAddresses() {
-	Log(Info, "Looking for available network interfaces")
+	Log(Debug, "Looking for available network interfaces")
 	inf, err := net.Interfaces()
 	if err != nil {
 		Log(Error, "Failed to retrieve list of network interfaces")
@@ -192,13 +192,13 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 			if !p.IsIPv4(ip.String()) {
 				decision = "No IPv4"
 			}
-			Log(Info, "Interface %s: %s. Type: %s. %s", i.Name, addr.String(), ipType, decision)
+			Log(Debug, "Interface %s: %s. Type: %s. %s", i.Name, addr.String(), ipType, decision)
 			if decision == "Saving" {
 				p.LocalIPs = append(p.LocalIPs, ip)
 			}
 		}
 	}
-	Log(Info, "%d interfaces were saved", len(p.LocalIPs))
+	Log(Debug, "%d interfaces were saved", len(p.LocalIPs))
 }
 
 // New is an entry point of a P2P library.
