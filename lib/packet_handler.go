@@ -80,7 +80,7 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	if p.UDPSocket.remotePort == 0 {
 		p.UDPSocket.remotePort = port
 	} else {
-		if port != p.UDPSocket.GetPort() && port != p.UDPSocket.remotePort {
+		if port != p.UDPSocket.GetPort() && port != p.UDPSocket.remotePort && port != 0 {
 			Log(Debug, "Port translation detected %d -> %d", p.UDPSocket.GetPort(), port)
 			p.UDPSocket.remotePort = port
 		}
