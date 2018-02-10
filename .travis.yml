@@ -19,8 +19,8 @@ script:
   - make all
   - make test
   - if [ ! -z "$TRAVIS_TAG" ] ; 
-    then cd $P2P_PACKAGE_DIR && ./configure --branch=HEAD ; 
-    else cd $P2P_PACKAGE_DIR && ./configure --branch=$TRAVIS_BRANCH ;
+    then cd $P2P_PACKAGE_DIR && ./configure --debian --branch=HEAD ; 
+    else cd $P2P_PACKAGE_DIR && ./configure --debian --branch=$TRAVIS_BRANCH ;
     fi
   - cd $P2P_PACKAGE_DIR/linux && cp ${TRAVIS_BUILD_DIR}/bin/p2p $P2P_PACKAGE_DIR/linux/debian/ && debuild -B -d
   - cd $P2P_PACKAGE_DIR && ./configure --darwin
