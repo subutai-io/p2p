@@ -53,41 +53,21 @@ const (
 	DhtErrorUnsupported string = "unsupported"
 )
 
-type (
-	// PeerState - current state of the peer
-	PeerState int
-	// PingType - whether this is a request or a response
-	PingType uint16
-)
+// PeerState - current state of the peer
+type PeerState int
 
 // Peer state
 const (
-	PeerStateInit                   PeerState = iota // Peer has been added recently.
-	PeerStateRequestedIP                      = iota // We know ID of a peer, but don't know it's IPs
-	PeerStateConnecting                       = iota // Trying to establish connection
-	PeerStateConnectingDirectlyWait           = iota // Wait for other peer to start connecting directly over LAN
-	PeerStateConnectingDirectly               = iota // Trying to establish a direct connection over LAN
-	PeerStateConnectingInternetWait           = iota // Wait for other peer to start connecting over Internet
-	PeerStateConnectingInternet               = iota // Connect over internet or do Holepunching
-	PeerStateConnected                        = iota // Connected, handshaked and operating normally
-	PeerStateHandshaking                      = iota // Handshake requsted
-	PeerStateHandshakingFailed                = iota // Handshake procedure failed
-	PeerStateWaitingForwarder                 = iota // Forwarder was requested
-	PeerStateWaitingForwarderFailed           = iota // Didn't received any forwarders
-	PeerStateHandshakingForwarder             = iota // Forwarder has been received and we're trying to handshake it
-	PeerStateDisconnect                       = iota // We're disconnecting
-	PeerStateStop                             = iota // Peer has been stopped and now can be removed from list of peers
-
-	PeerStateRequestingProxy  = iota // Requesting proxies for this peer
-	PeerStateWaitingForProxy  = iota // Waiting for proxies
-	PeerStateWaitingToConnect = iota // Waiting for other peer to start establishing connection
-	PeerStateRouting          = iota // (Re)Routing
-)
-
-// Ping types
-const (
-	PingReq  PingType = 1
-	PingResp PingType = 2
+	PeerStateInit             PeerState = iota // Peer has been added recently.
+	PeerStateRequestedIP                = iota // We know ID of a peer, but don't know it's IPs
+	PeerStateRequestingProxy            = iota // Requesting proxies for this peer
+	PeerStateWaitingForProxy            = iota // Waiting for proxies
+	PeerStateWaitingToConnect           = iota // Waiting for other peer to start establishing connection
+	PeerStateConnecting                 = iota // Trying to establish connection
+	PeerStateRouting                    = iota // (Re)Routing
+	PeerStateConnected                  = iota // Connected, handshaked and operating normally
+	PeerStateDisconnect                 = iota // We're disconnecting
+	PeerStateStop                       = iota // Peer has been stopped and now can be removed from list of peers
 )
 
 // Timeouts and retries

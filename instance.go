@@ -216,28 +216,18 @@ func StringifyState(state ptp.PeerState) string {
 		return "Initializing"
 	case ptp.PeerStateRequestedIP:
 		return "Waiting for IP"
+	case ptp.PeerStateRequestingProxy:
+		return "Requesting proxies"
+	case ptp.PeerStateWaitingForProxy:
+		return "Waiting for proxies"
+	case ptp.PeerStateWaitingToConnect:
+		return "Waiting for connection"
 	case ptp.PeerStateConnecting:
 		return "Initializing connection"
-	case ptp.PeerStateConnectingDirectlyWait:
-		return "Waiting to start direct connection"
-	case ptp.PeerStateConnectingDirectly:
-		return "Trying direct connection"
-	case ptp.PeerStateConnectingInternetWait:
-		return "Waiting to start internet connection"
-	case ptp.PeerStateConnectingInternet:
-		return "Trying connection over Internet"
+	case ptp.PeerStateRouting:
+		return "Routing"
 	case ptp.PeerStateConnected:
 		return "Connected"
-	case ptp.PeerStateHandshaking:
-		return "Handshaking"
-	case ptp.PeerStateHandshakingFailed:
-		return "Handshaking failed"
-	case ptp.PeerStateWaitingForwarder:
-		return "Waiting for tunnel"
-	case ptp.PeerStateWaitingForwarderFailed:
-		return "Failed to receive tunnel"
-	case ptp.PeerStateHandshakingForwarder:
-		return "Handshaking using tunnel"
 	case ptp.PeerStateDisconnect:
 		return "Disconnected"
 	case ptp.PeerStateStop:

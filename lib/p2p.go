@@ -684,26 +684,6 @@ func (p *PeerToPeer) PrepareIntroductionMessage(id, endpoint string) *P2PMessage
 	return msg
 }
 
-// SyncForwarders extracts proxies from DHT and assign them to target peers
-func (p *PeerToPeer) SyncForwarders() int {
-	count := 0
-	for _, fwd := range p.Dht.Forwarders {
-		peers := p.Peers.Get()
-		for i, peer := range peers {
-			if peer.Endpoint == nil && fwd.DestinationID == peer.ID && peer.Forwarder == nil {
-				Log(Info, "Saving control peer as a proxy destination for %s", peer.ID)
-				peer.Endpoint = fwd.Addr
-				peer.Forwarder = fwd.Addr
-				peer.SetState(PeerStateHandshakingForwarder, p)
-				p.Peers.Update(i, peer)
-				count++
-			}
-		}
-	}
-	p.Dht.Forwarders = p.Dht.Forwarders[:0]
-	return count
-}
-
 // WriteToDevice writes data to created TAP interface
 func (p *PeerToPeer) WriteToDevice(b []byte, proto uint16, truncated bool) {
 	var packet Packet

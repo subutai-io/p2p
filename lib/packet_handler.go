@@ -126,23 +126,6 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 	} else {
 		Log(Debug, "Wrong xpeer ping message")
 	}
-
-	pt := PingType(msg.Header.NetProto)
-	if pt == PingReq {
-
-	} else {
-		Log(Trace, "Ping response received")
-		// Handle PING response
-		// peers := p.Peers.Get()
-		// for i, peer := range peers {
-		// 	if peer.PeerHW != nil && peer.PeerHW.String() == string(msg.Data) {
-		// 		peer.PingCount = 0
-		// 		peer.LastContact = time.Now()
-		// 		p.Peers.Update(i, peer)
-		// 		break
-		// 	}
-		// }
-	}
 }
 
 // HandleIntroMessage receives an introduction string from another peer during handshake
