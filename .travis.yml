@@ -4,7 +4,7 @@ os:
   - linux
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -qq devscripts
+  - sudo apt-get install -qq devscripts build-essential
   - git clone https://github.com/subutai-io/p2p-packages.git $P2P_PACKAGE_DIR
   - openssl aes-256-cbc -K $encrypted_62c1e8a94b65_key -iv $encrypted_62c1e8a94b65_iv -in $P2P_PACKAGE_DIR/secret.key.enc -out /tmp/p2p-packages/secret.key -d
   - gpg --import $P2P_PACKAGE_DIR/secret.key && rm -f $P2P_PACKAGE_DIR/secret.key*
