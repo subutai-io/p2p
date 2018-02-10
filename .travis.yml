@@ -2,11 +2,6 @@ language: go
 go: 1.9
 os:
   - linux
-matrix:
-  include:
-    - os: linux
-      dist: trusty
-      sudo: required
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq devscripts
