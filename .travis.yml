@@ -24,8 +24,11 @@ script:
     fi
   - cd $P2P_PACKAGE_DIR/linux && cp ${TRAVIS_BUILD_DIR}/bin/p2p $P2P_PACKAGE_DIR/linux/debian/ && debuild -B -d
   - $P2P_PACKAGE_DIR/extra/find-deb.sh $P2P_PACKAGE_DIR/linux $P2P_PACKAGE_DIR/subutai-p2p
-  - cd $P2P_PACKAGE_DIR && ./configure --darwin
-  - cd $P2P_PACKAGE_DIR/darwin && pack.sh ${TRAVIS_BUILD_DIR}/bin/p2p_osx
+  - if [ ! -z "$TRAVIS_TAG" ] ; 
+    then cd $P2P_PACKAGE_DIR && ./configure --darwin --branch=HEAD ; 
+    else cd $P2P_PACKAGE_DIR && ./configure --darwin --branch=$TRAVIS_BRANCH ;
+    fi
+  - cd $P2P_PACKAGE_DIR/darwin && ./pack.sh ${TRAVIS_BUILD_DIR}/bin/p2p_osx
   - $P2P_PACKAGE_DIR/deploy.sh $P2P_PACKAGE_DIR/subutai-p2p HEAD .deb-travis-test ; 
   - cd ${TRAVIS_BUILD_DIR}
 deploy:
