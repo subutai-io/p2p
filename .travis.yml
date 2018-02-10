@@ -23,55 +23,57 @@ script:
     else cd $P2P_PACKAGE_DIR && ./configure --debian --branch=$TRAVIS_BRANCH ;
     fi
   - cd $P2P_PACKAGE_DIR/linux && cp ${TRAVIS_BUILD_DIR}/bin/p2p $P2P_PACKAGE_DIR/linux/debian/ && debuild -B -d
+  - $P2P_PACKAGE_DIR/extra/find-deb.sh $P2P_PACKAGE_DIR/linux $P2P_PACKAGE_DIR/subutai-p2p
   - cd $P2P_PACKAGE_DIR && ./configure --darwin
   - cd $P2P_PACKAGE_DIR/darwin && pack.sh ${TRAVIS_BUILD_DIR}/bin/p2p_osx
-  - ls -l /tmp
-  - ls -l $P2P_PACKAGE_DIR
-  - ls -l $P2P_PACKAGE_DIR/linux
+  - if [ ! -z "$TRAVIS_TAG" ] ; 
+    then $P2P_PACKAGE_DIR/deploy.sh $P2P_PACKAGE_DIR/subutai-p2p HEAD .deb-travis-test ; 
+    else $P2P_PACKAGE_DIR/deploy.sh $P2P_PACKAGE_DIR/subutai-p2p $TRAVIS_BRANCH .deb-travis-test ;
+    fi
   - cd ${TRAVIS_BUILD_DIR}
 deploy:
   - provider: script
-    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p dev
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p dev -travis-test
     skip_cleanup: true
     on:
       branch: dev
   - provider: script
-    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p_osx dev
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p_osx dev -travis-test
     skip_cleanup: true
     on:
       branch: dev
   - provider: script
-    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p.exe dev
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p.exe dev -travis-test
     skip_cleanup: true
     on:
       branch: dev
   - provider: script
-    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p master
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p master -travis-test
     skip_cleanup: true
     on:
       branch: master
   - provider: script
-    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p_osx master
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p_osx master -travis-test
     skip_cleanup: true
     on:
       branch: master
   - provider: script
-    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p.exe master
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p.exe master -travis-test
     skip_cleanup: true
     on:
       branch: master
   - provider: script
-    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p HEAD
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p HEAD -travis-test
     skip_cleanup: true
     on:
       tags: true
   - provider: script
-    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p_osx HEAD
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p_osx HEAD -travis-test
     skip_cleanup: true
     on:
       tags: true
   - provider: script
-    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p.exe HEAD
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p.exe HEAD -travis-test
     skip_cleanup: true
     on:
       tags: true
