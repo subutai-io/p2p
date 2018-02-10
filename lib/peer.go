@@ -703,7 +703,7 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 	proxies := []PeerEndpoint{}
 	np.EndpointsLock.RLock()
 	for _, ep := range np.Endpoints {
-		if time.Since(ep.LastContact) > time.Duration(time.Millisecond*10) {
+		if time.Since(ep.LastContact) > time.Duration(time.Second*10) {
 			continue
 		}
 		// Check if it's proxy
@@ -733,23 +733,45 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 	np.EndpointsLock.RUnlock()
 	np.EndpointsLock.Lock()
 	np.Endpoints = np.Endpoints[:0]
-	np.Endpoints = append(np.Endpoints, locals...)
-	np.Endpoints = append(np.Endpoints, internet...)
-	np.Endpoints = append(np.Endpoints, proxies...)
+	if len(locals) > 0 {
+		Log(Info, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+		np.Endpoints = append(np.Endpoints, locals...)
+	}
+	if len(internet) > 0 {
+		Log(Info, "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+		np.Endpoints = append(np.Endpoints, internet...)
+	}
+	if len(proxies) > 0 {
+		Log(Info, "#############################################################################")
+		np.Endpoints = append(np.Endpoints, proxies...)
+	}
 	np.EndpointsLock.Unlock()
 	if len(np.Endpoints) > 0 {
+		Log(Info, "1111111111111111111111!!!!!!!!!!!!!!!!!!!!")
 		np.Endpoint = np.Endpoints[0].Addr
 		np.SetState(PeerStateConnected, ptpc)
 	} else {
+
+		Log(Info, "1111111111111111111111!!!!!!!!!!!!!!!!!!!!2222222222222222222222222222222")
 		np.LastError = "No more endpoints"
-		np.SetState(PeerStateDisconnect, ptpc)
+		if len(np.KnownIPs) > 0 && len(np.Proxies) > 0 {
+			np.SetState(PeerStateConnecting, ptpc)
+			return nil
+		} else if len(np.KnownIPs) == 0 {
+			np.SetState(PeerStateRequestedIP, ptpc)
+			return nil
+		} else if len(np.Proxies) == 0 {
+			np.SetState(PeerStateRequestingProxy, ptpc)
+			return nil
+		}
+		//np.SetState(PeerStateDisconnect, ptpc)
 	}
 	return nil
 }
 
 func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
 	np.EndpointsLock.Lock()
-	defer np.EndpointsLock.RUnlock()
+	defer np.EndpointsLock.Unlock()
 	for _, ep := range np.Endpoints {
 		if ep.Addr.String() == addr.String() {
 			return fmt.Errorf("Endpoint already exists")

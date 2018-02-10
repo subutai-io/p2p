@@ -102,7 +102,10 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 				resp.Output += fmt.Sprintf("\t\tHWAddr: %s\n", peer.PeerHW.String())
 				resp.Output += fmt.Sprintf("\t\tIP: %s\n", peer.PeerLocalIP.String())
 				resp.Output += fmt.Sprintf("\t\tEndpoint: %s\n", peer.Endpoint)
-				resp.Output += fmt.Sprintf("\t\tPeer Address: %s\n", peer.PeerAddr.String())
+				resp.Output += fmt.Sprintf("\t\tPool: \n")
+				for _, ep := range peer.Endpoints {
+					resp.Output += fmt.Sprintf("\t\t\t%s\n", ep.Addr.String())
+				}
 				proxyInUse := "No"
 				if peer.IsUsingTURN {
 					proxyInUse = "Yes"
