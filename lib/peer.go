@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -38,6 +39,7 @@ type NetworkPeer struct {
 	IsUsingTURN        bool                               // Whether or not we are currently connected via TURN
 	Running            bool                               // Whether peer is running or not
 	Endpoints          []PeerEndpoint                     // List of active endpoints
+	EndpointsLock      sync.RWMutex                       // Mutex for endpoints operations
 }
 
 func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
@@ -413,12 +415,14 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 	}
 
 	if np.PeerHW == nil || np.PeerLocalIP == nil {
+		Log(Info, "Missing system information for this peer")
 		np.SetState(PeerStateDisconnect, ptpc)
 		return nil
 	}
 
 	if time.Since(np.LastContact) > time.Duration(time.Millisecond*3000) {
 		np.LastContact = time.Now()
+		np.EndpointsLock.RLock()
 		for _, ep := range np.Endpoints {
 			payload := append([]byte("req"), []byte(ep.Addr.String())...)
 			msg, err := ptpc.CreateMessage(MsgTypeXpeerPing, payload, 0, true)
@@ -427,6 +431,7 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 			}
 			ptpc.UDPSocket.SendMessage(msg, ep.Addr)
 		}
+		np.EndpointsLock.RUnlock()
 	}
 
 	np.SetState(PeerStateRouting, ptpc)
@@ -696,6 +701,7 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 	locals := []PeerEndpoint{}
 	internet := []PeerEndpoint{}
 	proxies := []PeerEndpoint{}
+	np.EndpointsLock.RLock()
 	for _, ep := range np.Endpoints {
 		if time.Since(ep.LastContact) > time.Duration(time.Millisecond*10) {
 			continue
@@ -724,10 +730,13 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 		// Add as Internet Endpoint
 		internet = append(internet, ep)
 	}
+	np.EndpointsLock.RUnlock()
+	np.EndpointsLock.Lock()
 	np.Endpoints = np.Endpoints[:0]
 	np.Endpoints = append(np.Endpoints, locals...)
 	np.Endpoints = append(np.Endpoints, internet...)
 	np.Endpoints = append(np.Endpoints, proxies...)
+	np.EndpointsLock.Unlock()
 	if len(np.Endpoints) > 0 {
 		np.Endpoint = np.Endpoints[0].Addr
 		np.SetState(PeerStateConnected, ptpc)
@@ -735,5 +744,17 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 		np.LastError = "No more endpoints"
 		np.SetState(PeerStateDisconnect, ptpc)
 	}
+	return nil
+}
+
+func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
+	np.EndpointsLock.Lock()
+	defer np.EndpointsLock.RUnlock()
+	for _, ep := range np.Endpoints {
+		if ep.Addr.String() == addr.String() {
+			return fmt.Errorf("Endpoint already exists")
+		}
+	}
+	np.Endpoints = append(np.Endpoints, PeerEndpoint{Addr: addr, LastContact: time.Now()})
 	return nil
 }

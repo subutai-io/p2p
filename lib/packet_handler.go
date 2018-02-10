@@ -174,7 +174,8 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	peer.PeerHW = hs.HardwareAddr
 	peer.PeerLocalIP = hs.IP
 	peer.LastContact = time.Now()
-	peer.Endpoints = append(peer.Endpoints, PeerEndpoint{Addr: hs.Endpoint, LastContact: time.Now()})
+	peer.addEndpoint(hs.Endpoint)
+	//peer.Endpoints = append(peer.Endpoints, PeerEndpoint{Addr: hs.Endpoint, LastContact: time.Now()})
 	// peer.SetState(PeerStateConnected, p)
 	p.Peers.Update(hs.ID, peer)
 	Log(Info, "Connection with peer %s has been established", hs.ID)
