@@ -23,3 +23,4 @@ deploy: false
 test_script:
   - go get
   - go build github.com/subutai-io/p2p
+  - c:\root\src\github.com\subutai-io\p2p\p2p.exe -v
