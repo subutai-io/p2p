@@ -17,7 +17,8 @@ install:
   - go env
   - git clone --depth 1 https://github.com/subutai-io/p2p-packages.git c:\root\p2p-packages
 
-build:
-  - go build github.com/subutai-io/p2p
-
+build: false
 deploy: false
+
+test_script:
+  - go build github.com/subutai-io/p2p
