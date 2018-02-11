@@ -21,4 +21,5 @@ build: false
 deploy: false
 
 test_script:
+  - go get
   - go build github.com/subutai-io/p2p
