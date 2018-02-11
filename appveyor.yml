@@ -1,0 +1,23 @@
+version: "{build}"
+
+clone_folder: c:\root\src\github.com\subutai-io\p2p
+
+environment:
+  GOPATH: c:\root
+  DEPTESTBYPASS501: 1
+  GOVERSION: 1.9
+
+install:
+  - rmdir c:\go /s /q
+  - appveyor DownloadFile https://storage.googleapis.com/golang/go%GOVERSION%.windows-amd64.msi
+  - msiexec /i go%GOVERSION%.windows-amd64.msi /q
+  - choco install bzr
+  - set Path=c:\go\bin;c:\root\bin;C:\Program Files (x86)\Bazaar\;C:\Program Files\Mercurial\%Path%
+  - go version
+  - go env
+  - git clone --depth 1 https://github.com/subutai-io/p2p-packages.git c:\root\p2p-packages
+
+build:
+  - go build github.com/subutai-io/p2p
+
+deploy: false
