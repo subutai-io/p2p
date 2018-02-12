@@ -27,6 +27,7 @@ type DHTRouter struct {
 	router     string
 	running    bool
 	handshaked bool
+	stop       bool
 	fails      int
 }
 
@@ -57,10 +58,13 @@ func (dht *DHTRouter) run() {
 	dht.running = false
 	dht.handshaked = false
 	data := make([]byte, 4096)
-	for {
+	for !dht.stop {
 		for !dht.running {
 			dht.connect()
 			if dht.running {
+				break
+			}
+			if dht.stop {
 				break
 			}
 			dht.sleep()
@@ -84,8 +88,21 @@ func (dht *DHTRouter) routeData(data []byte) {
 		return
 	}
 	if packet.Type == ptp.DHTPacketType_Ping {
-		dht.handshaked = true
-		ptp.Log(ptp.Info, "Connected to a bootstrap node: %s [%s]", dht.addr.String(), packet.Data)
+
+		supported := false
+		for _, v := range ptp.SupportedVersion {
+			if v == packet.Version {
+				supported = true
+			}
+		}
+		if !supported {
+			ptp.Log(ptp.Error, "Version mismatch. Server have %d. We have %d", packet.Version, ptp.PacketVersion)
+			dht.stop = true
+			dht.conn.Close()
+		} else {
+			dht.handshaked = true
+			ptp.Log(ptp.Info, "Connected to a bootstrap node: %s [%s]", dht.addr.String(), packet.Data)
+		}
 		return
 	}
 	if !dht.handshaked {
@@ -101,7 +118,7 @@ func (dht *DHTRouter) connect() {
 	dht.conn, err = net.DialTCP("tcp4", nil, dht.addr)
 	if err != nil {
 		dht.fails++
-		ptp.Log(ptp.Error, "Failed to establish connection with %s", dht.addr.String())
+		ptp.Log(ptp.Error, "Failed to establish connection with %s: %s", dht.addr.String(), err)
 		return
 	}
 	dht.fails = 0
@@ -117,6 +134,6 @@ func (dht *DHTRouter) sleep() {
 	started := time.Now()
 	timeout := time.Duration(time.Second * time.Duration(multiplier))
 	for time.Since(started) < timeout {
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 200)
 	}
 }

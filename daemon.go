@@ -94,6 +94,22 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 	signal.Notify(SignalChannel, os.Interrupt)
 
 	go func() {
+		for {
+			active := 0
+			for _, r := range bootstrap.routers {
+				if !r.stop {
+					active++
+				}
+			}
+			if active == 0 {
+				ptp.Log(ptp.Info, "No active bootstrap nodes")
+				os.Exit(0)
+			}
+			time.Sleep(time.Millisecond * 100)
+		}
+	}()
+
+	go func() {
 		for sig := range SignalChannel {
 			fmt.Println("Received signal: ", sig)
 			pprof.StopCPUProfile()
