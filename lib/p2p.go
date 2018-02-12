@@ -507,20 +507,12 @@ func (p *PeerToPeer) StartDHT(hash, routers string) error {
 	} else {
 		p.Dht.RemotePort = p.UDPSocket.remotePort
 	}
-	err := p.Dht.TCPInit(hash, routers)
+	err := p.Dht.Init(hash)
 	if err != nil {
 		return fmt.Errorf("Failed to initialize DHT: %s", err)
 	}
+	// TODO: Rebuild Local IPs
 	p.Dht.IPList = p.LocalIPs
-	err = p.Dht.Connect()
-	if err != nil {
-		Log(Error, "Failed to establish connection with Bootstrap node: %s")
-		for err != nil {
-			Log(Warning, "Retrying connection")
-			err = p.Dht.Connect()
-			time.Sleep(3 * time.Second)
-		}
-	}
 	err = p.Dht.WaitID()
 	if err != nil {
 		Log(Error, "Failed to retrieve ID from bootstrap node: %s", err)

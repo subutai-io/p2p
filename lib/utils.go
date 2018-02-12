@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net"
+
+	uuid "github.com/wayn3h0/go-uuid"
 )
 
 // Different utility functions
@@ -24,6 +26,22 @@ func GenerateMAC() (string, net.HardwareAddr) {
 		return "", nil
 	}
 	return mac, hw
+}
+
+// GenerateToken produces UUID string that will be used during handshake
+// with DHT server. Since we don't have an ID on start - we will use token
+// and wait from DHT server to respond with ID and our Token, so later
+// we will replace Token with received ID
+func GenerateToken() string {
+	result := ""
+	id, err := uuid.NewTimeBased()
+	if err != nil {
+		Log(Error, "Failed to generate token for peer")
+		return result
+	}
+	result = id.String()
+	Log(Debug, "Token generated: %s", result)
+	return result
 }
 
 // This method compares given IP to known private IP address spaces
