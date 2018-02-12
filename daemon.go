@@ -12,6 +12,25 @@ import (
 	ptp "github.com/subutai-io/p2p/lib"
 )
 
+type DaemonArgs struct {
+	IP         string `json:"ip"`
+	Mac        string `json:"mac"`
+	Dev        string `json:"dev"`
+	Hash       string `json:"hash"`
+	Dht        string `json:"dht"`
+	Keyfile    string `json:"keyfile"`
+	Key        string `json:"key"`
+	TTL        string `json:"ttl"`
+	Fwd        bool   `json:"fwd"`
+	Port       int    `json:"port"`
+	Interfaces bool   `json:"interfaces"` // show only
+	All        bool   `json:"all"`        // show only
+	Command    string `json:"command"`
+	Args       string `json:"args"`
+	Log        string `json:"log"`
+	Bind       bool   `json:"bind"`
+}
+
 // ExecDaemon starts P2P daemon
 func ExecDaemon(port int, sFile, profiling, syslog string) {
 	if syslog != "" {
@@ -27,6 +46,19 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 	StartTime = time.Now()
 
 	ReadyToServe = false
+
+	dht := new(DHTConnection)
+	err := dht.init(DefaultDHT)
+	if err != nil {
+		ptp.Log(ptp.Error, "Failed to initilize bootstrap node connection")
+		os.Exit(152)
+	}
+	for _, r := range dht.routers {
+		if r != nil {
+			go r.run()
+		}
+	}
+
 	proc := new(Daemon)
 	proc.Initialize(sFile)
 	setupRESTHandlers(port, proc)

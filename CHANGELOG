@@ -1,5 +1,9 @@
 # Change Log
 
+## [6.3.0] 02/10/2018
+
+* New connection process with multiple endpoints
+
 ## [6.2.17] 02/06/2018
 
 * Hotfix for snap version of p2p
