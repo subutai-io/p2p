@@ -148,8 +148,8 @@ func (dht *DHTClient) Handshake(conn *net.TCPConn) error {
 		Type:      DHTPacketType_Connect,
 		Infohash:  dht.NetworkHash,
 		Data:      fmt.Sprintf("%d", dht.LocalPort),
-		Extra:     PacketVersion,
 		Query:     fmt.Sprintf("%d", dht.RemotePort),
+		Version:   PacketVersion,
 	}
 	data, err := proto.Marshal(&packet)
 	if err != nil {

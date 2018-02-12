@@ -5,10 +5,10 @@ import (
 )
 
 // PacketVersion is a version of packet used in DHT communication
-const PacketVersion string = "5"
+const PacketVersion int32 = 20005
 
 // SupportedVersion is a list of versions supported by DHT server
-var SupportedVersion = [...]string{"6", "5"}
+var SupportedVersion = [...]int32{20005, 200006}
 
 // MsgType is a type of the message
 type MsgType uint16
