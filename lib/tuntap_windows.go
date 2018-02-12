@@ -30,16 +30,16 @@ const (
 var UsedInterfaces []string // List of interfaces currently in use by p2p daemon
 
 var (
-	TAP_IOCTL_GET_MAC               = tapControlCode(1, 0)
-	TAP_IOCTL_GET_VERSION           = tapControlCode(2, 0)
-	TAP_IOCTL_GET_MTU               = tapControlCode(3, 0)
-	TAP_IOCTL_GET_INFO              = tapControlCode(4, 0)
-	TAP_IOCTL_CONFIG_POINT_TO_POINT = tapControlCode(5, 0)
-	TAP_IOCTL_SET_MEDIA_STATUS      = tapControlCode(6, 0)
-	TAP_IOCTL_CONFIG_DHCP_MASQ      = tapControlCode(7, 0)
-	TAP_IOCTL_GET_LOG_LINE          = tapControlCode(8, 0)
-	TAP_IOCTL_CONFIG_DHCP_SET_OPT   = tapControlCode(9, 0)
-	TAP_IOCTL_CONFIG_TUN            = tapControlCode(10, 0)
+	getMacIOCTL             = tapControlCode(1, 0)
+	getVersionIOCTL         = tapControlCode(2, 0)
+	getMTUValueIOCTL        = tapControlCode(3, 0)
+	getInfoIOCTL            = tapControlCode(4, 0)
+	configPointToPointIOCTL = tapControlCode(5, 0)
+	setMediaStatusIOCTL     = tapControlCode(6, 0)
+	configDHCPMasqIOCTL     = tapControlCode(7, 0)
+	configGetLogLineIOCTL   = tapControlCode(8, 0)
+	configDHCPSetOptIOCTL   = tapControlCode(9, 0)
+	configTUNIOCTL          = tapControlCode(10, 0)
 )
 
 // GetDeviceBase returns a default interface name
@@ -165,10 +165,13 @@ func (t *TAPWindows) Open() error {
 	return nil
 }
 
+// Close will close handle for TAP interface
 func (t *TAPWindows) Close() error {
-	return nil
+	return syscall.CloseHandle(t.file)
 }
 
+// Configure will configure TAP interface and set it's IP, Mask and other
+// parameters
 func (t *TAPWindows) Configure() error {
 	Log(Debug, "Configuring %s. IP: %s Mask: %s", t.Interface, t.IP.String(), t.Mask.String())
 	setip := exec.Command("netsh")
@@ -185,7 +188,7 @@ func (t *TAPWindows) Configure() error {
 
 	in := []byte("\x01\x00\x00\x00")
 	var length uint32
-	err = syscall.DeviceIoControl(t.file, TAP_IOCTL_SET_MEDIA_STATUS,
+	err = syscall.DeviceIoControl(t.file, setMediaStatusIOCTL,
 		&in[0],
 		uint32(len(in)),
 		&in[0],
@@ -199,6 +202,7 @@ func (t *TAPWindows) Configure() error {
 	return nil
 }
 
+// Run will start read/write goroutines
 func (t *TAPWindows) Run() {
 	Log(Info, "Started packet listener")
 	t.Rx = make(chan []byte, 1500)

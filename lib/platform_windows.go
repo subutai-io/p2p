@@ -3,6 +3,7 @@
 package ptp
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,69 +17,81 @@ import (
 	"golang.org/x/sys/windows/svc/mgr"
 )
 
+// Windows Platform specific constants
 const (
-	TapTool          = "C:\\Program Files\\TAP-Windows\\bin\\tapinstall.exe"
-	DriverInf        = "C:\\Program Files\\TAP-Windows\\driver\\OemVista.inf"
-	TapSuffix string = ".tap"
-	TapID     string = "tap0901"
+	TapTool                    = "C:\\Program Files\\TAP-Windows\\bin\\tapinstall.exe"
+	DriverInf                  = "C:\\Program Files\\TAP-Windows\\driver\\OemVista.inf"
+	TapSuffix                  = ".tap"
+	TapID                      = "tap0901"
+	MaximumInterfaceNameLength = 128
 )
 
-const (
-	MaximumInterfaceNameLength int = 128
+var (
+	errorFailedToRemoveInterfaces   = errors.New("Failed to remove TAP interfaces")
+	errorFailedToCreateInterface    = errors.New("Failed to create interface")
+	errorObjectCreationFailed       = errors.New("Failed to create TAP object")
+	errorFailedToRetrieveNetworkKey = errors.New("Failed to retrieve network key from registry")
+	errorFailedToQueryInterface     = errors.New("Failed to query network interface")
+	errorPreconfigurationFailed     = errors.New("Interface pre-configuration failed")
 )
 
-func InitPlatform() {
+// InitPlatform initializes Windows platform-specific parameters
+func InitPlatform() error {
 	Log(Info, "Initializing Windows Platform")
 	// Remove interfaces
 	remove := exec.Command(TapTool, "remove", TapID)
 	err := remove.Run()
 	if err != nil {
-		Log(Error, "Failed to remove TAP interfaces")
+		return errorFailedToRemoveInterfaces
 	}
-
 	for i := 0; i < 10; i++ {
 		adddev := exec.Command(TapTool, "install", DriverInf, TapID)
 		err := adddev.Run()
 		if err != nil {
 			Log(Error, "Failed to add TUN/TAP Device: %v", err)
+			return errorFailedToCreateInterface
 		}
 	}
 
 	tap, err := newTAP(GetConfigurationTool(), "127.0.0.1", "00:00:00:00:00:00", "255.255.255.0", DefaultMTU)
 	if err != nil {
-		Log(Error, "Failed to create TAP interface: %s", err)
-		return
+		Log(Error, "Failed to create TAP object: %s", err)
+		return errorObjectCreationFailed
 	}
 
 	for i := 0; i < 10; i++ {
 		key, err := tap.queryNetworkKey()
 		if err != nil {
-			Log(Error, "Failed to retrieve network key: %v", err)
-			continue
+			return errorFailedToRetrieveNetworkKey
 		}
 		err = tap.queryAdapters(key)
 		if err != nil {
-			Log(Error, "Failed to query interface: %v", err)
-			continue
+			return errorFailedToQueryInterface
 		}
+		// Dummy IP address for the interface
 		ip := "172." + strconv.Itoa(i) + ".4.100"
 		setip := exec.Command("netsh")
 		setip.SysProcAttr = &syscall.SysProcAttr{}
 
 		cmd := fmt.Sprintf(`netsh interface ip set address "%s" static %s %s`, tap.Interface, ip, "255.255.255.0")
-		Log(Info, "Executing: %s", cmd)
+		Log(Debug, "Executing: %s", cmd)
 
 		setip.SysProcAttr.CmdLine = cmd
 		err = setip.Run()
-		syscall.CloseHandle(tap.file)
+		err2 := syscall.CloseHandle(tap.file)
 		if err != nil {
-			Log(Error, "Failed to properly preconfigure TAP device with netsh: %v", err)
-			continue
+			return errorPreconfigurationFailed
+		}
+		if err2 != nil {
+			Log(Error, "Failed to close handle: %s", err)
 		}
 	}
-	UsedInterfaces = nil
+	UsedInterfaces = UsedInterfaces[:0]
+	return nil
 }
 
+// CheckPermissions return true if started as root/administrator
+// TODO: Implement on Windows
 func CheckPermissions() bool {
 	return true
 }
@@ -88,9 +101,12 @@ func Syslog(level LogLevel, format string, v ...interface{}) {
 	Log(Info, "Syslog is not supported on this platform. Please do not use syslog flag.")
 }
 
-func closeInterface(file syscall.Handle) {
+// func closeInterface(file syscall.Handle) {
+// 	err := syscall.CloseHandle(file)
+// 	if err != nil {
 
-}
+// 	}
+// }
 
 // SetupPlatform will install Windows Service and exit immediatelly
 func SetupPlatform(remove bool) {
