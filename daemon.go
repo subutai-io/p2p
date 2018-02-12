@@ -31,6 +31,8 @@ type DaemonArgs struct {
 	Bind       bool   `json:"bind"`
 }
 
+var bootstrap DHTConnection
+
 // ExecDaemon starts P2P daemon
 func ExecDaemon(port int, sFile, profiling, syslog string) {
 	if syslog != "" {
@@ -47,13 +49,12 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 
 	ReadyToServe = false
 
-	dht := new(DHTConnection)
-	err := dht.init(DefaultDHT)
+	err := bootstrap.init(DefaultDHT)
 	if err != nil {
 		ptp.Log(ptp.Error, "Failed to initilize bootstrap node connection")
 		os.Exit(152)
 	}
-	for _, r := range dht.routers {
+	for _, r := range bootstrap.routers {
 		if r != nil {
 			go r.run()
 		}
