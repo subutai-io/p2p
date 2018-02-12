@@ -46,6 +46,19 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 	StartTime = time.Now()
 
 	ReadyToServe = false
+
+	dht := new(DHTConnection)
+	err := dht.init(DefaultDHT)
+	if err != nil {
+		ptp.Log(ptp.Error, "Failed to initilize bootstrap node connection")
+		os.Exit(152)
+	}
+	for _, r := range dht.routers {
+		if r != nil {
+			go r.run()
+		}
+	}
+
 	proc := new(Daemon)
 	proc.Initialize(sFile)
 	setupRESTHandlers(port, proc)
