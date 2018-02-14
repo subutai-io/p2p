@@ -275,36 +275,55 @@ func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, 
 
 	Log(Info, "Started UDP Listener at port %d", p.UDPSocket.GetPort())
 
-	err = p.StartDHT(p.Hash, p.Routers)
-	if err != nil {
-		Log(Info, "Retrying DHT connection")
-		attempts := 0
-		for attempts < 3 {
-			err = p.StartDHT(p.Hash, p.Routers)
-			if err != nil {
-				Log(Info, "Another attempt failed")
-				attempts++
-			} else {
-				Log(Info, "Connection established")
-				err = nil
-				break
-			}
-		}
-	}
-	if err != nil {
-		Log(Error, "Failed to start instance due to problems with bootstrap node connection")
-		return nil
-	}
+	// err = p.StartDHT(p.Hash, p.Routers)
+	// if err != nil {
+	// 	Log(Info, "Retrying DHT connection")
+	// 	attempts := 0
+	// 	for attempts < 3 {
+	// 		err = p.StartDHT(p.Hash, p.Routers)
+	// 		if err != nil {
+	// 			Log(Info, "Another attempt failed")
+	// 			attempts++
+	// 		} else {
+	// 			Log(Info, "Connection established")
+	// 			err = nil
+	// 			break
+	// 		}
+	// 	}
+	// }
+	// if err != nil {
+	// 	Log(Error, "Failed to start instance due to problems with bootstrap node connection")
+	// 	return nil
+	// }
 
 	err = p.prepareInterfaces(argIP, interfaceName)
 	if err != nil {
 		return nil
 	}
 
+	p.setupTCPCallbacks()
 	go p.ListenInterface()
 	p.ProxyManager = new(ProxyManager)
 	p.ProxyManager.init()
 	return p
+}
+
+func (p *PeerToPeer) readDHT() {
+	for !p.Shutdown {
+		packet, err := p.Dht.read()
+		if err != nil {
+			break
+		}
+		cb, e := p.Dht.TCPCallbacks[packet.Type]
+		if !e {
+			Log(Error, "Unsupported packet from DHT")
+			continue
+		}
+		err = cb(packet)
+		if err != nil {
+			Log(Error, "DHT: %s", err)
+		}
+	}
 }
 
 // This method will block for seconds or unless we receive remote port
@@ -539,6 +558,7 @@ func (p *PeerToPeer) Run() {
 	started := time.Now()
 	// p.Dht.LastUpdate = time.Unix(1, 1)
 	p.Dht.LastUpdate = time.Now()
+	go p.readDHT()
 	for {
 		if p.Shutdown {
 			// TODO: Do it more safely

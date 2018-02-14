@@ -2,8 +2,10 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -18,17 +20,20 @@ var (
 
 // DHTConnection to a DHT bootstrap node
 type DHTConnection struct {
-	routers []*DHTRouter
+	routers    []*DHTRouter            // Routers
+	lock       sync.Mutex              // Mutex for register/unregister
+	instances  map[string]*P2PInstance // Instances
+	registered []string                // List of registered swarm IDs
 }
 
 type DHTRouter struct {
-	conn       *net.TCPConn
-	addr       *net.TCPAddr
-	router     string
-	running    bool
-	handshaked bool
-	stop       bool
-	fails      int
+	conn       *net.TCPConn // TCP connection to a bootsrap node
+	addr       *net.TCPAddr // TCP address of a bootstrap node
+	router     string       // Address of a bootstrap node
+	running    bool         // Whether router is running or not
+	handshaked bool         // Whether handshake has been completed or not
+	stop       bool         // Whether service should be terminated
+	fails      int          // Number of connection fails
 }
 
 func (dht *DHTConnection) init(routersSrc string) error {
@@ -50,6 +55,52 @@ func (dht *DHTConnection) init(routersSrc string) error {
 		router.addr = addr
 		router.router = r
 		dht.routers = append(dht.routers, router)
+	}
+	dht.instances = make(map[string]*P2PInstance)
+	return nil
+}
+
+func (dht *DHTConnection) registerInstance(hash string, inst *P2PInstance) error {
+	dht.lock.Lock()
+	defer dht.lock.Unlock()
+	ptp.Log(ptp.Debug, "Registering instance %s on bootstrap")
+
+	exists := false
+	for ihash, _ := range dht.instances {
+		if hash == ihash {
+			exists = true
+			break
+		}
+	}
+	for _, ihash := range dht.registered {
+		if ihash == hash {
+			exists = true
+			break
+		}
+	}
+	if exists {
+		return fmt.Errorf("Hash already registered on bootstrap")
+	}
+	dht.instances[hash] = inst
+	dht.registered = append(dht.registered, hash)
+	inst.PTP.Dht.IncomingData = make(chan *ptp.DHTPacket)
+	return nil
+}
+
+func (dht *DHTConnection) unregisterInstance(hash string) error {
+	dht.lock.Lock()
+	defer dht.lock.Unlock()
+	ptp.Log(ptp.Debug, "Unregistering instance %s from bootstrap")
+	_, e := dht.instances[hash]
+	if !e {
+		return fmt.Errorf("Can't unregister hash %s: Instance doesn't exists", hash)
+	}
+	delete(dht.instances, hash)
+	for i, ihash := range dht.registered {
+		if ihash == hash {
+			dht.registered = append(dht.registered[:i], dht.registered[i+1:]...)
+			break
+		}
 	}
 	return nil
 }

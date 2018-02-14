@@ -6,43 +6,48 @@ import (
 	"strconv"
 )
 
-func (dht *DHTClient) setupTCPCallbacks() {
-	dht.TCPCallbacks = make(map[DHTPacketType]dhtCallback)
-	dht.TCPCallbacks[DHTPacketType_BadProxy] = dht.packetBadProxy
-	dht.TCPCallbacks[DHTPacketType_Connect] = dht.packetConnect
-	dht.TCPCallbacks[DHTPacketType_DHCP] = dht.packetDHCP
-	dht.TCPCallbacks[DHTPacketType_Error] = dht.packetError
-	dht.TCPCallbacks[DHTPacketType_Find] = dht.packetFind
-	dht.TCPCallbacks[DHTPacketType_Forward] = dht.packetForward
-	dht.TCPCallbacks[DHTPacketType_Node] = dht.packetNode
-	dht.TCPCallbacks[DHTPacketType_Notify] = dht.packetNotify
-	dht.TCPCallbacks[DHTPacketType_Ping] = dht.packetPing
-	dht.TCPCallbacks[DHTPacketType_Proxy] = dht.packetProxy
-	dht.TCPCallbacks[DHTPacketType_RequestProxy] = dht.packetRequestProxy
-	dht.TCPCallbacks[DHTPacketType_ReportProxy] = dht.packetReportProxy
-	dht.TCPCallbacks[DHTPacketType_RegisterProxy] = dht.packetRegisterProxy
-	dht.TCPCallbacks[DHTPacketType_ReportLoad] = dht.packetReportLoad
-	dht.TCPCallbacks[DHTPacketType_State] = dht.packetState
-	dht.TCPCallbacks[DHTPacketType_Stop] = dht.packetStop
-	dht.TCPCallbacks[DHTPacketType_Unknown] = dht.packetUnknown
-	dht.TCPCallbacks[DHTPacketType_Unsupported] = dht.packetUnsupported
+type dhtCallback func(*DHTPacket) error
+
+func (p *PeerToPeer) setupTCPCallbacks() {
+	p.Dht.TCPCallbacks = make(map[DHTPacketType]dhtCallback)
+	p.Dht.TCPCallbacks[DHTPacketType_BadProxy] = p.packetBadProxy
+	p.Dht.TCPCallbacks[DHTPacketType_Connect] = p.packetConnect
+	p.Dht.TCPCallbacks[DHTPacketType_DHCP] = p.packetDHCP
+	p.Dht.TCPCallbacks[DHTPacketType_Error] = p.packetError
+	p.Dht.TCPCallbacks[DHTPacketType_Find] = p.packetFind
+	p.Dht.TCPCallbacks[DHTPacketType_Forward] = p.packetForward
+	p.Dht.TCPCallbacks[DHTPacketType_Node] = p.packetNode
+	p.Dht.TCPCallbacks[DHTPacketType_Notify] = p.packetNotify
+	p.Dht.TCPCallbacks[DHTPacketType_Ping] = p.packetPing
+	p.Dht.TCPCallbacks[DHTPacketType_Proxy] = p.packetProxy
+	p.Dht.TCPCallbacks[DHTPacketType_RequestProxy] = p.packetRequestProxy
+	p.Dht.TCPCallbacks[DHTPacketType_ReportProxy] = p.packetReportProxy
+	p.Dht.TCPCallbacks[DHTPacketType_RegisterProxy] = p.packetRegisterProxy
+	p.Dht.TCPCallbacks[DHTPacketType_ReportLoad] = p.packetReportLoad
+	p.Dht.TCPCallbacks[DHTPacketType_State] = p.packetState
+	p.Dht.TCPCallbacks[DHTPacketType_Stop] = p.packetStop
+	p.Dht.TCPCallbacks[DHTPacketType_Unknown] = p.packetUnknown
+	p.Dht.TCPCallbacks[DHTPacketType_Unsupported] = p.packetUnsupported
 }
 
-func (dht *DHTClient) packetBadProxy(packet *DHTPacket) error {
+// func (dht *DHTClient) packetBadProxy(packet *DHTPacket) error {
+func (p *PeerToPeer) packetBadProxy(packet *DHTPacket) error {
 	return nil
 }
 
 // Handshake response should be handled here.
-func (dht *DHTClient) packetConnect(packet *DHTPacket) error {
+// func (dht *DHTClient) packetConnect(packet *DHTPacket) error {
+func (p *PeerToPeer) packetConnect(packet *DHTPacket) error {
 	if len(packet.Id) != 36 {
 		return fmt.Errorf("Received malformed ID")
 	}
-	dht.ID = packet.Id
-	Log(Info, "Received personal ID for this session: %s", dht.ID)
+	p.Dht.ID = packet.Id
+	Log(Info, "Received personal ID for this session: %s", p.Dht.ID)
 	return nil
 }
 
-func (dht *DHTClient) packetDHCP(packet *DHTPacket) error {
+func (p *PeerToPeer) packetDHCP(packet *DHTPacket) error {
+	// func (dht *DHTClient) packetDHCP(packet *DHTPacket) error {
 	Log(Info, "Received DHCP packet")
 	if packet.Data != "" && packet.Extra != "" {
 		ip, network, err := net.ParseCIDR(fmt.Sprintf("%s/%s", packet.Data, packet.Extra))
@@ -50,14 +55,15 @@ func (dht *DHTClient) packetDHCP(packet *DHTPacket) error {
 			Log(Error, "Failed to parse DHCP packet: %s", err)
 			return err
 		}
-		dht.IP = ip
-		dht.Network = network
+		p.Dht.IP = ip
+		p.Dht.Network = network
 		Log(Info, "Received network information: %s", network.String())
 	}
 	return nil
 }
 
-func (dht *DHTClient) packetError(packet *DHTPacket) error {
+func (p *PeerToPeer) packetError(packet *DHTPacket) error {
+	// func (dht *DHTClient) packetError(packet *DHTPacket) error {
 	lvl := LogLevel(Trace)
 	if packet.Data == "" {
 		lvl = Error
@@ -70,27 +76,30 @@ func (dht *DHTClient) packetError(packet *DHTPacket) error {
 	return nil
 }
 
-func (dht *DHTClient) packetFind(packet *DHTPacket) error {
+func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
+	// func (dht *DHTClient) packetFind(packet *DHTPacket) error {
 	if len(packet.Arguments) == 0 {
 		Log(Warning, "Received empty peer list")
 		return nil
 	}
 	Log(Debug, "Received peer list")
 	for _, id := range packet.Arguments {
-		if id == dht.ID {
+		if id == p.Dht.ID {
 			continue
 		}
 		peer := NetworkPeer{ID: id}
-		dht.PeerData <- peer
+		p.Dht.PeerData <- peer
 	}
 	return nil
 }
 
-func (dht *DHTClient) packetForward(packet *DHTPacket) error {
+func (p *PeerToPeer) packetForward(packet *DHTPacket) error {
+	// func (dht *DHTClient) packetForward(packet *DHTPacket) error {
 	return nil
 }
 
-func (dht *DHTClient) packetNode(packet *DHTPacket) error {
+func (p *PeerToPeer) packetNode(packet *DHTPacket) error {
+	// func (dht *DHTClient) packetNode(packet *DHTPacket) error {
 	Log(Debug, "Received peer %s IPs", packet.Data)
 	list := []*net.UDPAddr{}
 	for _, addr := range packet.Arguments {
@@ -109,28 +118,32 @@ func (dht *DHTClient) packetNode(packet *DHTPacket) error {
 		return fmt.Errorf("Received empty IP list for peer %s", packet.Data)
 	}
 	peer := NetworkPeer{ID: packet.Data, KnownIPs: list}
-	dht.PeerData <- peer
+	p.Dht.PeerData <- peer
 	return nil
 }
 
-func (dht *DHTClient) packetNotify(packet *DHTPacket) error {
+func (p *PeerToPeer) packetNotify(packet *DHTPacket) error {
+	// func (dht *DHTClient) packetNotify(packet *DHTPacket) error {
 	return nil
 }
 
-func (dht *DHTClient) packetPing(packet *DHTPacket) error {
+func (p *PeerToPeer) packetPing(packet *DHTPacket) error {
+	// func (dht *DHTClient) packetPing(packet *DHTPacket) error {
 	return nil
 }
 
-func (dht *DHTClient) packetProxy(packet *DHTPacket) error {
+func (p *PeerToPeer) packetProxy(packet *DHTPacket) error {
+	// func (dht *DHTClient) packetProxy(packet *DHTPacket) error {
 	Log(Debug, "Received list of proxies")
 	for _, proxy := range packet.Proxies {
-		dht.ProxyChannel <- proxy
+		p.Dht.ProxyChannel <- proxy
 	}
 	return nil
 }
 
 // packetRequestProxy received when we was requesting proxy to connect to some peer
-func (dht *DHTClient) packetRequestProxy(packet *DHTPacket) error {
+// func (dht *DHTClient) packetRequestProxy(packet *DHTPacket) error {
+func (p *PeerToPeer) packetRequestProxy(packet *DHTPacket) error {
 	list := []*net.UDPAddr{}
 	for _, proxy := range packet.Proxies {
 		addr, err := net.ResolveUDPAddr("udp4", proxy)
@@ -141,27 +154,31 @@ func (dht *DHTClient) packetRequestProxy(packet *DHTPacket) error {
 		list = append(list, addr)
 	}
 	peer := NetworkPeer{ID: packet.Data, Proxies: list}
-	dht.PeerData <- peer
+	p.Dht.PeerData <- peer
 	return nil
 }
 
-func (dht *DHTClient) packetReportProxy(packet *DHTPacket) error {
+// func (dht *DHTClient) packetReportProxy(packet *DHTPacket) error {
+func (p *PeerToPeer) packetReportProxy(packet *DHTPacket) error {
 	Log(Info, "DHT confirmed proxy registration")
 	return nil
 }
 
-func (dht *DHTClient) packetRegisterProxy(packet *DHTPacket) error {
+// func (dht *DHTClient) packetRegisterProxy(packet *DHTPacket) error {
+func (p *PeerToPeer) packetRegisterProxy(packet *DHTPacket) error {
 	if packet.Data == "OK" {
 		Log(Info, "Proxy registration confirmed")
 	}
 	return nil
 }
 
-func (dht *DHTClient) packetReportLoad(packet *DHTPacket) error {
+// func (dht *DHTClient) packetReportLoad(packet *DHTPacket) error {
+func (p *PeerToPeer) packetReportLoad(packet *DHTPacket) error {
 	return nil
 }
 
-func (dht *DHTClient) packetState(packet *DHTPacket) error {
+func (p *PeerToPeer) packetState(packet *DHTPacket) error {
+	// func (dht *DHTClient) packetState(packet *DHTPacket) error {
 	if len(packet.Data) != 36 {
 		return fmt.Errorf("Receied state packet for unknown/broken ID")
 	}
@@ -175,20 +192,23 @@ func (dht *DHTClient) packetState(packet *DHTPacket) error {
 	state := RemotePeerState{}
 	state.ID = packet.Data
 	state.State = PeerState(numericState)
-	dht.StateChannel <- state
+	p.Dht.StateChannel <- state
 	return nil
 }
 
-func (dht *DHTClient) packetStop(packet *DHTPacket) error {
+func (p *PeerToPeer) packetStop(packet *DHTPacket) error {
+	// func (dht *DHTClient) packetStop(packet *DHTPacket) error {
 	return nil
 }
 
-func (dht *DHTClient) packetUnknown(packet *DHTPacket) error {
+func (p *PeerToPeer) packetUnknown(packet *DHTPacket) error {
+	// func (dht *DHTClient) packetUnknown(packet *DHTPacket) error {
 	Log(Warning, "Bootstap node refuses our identity. Shutting down")
-	return dht.Close()
+	return p.Dht.Close()
 }
 
-func (dht *DHTClient) packetUnsupported(packet *DHTPacket) error {
+func (p *PeerToPeer) packetUnsupported(packet *DHTPacket) error {
+	// func (dht *DHTClient) packetUnsupported(packet *DHTPacket) error {
 	Log(Error, "Bootstap node doesn't support our version. Shutting down")
-	return dht.Close()
+	return p.Dht.Close()
 }

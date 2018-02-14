@@ -24,8 +24,6 @@ type RemotePeerState struct {
 	State PeerState
 }
 
-type dhtCallback func(*DHTPacket) error
-
 // DHTClient is a main structure of a DHT client
 type DHTClient struct {
 	Routers           string                        // Comma-separated list of bootstrap nodes
@@ -49,6 +47,8 @@ type DHTClient struct {
 	LastUpdate        time.Time                     // When last `find` packet was sent
 	OutboundIP        net.IP                        // Outbound IP
 	ListenerIsRunning bool                          // True if listener is runnning
+	IncomingData      chan *DHTPacket
+	OutgoingData      chan *DHTPacket
 }
 
 // Forwarder structure represents a Proxy received from DHT server
@@ -70,7 +70,7 @@ func (dht *DHTClient) Init(hash string) error {
 	dht.ProxyChannel = make(chan string)
 	dht.PeerData = make(chan NetworkPeer)
 	dht.NetworkHash = hash
-	dht.setupTCPCallbacks()
+	// dht.setupTCPCallbacks()
 	dht.ID = GenerateToken()
 	if len(dht.ID) != 36 {
 		return fmt.Errorf("Failed to produce a token")
@@ -212,6 +212,14 @@ func (dht *DHTClient) Init(hash string) error {
 // 	Log(Info, "DHT Listener stopped")
 // 	dht.ListenerIsRunning = false
 // }
+
+func (dht *DHTClient) read() (*DHTPacket, error) {
+	packet := <-dht.IncomingData
+	if packet == nil {
+		return nil, fmt.Errorf("Channel send nil packet. Probably closed")
+	}
+	return packet, nil
+}
 
 // Sends bytes to all connected bootstrap nodes
 func (dht *DHTClient) send(data []byte) error {
