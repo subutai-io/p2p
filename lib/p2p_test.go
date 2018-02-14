@@ -121,6 +121,21 @@ func TestPrepareIntroductionMessage(t *testing.T) {
 	}
 }
 
+func TestMarkPeerForRemoval(t *testing.T) {
+	ptp := new(PeerToPeer)
+	np := new(NetworkPeer)
+	ptp.Init()
+	ptp.Peers.peers["1"] = np
+	get := ptp.markPeerForRemoval("1", "Some reasons")
+	if get != nil && np.State != PeerStateDisconnect {
+		t.Error("Error")
+	}
+	get2 := ptp.markPeerForRemoval("0", "some reasons")
+	if get2 == nil {
+		t.Error("Error")
+	}
+}
+
 func TestParseIntroString(t *testing.T) {
 	p := new(PeerToPeer)
 	id, mac, ip := p.ParseIntroString("id,01:02:03:04:05:06,127.0.0.1")
