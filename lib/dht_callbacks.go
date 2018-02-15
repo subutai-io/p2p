@@ -43,6 +43,7 @@ func (p *PeerToPeer) packetConnect(packet *DHTPacket) error {
 	}
 	p.Dht.ID = packet.Id
 	Log(Info, "Received personal ID for this session: %s", p.Dht.ID)
+	p.Dht.Connected = true
 	return nil
 }
 

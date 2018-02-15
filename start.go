@@ -130,13 +130,26 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		if err != nil {
 			ptp.Log(ptp.Error, "Failed to register instance with bootstrap nodes")
 			newInst.PTP.StopInstance()
+			resp.Output = resp.Output + "Failed to register instance"
+			resp.ExitCode = 2001
 			return errors.New("Failed to register instance")
+		}
+
+		newInst.PTP.Dht.LocalPort = newInst.PTP.UDPSocket.GetPort()
+		err = newInst.PTP.Dht.Connect()
+		if err != nil {
+			newInst.PTP.StopInstance()
+			resp.Output = resp.Output + err.Error()
+			resp.ExitCode = 2002
+			return err
 		}
 
 		err = newInst.PTP.PrepareInterfaces(args.IP, args.Dev)
 		if err != nil {
 			ptp.Log(ptp.Error, "Failed to configure network interface: %s", err)
 			newInst.PTP.StopInstance()
+			resp.Output = resp.Output + "Failed to configure network: " + err.Error()
+			resp.ExitCode = 2002
 			return errors.New("Failed to configure network interface")
 		}
 		go newInst.PTP.ListenInterface()

@@ -368,7 +368,6 @@ func (p *PeerToPeer) PrepareInterfaces(ip, interfaceName string) error {
 	if ip == "dhcp" {
 		ipn, maskn, err := p.RequestIP(p.Interface.GetHardwareAddress().String(), iface)
 		if err != nil {
-			Log(Error, "%v", err)
 			return err
 		}
 		p.Interface.SetIP(ipn)
@@ -377,7 +376,6 @@ func (p *PeerToPeer) PrepareInterfaces(ip, interfaceName string) error {
 		p.Interface.SetIP(net.ParseIP(ip))
 		ipn, maskn, err := p.ReportIP(ip, p.Interface.GetHardwareAddress().String(), iface)
 		if err != nil {
-			Log(Error, "%v", err)
 			return err
 		}
 		p.Interface.SetIP(ipn)
@@ -467,7 +465,7 @@ func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 	p.Dht.sendDHCP(nil, nil)
 	for p.Dht.IP == nil && p.Dht.Network == nil {
 		if time.Since(requestedAt) > interval {
-			p.StopInstance()
+			//p.StopInstance()
 			return nil, nil, fmt.Errorf("No IP were received. Swarm is empty")
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -483,6 +481,7 @@ func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 
 // ReportIP will send IP specified at service start to DHCP-like service
 func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask, error) {
+	Log(Debug, "Reporting IP to bootstranp node: %s", ipAddress)
 	ip, ipnet, err := net.ParseCIDR(ipAddress)
 	if err != nil {
 		nip := net.ParseIP(ipAddress)

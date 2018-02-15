@@ -77,6 +77,36 @@ func (dht *DHTClient) Init(hash string) error {
 	return nil
 }
 
+// Connect sends `conn` packet to a DHT
+func (dht *DHTClient) Connect() error {
+	dht.Connected = false
+	if dht.RemotePort == 0 {
+		dht.RemotePort = dht.LocalPort
+	}
+	packet := &DHTPacket{
+		Type:     DHTPacketType_Connect,
+		Infohash: dht.NetworkHash,
+		Id:       dht.ID,
+		Version:  PacketVersion,
+		Data:     fmt.Sprintf("%d", dht.LocalPort),
+		Query:    fmt.Sprintf("%d", dht.RemotePort),
+	}
+	err := dht.send(packet)
+	if err != nil {
+		return fmt.Errorf("Failed to handshake with bootstrap node: %s", err)
+	}
+	// Waiting for 3 seconds to get connection confirmation
+	sent := time.Now()
+	for time.Since(sent) < time.Duration(3000*time.Millisecond) {
+		if dht.Connected {
+			return nil
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
+	Log(Error, "DHT handshake didn't finish")
+	return fmt.Errorf("Couldn't handshake with bootstrap node")
+}
+
 // TCPInit initializes connection to DHT/bootstrap nodes over TCP
 // func (dht *DHTClient) TCPInit(hash, routers string) error {
 // 	// dht.LastUpdate = time.Unix(1, 1)
@@ -252,6 +282,7 @@ func (dht *DHTClient) sendFind() error {
 		Type:     DHTPacketType_Find,
 		Id:       dht.ID,
 		Infohash: dht.NetworkHash,
+		Version:  PacketVersion,
 	}
 	return dht.send(packet)
 }
@@ -266,6 +297,7 @@ func (dht *DHTClient) sendNode(id string) error {
 		Id:       dht.ID,
 		Infohash: dht.NetworkHash,
 		Data:     id,
+		Version:  PacketVersion,
 	}
 	return dht.send(packet)
 }
@@ -280,6 +312,7 @@ func (dht *DHTClient) sendState(id, state string) error {
 		Infohash: dht.NetworkHash,
 		Data:     id,
 		Extra:    state,
+		Version:  PacketVersion,
 	}
 	return dht.send(packet)
 }
@@ -299,6 +332,7 @@ func (dht *DHTClient) sendDHCP(ip net.IP, network *net.IPNet) error {
 		Infohash: dht.NetworkHash,
 		Data:     ip.String(),
 		Extra:    subnet,
+		Version:  PacketVersion,
 	}
 	return dht.send(packet)
 }
@@ -309,6 +343,7 @@ func (dht *DHTClient) sendProxy() error {
 		Type:     DHTPacketType_Proxy,
 		Infohash: dht.NetworkHash,
 		Id:       dht.ID,
+		Version:  PacketVersion,
 	}
 	return dht.send(packet)
 }
@@ -319,6 +354,7 @@ func (dht *DHTClient) sendRequestProxy(id string) error {
 		Id:       dht.ID,
 		Infohash: dht.NetworkHash,
 		Data:     id,
+		Version:  PacketVersion,
 	}
 	return dht.send(packet)
 }
@@ -333,6 +369,7 @@ func (dht *DHTClient) sendReportProxy(addr []*net.UDPAddr) error {
 		Id:       dht.ID,
 		Infohash: dht.NetworkHash,
 		Proxies:  list,
+		Version:  PacketVersion,
 	}
 	return dht.send(packet)
 }
@@ -340,24 +377,25 @@ func (dht *DHTClient) sendReportProxy(addr []*net.UDPAddr) error {
 // Close will close all connections and switch DHT object to
 // shutdown mode, which will terminate every loop/goroutine
 func (dht *DHTClient) Close() error {
-	dht.Connected = false
-	for _, c := range dht.Connections {
-		c.Close()
-	}
-	Log(Info, "Entering shutdown mode. Shutting down connections with bootstrap nodes")
-	if dht.ListenerIsRunning {
-		Log(Info, "Waiting for DHT listener to stop")
-	}
-	started := time.Now()
-	for dht.ListenerIsRunning {
-		time.Sleep(time.Millisecond * 100)
-		if time.Since(started) > time.Duration(time.Second*30) {
-			Log(Error, "DHT Listener failed to stop within 30 seconds")
-			return fmt.Errorf("DHT Listener failed to stop withing 30 seconds")
-		}
-	}
-	dht.isShutdown = true
 	return nil
+	// dht.Connected = false
+	// for _, c := range dht.Connections {
+	// 	c.Close()
+	// }
+	// Log(Info, "Entering shutdown mode. Shutting down connections with bootstrap nodes")
+	// if dht.ListenerIsRunning {
+	// 	Log(Info, "Waiting for DHT listener to stop")
+	// }
+	// started := time.Now()
+	// for dht.ListenerIsRunning {
+	// 	time.Sleep(time.Millisecond * 100)
+	// 	if time.Since(started) > time.Duration(time.Second*30) {
+	// 		Log(Error, "DHT Listener failed to stop within 30 seconds")
+	// 		return fmt.Errorf("DHT Listener failed to stop withing 30 seconds")
+	// 	}
+	// }
+	// dht.isShutdown = true
+	// return nil
 }
 
 // WaitID will block DHT until valid instance ID is received from Bootstrap node
@@ -391,6 +429,7 @@ func (dht *DHTClient) RegisterProxy(ip net.IP, port int) error {
 		Id:       id.String(),
 		Infohash: dht.NetworkHash,
 		Data:     fmt.Sprintf("%s:%d", ip.String(), port),
+		Version:  PacketVersion,
 	}
 	return dht.send(packet)
 }

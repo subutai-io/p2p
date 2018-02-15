@@ -50,6 +50,12 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 	resp.Output = fmt.Sprintf("Version: %s Build: %s\n", AppVersion, BuildID)
 	resp.Output += fmt.Sprintf("Uptime: %d h %d m %d s\n", int(time.Since(StartTime).Hours()), int(time.Since(StartTime).Minutes())%60, int(time.Since(StartTime).Seconds())%60)
 	resp.Output += fmt.Sprintf("Number of gouroutines: %d\n", runtime.NumGoroutine())
+	resp.Output += fmt.Sprintf("Bootstrap nodes information:\n")
+	for _, node := range bootstrap.routers {
+		if node != nil {
+			resp.Output += fmt.Sprintf("  %s\n", node.addr.String())
+		}
+	}
 	resp.Output += fmt.Sprintf("Instances information:\n")
 	instances := p.Instances.Get()
 	for _, inst := range instances {
