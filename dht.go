@@ -34,6 +34,8 @@ type DHTRouter struct {
 	handshaked bool         // Whether handshake has been completed or not
 	stop       bool         // Whether service should be terminated
 	fails      int          // Number of connection fails
+	tx         uint64
+	rx         uint64
 }
 
 func (dht *DHTConnection) init(routersSrc string) error {
@@ -63,7 +65,7 @@ func (dht *DHTConnection) init(routersSrc string) error {
 func (dht *DHTConnection) registerInstance(hash string, inst *P2PInstance) error {
 	dht.lock.Lock()
 	defer dht.lock.Unlock()
-	ptp.Log(ptp.Debug, "Registering instance %s on bootstrap")
+	ptp.Log(ptp.Debug, "Registering instance %s on bootstrap", hash)
 
 	exists := false
 	for ihash, _ := range dht.instances {
@@ -84,16 +86,54 @@ func (dht *DHTConnection) registerInstance(hash string, inst *P2PInstance) error
 	dht.instances[hash] = inst
 	dht.registered = append(dht.registered, hash)
 	inst.PTP.Dht.IncomingData = make(chan *ptp.DHTPacket)
+	inst.PTP.Dht.OutgoingData = make(chan *ptp.DHTPacket)
+	go func() {
+		for {
+			packet := <-inst.PTP.Dht.OutgoingData
+			if packet == nil {
+				break
+			}
+			dht.send(packet)
+		}
+	}()
 	return nil
+}
+
+func (dht *DHTConnection) send(packet *ptp.DHTPacket) {
+	if packet == nil {
+		return
+	}
+	data, err := proto.Marshal(packet)
+	if err != nil {
+		ptp.Log(ptp.Error, "Failed to marshal DHT Packet: %s", err)
+	}
+	for i, router := range dht.routers {
+		if router.running && router.handshaked {
+			n, err := router.conn.Write(data)
+			if err != nil {
+				ptp.Log(ptp.Error, "Failed to send data to %s", router.addr.String())
+				continue
+			}
+			if n >= 0 {
+				dht.routers[i].tx += uint64(n)
+			}
+		}
+	}
 }
 
 func (dht *DHTConnection) unregisterInstance(hash string) error {
 	dht.lock.Lock()
 	defer dht.lock.Unlock()
 	ptp.Log(ptp.Debug, "Unregistering instance %s from bootstrap")
-	_, e := dht.instances[hash]
+	inst, e := dht.instances[hash]
 	if !e {
 		return fmt.Errorf("Can't unregister hash %s: Instance doesn't exists", hash)
+	}
+	if inst != nil && inst.PTP != nil && inst.PTP.Dht != nil {
+		err := inst.PTP.Dht.Close()
+		if err != nil {
+			ptp.Log(ptp.Error, "Failed to stop DHT on instance %s", hash)
+		}
 	}
 	delete(dht.instances, hash)
 	for i, ihash := range dht.registered {

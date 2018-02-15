@@ -5,7 +5,6 @@ import (
 	"net"
 	"time"
 
-	proto "github.com/golang/protobuf/proto"
 	uuid "github.com/wayn3h0/go-uuid"
 )
 
@@ -26,27 +25,27 @@ type RemotePeerState struct {
 
 // DHTClient is a main structure of a DHT client
 type DHTClient struct {
-	Routers           string                        // Comma-separated list of bootstrap nodes
-	NetworkHash       string                        // Saved network hash
-	ID                string                        // Current instance ID
-	FailedRouters     []string                      // List of routes that we failed to connect to
-	Connections       []*net.TCPConn                // TCP connections to bootstrap nodes
-	LocalPort         int                           // UDP port number used by this instance
-	RemotePort        int                           // UDP port number reported by echo server
-	Forwarders        []Forwarder                   // List of worwarders
-	TCPCallbacks      map[DHTPacketType]dhtCallback // Callbacks for incoming packets
-	Mode              OperatingMode                 // DHT Client mode ???
-	IPList            []net.IP                      // List of network active interfaces
-	IP                net.IP                        // IP of local interface received from DHCP or specified manually
-	Network           *net.IPNet                    // Network information about current network. Used to inform p2p about mask for interface
-	StateChannel      chan RemotePeerState          // Channel to pass states to instance
-	ProxyChannel      chan string                   // Channel to pass proxies to instance
-	PeerData          chan NetworkPeer              // Channel to pass data about changes in peers
-	Connected         bool                          // Whether connection with bootstrap nodes established or not
-	isShutdown        bool                          // Whether DHT shutting down or not
-	LastUpdate        time.Time                     // When last `find` packet was sent
-	OutboundIP        net.IP                        // Outbound IP
-	ListenerIsRunning bool                          // True if listener is runnning
+	Routers       string                        // Comma-separated list of bootstrap nodes
+	NetworkHash   string                        // Saved network hash
+	ID            string                        // Current instance ID
+	FailedRouters []string                      // List of routes that we failed to connect to
+	Connections   []*net.TCPConn                // TCP connections to bootstrap nodes
+	LocalPort     int                           // UDP port number used by this instance
+	RemotePort    int                           // UDP port number reported by echo server
+	Forwarders    []Forwarder                   // List of worwarders
+	TCPCallbacks  map[DHTPacketType]dhtCallback // Callbacks for incoming packets
+	Mode          OperatingMode                 // DHT Client mode ???
+	IPList        []net.IP                      // List of network active interfaces
+	IP            net.IP                        // IP of local interface received from DHCP or specified manually
+	Network       *net.IPNet                    // Network information about current network. Used to inform p2p about mask for interface
+	// StateChannel      chan RemotePeerState          // Channel to pass states to instance
+	// ProxyChannel      chan string                   // Channel to pass proxies to instance
+	// PeerData          chan NetworkPeer              // Channel to pass data about changes in peers
+	Connected         bool      // Whether connection with bootstrap nodes established or not
+	isShutdown        bool      // Whether DHT shutting down or not
+	LastUpdate        time.Time // When last `find` packet was sent
+	OutboundIP        net.IP    // Outbound IP
+	ListenerIsRunning bool      // True if listener is runnning
 	IncomingData      chan *DHTPacket
 	OutgoingData      chan *DHTPacket
 }
@@ -66,9 +65,9 @@ type PeerIP struct {
 // Init bootstrap for this instance
 func (dht *DHTClient) Init(hash string) error {
 	dht.LastUpdate = time.Now()
-	dht.StateChannel = make(chan RemotePeerState)
-	dht.ProxyChannel = make(chan string)
-	dht.PeerData = make(chan NetworkPeer)
+	// dht.StateChannel = make(chan RemotePeerState)
+	// dht.ProxyChannel = make(chan string)
+	// dht.PeerData = make(chan NetworkPeer)
 	dht.NetworkHash = hash
 	// dht.setupTCPCallbacks()
 	dht.ID = GenerateToken()
@@ -222,16 +221,23 @@ func (dht *DHTClient) read() (*DHTPacket, error) {
 }
 
 // Sends bytes to all connected bootstrap nodes
-func (dht *DHTClient) send(data []byte) error {
-	go func() {
-		for _, conn := range dht.Connections {
-			_, err := conn.Write(data)
-			if err != nil {
-				continue
-			}
-		}
-	}()
+func (dht *DHTClient) send(packet *DHTPacket) error {
+	if dht.OutgoingData != nil && !dht.isShutdown {
+		dht.OutgoingData <- packet
+	} else {
+		Log(Debug, "%+v ||| %+v", dht.OutgoingData, dht.isShutdown)
+		return fmt.Errorf("Trying to send to closed channel")
+	}
 	return nil
+	// go func() {
+	// 	for _, conn := range dht.Connections {
+	// 		_, err := conn.Write(data)
+	// 		if err != nil {
+	// 			continue
+	// 		}
+	// 	}
+	// }()
+	// return nil
 }
 
 // This method will send request for network peers known to BSN
@@ -247,11 +253,7 @@ func (dht *DHTClient) sendFind() error {
 		Id:       dht.ID,
 		Infohash: dht.NetworkHash,
 	}
-	data, err := proto.Marshal(packet)
-	if err != nil {
-		return fmt.Errorf("Failed to marshal find: %s", err)
-	}
-	return dht.send(data)
+	return dht.send(packet)
 }
 
 // This method will send request of IPs of particular peer known to BSN
@@ -265,11 +267,7 @@ func (dht *DHTClient) sendNode(id string) error {
 		Infohash: dht.NetworkHash,
 		Data:     id,
 	}
-	data, err := proto.Marshal(packet)
-	if err != nil {
-		return fmt.Errorf("Failed to marshal node: %s", err)
-	}
-	return dht.send(data)
+	return dht.send(packet)
 }
 
 func (dht *DHTClient) sendState(id, state string) error {
@@ -277,17 +275,13 @@ func (dht *DHTClient) sendState(id, state string) error {
 		return fmt.Errorf("Failed to send state: Malformed ID")
 	}
 	packet := &DHTPacket{
-		Type:      DHTPacketType_State,
-		Id:        dht.ID,
-		Infohash:  dht.NetworkHash,
-		Data:      id,
-		Arguments: []string{state},
+		Type:     DHTPacketType_State,
+		Id:       dht.ID,
+		Infohash: dht.NetworkHash,
+		Data:     id,
+		Extra:    state,
 	}
-	data, err := proto.Marshal(packet)
-	if err != nil {
-		return fmt.Errorf("Failed to marshal state: %s", err)
-	}
-	return dht.send(data)
+	return dht.send(packet)
 }
 
 func (dht *DHTClient) sendDHCP(ip net.IP, network *net.IPNet) error {
@@ -306,12 +300,7 @@ func (dht *DHTClient) sendDHCP(ip net.IP, network *net.IPNet) error {
 		Data:     ip.String(),
 		Extra:    subnet,
 	}
-	data, err := proto.Marshal(packet)
-	if err != nil {
-		return fmt.Errorf("Failed to marshal DHCP packet: %s", err)
-	}
-	Log(Debug, "Sending DHCP: %+v", packet)
-	return dht.send(data)
+	return dht.send(packet)
 }
 
 func (dht *DHTClient) sendProxy() error {
@@ -321,11 +310,7 @@ func (dht *DHTClient) sendProxy() error {
 		Infohash: dht.NetworkHash,
 		Id:       dht.ID,
 	}
-	data, err := proto.Marshal(packet)
-	if err != nil {
-		return fmt.Errorf("Failed to marshal DHCP packet: %s", err)
-	}
-	return dht.send(data)
+	return dht.send(packet)
 }
 
 func (dht *DHTClient) sendRequestProxy(id string) error {
@@ -335,11 +320,7 @@ func (dht *DHTClient) sendRequestProxy(id string) error {
 		Infohash: dht.NetworkHash,
 		Data:     id,
 	}
-	data, err := proto.Marshal(packet)
-	if err != nil {
-		return fmt.Errorf("Failed to marshal DHCP packet: %s", err)
-	}
-	return dht.send(data)
+	return dht.send(packet)
 }
 
 func (dht *DHTClient) sendReportProxy(addr []*net.UDPAddr) error {
@@ -353,11 +334,7 @@ func (dht *DHTClient) sendReportProxy(addr []*net.UDPAddr) error {
 		Infohash: dht.NetworkHash,
 		Proxies:  list,
 	}
-	data, err := proto.Marshal(packet)
-	if err != nil {
-		return fmt.Errorf("Failed to marshal DHCP packet: %s", err)
-	}
-	return dht.send(data)
+	return dht.send(packet)
 }
 
 // Close will close all connections and switch DHT object to
@@ -415,12 +392,7 @@ func (dht *DHTClient) RegisterProxy(ip net.IP, port int) error {
 		Infohash: dht.NetworkHash,
 		Data:     fmt.Sprintf("%s:%d", ip.String(), port),
 	}
-	data, err := proto.Marshal(packet)
-	if err != nil {
-		return fmt.Errorf("Failed to marshal RegProxy: %s", err)
-	}
-	dht.send(data)
-	return nil
+	return dht.send(packet)
 }
 
 // ReportLoad will send amount of tunnels created on particular proxy

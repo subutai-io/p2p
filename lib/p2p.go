@@ -199,13 +199,13 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 			if !p.IsIPv4(ip.String()) {
 				decision = "No IPv4"
 			}
-			Log(Info, "Interface %s: %s. Type: %s. %s", i.Name, addr.String(), ipType, decision)
+			Log(Debug, "Interface %s: %s. Type: %s. %s", i.Name, addr.String(), ipType, decision)
 			if decision == "Saving" {
 				p.LocalIPs = append(p.LocalIPs, ip)
 			}
 		}
 	}
-	Log(Info, "%d interfaces were saved", len(p.LocalIPs))
+	Log(Debug, "%d interfaces were saved", len(p.LocalIPs))
 }
 
 // New is an entry point of a P2P library.
@@ -222,15 +222,6 @@ func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, 
 	}
 	p.Interface.SetHardwareAddress(p.validateMac(argMac))
 	p.FindNetworkAddresses()
-	interfaceName, err := p.validateInterfaceName(argDev)
-	if err != nil {
-		Log(Error, "Interface name validation failed: %s", err)
-		return nil
-	}
-	if p.IsDeviceExists(interfaceName) {
-		Log(Error, "Interface is already in use. Can't create duplicate")
-		return nil
-	}
 
 	if fwd {
 		p.ForwardMode = true
@@ -275,6 +266,13 @@ func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, 
 
 	Log(Info, "Started UDP Listener at port %d", p.UDPSocket.GetPort())
 
+	p.Dht = new(DHTClient)
+	err = p.Dht.Init(p.Hash)
+	if err != nil {
+		Log(Error, "Failed to initialize DHT: %s", err)
+		return nil
+	}
+
 	// err = p.StartDHT(p.Hash, p.Routers)
 	// if err != nil {
 	// 	Log(Info, "Retrying DHT connection")
@@ -296,13 +294,7 @@ func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, 
 	// 	return nil
 	// }
 
-	err = p.prepareInterfaces(argIP, interfaceName)
-	if err != nil {
-		return nil
-	}
-
 	p.setupTCPCallbacks()
-	go p.ListenInterface()
 	p.ProxyManager = new(ProxyManager)
 	p.ProxyManager.init()
 	return p
@@ -361,9 +353,20 @@ func (p *PeerToPeer) retrieveFirstDHTRouter() *net.UDPAddr {
 	return addr
 }
 
-func (p *PeerToPeer) prepareInterfaces(ip, interfaceName string) error {
+func (p *PeerToPeer) PrepareInterfaces(ip, interfaceName string) error {
+
+	iface, err := p.validateInterfaceName(interfaceName)
+	if err != nil {
+		Log(Error, "Interface name validation failed: %s", err)
+		return nil
+	}
+	if p.IsDeviceExists(iface) {
+		Log(Error, "Interface is already in use. Can't create duplicate")
+		return nil
+	}
+
 	if ip == "dhcp" {
-		ipn, maskn, err := p.RequestIP(p.Interface.GetHardwareAddress().String(), interfaceName)
+		ipn, maskn, err := p.RequestIP(p.Interface.GetHardwareAddress().String(), iface)
 		if err != nil {
 			Log(Error, "%v", err)
 			return err
@@ -372,7 +375,7 @@ func (p *PeerToPeer) prepareInterfaces(ip, interfaceName string) error {
 		p.Interface.SetMask(maskn)
 	} else {
 		p.Interface.SetIP(net.ParseIP(ip))
-		ipn, maskn, err := p.ReportIP(ip, p.Interface.GetHardwareAddress().String(), interfaceName)
+		ipn, maskn, err := p.ReportIP(ip, p.Interface.GetHardwareAddress().String(), iface)
 		if err != nil {
 			Log(Error, "%v", err)
 			return err
@@ -509,6 +512,7 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 
 // StartDHT starts a DHT client
 func (p *PeerToPeer) StartDHT(hash, routers string) error {
+	return nil
 	if p.Dht != nil {
 		Log(Info, "Stopping previous DHT instance")
 		err := p.Dht.Close()
@@ -569,49 +573,49 @@ func (p *PeerToPeer) Run() {
 			continue
 		}
 
-		select {
-		case peer, pd := <-p.Dht.PeerData:
-			if pd {
-				// Received peer update
-				p.handlePeerData(peer)
-			}
-		case state, s := <-p.Dht.StateChannel:
-			if s {
-				peer := p.Peers.GetPeer(state.ID)
-				if peer != nil {
-					peer.RemoteState = state.State
-					p.Peers.Update(state.ID, peer)
-				} else {
-					Log(Warning, "Received state of unknown peer. Updating peers")
-					p.Dht.sendFind()
-				}
-			}
-		case proxy, pr := <-p.Dht.ProxyChannel:
-			if pr {
-				proxyAddr, err := net.ResolveUDPAddr("udp4", proxy)
-				if err == nil {
-					if p.ProxyManager.new(proxyAddr) == nil {
-						go func() {
-							//msg := CreateProxyP2PMessage(0, p.Dht.ID, 1)
-							msg, err := p.CreateMessage(MsgTypeProxy, []byte(p.Dht.ID), 0, false)
-							if err == nil {
-								p.UDPSocket.SendMessage(msg, proxyAddr)
-							}
-						}()
-					}
-				}
-			}
-		default:
-			p.removeStoppedPeers()
-			p.checkBootstrapNodes()
-			p.checkLastDHTUpdate()
-			p.checkProxies()
-			time.Sleep(100 * time.Millisecond)
-			if !initialRequestSent && time.Since(started) > time.Duration(time.Millisecond*5000) {
-				initialRequestSent = true
-				p.Dht.sendFind()
-			}
+		// select {
+		// case peer, pd := <-p.Dht.PeerData:
+		// 	if pd {
+		// 		// Received peer update
+		// 		p.handlePeerData(peer)
+		// 	}
+		// case state, s := <-p.Dht.StateChannel:
+		// 	if s {
+		// 		peer := p.Peers.GetPeer(state.ID)
+		// 		if peer != nil {
+		// 			peer.RemoteState = state.State
+		// 			p.Peers.Update(state.ID, peer)
+		// 		} else {
+		// 			Log(Warning, "Received state of unknown peer. Updating peers")
+		// 			p.Dht.sendFind()
+		// 		}
+		// 	}
+		// case proxy, pr := <-p.Dht.ProxyChannel:
+		// 	if pr {
+		// 		proxyAddr, err := net.ResolveUDPAddr("udp4", proxy)
+		// 		if err == nil {
+		// 			if p.ProxyManager.new(proxyAddr) == nil {
+		// 				go func() {
+		// 					//msg := CreateProxyP2PMessage(0, p.Dht.ID, 1)
+		// 					msg, err := p.CreateMessage(MsgTypeProxy, []byte(p.Dht.ID), 0, false)
+		// 					if err == nil {
+		// 						p.UDPSocket.SendMessage(msg, proxyAddr)
+		// 					}
+		// 				}()
+		// 			}
+		// 		}
+		// 	}
+		// default:
+		p.removeStoppedPeers()
+		p.checkBootstrapNodes()
+		p.checkLastDHTUpdate()
+		p.checkProxies()
+		time.Sleep(100 * time.Millisecond)
+		if !initialRequestSent && time.Since(started) > time.Duration(time.Millisecond*5000) {
+			initialRequestSent = true
+			p.Dht.sendFind()
 		}
+		// }
 	}
 	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)
 }

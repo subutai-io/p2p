@@ -126,6 +126,21 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 			return errors.New("Failed to create P2P Instance")
 		}
 
+		err := bootstrap.registerInstance(newInst.ID, newInst)
+		if err != nil {
+			ptp.Log(ptp.Error, "Failed to register instance with bootstrap nodes")
+			newInst.PTP.StopInstance()
+			return errors.New("Failed to register instance")
+		}
+
+		err = newInst.PTP.PrepareInterfaces(args.IP, args.Dev)
+		if err != nil {
+			ptp.Log(ptp.Error, "Failed to configure network interface: %s", err)
+			newInst.PTP.StopInstance()
+			return errors.New("Failed to configure network interface")
+		}
+		go newInst.PTP.ListenInterface()
+
 		// Saving interface name
 		infFound := false
 		for _, inf := range InterfaceNames {

@@ -87,8 +87,7 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 		if id == p.Dht.ID {
 			continue
 		}
-		peer := NetworkPeer{ID: id}
-		p.Dht.PeerData <- peer
+		p.handlePeerData(NetworkPeer{ID: id})
 	}
 	return nil
 }
@@ -117,8 +116,7 @@ func (p *PeerToPeer) packetNode(packet *DHTPacket) error {
 	if len(list) == 0 {
 		return fmt.Errorf("Received empty IP list for peer %s", packet.Data)
 	}
-	peer := NetworkPeer{ID: packet.Data, KnownIPs: list}
-	p.Dht.PeerData <- peer
+	p.handlePeerData(NetworkPeer{ID: packet.Data, KnownIPs: list})
 	return nil
 }
 
@@ -136,7 +134,19 @@ func (p *PeerToPeer) packetProxy(packet *DHTPacket) error {
 	// func (dht *DHTClient) packetProxy(packet *DHTPacket) error {
 	Log(Debug, "Received list of proxies")
 	for _, proxy := range packet.Proxies {
-		p.Dht.ProxyChannel <- proxy
+		proxyAddr, err := net.ResolveUDPAddr("udp4", proxy)
+		if err != nil {
+			continue
+		}
+		if p.ProxyManager.new(proxyAddr) == nil {
+			go func() {
+				//msg := CreateProxyP2PMessage(0, p.Dht.ID, 1)
+				msg, err := p.CreateMessage(MsgTypeProxy, []byte(p.Dht.ID), 0, false)
+				if err == nil {
+					p.UDPSocket.SendMessage(msg, proxyAddr)
+				}
+			}()
+		}
 	}
 	return nil
 }
@@ -153,8 +163,7 @@ func (p *PeerToPeer) packetRequestProxy(packet *DHTPacket) error {
 		}
 		list = append(list, addr)
 	}
-	peer := NetworkPeer{ID: packet.Data, Proxies: list}
-	p.Dht.PeerData <- peer
+	p.handlePeerData(NetworkPeer{ID: packet.Data, Proxies: list})
 	return nil
 }
 
@@ -189,10 +198,19 @@ func (p *PeerToPeer) packetState(packet *DHTPacket) error {
 	if err != nil {
 		Log(Error, "Failed to parse state: %s", err)
 	}
-	state := RemotePeerState{}
-	state.ID = packet.Data
-	state.State = PeerState(numericState)
-	p.Dht.StateChannel <- state
+	// state := RemotePeerState{}
+	// state.ID = packet.Data
+	// state.State = PeerState(numericState)
+	// p.Dht.StateChannel <- state
+
+	peer := p.Peers.GetPeer(packet.Data)
+	if peer != nil {
+		peer.RemoteState = PeerState(numericState)
+		p.Peers.Update(packet.Data, peer)
+	} else {
+		Log(Warning, "Received state of unknown peer. Updating peers")
+		p.Dht.sendFind()
+	}
 	return nil
 }
 
