@@ -202,6 +202,12 @@ func (t *TAPWindows) Open() error {
 
 // Close will close handle for TAP interface
 func (t *TAPWindows) Close() error {
+	for i, iface := range UsedInterfaces {
+		if iface == t.Interface {
+			UsedInterfaces = append(UsedInterfaces[:i], UsedInterfaces[i+1:]...)
+			break
+		}
+	}
 	return syscall.CloseHandle(t.file)
 }
 
