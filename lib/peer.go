@@ -71,6 +71,20 @@ type NetworkPeerState struct {
 func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 	np.Running = true
 	np.ConnectionAttempts = 0
+
+	np.stateHandlers = make(map[PeerState]StateHandlerCallback)
+	np.stateHandlers[PeerStateInit] = np.stateInit
+	np.stateHandlers[PeerStateRequestedIP] = np.stateRequestedIP
+	np.stateHandlers[PeerStateConnecting] = np.stateConnecting
+	np.stateHandlers[PeerStateConnected] = np.stateConnected
+	np.stateHandlers[PeerStateDisconnect] = np.stateDisconnect
+	np.stateHandlers[PeerStateStop] = np.stateStop
+	np.stateHandlers[PeerStateRequestingProxy] = np.stateRequestingProxy
+	np.stateHandlers[PeerStateWaitingForProxy] = np.stateWaitingForProxy
+	np.stateHandlers[PeerStateWaitingToConnect] = np.stateWaitingToConnect
+	np.stateHandlers[PeerStateRouting] = np.stateRouting
+	np.stateHandlers[PeerStateCooldown] = np.stateCooldown
+
 	for {
 		if np.State == PeerStateStop {
 			Log(Info, "Stopping peer %s", np.ID)
@@ -80,17 +94,10 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 			time.Sleep(time.Millisecond * 500)
 			continue
 		}
-		np.stateHandlers = make(map[PeerState]StateHandlerCallback)
-		np.stateHandlers[PeerStateInit] = np.stateInit
-		np.stateHandlers[PeerStateRequestedIP] = np.stateRequestedIP
-		np.stateHandlers[PeerStateConnecting] = np.stateConnecting
-		np.stateHandlers[PeerStateConnected] = np.stateConnected
-		np.stateHandlers[PeerStateDisconnect] = np.stateDisconnect
-		np.stateHandlers[PeerStateStop] = np.stateStop
-		np.stateHandlers[PeerStateRequestingProxy] = np.stateRequestingProxy
-		np.stateHandlers[PeerStateWaitingForProxy] = np.stateWaitingForProxy
-		np.stateHandlers[PeerStateWaitingToConnect] = np.stateWaitingToConnect
-		np.stateHandlers[PeerStateRouting] = np.stateRouting
+
+		if np.ConnectionAttempts%10 == 0 {
+			np.SetState(PeerStateCooldown, ptpc)
+		}
 
 		callback, exists := np.stateHandlers[np.State]
 		if !exists {
@@ -130,11 +137,11 @@ func (np *NetworkPeer) stateInit(ptpc *PeerToPeer) error {
 	} else {
 		np.SetState(PeerStateWaitingToConnect, ptpc)
 	}
-	np.ConnectionAttempts++
-	if np.ConnectionAttempts > 5 {
-		np.SetState(PeerStateDisconnect, ptpc)
-		return fmt.Errorf("Too many unsuccessfull connection attempts")
-	}
+	// np.ConnectionAttempts++
+	// if np.ConnectionAttempts > 5 {
+	// 	np.SetState(PeerStateDisconnect, ptpc)
+	// 	return fmt.Errorf("Too many unsuccessfull connection attempts")
+	// }
 	return nil
 }
 
@@ -239,10 +246,13 @@ func (np *NetworkPeer) RequestForwarder(ptpc *PeerToPeer) {
 // Run hope punching in a separate goroutine and switch to
 // Routing/Connected mode
 func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
+	Log(Debug, "Connecting to %s", np.ID)
 	go func() {
 		if np.punchingInProgress {
 			return
 		}
+		Log(Debug, "Hole punching %s", np.ID)
+		np.ConnectionAttempts++
 		np.punchingInProgress = true
 		round := 0
 		for round < 10 {
@@ -250,13 +260,15 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 				payload := []byte(ptpc.Dht.ID + ep.String())
 				msg, err := ptpc.CreateMessage(MsgTypeIntroReq, payload, 0, true)
 				if err != nil {
+					Log(Error, "Couldn't create an intro message: %s", err)
 					continue
 				}
 				_, err = ptpc.UDPSocket.SendMessage(msg, ep)
 				if err != nil {
+					Log(Error, "Failed to send message to %s: %s", ep.String(), err)
 					continue
 				}
-				time.Sleep(time.Millisecond * 5)
+				time.Sleep(time.Millisecond * 20)
 			}
 			time.Sleep(time.Millisecond * 20)
 			round++
@@ -283,13 +295,14 @@ func (np *NetworkPeer) stateWaitingForProxy(ptpc *PeerToPeer) error {
 }
 
 func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
-	Log(Info, "Waiting for other peer to join connection state")
+	Log(Debug, "Waiting for other peer to join connection state")
 	started := time.Now()
 	for {
 		if np.State != PeerStateWaitingToConnect {
 			return nil
 		}
 		if np.RemoteState == PeerStateWaitingToConnect || np.RemoteState == PeerStateConnecting {
+			Log(Debug, "Peer %s joined connection state", np.ID)
 			np.SetState(PeerStateConnecting, ptpc)
 			break
 		}
@@ -305,6 +318,9 @@ func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
 }
 
 func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
+	for len(np.Endpoints) == 0 && np.punchingInProgress {
+		time.Sleep(time.Millisecond * 100)
+	}
 	locals := []PeerEndpoint{}
 	internet := []PeerEndpoint{}
 	proxies := []PeerEndpoint{}
@@ -338,30 +354,29 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 		internet = append(internet, ep)
 	}
 	np.EndpointsLock.RUnlock()
+
 	np.EndpointsLock.Lock()
 	np.Endpoints = np.Endpoints[:0]
-	if len(locals) > 0 {
-		np.Endpoints = append(np.Endpoints, locals...)
-	}
-	if len(internet) > 0 {
-		np.Endpoints = append(np.Endpoints, internet...)
-	}
-	if len(proxies) > 0 {
-		np.Endpoints = append(np.Endpoints, proxies...)
-	}
+	np.Endpoints = append(np.Endpoints, locals...)
+	np.Endpoints = append(np.Endpoints, internet...)
+	np.Endpoints = append(np.Endpoints, proxies...)
 	np.EndpointsLock.Unlock()
+
 	if len(np.Endpoints) > 0 {
 		np.Endpoint = np.Endpoints[0].Addr
 		np.SetState(PeerStateConnected, ptpc)
 	} else {
 		np.LastError = "No more endpoints"
 		if len(np.KnownIPs) > 0 && len(np.Proxies) > 0 {
+			Log(Debug, "We have IPs and Proxies. Syncing states")
 			np.SetState(PeerStateWaitingToConnect, ptpc)
 			return nil
 		} else if len(np.KnownIPs) == 0 {
+			Log(Debug, "Don't know any endpoints. Requesting")
 			np.SetState(PeerStateRequestedIP, ptpc)
 			return nil
 		} else if len(np.Proxies) == 0 {
+			Log(Debug, "Don't know any proxies. Requesting")
 			np.SetState(PeerStateRequestingProxy, ptpc)
 			return nil
 		}
@@ -379,5 +394,14 @@ func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
 		}
 	}
 	np.Endpoints = append(np.Endpoints, PeerEndpoint{Addr: addr, LastContact: time.Now()})
+	return nil
+}
+
+func (np *NetworkPeer) stateCooldown(ptpc *PeerToPeer) error {
+	started := time.Now()
+	for time.Since(started) < time.Duration(time.Second*30) {
+		time.Sleep(time.Millisecond * 100)
+	}
+	np.SetState(PeerStateRouting, ptpc)
 	return nil
 }

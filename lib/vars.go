@@ -68,6 +68,7 @@ const (
 	PeerStateConnected                  = iota // Connected, handshaked and operating normally
 	PeerStateDisconnect                 = iota // We're disconnecting
 	PeerStateStop                       = iota // Peer has been stopped and now can be removed from list of peers
+	PeerStateCooldown                   = iota
 )
 
 // Timeouts and retries

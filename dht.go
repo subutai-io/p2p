@@ -109,7 +109,7 @@ func (dht *DHTConnection) send(packet *ptp.DHTPacket) {
 	if packet == nil {
 		return
 	}
-	ptp.Log(ptp.Debug, "Sending DHT packet %+v", packet)
+	ptp.Log(ptp.Trace, "Sending DHT packet %+v", packet)
 	data, err := proto.Marshal(packet)
 	if err != nil {
 		ptp.Log(ptp.Error, "Failed to marshal DHT Packet: %s", err)
@@ -226,7 +226,7 @@ func (dht *DHTRouter) routeData(data []byte) {
 	if !dht.handshaked {
 		return
 	}
-	ptp.Log(ptp.Debug, "Received DHT packet: %+v", packet)
+	ptp.Log(ptp.Trace, "Received DHT packet: %+v", packet)
 	dht.data <- packet
 }
 

@@ -83,7 +83,6 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 		Log(Warning, "Received empty peer list")
 		return nil
 	}
-	Log(Debug, "Received peer list")
 
 	peer := p.Peers.GetPeer(packet.Data)
 	if peer == nil {
@@ -96,13 +95,15 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 				continue
 			}
 			peer.KnownIPs = append(peer.KnownIPs, addr)
+			Log(Debug, "Adding endpoint: %s", addr.String())
 		}
-		for _, proxy := range packet.Arguments {
+		for _, proxy := range packet.Proxies {
 			addr, err := net.ResolveUDPAddr("udp4", proxy)
 			if err != nil {
 				continue
 			}
 			peer.Proxies = append(peer.Proxies, addr)
+			Log(Debug, "Adding proxy: %s", addr.String())
 		}
 		peer.SetState(PeerStateInit, p)
 		p.Peers.Update(peer.ID, peer)
