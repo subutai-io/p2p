@@ -58,17 +58,17 @@ type PeerState int
 
 // Peer state
 const (
-	PeerStateInit             PeerState = iota // Peer has been added recently.
-	PeerStateRequestedIP                = iota // We know ID of a peer, but don't know it's IPs
-	PeerStateRequestingProxy            = iota // Requesting proxies for this peer
-	PeerStateWaitingForProxy            = iota // Waiting for proxies
-	PeerStateWaitingToConnect           = iota // Waiting for other peer to start establishing connection
-	PeerStateConnecting                 = iota // Trying to establish connection
-	PeerStateRouting                    = iota // (Re)Routing
-	PeerStateConnected                  = iota // Connected, handshaked and operating normally
-	PeerStateDisconnect                 = iota // We're disconnecting
-	PeerStateStop                       = iota // Peer has been stopped and now can be removed from list of peers
-	PeerStateCooldown                   = iota
+	PeerStateInit             PeerState = 1  // Peer has been added recently.
+	PeerStateRequestedIP                = 2  // We know ID of a peer, but don't know it's IPs
+	PeerStateRequestingProxy            = 3  // Requesting proxies for this peer
+	PeerStateWaitingForProxy            = 4  // Waiting for proxies
+	PeerStateWaitingToConnect           = 5  // Waiting for other peer to start establishing connection
+	PeerStateConnecting                 = 6  // Trying to establish connection
+	PeerStateRouting                    = 7  // (Re)Routing
+	PeerStateConnected                  = 8  // Connected, handshaked and operating normally
+	PeerStateDisconnect                 = 9  // We're disconnecting
+	PeerStateStop                       = 10 // Peer has been stopped and now can be removed from list of peers
+	PeerStateCooldown                   = 11
 )
 
 // Timeouts and retries

@@ -125,6 +125,16 @@ func (p *PeerToPeer) packetForward(packet *DHTPacket) error {
 }
 
 func (p *PeerToPeer) packetNode(packet *DHTPacket) error {
+
+	if len(packet.Arguments) == 0 {
+		return fmt.Errorf("Empty IP's list")
+	}
+
+	peer := p.Peers.GetPeer(packet.Data)
+	if peer == nil {
+		return fmt.Errorf("Peer %s not found", packet.Data)
+	}
+
 	// func (dht *DHTClient) packetNode(packet *DHTPacket) error {
 	Log(Debug, "Received peer %s IPs", packet.Data)
 	list := []*net.UDPAddr{}
@@ -139,11 +149,9 @@ func (p *PeerToPeer) packetNode(packet *DHTPacket) error {
 		}
 		list = append(list, ip)
 	}
-
-	if len(list) == 0 {
-		return fmt.Errorf("Received empty IP list for peer %s", packet.Data)
+	if len(list) > 0 {
+		peer.KnownIPs = list
 	}
-	p.handlePeerData(NetworkPeer{ID: packet.Data, KnownIPs: list})
 	return nil
 }
 
@@ -190,7 +198,21 @@ func (p *PeerToPeer) packetRequestProxy(packet *DHTPacket) error {
 		}
 		list = append(list, addr)
 	}
-	p.handlePeerData(NetworkPeer{ID: packet.Data, Proxies: list})
+
+	peers := p.Peers.Get()
+	for _, proxy := range list {
+		for _, existingPeer := range peers {
+			if existingPeer.Endpoint.String() == proxy.String() && existingPeer.ID != packet.Data {
+				existingPeer.SetState(PeerStateDisconnect, p)
+				Log(Info, "Peer %s was associated with address %s. Disconnecting", existingPeer.ID, proxy.String())
+			}
+		}
+	}
+
+	peer := p.Peers.GetPeer(packet.Data)
+	if peer != nil {
+		peer.Proxies = list
+	}
 	return nil
 }
 
@@ -218,7 +240,7 @@ func (p *PeerToPeer) packetState(packet *DHTPacket) error {
 	if len(packet.Data) != 36 {
 		return fmt.Errorf("Receied state packet for unknown/broken ID")
 	}
-	if len(packet.Extra) != 1 {
+	if len(packet.Extra) == 0 {
 		return fmt.Errorf("Received wrong/malformed state")
 	}
 	numericState, err := strconv.Atoi(packet.Extra)

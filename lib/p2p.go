@@ -794,47 +794,18 @@ func (p *PeerToPeer) handlePeerData(peerData NetworkPeer) {
 		return
 	}
 	// Check if such peer exists
-	peer := p.Peers.GetPeer(peerData.ID)
-	if peer == nil {
-		peer := new(NetworkPeer)
-		Log(Info, "Received new peer %s", peerData.ID)
-		peer.ID = peerData.ID
-		peer.SetState(PeerStateInit, p)
-		p.Peers.Update(peerData.ID, peer)
-		p.Peers.RunPeer(peerData.ID, p)
-		return
-	}
+	// peer := p.Peers.GetPeer(peerData.ID)
+	// if peer == nil {
+	// 	peer := new(NetworkPeer)
+	// 	Log(Info, "Received new peer %s", peerData.ID)
+	// 	peer.ID = peerData.ID
+	// 	peer.SetState(PeerStateInit, p)
+	// 	p.Peers.Update(peerData.ID, peer)
+	// 	p.Peers.RunPeer(peerData.ID, p)
+	// 	return
+	// }
 	// When peer data contains IPs this means we received
 	// list of IP addresses of this peer
-	if peerData.KnownIPs != nil && len(peerData.KnownIPs) > 0 {
-		Log(Info, "Received peer IPs %s", peerData.ID)
-		for _, newip := range peerData.KnownIPs {
-			found := false
-			for _, knownip := range peer.KnownIPs {
-				if knownip == newip {
-					found = true
-				}
-			}
-			if !found {
-				peer.KnownIPs = append(peer.KnownIPs, newip)
-			}
-		}
-		p.Peers.Update(peer.ID, peer)
-		return
-	}
+	// peer := p.Peers.GetPeer(peerData.ID)
 
-	if peer != nil && len(peerData.Proxies) > 0 {
-		Log(Info, "Received proxies for peer %s", peerData.ID)
-		peers := p.Peers.Get()
-		for _, proxy := range peerData.Proxies {
-			for _, existingPeer := range peers {
-				if existingPeer.Endpoint.String() == proxy.String() && existingPeer.ID != peerData.ID {
-					existingPeer.SetState(PeerStateDisconnect, p)
-					Log(Info, "Peer %s was associated with address %s. Disconnecting", existingPeer.ID, proxy.String())
-				}
-			}
-		}
-		peer.Proxies = peerData.Proxies
-		p.Peers.Update(peer.ID, peer)
-	}
 }

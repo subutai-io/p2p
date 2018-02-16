@@ -95,7 +95,7 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 			continue
 		}
 
-		if np.ConnectionAttempts%10 == 0 {
+		if np.ConnectionAttempts > 1 && np.ConnectionAttempts%10 == 0 {
 			np.SetState(PeerStateCooldown, ptpc)
 		}
 
@@ -252,7 +252,7 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 			return
 		}
 		Log(Debug, "Hole punching %s", np.ID)
-		np.ConnectionAttempts++
+
 		np.punchingInProgress = true
 		round := 0
 		for round < 10 {
@@ -365,7 +365,9 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 	if len(np.Endpoints) > 0 {
 		np.Endpoint = np.Endpoints[0].Addr
 		np.SetState(PeerStateConnected, ptpc)
+		np.ConnectionAttempts = 0
 	} else {
+		np.ConnectionAttempts++
 		np.LastError = "No more endpoints"
 		if len(np.KnownIPs) > 0 && len(np.Proxies) > 0 {
 			Log(Debug, "We have IPs and Proxies. Syncing states")
@@ -398,6 +400,7 @@ func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
 }
 
 func (np *NetworkPeer) stateCooldown(ptpc *PeerToPeer) error {
+	Log(Debug, "Peer %s in cooldown", np.ID)
 	started := time.Now()
 	for time.Since(started) < time.Duration(time.Second*30) {
 		time.Sleep(time.Millisecond * 100)
