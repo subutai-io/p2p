@@ -62,12 +62,16 @@ func InitPlatform() error {
 	for i := 0; i < 10; i++ {
 		key, err := tap.queryNetworkKey()
 		if err != nil {
-			return errorFailedToRetrieveNetworkKey
+			Log(Error, "Couldn't open Registry Key %s: %s", NetworkKey, err)
+			continue
+			//return errorFailedToRetrieveNetworkKey
 		}
 		err = tap.queryAdapters(key)
 		if err != nil {
+			Log(Error, "Failed to query adapters: %s", err)
 			syscall.CloseHandle(tap.file)
-			return errorFailedToQueryInterface
+			continue
+			//return errorFailedToQueryInterface
 		}
 		// Dummy IP address for the interface
 		ip := "172." + strconv.Itoa(i) + ".4.100"
@@ -81,7 +85,8 @@ func InitPlatform() error {
 		err = setip.Run()
 		err2 := syscall.CloseHandle(tap.file)
 		if err != nil {
-			return errorPreconfigurationFailed
+			continue
+			//return errorPreconfigurationFailed
 		}
 		if err2 != nil {
 			Log(Error, "Failed to close handle: %s", err)
