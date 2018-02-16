@@ -8,7 +8,6 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/ccding/go-stun/stun"
 	ptp "github.com/subutai-io/p2p/lib"
 )
 
@@ -54,25 +53,31 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 		ptp.Log(ptp.Error, "Failed to initilize bootstrap node connection")
 		os.Exit(152)
 	}
+	go bootstrap.run()
 	for _, r := range bootstrap.routers {
 		if r != nil {
 			go r.run()
 		}
 	}
 
+	for bootstrap.ip == "" {
+		time.Sleep(time.Millisecond * 100)
+	}
+
+	OutboundIP = net.ParseIP(bootstrap.ip)
 	proc := new(Daemon)
 	proc.Initialize(sFile)
 	setupRESTHandlers(port, proc)
 
-	ptp.Log(ptp.Info, "Determining outbound IP")
-	nat, host, err := stun.NewClient().Discover()
-	if err != nil {
-		ptp.Log(ptp.Error, "Failed to discover outbound IP: %s", err)
-		OutboundIP = nil
-	} else {
-		OutboundIP = net.ParseIP(host.IP())
-		ptp.Log(ptp.Info, "Public IP is %s. %s", OutboundIP.String(), nat)
-	}
+	// ptp.Log(ptp.Info, "Determining outbound IP")
+	// nat, host, err := stun.NewClient().Discover()
+	// if err != nil {
+	// 	ptp.Log(ptp.Error, "Failed to discover outbound IP: %s", err)
+	// 	OutboundIP = nil
+	// } else {
+	// 	OutboundIP = net.ParseIP(host.IP())
+	// 	ptp.Log(ptp.Info, "Public IP is %s. %s", OutboundIP.String(), nat)
+	// }
 
 	if sFile != "" {
 		ptp.Log(ptp.Info, "Restore file provided")

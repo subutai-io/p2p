@@ -243,6 +243,7 @@ func (dht *DHTClient) Connect() error {
 // }
 
 func (dht *DHTClient) read() (*DHTPacket, error) {
+	Log(Debug, "New DHT packet")
 	packet := <-dht.IncomingData
 	if packet == nil {
 		return nil, fmt.Errorf("Channel send nil packet. Probably closed")
@@ -290,7 +291,7 @@ func (dht *DHTClient) sendFind() error {
 // This method will send request of IPs of particular peer known to BSN
 func (dht *DHTClient) sendNode(id string) error {
 	if len(id) != 36 {
-		return fmt.Errorf("Failed to send node: Malformed ID")
+		return fmt.Errorf("Failed to send node: Malformed ID %s", id)
 	}
 	packet := &DHTPacket{
 		Type:     DHTPacketType_Node,

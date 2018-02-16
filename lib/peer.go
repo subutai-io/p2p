@@ -55,7 +55,9 @@ func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
 // SetState modify local state of peer
 func (np *NetworkPeer) SetState(state PeerState, ptpc *PeerToPeer) {
 	np.State = state
-	np.reportState(ptpc)
+	if state != PeerStateRouting && state != PeerStateConnected {
+		np.reportState(ptpc)
+	}
 }
 
 // NetworkPeerState represents a state for remote peers
@@ -120,7 +122,13 @@ func (np *NetworkPeer) stateInit(ptpc *PeerToPeer) error {
 	np.PeerLocalIP = nil
 	np.TestPacketReceived = false
 	np.IsUsingTURN = false
-	np.SetState(PeerStateRequestedIP, ptpc)
+	if len(np.KnownIPs) == 0 {
+		np.SetState(PeerStateRequestedIP, ptpc)
+	} else if len(np.Proxies) == 0 {
+		np.SetState(PeerStateRequestingProxy, ptpc)
+	} else {
+		np.SetState(PeerStateWaitingToConnect, ptpc)
+	}
 	np.ConnectionAttempts++
 	if np.ConnectionAttempts > 5 {
 		np.SetState(PeerStateDisconnect, ptpc)
@@ -341,7 +349,7 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 	} else {
 		np.LastError = "No more endpoints"
 		if len(np.KnownIPs) > 0 && len(np.Proxies) > 0 {
-			np.SetState(PeerStateConnecting, ptpc)
+			np.SetState(PeerStateWaitingToConnect, ptpc)
 			return nil
 		} else if len(np.KnownIPs) == 0 {
 			np.SetState(PeerStateRequestedIP, ptpc)

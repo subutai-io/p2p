@@ -300,7 +300,7 @@ func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, 
 	return p
 }
 
-func (p *PeerToPeer) readDHT() {
+func (p *PeerToPeer) ReadDHT() {
 	for !p.Shutdown {
 		packet, err := p.Dht.read()
 		if err != nil {
@@ -561,7 +561,7 @@ func (p *PeerToPeer) Run() {
 	started := time.Now()
 	// p.Dht.LastUpdate = time.Unix(1, 1)
 	p.Dht.LastUpdate = time.Now()
-	go p.readDHT()
+	// go p.readDHT()
 	for {
 		if p.Shutdown {
 			// TODO: Do it more safely

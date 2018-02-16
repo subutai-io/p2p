@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"runtime"
@@ -53,7 +54,7 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 	resp.Output += fmt.Sprintf("Bootstrap nodes information:\n")
 	for _, node := range bootstrap.routers {
 		if node != nil {
-			resp.Output += fmt.Sprintf("  %s\n", node.addr.String())
+			resp.Output += fmt.Sprintf("  %s Rx: %d Tx: %d\n", node.addr.String(), node.rx, node.tx)
 		}
 	}
 	resp.Output += fmt.Sprintf("Instances information:\n")
@@ -89,7 +90,7 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 				resp.Output += fmt.Sprintf("\t\tHWAddr: %s\n", peer.PeerHW.String())
 				resp.Output += fmt.Sprintf("\t\tIP: %s\n", peer.PeerLocalIP.String())
 				resp.Output += fmt.Sprintf("\t\tEndpoint: %s\n", peer.Endpoint)
-				resp.Output += fmt.Sprintf("\t\tPool: \n")
+
 				for _, ep := range peer.Endpoints {
 					resp.Output += fmt.Sprintf("\t\t\t%s\n", ep.Addr.String())
 				}
@@ -98,6 +99,19 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 					proxyInUse = "Yes"
 				}
 				resp.Output += fmt.Sprintf("\t\tUsing proxy: %s\n", proxyInUse)
+			}
+			resp.Output += fmt.Sprintf("\t\tEndpoints pool: \n")
+			pool := []*net.UDPAddr{}
+			pool = append(pool, peer.KnownIPs...)
+			pool = append(pool, peer.Proxies...)
+			for _, v := range pool {
+				resp.Output += fmt.Sprintf("\t\t  %s", v.String())
+				for _, ep := range peer.Endpoints {
+					if v.String() == ep.Addr.String() {
+						resp.Output += fmt.Sprintf("\tActive")
+					}
+				}
+				resp.Output += fmt.Sprintf("\n")
 			}
 			resp.Output += fmt.Sprintf("\t--- End of %s ---\n", peer.ID)
 		}

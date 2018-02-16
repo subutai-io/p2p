@@ -24,8 +24,11 @@ type DHTConnection struct {
 	lock       sync.Mutex              // Mutex for register/unregister
 	instances  map[string]*P2PInstance // Instances
 	registered []string                // List of registered swarm IDs
+	incoming   chan *ptp.DHTPacket     // Packets received by routers
+	ip         string
 }
 
+// DHTRouter represents a connection to a router
 type DHTRouter struct {
 	conn       *net.TCPConn // TCP connection to a bootsrap node
 	addr       *net.TCPAddr // TCP address of a bootstrap node
@@ -36,10 +39,12 @@ type DHTRouter struct {
 	fails      int          // Number of connection fails
 	tx         uint64
 	rx         uint64
+	data       chan *ptp.DHTPacket
 }
 
 func (dht *DHTConnection) init(routersSrc string) error {
 	ptp.Log(ptp.Info, "Initializing connection to a bootstrap nodes")
+	dht.incoming = make(chan *ptp.DHTPacket)
 	routers := strings.Split(routersSrc, ",")
 	if len(routers) == 0 {
 		return ErrorNoRouters
@@ -56,6 +61,7 @@ func (dht *DHTConnection) init(routersSrc string) error {
 		router := new(DHTRouter)
 		router.addr = addr
 		router.router = r
+		router.data = dht.incoming
 		dht.routers = append(dht.routers, router)
 	}
 	dht.instances = make(map[string]*P2PInstance)
@@ -122,6 +128,26 @@ func (dht *DHTConnection) send(packet *ptp.DHTPacket) {
 	}
 }
 
+func (dht *DHTConnection) run() {
+	for {
+		packet := <-dht.incoming
+		if packet == nil {
+			break
+		}
+		if packet.Type == ptp.DHTPacketType_Ping {
+			dht.ip = packet.Data
+		}
+		if packet.Infohash == "" {
+			continue
+		}
+		i, e := dht.instances[packet.Infohash]
+		if e {
+			ptp.Log(ptp.Debug, "Passing to %s", packet.Infohash)
+			i.PTP.Dht.IncomingData <- packet
+		}
+	}
+}
+
 func (dht *DHTConnection) unregisterInstance(hash string) error {
 	dht.lock.Lock()
 	defer dht.lock.Unlock()
@@ -168,6 +194,7 @@ func (dht *DHTRouter) run() {
 			dht.handshaked = false
 			continue
 		}
+		dht.rx += uint64(n)
 		go dht.routeData(data[:n])
 	}
 }
@@ -179,8 +206,7 @@ func (dht *DHTRouter) routeData(data []byte) {
 		ptp.Log(ptp.Warning, "Corrupted data from DHT: %s", err)
 		return
 	}
-	if packet.Type == ptp.DHTPacketType_Ping {
-
+	if packet.Type == ptp.DHTPacketType_Ping && dht.handshaked == false {
 		supported := false
 		for _, v := range ptp.SupportedVersion {
 			if v == packet.Version {
@@ -194,14 +220,15 @@ func (dht *DHTRouter) routeData(data []byte) {
 		} else {
 			dht.handshaked = true
 			ptp.Log(ptp.Info, "Connected to a bootstrap node: %s [%s]", dht.addr.String(), packet.Data)
+			dht.data <- packet
+			return
 		}
-		return
 	}
 	if !dht.handshaked {
 		return
 	}
 	ptp.Log(ptp.Debug, "Received DHT packet: %+v", packet)
-
+	dht.data <- packet
 }
 
 func (dht *DHTRouter) connect() {

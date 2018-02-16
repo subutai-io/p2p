@@ -135,6 +135,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 			return errors.New("Failed to register instance")
 		}
 
+		go newInst.PTP.ReadDHT()
 		newInst.PTP.Dht.LocalPort = newInst.PTP.UDPSocket.GetPort()
 		err = newInst.PTP.Dht.Connect()
 		if err != nil {

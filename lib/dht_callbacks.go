@@ -84,12 +84,37 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 		return nil
 	}
 	Log(Debug, "Received peer list")
-	for _, id := range packet.Arguments {
-		if id == p.Dht.ID {
-			continue
+
+	peer := p.Peers.GetPeer(packet.Data)
+	if peer == nil {
+		peer := new(NetworkPeer)
+		Log(Debug, "Received new peer %s", packet.Data)
+		peer.ID = packet.Data
+		for _, ip := range packet.Arguments {
+			addr, err := net.ResolveUDPAddr("udp4", ip)
+			if err != nil {
+				continue
+			}
+			peer.KnownIPs = append(peer.KnownIPs, addr)
 		}
-		p.handlePeerData(NetworkPeer{ID: id})
+		for _, proxy := range packet.Arguments {
+			addr, err := net.ResolveUDPAddr("udp4", proxy)
+			if err != nil {
+				continue
+			}
+			peer.Proxies = append(peer.Proxies, addr)
+		}
+		peer.SetState(PeerStateInit, p)
+		p.Peers.Update(peer.ID, peer)
+		p.Peers.RunPeer(peer.ID, p)
 	}
+
+	// for _, id := range packet.Arguments {
+	// 	if id == p.Dht.ID {
+	// 		continue
+	// 	}
+	// 	p.handlePeerData(NetworkPeer{ID: id})
+	// }
 	return nil
 }
 
@@ -192,10 +217,10 @@ func (p *PeerToPeer) packetState(packet *DHTPacket) error {
 	if len(packet.Data) != 36 {
 		return fmt.Errorf("Receied state packet for unknown/broken ID")
 	}
-	if len(packet.Arguments) != 1 {
+	if len(packet.Extra) != 1 {
 		return fmt.Errorf("Received wrong/malformed state")
 	}
-	numericState, err := strconv.Atoi(packet.Arguments[0])
+	numericState, err := strconv.Atoi(packet.Extra)
 	if err != nil {
 		Log(Error, "Failed to parse state: %s", err)
 	}
@@ -209,7 +234,7 @@ func (p *PeerToPeer) packetState(packet *DHTPacket) error {
 		peer.RemoteState = PeerState(numericState)
 		p.Peers.Update(packet.Data, peer)
 	} else {
-		Log(Warning, "Received state of unknown peer. Updating peers")
+		Log(Warning, "Received state of unknown pecer. Updating peers")
 		p.Dht.sendFind()
 	}
 	return nil
