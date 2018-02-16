@@ -142,7 +142,6 @@ func (dht *DHTConnection) run() {
 		}
 		i, e := dht.instances[packet.Infohash]
 		if e {
-			ptp.Log(ptp.Debug, "Passing to %s", packet.Infohash)
 			i.PTP.Dht.IncomingData <- packet
 		}
 	}

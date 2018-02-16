@@ -42,6 +42,7 @@ type NetworkPeer struct {
 	Running            bool                               // Whether peer is running or not
 	Endpoints          []PeerEndpoint                     // List of active endpoints
 	EndpointsLock      sync.RWMutex                       // Mutex for endpoints operations
+	punchingInProgress bool
 }
 
 func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
@@ -239,6 +240,10 @@ func (np *NetworkPeer) RequestForwarder(ptpc *PeerToPeer) {
 // Routing/Connected mode
 func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 	go func() {
+		if np.punchingInProgress {
+			return
+		}
+		np.punchingInProgress = true
 		round := 0
 		for round < 10 {
 			for _, ep := range np.KnownIPs {
@@ -256,6 +261,7 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 			time.Sleep(time.Millisecond * 20)
 			round++
 		}
+		np.punchingInProgress = false
 	}()
 	np.SetState(PeerStateRouting, ptpc)
 	return nil
@@ -287,9 +293,10 @@ func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
 			np.SetState(PeerStateConnecting, ptpc)
 			break
 		}
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 		passed := time.Since(started)
-		if passed > time.Duration(1*time.Minute) {
+		if passed > time.Duration(60000*time.Millisecond) {
+			np.LastError = "Peer state desync"
 			np.SetState(PeerStateDisconnect, ptpc)
 			return fmt.Errorf("Wait for connection failed: Peer doesn't responded in a timely manner")
 		}

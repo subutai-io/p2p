@@ -243,10 +243,9 @@ func (dht *DHTClient) Connect() error {
 // }
 
 func (dht *DHTClient) read() (*DHTPacket, error) {
-	Log(Debug, "New DHT packet")
 	packet := <-dht.IncomingData
 	if packet == nil {
-		return nil, fmt.Errorf("Channel send nil packet. Probably closed")
+		return nil, fmt.Errorf("Received nil packet: channel is closed")
 	}
 	return packet, nil
 }
