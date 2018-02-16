@@ -3,6 +3,7 @@
 package ptp
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -69,11 +70,12 @@ func newTAP(tool, ip, mac, mask string, mtu int) (*TAPWindows, error) {
 		return nil, fmt.Errorf("Failed to parse MAC during TAP creation: %s", err)
 	}
 	return &TAPWindows{
-		Tool: tool,
-		IP:   nip,
-		Mac:  nmac,
-		Mask: net.IPv4Mask(255, 255, 255, 0), // Unused yet
-		MTU:  DefaultMTU,
+		Tool:      tool,
+		IP:        nip,
+		Mac:       nmac,
+		Mask:      net.IPv4Mask(255, 255, 255, 0), // Unused yet
+		MTU:       DefaultMTU,
+		MacNotSet: true,
 	}, nil
 }
 
@@ -82,10 +84,11 @@ type TAPWindows struct {
 	IP        net.IP           // IP
 	Mask      net.IPMask       // Mask
 	Mac       net.HardwareAddr // Hardware Address
-	Name      string           // Network interface name
-	Interface string           // ?????????????????
-	Tool      string           // Path to `ip`
-	MTU       int              // MTU value
+	MacNotSet bool
+	Name      string // Network interface name
+	Interface string // ?????????????????
+	Tool      string // Path to `ip`
+	MTU       int    // MTU value
 	file      syscall.Handle
 	Handle    syscall.Handle
 	Rx        chan []byte
@@ -99,6 +102,38 @@ func (t *TAPWindows) GetName() string {
 
 // GetHardwareAddress returns a MAC address of the interface
 func (t *TAPWindows) GetHardwareAddress() net.HardwareAddr {
+	if t.MacNotSet {
+		mac := make([]byte, 6)
+		var length uint32
+		err := syscall.DeviceIoControl(t.file, getMacIOCTL, &mac[0], uint32(len(mac)), &mac[0], uint32(len(mac)), &length, nil)
+		if err != nil {
+			Log(Error, "Failed to retrieve Mac")
+			return t.Mac
+		}
+		var macAddr bytes.Buffer
+
+		i := 0
+		for _, a := range mac {
+			if a == 0 {
+				macAddr.WriteString("00")
+			} else if a < 16 {
+				macAddr.WriteString(fmt.Sprintf("0%x", a))
+			} else {
+				macAddr.WriteString(fmt.Sprintf("%x", a))
+			}
+			if i < 5 {
+				macAddr.WriteString(":")
+			}
+			i++
+		}
+		Log(Debug, "MAC: %s", macAddr.String())
+		deviceMac, err := net.ParseMAC(macAddr.String())
+		if err != nil {
+			Log(Error, "Failed to extract mac: %s", err)
+		}
+		t.Mac = deviceMac
+		t.MacNotSet = false
+	}
 	return t.Mac
 }
 
@@ -167,6 +202,12 @@ func (t *TAPWindows) Open() error {
 
 // Close will close handle for TAP interface
 func (t *TAPWindows) Close() error {
+	for i, iface := range UsedInterfaces {
+		if iface == t.Interface {
+			UsedInterfaces = append(UsedInterfaces[:i], UsedInterfaces[i+1:]...)
+			break
+		}
+	}
 	return syscall.CloseHandle(t.file)
 }
 
@@ -202,7 +243,7 @@ func (t *TAPWindows) Configure() error {
 
 // Run will start read/write goroutines
 func (t *TAPWindows) Run() {
-	Log(Info, "Started packet listener")
+	Log(Info, "Listening for TAP interface")
 	t.Rx = make(chan []byte, 1500)
 	t.Tx = make(chan []byte, 1500)
 	go func() {
