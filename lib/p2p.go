@@ -82,6 +82,9 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	// 	p.Interface.Mac, _ = net.ParseMAC(hwaddr)
 	// }
 	err = p.Interface.Configure()
+	if err != nil {
+		return err
+	}
 	// err = ConfigureInterface(p.Interface.Interface, p.Interface.IP.String(), p.Interface.Mac.String(), p.Interface.Name, p.IPTool)
 	Log(Info, "Interface has been configured")
 	return err
