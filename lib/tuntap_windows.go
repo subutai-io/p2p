@@ -182,8 +182,7 @@ func (t *TAPWindows) Configure() error {
 	setip.SysProcAttr.CmdLine = cmd
 	err := setip.Run()
 	if err != nil {
-		Log(Error, "Failed to properly configure TAP device with netsh: %v", err)
-		return err
+		return fmt.Errorf("Failed to properly configure TAP device with netsh: %v", err)
 	}
 
 	in := []byte("\x01\x00\x00\x00")
@@ -196,8 +195,7 @@ func (t *TAPWindows) Configure() error {
 		&length,
 		nil)
 	if err != nil {
-		Log(Error, "Failed to change device status to 'connected': %v", err)
-		return err
+		return fmt.Errorf("Failed to change device status to 'connected': %v", err)
 	}
 	return nil
 }
@@ -301,7 +299,7 @@ func (t *TAPWindows) queryAdapters(handle syscall.Handle) error {
 		adapter := make([]uint16, length)
 		err := syscall.RegEnumKeyEx(handle, index, &adapter[0], &length, nil, nil, nil, nil)
 		if err == NoMoreItems {
-			Log(Warning, "No more items in Windows Registry")
+			Log(Debug, "No more items in Windows Registry")
 			return nil
 		}
 		index++

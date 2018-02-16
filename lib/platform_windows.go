@@ -66,6 +66,7 @@ func InitPlatform() error {
 		}
 		err = tap.queryAdapters(key)
 		if err != nil {
+			syscall.CloseHandle(tap.file)
 			return errorFailedToQueryInterface
 		}
 		// Dummy IP address for the interface
