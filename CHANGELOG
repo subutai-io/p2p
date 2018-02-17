@@ -1,5 +1,9 @@
 # Change Log
 
+## [6.2.18] 02/17/2018
+
+* Fixed problems with TAP interfaces on Windows
+
 ## [6.2.17] 02/06/2018
 
 * Hotfix for snap version of p2p
