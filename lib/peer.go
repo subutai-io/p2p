@@ -258,6 +258,15 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 		round := 0
 		for round < 10 {
 			for _, ep := range np.KnownIPs {
+				alreadyConnected := false
+				for _, nep := range np.Endpoints {
+					if nep.Addr.String() == ep.String() {
+						alreadyConnected = true
+					}
+				}
+				if alreadyConnected {
+					continue
+				}
 				payload := []byte(ptpc.Dht.ID + ep.String())
 				msg, err := ptpc.CreateMessage(MsgTypeIntroReq, payload, 0, true)
 				if err != nil {
@@ -269,9 +278,9 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 					Log(Error, "Failed to send message to %s: %s", ep.String(), err)
 					continue
 				}
-				time.Sleep(time.Millisecond * 20)
+				time.Sleep(time.Millisecond * 50)
 			}
-			time.Sleep(time.Millisecond * 20)
+			time.Sleep(time.Millisecond * 50)
 			round++
 		}
 		np.punchingInProgress = false

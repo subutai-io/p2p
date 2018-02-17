@@ -78,18 +78,30 @@ func (dht *DHTClient) Init(hash string) error {
 }
 
 // Connect sends `conn` packet to a DHT
-func (dht *DHTClient) Connect() error {
+func (dht *DHTClient) Connect(ipList []net.IP, proxyList []*proxyServer) error {
 	dht.Connected = false
 	if dht.RemotePort == 0 {
 		dht.RemotePort = dht.LocalPort
 	}
+
+	ips := []string{}
+	proxies := []string{}
+	for _, ip := range ipList {
+		ips = append(ips, ip.String())
+	}
+	for _, proxy := range proxyList {
+		proxies = append(proxies, proxy.Endpoint.String())
+	}
+
 	packet := &DHTPacket{
-		Type:     DHTPacketType_Connect,
-		Infohash: dht.NetworkHash,
-		Id:       dht.ID,
-		Version:  PacketVersion,
-		Data:     fmt.Sprintf("%d", dht.LocalPort),
-		Query:    fmt.Sprintf("%d", dht.RemotePort),
+		Type:      DHTPacketType_Connect,
+		Infohash:  dht.NetworkHash,
+		Id:        dht.ID,
+		Version:   PacketVersion,
+		Data:      fmt.Sprintf("%d", dht.LocalPort),
+		Query:     fmt.Sprintf("%d", dht.RemotePort),
+		Arguments: ips,
+		Proxies:   proxies,
 	}
 	err := dht.send(packet)
 	if err != nil {

@@ -137,7 +137,8 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 
 		go newInst.PTP.ReadDHT()
 		newInst.PTP.Dht.LocalPort = newInst.PTP.UDPSocket.GetPort()
-		err = newInst.PTP.Dht.Connect()
+		newInst.PTP.FindNetworkAddresses()
+		err = newInst.PTP.Dht.Connect(newInst.PTP.LocalIPs, newInst.PTP.ProxyManager.GetList())
 		if err != nil {
 			newInst.PTP.StopInstance()
 			resp.Output = resp.Output + err.Error()
