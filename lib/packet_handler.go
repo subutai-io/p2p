@@ -207,10 +207,15 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 	// 	}
 	// 	return
 	// }
+	eps := []*net.UDPAddr{}
+	eps = append(eps, peer.KnownIPs...)
+	eps = append(eps, peer.Proxies...)
 	Log(Debug, "Sending handshake response")
-	_, err := p.UDPSocket.SendMessage(response, srcAddr)
-	if err != nil {
-		Log(Error, "Failed to respond to introduction request: %v", err)
+	for _, ep := range eps {
+		_, err := p.UDPSocket.SendMessage(response, ep)
+		if err != nil {
+			Log(Error, "Failed to respond to introduction request: %v", err)
+		}
 	}
 }
 
