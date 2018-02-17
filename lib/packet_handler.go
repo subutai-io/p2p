@@ -118,6 +118,7 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 			}
 			for i, ep := range peer.Endpoints {
 				if ep.Addr.String() == string(endpoint) {
+					Log(Debug, "BUMP")
 					peer.Endpoints[i].LastContact = time.Now()
 					return
 				}

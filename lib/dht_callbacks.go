@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"time"
 )
 
 type dhtCallback func(*DHTPacket) error
@@ -106,8 +107,11 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 			Log(Debug, "Adding proxy: %s", addr.String())
 		}
 		peer.SetState(PeerStateInit, p)
+		peer.LastFind = time.Now()
 		p.Peers.Update(peer.ID, peer)
 		p.Peers.RunPeer(peer.ID, p)
+	} else {
+		peer.LastFind = time.Now()
 	}
 
 	// for _, id := range packet.Arguments {

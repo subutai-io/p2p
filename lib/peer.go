@@ -42,7 +42,8 @@ type NetworkPeer struct {
 	Running            bool                               // Whether peer is running or not
 	Endpoints          []PeerEndpoint                     // List of active endpoints
 	EndpointsLock      sync.RWMutex                       // Mutex for endpoints operations
-	punchingInProgress bool
+	punchingInProgress bool                               // Whether or not UDP hole punching is running
+	LastFind           time.Time                          // Moment when we got this peer from DHT
 }
 
 func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
@@ -122,7 +123,7 @@ func (np *NetworkPeer) stateInit(ptpc *PeerToPeer) error {
 	// Send request about IPs of a peer
 	Log(Info, "Initializing new peer: %s", np.ID)
 	ptpc.Dht.sendNode(np.ID)
-	np.KnownIPs = np.KnownIPs[:0]
+	// np.KnownIPs = np.KnownIPs[:0]
 	// Do some variables cleanup
 	np.Endpoint = nil
 	np.PeerAddr = nil
@@ -369,6 +370,11 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 	} else {
 		np.ConnectionAttempts++
 		np.LastError = "No more endpoints"
+		if time.Since(np.LastFind) > time.Duration(time.Second*90) {
+			Log(Debug, "No endpoints and no updates from DHT")
+			np.SetState(PeerStateDisconnect, ptpc)
+			return nil
+		}
 		if len(np.KnownIPs) > 0 && len(np.Proxies) > 0 {
 			Log(Debug, "We have IPs and Proxies. Syncing states")
 			np.SetState(PeerStateWaitingToConnect, ptpc)
@@ -405,6 +411,7 @@ func (np *NetworkPeer) stateCooldown(ptpc *PeerToPeer) error {
 	for time.Since(started) < time.Duration(time.Second*30) {
 		time.Sleep(time.Millisecond * 100)
 	}
+	np.ConnectionAttempts++
 	np.SetState(PeerStateRouting, ptpc)
 	return nil
 }

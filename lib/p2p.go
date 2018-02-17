@@ -509,39 +509,6 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 	return ip, ipnet.Mask, nil
 }
 
-// StartDHT starts a DHT client
-func (p *PeerToPeer) StartDHT(hash, routers string) error {
-	return nil
-	if p.Dht != nil {
-		Log(Info, "Stopping previous DHT instance")
-		err := p.Dht.Close()
-		if err != nil {
-			return err
-		}
-		//p.Dht = nil
-	} else {
-		p.Dht = new(DHTClient)
-	}
-	p.Dht.OutboundIP = p.outboundIP
-	p.Dht.LocalPort = p.UDPSocket.GetPort()
-	if p.UDPSocket.remotePort == 0 {
-		p.Dht.LocalPort = p.Dht.RemotePort
-	} else {
-		p.Dht.RemotePort = p.UDPSocket.remotePort
-	}
-	err := p.Dht.Init(hash)
-	if err != nil {
-		return fmt.Errorf("Failed to initialize DHT: %s", err)
-	}
-	// TODO: Rebuild Local IPs
-	p.Dht.IPList = p.LocalIPs
-	err = p.Dht.WaitID()
-	if err != nil {
-		Log(Error, "Failed to retrieve ID from bootstrap node: %s", err)
-	}
-	return nil
-}
-
 func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
 	peer := p.Peers.GetPeer(id)
 	if peer == nil {
@@ -606,7 +573,6 @@ func (p *PeerToPeer) Run() {
 		// 	}
 		// default:
 		p.removeStoppedPeers()
-		p.checkBootstrapNodes()
 		p.checkLastDHTUpdate()
 		p.checkProxies()
 		time.Sleep(100 * time.Millisecond)
@@ -631,17 +597,6 @@ func (p *PeerToPeer) checkLastDHTUpdate() {
 		if err != nil {
 			Log(Error, "Failed to send update: %s", err)
 		}
-	}
-}
-
-func (p *PeerToPeer) checkBootstrapNodes() {
-	if !p.Dht.Connected {
-		err := p.StartDHT(p.Hash, p.Routers)
-		if err != nil {
-			Log(Error, "Failed to restore connection to DHT node")
-			return
-		}
-		p.Dht.sendDHCP(p.Dht.IP, p.Dht.Network)
 	}
 }
 
@@ -736,7 +691,7 @@ func (p *PeerToPeer) ParseIntroString(intro string) (*PeerHandshake, error) {
 	}
 	hs.Endpoint, err = net.ResolveUDPAddr("udp4", parts[3])
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse handshake endpoint: %s")
+		return nil, fmt.Errorf("Failed to parse handshake endpoint: %s", parts[3])
 	}
 
 	return hs, nil
