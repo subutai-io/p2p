@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net"
+
+	uuid "github.com/wayn3h0/go-uuid"
 )
 
 // Different utility functions
@@ -26,6 +28,22 @@ func GenerateMAC() (string, net.HardwareAddr) {
 	return mac, hw
 }
 
+// GenerateToken produces UUID string that will be used during handshake
+// with DHT server. Since we don't have an ID on start - we will use token
+// and wait from DHT server to respond with ID and our Token, so later
+// we will replace Token with received ID
+func GenerateToken() string {
+	result := ""
+	id, err := uuid.NewTimeBased()
+	if err != nil {
+		Log(Error, "Failed to generate token for peer")
+		return result
+	}
+	result = id.String()
+	Log(Debug, "Token generated: %s", result)
+	return result
+}
+
 // This method compares given IP to known private IP address spaces
 // and return true if IP is private, false otherwise
 func isPrivateIP(ip net.IP) (bool, error) {
@@ -37,4 +55,31 @@ func isPrivateIP(ip net.IP) (bool, error) {
 	_, private16, _ := net.ParseCIDR("192.168.0.0/16")
 	isPrivate := private24.Contains(ip) || private20.Contains(ip) || private16.Contains(ip)
 	return isPrivate, nil
+}
+
+// StringifyState extracts human-readable word that represents a peer status
+func StringifyState(state PeerState) string {
+	switch state {
+	case PeerStateInit:
+		return "Initializing"
+	case PeerStateRequestedIP:
+		return "Waiting for IP"
+	case PeerStateRequestingProxy:
+		return "Requesting proxies"
+	case PeerStateWaitingForProxy:
+		return "Waiting for proxies"
+	case PeerStateWaitingToConnect:
+		return "Waiting for connection"
+	case PeerStateConnecting:
+		return "Initializing connection"
+	case PeerStateRouting:
+		return "Routing"
+	case PeerStateConnected:
+		return "Connected"
+	case PeerStateDisconnect:
+		return "Disconnected"
+	case PeerStateStop:
+		return "Stopped"
+	}
+	return "Unknown"
 }

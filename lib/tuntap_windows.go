@@ -3,6 +3,7 @@
 package ptp
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -30,16 +31,16 @@ const (
 var UsedInterfaces []string // List of interfaces currently in use by p2p daemon
 
 var (
-	TAP_IOCTL_GET_MAC               = tapControlCode(1, 0)
-	TAP_IOCTL_GET_VERSION           = tapControlCode(2, 0)
-	TAP_IOCTL_GET_MTU               = tapControlCode(3, 0)
-	TAP_IOCTL_GET_INFO              = tapControlCode(4, 0)
-	TAP_IOCTL_CONFIG_POINT_TO_POINT = tapControlCode(5, 0)
-	TAP_IOCTL_SET_MEDIA_STATUS      = tapControlCode(6, 0)
-	TAP_IOCTL_CONFIG_DHCP_MASQ      = tapControlCode(7, 0)
-	TAP_IOCTL_GET_LOG_LINE          = tapControlCode(8, 0)
-	TAP_IOCTL_CONFIG_DHCP_SET_OPT   = tapControlCode(9, 0)
-	TAP_IOCTL_CONFIG_TUN            = tapControlCode(10, 0)
+	getMacIOCTL             = tapControlCode(1, 0)
+	getVersionIOCTL         = tapControlCode(2, 0)
+	getMTUValueIOCTL        = tapControlCode(3, 0)
+	getInfoIOCTL            = tapControlCode(4, 0)
+	configPointToPointIOCTL = tapControlCode(5, 0)
+	setMediaStatusIOCTL     = tapControlCode(6, 0)
+	configDHCPMasqIOCTL     = tapControlCode(7, 0)
+	configGetLogLineIOCTL   = tapControlCode(8, 0)
+	configDHCPSetOptIOCTL   = tapControlCode(9, 0)
+	configTUNIOCTL          = tapControlCode(10, 0)
 )
 
 // GetDeviceBase returns a default interface name
@@ -51,15 +52,15 @@ func GetDeviceBase() string {
 func GetConfigurationTool() string {
 	path, err := exec.LookPath("netsh")
 	if err != nil {
-		Log(Error, "Failed to find `ip` in path. Returning default /bin/ip")
-		return "/bin/ip"
+		Log(Error, "Failed to find `netsh` in path. Returning default netsh")
+		return "netsh"
 	}
 	Log(Info, "Network configuration tool found: %s", path)
 	return path
 }
 
 func newTAP(tool, ip, mac, mask string, mtu int) (*TAPWindows, error) {
-	Log(Info, "Acquiring TAP interface [Windows]")
+	Log(Debug, "Acquiring TAP interface [Windows]")
 	nip := net.ParseIP(ip)
 	if nip == nil {
 		return nil, fmt.Errorf("Failed to parse IP during TAP creation")
@@ -69,11 +70,12 @@ func newTAP(tool, ip, mac, mask string, mtu int) (*TAPWindows, error) {
 		return nil, fmt.Errorf("Failed to parse MAC during TAP creation: %s", err)
 	}
 	return &TAPWindows{
-		Tool: tool,
-		IP:   nip,
-		Mac:  nmac,
-		Mask: net.IPv4Mask(255, 255, 255, 0), // Unused yet
-		MTU:  DefaultMTU,
+		Tool:      tool,
+		IP:        nip,
+		Mac:       nmac,
+		Mask:      net.IPv4Mask(255, 255, 255, 0), // Unused yet
+		MTU:       DefaultMTU,
+		MacNotSet: true,
 	}, nil
 }
 
@@ -82,10 +84,11 @@ type TAPWindows struct {
 	IP        net.IP           // IP
 	Mask      net.IPMask       // Mask
 	Mac       net.HardwareAddr // Hardware Address
-	Name      string           // Network interface name
-	Interface string           // ?????????????????
-	Tool      string           // Path to `ip`
-	MTU       int              // MTU value
+	MacNotSet bool
+	Name      string // Network interface name
+	Interface string // ?????????????????
+	Tool      string // Path to `ip`
+	MTU       int    // MTU value
 	file      syscall.Handle
 	Handle    syscall.Handle
 	Rx        chan []byte
@@ -99,6 +102,38 @@ func (t *TAPWindows) GetName() string {
 
 // GetHardwareAddress returns a MAC address of the interface
 func (t *TAPWindows) GetHardwareAddress() net.HardwareAddr {
+	if t.MacNotSet {
+		mac := make([]byte, 6)
+		var length uint32
+		err := syscall.DeviceIoControl(t.file, getMacIOCTL, &mac[0], uint32(len(mac)), &mac[0], uint32(len(mac)), &length, nil)
+		if err != nil {
+			Log(Error, "Failed to retrieve Mac")
+			return t.Mac
+		}
+		var macAddr bytes.Buffer
+
+		i := 0
+		for _, a := range mac {
+			if a == 0 {
+				macAddr.WriteString("00")
+			} else if a < 16 {
+				macAddr.WriteString(fmt.Sprintf("0%x", a))
+			} else {
+				macAddr.WriteString(fmt.Sprintf("%x", a))
+			}
+			if i < 5 {
+				macAddr.WriteString(":")
+			}
+			i++
+		}
+		Log(Debug, "MAC: %s", macAddr.String())
+		deviceMac, err := net.ParseMAC(macAddr.String())
+		if err != nil {
+			Log(Error, "Failed to extract mac: %s", err)
+		}
+		t.Mac = deviceMac
+		t.MacNotSet = false
+	}
 	return t.Mac
 }
 
@@ -165,27 +200,35 @@ func (t *TAPWindows) Open() error {
 	return nil
 }
 
+// Close will close handle for TAP interface
 func (t *TAPWindows) Close() error {
-	return nil
+	for i, iface := range UsedInterfaces {
+		if iface == t.Interface {
+			UsedInterfaces = append(UsedInterfaces[:i], UsedInterfaces[i+1:]...)
+			break
+		}
+	}
+	return syscall.CloseHandle(t.file)
 }
 
+// Configure will configure TAP interface and set it's IP, Mask and other
+// parameters
 func (t *TAPWindows) Configure() error {
-	Log(Info, "Configuring %s. IP: %s Mask: %s", t.Interface, t.IP.String(), t.Mask.String())
+	Log(Debug, "Configuring %s. IP: %s Mask: %s", t.Interface, t.IP.String(), t.Mask.String())
 	setip := exec.Command("netsh")
 	setip.SysProcAttr = &syscall.SysProcAttr{}
 	// TODO: Unhardcode mask
 	cmd := fmt.Sprintf(`netsh interface ip set address "%s" static %s %s`, t.Interface, t.IP.String(), "255.255.255.0")
-	Log(Info, "Executing: %s", cmd)
+	Log(Debug, "Executing: %s", cmd)
 	setip.SysProcAttr.CmdLine = cmd
 	err := setip.Run()
 	if err != nil {
-		Log(Error, "Failed to properly configure TAP device with netsh: %v", err)
-		return err
+		return fmt.Errorf("Failed to properly configure TAP device with netsh: %v", err)
 	}
 
 	in := []byte("\x01\x00\x00\x00")
 	var length uint32
-	err = syscall.DeviceIoControl(t.file, TAP_IOCTL_SET_MEDIA_STATUS,
+	err = syscall.DeviceIoControl(t.file, setMediaStatusIOCTL,
 		&in[0],
 		uint32(len(in)),
 		&in[0],
@@ -193,14 +236,14 @@ func (t *TAPWindows) Configure() error {
 		&length,
 		nil)
 	if err != nil {
-		Log(Error, "Failed to change device status to 'connected': %v", err)
-		return err
+		return fmt.Errorf("Failed to change device status to 'connected': %v", err)
 	}
 	return nil
 }
 
+// Run will start read/write goroutines
 func (t *TAPWindows) Run() {
-	Log(Info, "Started packet listener")
+	Log(Info, "Listening for TAP interface")
 	t.Rx = make(chan []byte, 1500)
 	t.Tx = make(chan []byte, 1500)
 	go func() {
@@ -297,8 +340,8 @@ func (t *TAPWindows) queryAdapters(handle syscall.Handle) error {
 		adapter := make([]uint16, length)
 		err := syscall.RegEnumKeyEx(handle, index, &adapter[0], &length, nil, nil, nil, nil)
 		if err == NoMoreItems {
-			Log(Warning, "No more items in Windows Registry")
-			break
+			Log(Debug, "No more items in Windows Registry")
+			return nil
 		}
 		index++
 		adapterID := string(utf16.Decode(adapter[0:length]))
