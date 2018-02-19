@@ -17,8 +17,9 @@ const (
 
 // ProxyManager manages TURN servers
 type ProxyManager struct {
-	proxies map[string]*proxyServer
-	lock    sync.RWMutex
+	proxies    map[string]*proxyServer
+	lock       sync.RWMutex
+	hasChanges bool
 }
 
 func (p *ProxyManager) init() error {
@@ -93,6 +94,7 @@ func (p *ProxyManager) check() {
 		if proxy.Status == proxyDisconnected {
 			Log(Debug, "Removing proxy %s", id)
 			p.operate(OperateDelete, id, nil)
+			p.hasChanges = true
 		}
 	}
 }
@@ -113,6 +115,7 @@ func (p *ProxyManager) activate(id string, endpoint *net.UDPAddr) bool {
 	proxies := p.get()
 	for pid, proxy := range proxies {
 		if pid == id && proxy.Status == proxyConnecting {
+			p.hasChanges = true
 			proxy.Status = proxyActive
 			proxy.LastUpdate = time.Now()
 			proxy.Endpoint = endpoint
