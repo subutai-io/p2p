@@ -131,8 +131,11 @@ func (p *PeerToPeer) handlePacketIPv4(contents []byte, proto int) {
 	if f.EtherType != ethernet.EtherTypeIPv4 {
 		return
 	}
-	msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto), 1, 1, 1)
-	p.SendTo(f.Destination, msg)
+	//msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto), 1, 1, 1)
+	msg, err := p.CreateMessage(MsgTypeNenc, contents, uint16(proto), true)
+	if err == nil && msg != nil {
+		p.SendTo(f.Destination, msg)
+	}
 }
 
 // TODO: Implement IPv6 Support

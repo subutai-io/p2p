@@ -7,7 +7,7 @@ ARCH=$(shell uname -m)
 BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
 NAME_PREFIX=p2p
 NAME_BASE=p2p
-SOURCES=help.go instance.go main.go rest.go start.go stop.go show.go set.go status.go debug.go daemon.go
+SOURCES=help.go instance.go main.go rest.go start.go stop.go show.go set.go status.go debug.go daemon.go dht.go
 #DHT=mdht.subut.ai:6881
 #ifeq ($(BRANCH),HEAD)
 #	DHT=mdht.subut.ai:6881
@@ -57,6 +57,8 @@ bin/$(APP)_osx: $(SOURCES) service_posix.go
 
 clean:
 	-rm -f bin/$(APP)
+	-rm -f bin/$(APP).exe
+	-rm -f bin/$(APP)_osx
 	-rm -f $(APP)
 	-rm -f $(APP)_osx
 	-rm -f $(APP).exe
