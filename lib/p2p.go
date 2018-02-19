@@ -502,9 +502,7 @@ func (p *PeerToPeer) Run() {
 	p.Dht.sendProxy()
 	initialRequestSent := false
 	started := time.Now()
-	// p.Dht.LastUpdate = time.Unix(1, 1)
 	p.Dht.LastUpdate = time.Now()
-	// go p.readDHT()
 	for {
 		if p.Shutdown {
 			// TODO: Do it more safely
@@ -514,40 +512,6 @@ func (p *PeerToPeer) Run() {
 			time.Sleep(1 * time.Second)
 			continue
 		}
-
-		// select {
-		// case peer, pd := <-p.Dht.PeerData:
-		// 	if pd {
-		// 		// Received peer update
-		// 		p.handlePeerData(peer)
-		// 	}
-		// case state, s := <-p.Dht.StateChannel:
-		// 	if s {
-		// 		peer := p.Peers.GetPeer(state.ID)
-		// 		if peer != nil {
-		// 			peer.RemoteState = state.State
-		// 			p.Peers.Update(state.ID, peer)
-		// 		} else {
-		// 			Log(Warning, "Received state of unknown peer. Updating peers")
-		// 			p.Dht.sendFind()
-		// 		}
-		// 	}
-		// case proxy, pr := <-p.Dht.ProxyChannel:
-		// 	if pr {
-		// 		proxyAddr, err := net.ResolveUDPAddr("udp4", proxy)
-		// 		if err == nil {
-		// 			if p.ProxyManager.new(proxyAddr) == nil {
-		// 				go func() {
-		// 					//msg := CreateProxyP2PMessage(0, p.Dht.ID, 1)
-		// 					msg, err := p.CreateMessage(MsgTypeProxy, []byte(p.Dht.ID), 0, false)
-		// 					if err == nil {
-		// 						p.UDPSocket.SendMessage(msg, proxyAddr)
-		// 					}
-		// 				}()
-		// 			}
-		// 		}
-		// 	}
-		// default:
 		p.removeStoppedPeers()
 		p.checkLastDHTUpdate()
 		p.checkProxies()
@@ -556,7 +520,6 @@ func (p *PeerToPeer) Run() {
 			initialRequestSent = true
 			p.Dht.sendFind()
 		}
-		// }
 	}
 	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)
 }
@@ -610,7 +573,6 @@ func (p *PeerToPeer) checkProxies() {
 // endpoint is an address that received this introduction message
 func (p *PeerToPeer) PrepareIntroductionMessage(id, endpoint string) *P2PMessage {
 	var intro = id + "," + p.Interface.GetHardwareAddress().String() + "," + p.Interface.GetIP().String() + "," + endpoint
-	//msg := CreateIntroP2PMessage(p.Crypter, intro, 0)
 	msg, err := p.CreateMessage(MsgTypeIntro, []byte(intro), 0, true)
 	if err != nil {
 		return nil
@@ -691,7 +653,7 @@ func (p *PeerToPeer) StopInstance() {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	Log(Info, "All peers under this instance has been removed")
+	Log(Debug, "All peers under this instance has been removed")
 
 	p.Shutdown = true
 	err := p.Dht.Close()

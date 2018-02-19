@@ -330,6 +330,10 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 		np.SetState(PeerStateConnected, ptpc)
 		np.ConnectionAttempts = 0
 	} else {
+		if np.RemoteState == PeerStateWaitingToConnect {
+			np.SetState(PeerStateWaitingToConnect, ptpc)
+			return nil
+		}
 		np.ConnectionAttempts++
 		np.LastError = "No more endpoints"
 		if time.Since(np.LastFind) > time.Duration(time.Second*90) {
@@ -350,7 +354,6 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 			np.SetState(PeerStateRequestingProxy, ptpc)
 			return nil
 		}
-		//np.SetState(PeerStateDisconnect, ptpc)
 	}
 	return nil
 }
