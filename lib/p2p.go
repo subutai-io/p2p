@@ -81,19 +81,13 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 		Log(Error, "Failed to open TAP device %s: %v", p.Interface.GetName(), err)
 		return err
 	}
-	Log(Info, "%v TAP Device created", p.Interface.GetName())
+	Log(Debug, "%v TAP Device created", p.Interface.GetName())
 
-	// Windows returns a real mac here. However, other systems should return empty string
-	// hwaddr := p.Interface.GetHardwareAddress()
-	// if hwaddr != nil {
-	// 	p.Interface.Mac, _ = net.ParseMAC(hwaddr)
-	// }
 	err = p.Interface.Configure()
 	if err != nil {
 		return err
 	}
-	// err = ConfigureInterface(p.Interface.Interface, p.Interface.IP.String(), p.Interface.Mac.String(), p.Interface.Name, p.IPTool)
-	Log(Info, "Interface has been configured")
+	Log(Debug, "Interface has been configured")
 	return err
 }
 
@@ -117,7 +111,7 @@ func (p *PeerToPeer) ListenInterface() {
 		}
 		go p.handlePacket(packet.Packet, packet.Protocol)
 	}
-	Log(Info, "Shutting down interface listener")
+	Log(Debug, "Shutting down interface listener")
 
 	if p.Interface != nil {
 		p.Interface.Close()
@@ -246,9 +240,9 @@ func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, 
 	}
 
 	if p.Crypter.Active {
-		Log(Info, "Traffic encryption is enabled. Key valid until %s", p.Crypter.ActiveKey.Until.String())
+		Log(Debug, "Traffic encryption is enabled. Key valid until %s", p.Crypter.ActiveKey.Until.String())
 	} else {
-		Log(Info, "No AES key were provided. Traffic encryption is disabled")
+		Log(Debug, "No AES key were provided. Traffic encryption is disabled")
 	}
 
 	p.Hash = argHash
@@ -267,7 +261,7 @@ func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, 
 	// a introduction packet along with a hash to a DHT bootstrap
 	// nodes that was hardcoded into it's code
 
-	Log(Info, "Started UDP Listener at port %d", p.UDPSocket.GetPort())
+	Log(Debug, "Started UDP Listener at port %d", p.UDPSocket.GetPort())
 
 	p.Dht = new(DHTClient)
 	err = p.Dht.Init(p.Hash)
@@ -276,33 +270,13 @@ func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, 
 		return nil
 	}
 
-	// err = p.StartDHT(p.Hash, p.Routers)
-	// if err != nil {
-	// 	Log(Info, "Retrying DHT connection")
-	// 	attempts := 0
-	// 	for attempts < 3 {
-	// 		err = p.StartDHT(p.Hash, p.Routers)
-	// 		if err != nil {
-	// 			Log(Info, "Another attempt failed")
-	// 			attempts++
-	// 		} else {
-	// 			Log(Info, "Connection established")
-	// 			err = nil
-	// 			break
-	// 		}
-	// 	}
-	// }
-	// if err != nil {
-	// 	Log(Error, "Failed to start instance due to problems with bootstrap node connection")
-	// 	return nil
-	// }
-
 	p.setupTCPCallbacks()
 	p.ProxyManager = new(ProxyManager)
 	p.ProxyManager.init()
 	return p
 }
 
+// ReadDHT will read packets from bootstrap node
 func (p *PeerToPeer) ReadDHT() {
 	for !p.Shutdown {
 		packet, err := p.Dht.read()
@@ -340,7 +314,7 @@ func (p *PeerToPeer) waitForRemotePort() {
 }
 
 func (p *PeerToPeer) retrieveFirstDHTRouter() *net.UDPAddr {
-	Log(Info, "Routers: %s", p.Routers)
+	Log(Debug, "Routers: %s", p.Routers)
 	routers := strings.Split(p.Routers, ",")
 	if len(routers) == 0 {
 		return nil
@@ -388,7 +362,7 @@ func (p *PeerToPeer) PrepareInterfaces(ip, interfaceName string) error {
 }
 
 func (p *PeerToPeer) attemptPortForward(port uint16, name string) error {
-	Log(Info, "Trying to forward port %d", port)
+	Log(Debug, "Trying to forward port %d", port)
 	d, err := upnp.Discover()
 	if err != nil {
 		return err
@@ -397,7 +371,7 @@ func (p *PeerToPeer) attemptPortForward(port uint16, name string) error {
 	if err != nil {
 		return err
 	}
-	Log(Info, "Port %d has been forwarded", port)
+	Log(Debug, "Port %d has been forwarded", port)
 	return nil
 }
 
@@ -418,7 +392,7 @@ func (p *PeerToPeer) validateMac(mac string) net.HardwareAddr {
 		}
 	} else {
 		mac, hw = GenerateMAC()
-		Log(Info, "Generate MAC for TAP device: %s", mac)
+		Log(Debug, "Generate MAC for TAP device: %s", mac)
 	}
 	return hw
 }
@@ -428,7 +402,7 @@ func (p *PeerToPeer) validateInterfaceName(name string) (string, error) {
 		name = p.GenerateDeviceName(1)
 	} else {
 		if len(name) > MaximumInterfaceNameLength {
-			Log(Info, "Interface name length should be %d symbols max", MaximumInterfaceNameLength)
+			Log(Debug, "Interface name length should be %d symbols max", MaximumInterfaceNameLength)
 			return "", fmt.Errorf("Interface name is too big")
 		}
 	}
@@ -444,8 +418,6 @@ func (p *PeerToPeer) setupHandlers() {
 	p.MessageHandlers[MsgTypeIntro] = p.HandleIntroMessage
 	p.MessageHandlers[MsgTypeIntroReq] = p.HandleIntroRequestMessage
 	p.MessageHandlers[MsgTypeProxy] = p.HandleProxyMessage
-	// p.MessageHandlers[MsgTypeTest] = p.HandleTestMessage
-	// p.MessageHandlers[MsgTypeBadTun] = p.HandleBadTun
 
 	// Register packet handlers
 	p.PacketHandlers = make(map[PacketType]PacketHandlerCallback)
@@ -462,7 +434,7 @@ func (p *PeerToPeer) setupHandlers() {
 
 // RequestIP asks DHT to get IP from DHCP-like service
 func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
-	Log(Info, "Requesting IP from Bootstrap node")
+	Log(Debug, "Requesting IP from Bootstrap node")
 	requestedAt := time.Now()
 	interval := time.Duration(3 * time.Second)
 	p.Dht.sendDHCP(nil, nil)
@@ -512,12 +484,13 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 	return ip, ipnet.Mask, nil
 }
 
+// TODO: Check if this method is still used
 func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
 	peer := p.Peers.GetPeer(id)
 	if peer == nil {
 		return fmt.Errorf("Peer was not found")
 	}
-	Log(Info, "Removing peer %s: Reason %s", id, reason)
+	Log(Debug, "Removing peer %s: Reason %s", id, reason)
 	peer.SetState(PeerStateDisconnect, p)
 	p.Peers.Update(id, peer)
 	return nil
@@ -603,6 +576,7 @@ func (p *PeerToPeer) checkLastDHTUpdate() {
 	}
 }
 
+// TODO: Check if this method is still actual
 func (p *PeerToPeer) removeStoppedPeers() {
 	peers := p.Peers.Get()
 	for id, peer := range peers {
@@ -629,20 +603,6 @@ func (p *PeerToPeer) checkProxies() {
 		p.ProxyManager.hasChanges = false
 		p.Dht.sendReportProxy(list)
 	}
-
-	// p.proxyLock.Lock()
-	// defer p.proxyLock.Unlock()
-	// lifetime := time.Duration(time.Second * 30)
-	// for i, proxy := range p.Proxies {
-	// 	if p.Proxies[i].Status == proxyDisconnected {
-	// 		p.Proxies = append(p.Proxies[:i], p.Proxies[:i+1]...)
-	// 		break
-	// 	}
-	// 	if time.Since(proxy.LastUpdate) > lifetime {
-	// 		Log(Info, "Proxy connection with %s [EP: %s] has died", proxy.Addr.String(), proxy.Endpoint.String())
-	// 		p.Proxies[i].Close()
-	// 	}
-	// }
 }
 
 // PrepareIntroductionMessage collects client ID, mac and IP address
@@ -746,25 +706,4 @@ func (p *PeerToPeer) StopInstance() {
 	}
 	p.ReadyToStop = true
 	Log(Info, "Instance %s stopped", hash)
-}
-
-func (p *PeerToPeer) handlePeerData(peerData NetworkPeer) {
-	if peerData.ID == "" {
-		return
-	}
-	// Check if such peer exists
-	// peer := p.Peers.GetPeer(peerData.ID)
-	// if peer == nil {
-	// 	peer := new(NetworkPeer)
-	// 	Log(Info, "Received new peer %s", peerData.ID)
-	// 	peer.ID = peerData.ID
-	// 	peer.SetState(PeerStateInit, p)
-	// 	p.Peers.Update(peerData.ID, peer)
-	// 	p.Peers.RunPeer(peerData.ID, p)
-	// 	return
-	// }
-	// When peer data contains IPs this means we received
-	// list of IP addresses of this peer
-	// peer := p.Peers.GetPeer(peerData.ID)
-
 }
