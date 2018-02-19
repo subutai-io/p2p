@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	ptp "github.com/subutai-io/p2p/lib"
 )
@@ -46,7 +47,13 @@ func setupRESTHandlers(port int, d *Daemon) {
 	http.HandleFunc("/rest/v1/debug", d.execRESTDebug)
 	http.HandleFunc("/rest/v1/set", d.execRESTSet)
 
-	go http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	go func() {
+		err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+		if err != nil {
+			fmt.Printf("Failed to start HTTP listener: %s", err)
+			os.Exit(98)
+		}
+	}()
 }
 
 func sendRequest(port int, command string, args *DaemonArgs) (*RESTResponse, error) {
