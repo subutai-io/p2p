@@ -21,9 +21,6 @@ type PeerEndpoint struct {
 // NetworkPeer represents a peer
 type NetworkPeer struct {
 	ID                 string                             // ID of a peer
-	ProxyID            uint16                             // ID of the proxy
-	Forwarder          *net.UDPAddr                       // Forwarder address
-	PeerAddr           *net.UDPAddr                       // Address of peer
 	Endpoint           *net.UDPAddr                       // Endpoint address of a peer. TODO: Make this net.UDPAddr
 	KnownIPs           []*net.UDPAddr                     // List of IP addresses that accepts connection on peer
 	Proxies            []*net.UDPAddr                     // List of proxies of this peer
@@ -34,16 +31,19 @@ type NetworkPeer struct {
 	LastContact        time.Time                          // Last ping with this peer
 	PingCount          uint8                              // Number of pings messages sent without response
 	LastError          string                             // Test of last error occured during state execution
-	ForceProxy         bool                               // Whether we are forced to use proxy or not
-	TestPacketReceived bool                               // Whether or not test packet were received
 	ConnectionAttempts uint8                              // How many times we tried to connect
-	stateHandlers      map[PeerState]StateHandlerCallback // List of callbacks for different peer states
-	IsUsingTURN        bool                               // Whether or not we are currently connected via TURN
+	handlers           map[PeerState]StateHandlerCallback // List of callbacks for different peer states
 	Running            bool                               // Whether peer is running or not
 	Endpoints          []PeerEndpoint                     // List of active endpoints
 	EndpointsLock      sync.RWMutex                       // Mutex for endpoints operations
 	punchingInProgress bool                               // Whether or not UDP hole punching is running
 	LastFind           time.Time                          // Moment when we got this peer from DHT
+	// IsUsingTURN        bool                               // Whether or not we are currently connected via TURN
+	// ForceProxy         bool                               // Whether we are forced to use proxy or not
+	// TestPacketReceived bool                               // Whether or not test packet were received
+	// ProxyID            uint16                             // ID of the proxy
+	// Forwarder          *net.UDPAddr                       // Forwarder address
+	// PeerAddr           *net.UDPAddr                       // Address of peer
 }
 
 func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
@@ -73,18 +73,18 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 	np.Running = true
 	np.ConnectionAttempts = 0
 
-	np.stateHandlers = make(map[PeerState]StateHandlerCallback)
-	np.stateHandlers[PeerStateInit] = np.stateInit
-	np.stateHandlers[PeerStateRequestedIP] = np.stateRequestedIP
-	np.stateHandlers[PeerStateConnecting] = np.stateConnecting
-	np.stateHandlers[PeerStateConnected] = np.stateConnected
-	np.stateHandlers[PeerStateDisconnect] = np.stateDisconnect
-	np.stateHandlers[PeerStateStop] = np.stateStop
-	np.stateHandlers[PeerStateRequestingProxy] = np.stateRequestingProxy
-	np.stateHandlers[PeerStateWaitingForProxy] = np.stateWaitingForProxy
-	np.stateHandlers[PeerStateWaitingToConnect] = np.stateWaitingToConnect
-	np.stateHandlers[PeerStateRouting] = np.stateRouting
-	np.stateHandlers[PeerStateCooldown] = np.stateCooldown
+	np.handlers = make(map[PeerState]StateHandlerCallback)
+	np.handlers[PeerStateInit] = np.stateInit
+	np.handlers[PeerStateRequestedIP] = np.stateRequestedIP
+	np.handlers[PeerStateConnecting] = np.stateConnecting
+	np.handlers[PeerStateConnected] = np.stateConnected
+	np.handlers[PeerStateDisconnect] = np.stateDisconnect
+	np.handlers[PeerStateStop] = np.stateStop
+	np.handlers[PeerStateRequestingProxy] = np.stateRequestingProxy
+	np.handlers[PeerStateWaitingForProxy] = np.stateWaitingForProxy
+	np.handlers[PeerStateWaitingToConnect] = np.stateWaitingToConnect
+	np.handlers[PeerStateRouting] = np.stateRouting
+	np.handlers[PeerStateCooldown] = np.stateCooldown
 
 	for {
 		if np.State == PeerStateStop {
@@ -100,7 +100,7 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 			np.SetState(PeerStateCooldown, ptpc)
 		}
 
-		callback, exists := np.stateHandlers[np.State]
+		callback, exists := np.handlers[np.State]
 		if !exists {
 			Log(Error, "Peer %s is in unknown state: %d", np.ID, int(np.State))
 			time.Sleep(1 * time.Second)
@@ -126,11 +126,10 @@ func (np *NetworkPeer) stateInit(ptpc *PeerToPeer) error {
 	// np.KnownIPs = np.KnownIPs[:0]
 	// Do some variables cleanup
 	np.Endpoint = nil
-	np.PeerAddr = nil
 	np.PeerHW = nil
 	np.PeerLocalIP = nil
-	np.TestPacketReceived = false
-	np.IsUsingTURN = false
+	// np.TestPacketReceived = false
+	// np.IsUsingTURN = false
 	if len(np.KnownIPs) == 0 {
 		np.SetState(PeerStateRequestedIP, ptpc)
 	} else if len(np.Proxies) == 0 {

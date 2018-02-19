@@ -113,19 +113,31 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 		p.Peers.RunPeer(peer.ID, p)
 	} else {
 		peer.LastFind = time.Now()
+		ips := []*net.UDPAddr{}
+		proxies := []*net.UDPAddr{}
+		for _, ip := range packet.Arguments {
+			addr, err := net.ResolveUDPAddr("udp4", ip)
+			if err != nil {
+				continue
+			}
+			ips = append(ips, addr)
+		}
+		peer.KnownIPs = ips
+		for _, proxy := range packet.Proxies {
+			addr, err := net.ResolveUDPAddr("udp4", proxy)
+			if err != nil {
+				continue
+			}
+			proxies = append(proxies, addr)
+			Log(Debug, "Adding proxy: %s", addr.String())
+		}
+		peer.Proxies = proxies
+		p.Peers.Update(peer.ID, peer)
 	}
-
-	// for _, id := range packet.Arguments {
-	// 	if id == p.Dht.ID {
-	// 		continue
-	// 	}
-	// 	p.handlePeerData(NetworkPeer{ID: id})
-	// }
 	return nil
 }
 
 func (p *PeerToPeer) packetForward(packet *DHTPacket) error {
-	// func (dht *DHTClient) packetForward(packet *DHTPacket) error {
 	return nil
 }
 

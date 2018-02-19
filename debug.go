@@ -94,11 +94,6 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 				for _, ep := range peer.Endpoints {
 					resp.Output += fmt.Sprintf("\t\t\t%s\n", ep.Addr.String())
 				}
-				proxyInUse := "No"
-				if peer.IsUsingTURN {
-					proxyInUse = "Yes"
-				}
-				resp.Output += fmt.Sprintf("\t\tUsing proxy: %s\n", proxyInUse)
 			}
 			resp.Output += fmt.Sprintf("\t\tEndpoints pool: \n")
 			pool := []*net.UDPAddr{}
