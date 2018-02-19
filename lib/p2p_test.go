@@ -3,6 +3,7 @@ package ptp
 import (
 	"bytes"
 	"net"
+	"reflect"
 	"testing"
 )
 
@@ -77,6 +78,64 @@ func TestRetrieveFirstDHTRouters(t *testing.T) {
 	}
 }
 
+func TestValidateMac(t *testing.T) {
+	ptp := new(PeerToPeer)
+	get1 := ptp.validateMac("-")
+	if get1 != nil {
+		t.Error("Error. Invalid MAC")
+	}
+	hw, _ := GenerateMAC()
+	var h net.HardwareAddr
+	get2 := ptp.validateMac(hw)
+	if reflect.DeepEqual(get2, h) {
+		t.Error("Error")
+	}
+	get := ptp.validateMac("")
+	if reflect.DeepEqual(get, h) {
+		t.Error("Error")
+	}
+}
+
+func TestValidateInterfaceName(t *testing.T) {
+	ptp := new(PeerToPeer)
+	get1, err := ptp.validateInterfaceName("lo")
+	if get1 != "lo" {
+		t.Error(err)
+	}
+	get2, err2 := ptp.validateInterfaceName("")
+	if get2 != "vptp1" {
+		t.Error(err2)
+	}
+	get3, err3 := ptp.validateInterfaceName("123456789101112")
+	if get3 != "" {
+		t.Error(err3)
+	}
+}
+
+func TestPrepareIntroductionMessage(t *testing.T) {
+	p := new(PeerToPeer)
+	p.Interface, _ = newTAP("", "127.0.0.1", "01:02:03:04:05:06", "", 1)
+	msg := p.PrepareIntroductionMessage("test-id")
+	if string(msg.Data) != "test-id,01:02:03:04:05:06,127.0.0.1" {
+		t.Errorf("Failed to create introduction message")
+	}
+}
+
+func TestMarkPeerForRemoval(t *testing.T) {
+	ptp := new(PeerToPeer)
+	np := new(NetworkPeer)
+	ptp.Init()
+	ptp.Peers.peers["1"] = np
+	get := ptp.markPeerForRemoval("1", "Some reasons")
+	if get != nil && np.State != PeerStateDisconnect {
+		t.Error("Error")
+	}
+	get2 := ptp.markPeerForRemoval("0", "some reasons")
+	if get2 == nil {
+		t.Error("Error")
+	}
+}
+
 func TestParseIntroString(t *testing.T) {
 	// TODO: Fix this test
 	// p := new(PeerToPeer)
@@ -95,15 +154,5 @@ func TestParseIntroString(t *testing.T) {
 	// id4, mac4, ip4 := p.ParseIntroString("id,01:02:03:04:05:06,ip")
 	// if id4 != "" && mac4 != nil && ip4 != nil {
 	// 	t.Error("Error in parse ip")
-	// }
-}
-
-func TestPrepareIntroductionMessage(t *testing.T) {
-	// TODO: Fix this test
-	// p := new(PeerToPeer)
-	// p.Interface, _ = newTAP("", "127.0.0.1", "01:02:03:04:05:06", "", 1)
-	// msg := p.PrepareIntroductionMessage("test-id")
-	// if string(msg.Data) != "test-id,01:02:03:04:05:06,127.0.0.1" {
-	// 	t.Errorf("Failed to create introduction message")
 	// }
 }
