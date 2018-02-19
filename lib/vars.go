@@ -5,10 +5,10 @@ import (
 )
 
 // PacketVersion is a version of packet used in DHT communication
-const PacketVersion string = "5"
+const PacketVersion int32 = 20005
 
 // SupportedVersion is a list of versions supported by DHT server
-var SupportedVersion = [...]string{"6", "5"}
+var SupportedVersion = [...]int32{20005, 200006}
 
 // MsgType is a type of the message
 type MsgType uint16
@@ -53,36 +53,22 @@ const (
 	DhtErrorUnsupported string = "unsupported"
 )
 
-type (
-	// PeerState - current state of the peer
-	PeerState int
-	// PingType - whether this is a request or a response
-	PingType uint16
-)
+// PeerState - current state of the peer
+type PeerState int
 
 // Peer state
 const (
-	PeerStateInit                   PeerState = iota // Peer has been added recently.
-	PeerStateRequestedIP                      = iota // We know ID of a peer, but don't know it's IPs
-	PeerStateConnecting                       = iota // Trying to establish connection
-	PeerStateConnectingDirectlyWait           = iota // Wait for other peer to start connecting directly over LAN
-	PeerStateConnectingDirectly               = iota // Trying to establish a direct connection over LAN
-	PeerStateConnectingInternetWait           = iota // Wait for other peer to start connecting over Internet
-	PeerStateConnectingInternet               = iota // Connect over internet or do Holepunching
-	PeerStateConnected                        = iota // Connected, handshaked and operating normally
-	PeerStateHandshaking                      = iota // Handshake requsted
-	PeerStateHandshakingFailed                = iota // Handshake procedure failed
-	PeerStateWaitingForwarder                 = iota // Forwarder was requested
-	PeerStateWaitingForwarderFailed           = iota // Didn't received any forwarders
-	PeerStateHandshakingForwarder             = iota // Forwarder has been received and we're trying to handshake it
-	PeerStateDisconnect                       = iota // We're disconnecting
-	PeerStateStop                             = iota // Peer has been stopped and now can be removed from list of peers
-)
-
-// Ping types
-const (
-	PingReq  PingType = 1
-	PingResp PingType = 2
+	PeerStateInit             PeerState = 1  // Peer has been added recently.
+	PeerStateRequestedIP                = 2  // We know ID of a peer, but don't know it's IPs
+	PeerStateRequestingProxy            = 3  // Requesting proxies for this peer
+	PeerStateWaitingForProxy            = 4  // Waiting for proxies
+	PeerStateWaitingToConnect           = 5  // Waiting for other peer to start establishing connection
+	PeerStateConnecting                 = 6  // Trying to establish connection
+	PeerStateRouting                    = 7  // (Re)Routing
+	PeerStateConnected                  = 8  // Connected, handshaked and operating normally
+	PeerStateDisconnect                 = 9  // We're disconnecting
+	PeerStateStop                       = 10 // Peer has been stopped and now can be removed from list of peers
+	PeerStateCooldown                   = 11
 )
 
 // Timeouts and retries
