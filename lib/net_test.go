@@ -1,21 +1,21 @@
 package ptp
 
 import (
+	"bytes"
 	"net"
 	"testing"
 )
 
 func TestSerialize(t *testing.T) {
-	// TODO: Fix this test
-	// p := new(P2PMessageHeader)
-	// var wait = make([]byte, 18)
-	// for i := 0; i < 18; i++ {
-	// 	wait[i] = 0
-	// }
-	// get := p.Serialize()
-	// if !bytes.EqualFold(wait, get) {
-	// 	t.Errorf("Error. Wait: %v, get: %v", wait, get)
-	// }
+	p := new(P2PMessageHeader)
+	var wait = make([]byte, 10)
+	for i := 0; i < 10; i++ {
+		wait[i] = 0
+	}
+	get := p.Serialize()
+	if !bytes.EqualFold(wait, get) {
+		t.Errorf("Error. Wait: %v, get: %v", wait, get)
+	}
 }
 
 func TestP2PMessageHeaderFromBytes(t *testing.T) {
@@ -42,80 +42,6 @@ func TestP2PMessageHeaderFromBytes(t *testing.T) {
 	}
 }
 
-func TestCreatePingP2PMessage(t *testing.T) {
-	// TODO: Fix this test
-	// msg := new(P2PMessage)
-	// msg.Header = new(P2PMessageHeader)
-	// msg.Header.Magic = MagicCookie
-	// msg.Header.Type = uint16(MsgTypePing)
-	// msg.Header.NetProto = 0
-	// msg.Header.Length = uint16(len("1"))
-	// msg.Data = []byte("12345")
-
-	// get := CreatePingP2PMessage("12345")
-
-	// if get.Header.Magic != msg.Header.Magic && get.Header.Type != msg.Header.Type && get.Header.NetProto != msg.Header.NetProto && get.Header.Length != msg.Header.Length && get.Header.Complete != msg.Header.Complete && !bytes.EqualFold(get.Data, msg.Data) {
-	// 	t.Error("Error in func CreatePingP2PMessage")
-	// }
-}
-
-func TestCreateConfP2PMessage(t *testing.T) {
-	// TODO: Fix this test
-	// msg := new(P2PMessage)
-	// msg.Header = new(P2PMessageHeader)
-	// msg.Header.Magic = MagicCookie
-	// msg.Header.Type = uint16(MsgTypeConf)
-	// msg.Header.NetProto = 0
-	// msg.Header.Length = uint16(len("1"))
-	// msg.Header.Complete = 1
-	// msg.Header.ID = 1
-	// msg.Header.Seq = 2
-	// msg.Data = []byte("1")
-
-	// get := CreateConfP2PMessage(1, 2)
-	// if get.Header.Magic != msg.Header.Magic && get.Header.Type != msg.Header.Type && get.Header.NetProto != msg.Header.NetProto && get.Header.Length != msg.Header.Length && get.Header.Complete != msg.Header.Complete && !bytes.EqualFold(get.Data, msg.Data) {
-	// 	t.Error("Error in func CreateConfP2PMessage")
-	// }
-}
-
-func TestCreateProxyP2PMessage(t *testing.T) {
-	// TODO: Fix this test
-	// msg := new(P2PMessage)
-	// msg.Header = new(P2PMessageHeader)
-	// msg.Header.Magic = MagicCookie
-	// msg.Header.Type = uint16(MsgTypeProxy)
-	// msg.Header.NetProto = 2
-	// msg.Header.Length = uint16(len("12345"))
-	// msg.Header.Complete = 1
-	// msg.Header.ProxyID = uint16(4)
-	// msg.Header.ID = 0
-	// msg.Data = []byte("12345")
-
-	// get := CreateProxyP2PMessage(4, "12345", 2)
-	// if get.Header.Magic != msg.Header.Magic && get.Header.Type != msg.Header.Type && get.Header.NetProto != msg.Header.NetProto && get.Header.Length != msg.Header.Length && get.Header.Complete != msg.Header.Complete && !bytes.EqualFold(get.Data, msg.Data) {
-	// 	t.Error("Error in func CreateProxyP2PMessage")
-	// }
-}
-
-func TestCreateBadTunnelP2PMessage(t *testing.T) {
-	// TODO: Fix this test
-	// msg := new(P2PMessage)
-	// msg.Header = new(P2PMessageHeader)
-	// msg.Header.Magic = MagicCookie
-	// msg.Header.Type = uint16(MsgTypeBadTun)
-	// msg.Header.NetProto = 1
-	// msg.Header.Length = uint16(len("rem"))
-	// msg.Header.ProxyID = uint16(2)
-	// msg.Header.Complete = 1
-	// msg.Header.ID = 0
-	// msg.Data = []byte("rem")
-
-	// get := CreateBadTunnelP2PMessage(2, 1)
-	// if get.Header.Magic != msg.Header.Magic && get.Header.Type != msg.Header.Type && get.Header.NetProto != msg.Header.NetProto && get.Header.Length != msg.Header.Length && get.Header.Complete != msg.Header.Complete && !bytes.EqualFold(get.Data, msg.Data) {
-	// 	t.Error("Error in func CreateBadTunnelP2PMessage")
-	// }
-}
-
 func TestDisposed(t *testing.T) {
 	nt := new(Network)
 	nt.disposed = true
@@ -132,9 +58,13 @@ func TestDisposed(t *testing.T) {
 
 func TestAddr(t *testing.T) {
 	nt := new(Network)
-	nt.addr, _ = net.ResolveUDPAddr("network", "127.0.0.1")
 	get := nt.Addr()
 	if get != nil {
+		t.Error("Error")
+	}
+	nt.addr, _ = net.ResolveUDPAddr("udp4", "127.0.0.1:24")
+	get2 := nt.Addr()
+	if get2 != nt.addr {
 		t.Error("Error")
 	}
 }
