@@ -98,46 +98,44 @@ func TestValidateMac(t *testing.T) {
 
 func TestValidateInterfaceName(t *testing.T) {
 	ptp := new(PeerToPeer)
-	get1, err := ptp.validateInterfaceName("lo")
-	if get1 != "lo" {
-		t.Error(err)
+	get1 := ptp.validateMac("-")
+	if get1 != nil {
+		t.Error("Error. Invalid MAC")
 	}
-	get2, err2 := ptp.validateInterfaceName("")
-	if get2 != "vptp1" {
-		t.Error(err2)
+	hw, _ := GenerateMAC()
+	var h net.HardwareAddr
+	get2 := ptp.validateMac(hw)
+	if reflect.DeepEqual(get2, h) {
+		t.Error("Error")
 	}
-	get3, err3 := ptp.validateInterfaceName("123456789101112")
-	if get3 != "" {
-		t.Error(err3)
-	}
-}
-
-func TestPrepareIntroductionMessage(t *testing.T) {
-	p := new(PeerToPeer)
-	p.Interface, _ = newTAP("", "127.0.0.1", "01:02:03:04:05:06", "", 1)
-	msg := p.PrepareIntroductionMessage("test-id")
-	if string(msg.Data) != "test-id,01:02:03:04:05:06,127.0.0.1" {
-		t.Errorf("Failed to create introduction message")
+	get := ptp.validateMac("")
+	if reflect.DeepEqual(get, h) {
+		t.Error("Error")
 	}
 }
 
 func TestParseIntroString(t *testing.T) {
-	// TODO: Fix this test
-	// p := new(PeerToPeer)
-	// id, mac, ip := p.ParseIntroString("id,01:02:03:04:05:06,127.0.0.1")
-	// if id != "id" || mac.String() != "01:02:03:04:05:06" || ip.String() != "127.0.0.1" {
-	// 	t.Errorf("Failed to parse intro string")
-	// }
-	// id2, mac2, ip2 := p.ParseIntroString("id,192.168.14.1")
-	// if id2 != "" && mac2 != nil && ip2 != nil {
-	// 	t.Error("Insufficient number of parameters")
-	// }
-	// id3, mac3, ip3 := p.ParseIntroString("id,mac,192.168.14.1")
-	// if id3 != "" && mac3 != nil && ip3 != nil {
-	// 	t.Error("Error in parse MAC")
-	// }
-	// id4, mac4, ip4 := p.ParseIntroString("id,01:02:03:04:05:06,ip")
-	// if id4 != "" && mac4 != nil && ip4 != nil {
-	// 	t.Error("Error in parse ip")
-	// }
+	ptp := new(PeerToPeer)
+	hs := new(PeerHandshake)
+	hs.Endpoint, _ = net.ResolveUDPAddr("udp4", "192.168.1.1:24")
+	get1, err1 := ptp.ParseIntroString("id,ip,mac")
+	if get1 != nil {
+		t.Error(err1)
+	}
+	get2, err2 := ptp.ParseIntroString("1,-,127.0.0.1,192.168.1.1")
+	if get2 != nil {
+		t.Error(err2)
+	}
+	get3, err3 := ptp.ParseIntroString("1,01:02:03:04:05:06,-,192.168.1.1")
+	if get3 != nil {
+		t.Error(err3)
+	}
+	get4, err4 := ptp.ParseIntroString("1,01:02:03:04:05:06,127.0.0.1,-")
+	if get4 != nil {
+		t.Error(err4)
+	}
+	get5, _ := ptp.ParseIntroString("1,01:02:03:04:05:06,127.0.0.1,192.168.1.1:24")
+	if !reflect.DeepEqual(get5.Endpoint.IP, hs.Endpoint.IP) && get5.Endpoint.Port != hs.Endpoint.Port && get5.Endpoint.Zone != hs.Endpoint.Zone {
+		t.Error("Error")
+	}
 }
