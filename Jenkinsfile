@@ -18,7 +18,7 @@ switch (env.BRANCH_NAME) {
         break;
 	case ~/sysnet/:
 		cdnHost = "devcdn.subut.ai";
-		dhtHost = "18.195.2.161:6881";
+		dhtHost = "18.196.2.161:6881";
         gitcmd = "git checkout -B sysnet && git pull origin sysnet "
         break;
 	default: 

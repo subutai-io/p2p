@@ -57,6 +57,8 @@ bin/$(APP)_osx: $(SOURCES) service_posix.go
 
 clean:
 	-rm -f bin/$(APP)
+	-rm -f bin/$(APP).exe
+	-rm -f bin/$(APP)_osx
 	-rm -f $(APP)
 	-rm -f $(APP)_osx
 	-rm -f $(APP).exe

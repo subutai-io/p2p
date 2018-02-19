@@ -15,6 +15,7 @@ const (
 	proxyDisconnected proxyStatus = 2
 )
 
+// ProxyManager manages TURN servers
 type ProxyManager struct {
 	proxies map[string]*proxyServer
 	lock    sync.RWMutex
@@ -48,6 +49,7 @@ func (p *ProxyManager) get() map[string]*proxyServer {
 	return result
 }
 
+// GetList will return a slice of proxyServers
 func (p *ProxyManager) GetList() []*proxyServer {
 	list := []*proxyServer{}
 	proxies := p.get()

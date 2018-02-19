@@ -208,30 +208,3 @@ func (p *Daemon) Execute(args *Args, resp *Response) error {
 	resp.Output = ""
 	return nil
 }
-
-// StringifyState extracts human-readable word that represents a peer status
-func StringifyState(state ptp.PeerState) string {
-	switch state {
-	case ptp.PeerStateInit:
-		return "Initializing"
-	case ptp.PeerStateRequestedIP:
-		return "Waiting for IP"
-	case ptp.PeerStateRequestingProxy:
-		return "Requesting proxies"
-	case ptp.PeerStateWaitingForProxy:
-		return "Waiting for proxies"
-	case ptp.PeerStateWaitingToConnect:
-		return "Waiting for connection"
-	case ptp.PeerStateConnecting:
-		return "Initializing connection"
-	case ptp.PeerStateRouting:
-		return "Routing"
-	case ptp.PeerStateConnected:
-		return "Connected"
-	case ptp.PeerStateDisconnect:
-		return "Disconnected"
-	case ptp.PeerStateStop:
-		return "Stopped"
-	}
-	return "Unknown"
-}

@@ -56,3 +56,30 @@ func isPrivateIP(ip net.IP) (bool, error) {
 	isPrivate := private24.Contains(ip) || private20.Contains(ip) || private16.Contains(ip)
 	return isPrivate, nil
 }
+
+// StringifyState extracts human-readable word that represents a peer status
+func StringifyState(state PeerState) string {
+	switch state {
+	case PeerStateInit:
+		return "Initializing"
+	case PeerStateRequestedIP:
+		return "Waiting for IP"
+	case PeerStateRequestingProxy:
+		return "Requesting proxies"
+	case PeerStateWaitingForProxy:
+		return "Waiting for proxies"
+	case PeerStateWaitingToConnect:
+		return "Waiting for connection"
+	case PeerStateConnecting:
+		return "Initializing connection"
+	case PeerStateRouting:
+		return "Routing"
+	case PeerStateConnected:
+		return "Connected"
+	case PeerStateDisconnect:
+		return "Disconnected"
+	case PeerStateStop:
+		return "Stopped"
+	}
+	return "Unknown"
+}

@@ -109,7 +109,7 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 				}
 			}
 		}
-		Log(Debug, "Received ping from unknown endppint: %s", srcAddr.String())
+		Log(Debug, "Received ping from unknown endpoint: %s", srcAddr.String())
 	} else if query == "res" {
 		endpoint := msg.Data[3:]
 		for _, peer := range p.Peers.Get() {
@@ -118,7 +118,6 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 			}
 			for i, ep := range peer.Endpoints {
 				if ep.Addr.String() == string(endpoint) {
-					Log(Debug, "BUMP")
 					peer.Endpoints[i].LastContact = time.Now()
 					return
 				}
@@ -162,7 +161,7 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	//peer.Endpoints = append(peer.Endpoints, PeerEndpoint{Addr: hs.Endpoint, LastContact: time.Now()})
 	// peer.SetState(PeerStateConnected, p)
 	p.Peers.Update(hs.ID, peer)
-	Log(Info, "Connection with peer %s has been established", hs.ID)
+	Log(Info, "Connection with peer %s has been established over %s", hs.ID, hs.Endpoint.String())
 }
 
 // HandleIntroRequestMessage is a handshake request from another peer
@@ -172,46 +171,30 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 // replied
 func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	id := string(msg.Data[0:36])
-	// if len(id) != 36 {
-	// 	Log(Debug, "Introduction request with malformed ID [%s] from %s", id, srcAddr.String())
-	// 	return
-	// }
 	peer := p.Peers.GetPeer(id)
 	if peer == nil {
 		Log(Debug, "Introduction request came from unknown peer: %s [%s]", id, srcAddr.String())
 		//p.Dht.sendFind()
 		return
 	}
-	// proxy := false
-	// if msg.Header.ProxyID > 0 {
-	// 	proxy = true
-	// 	Log(Debug, "Received introduction request via proxy")
-	// 	if len(peer.Proxies) == 0 {
-	// 		Log(Debug, "Peer %s has no proxies attached", id)
-	// 		p.Dht.sendRequestProxy(id)
-	// 		return
-	// 	}
-	// } else {
-	// 	Log(Debug, "Received introduction request directly")
-	// }
-
 	response := p.PrepareIntroductionMessage(p.Dht.ID, string(msg.Data[36:]))
-	// if proxy {
-	// 	response.Header.ProxyID = 1
-	// 	for _, peerProxy := range peer.Proxies {
-	// 		Log(Debug, "Sending handshake response over proxy %s", peerProxy.String())
-	// 		_, err := p.UDPSocket.SendMessage(response, peerProxy)
-	// 		if err != nil {
-	// 			Log(Error, "Failed to respond to introduction request over proxy: %v", err)
-	// 		}
-	// 	}
-	// 	return
-	// }
 	eps := []*net.UDPAddr{}
 	eps = append(eps, peer.KnownIPs...)
 	eps = append(eps, peer.Proxies...)
 	Log(Debug, "Sending handshake response")
+
+	srcFound := false
 	for _, ep := range eps {
+		if ep.String() == srcAddr.String() {
+			srcFound = true
+		}
+	}
+	if !srcFound {
+		eps = append(eps, srcAddr)
+	}
+
+	for _, ep := range eps {
+		time.Sleep(time.Millisecond * 10)
 		_, err := p.UDPSocket.SendMessage(response, ep)
 		if err != nil {
 			Log(Error, "Failed to respond to introduction request: %v", err)

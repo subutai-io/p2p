@@ -85,6 +85,7 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 		return nil
 	}
 
+	Log(Debug, "Received `find`: %+v", packet)
 	peer := p.Peers.GetPeer(packet.Data)
 	if peer == nil {
 		peer := new(NetworkPeer)
@@ -249,7 +250,7 @@ func (p *PeerToPeer) packetState(packet *DHTPacket) error {
 	}
 	numericState, err := strconv.Atoi(packet.Extra)
 	if err != nil {
-		Log(Error, "Failed to parse state: %s", err)
+		return fmt.Errorf("Failed to parse state: %s", err)
 	}
 	// state := RemotePeerState{}
 	// state.ID = packet.Data
@@ -260,6 +261,7 @@ func (p *PeerToPeer) packetState(packet *DHTPacket) error {
 	if peer != nil {
 		peer.RemoteState = PeerState(numericState)
 		p.Peers.Update(packet.Data, peer)
+		Log(Debug, "Peer %s reported state '%s'", peer.ID, StringifyState(peer.RemoteState))
 	} else {
 		Log(Warning, "Received state of unknown pecer. Updating peers")
 		p.Dht.sendFind()
