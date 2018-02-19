@@ -625,7 +625,8 @@ func (p *PeerToPeer) checkProxies() {
 			list = append(list, proxy.Endpoint)
 		}
 	}
-	if len(list) > 0 {
+	if p.ProxyManager.hasChanges && len(list) > 0 {
+		p.ProxyManager.hasChanges = false
 		p.Dht.sendReportProxy(list)
 	}
 
