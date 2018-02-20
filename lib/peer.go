@@ -213,6 +213,15 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 				if alreadyConnected {
 					continue
 				}
+				skipLocal := false
+				for _, localIP := range ActiveInterfaces {
+					if localIP.Equal(ep.IP) {
+						skipLocal = true
+					}
+				}
+				if skipLocal {
+					continue
+				}
 				payload := []byte(ptpc.Dht.ID + ep.String())
 				msg, err := ptpc.CreateMessage(MsgTypeIntroReq, payload, 0, true)
 				if err != nil {
@@ -330,6 +339,10 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 		np.SetState(PeerStateConnected, ptpc)
 		np.ConnectionAttempts = 0
 	} else {
+		if np.RemoteState == PeerStateWaitingToConnect {
+			np.SetState(PeerStateWaitingToConnect, ptpc)
+			return nil
+		}
 		np.ConnectionAttempts++
 		np.LastError = "No more endpoints"
 		if time.Since(np.LastFind) > time.Duration(time.Second*90) {
@@ -350,7 +363,6 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 			np.SetState(PeerStateRequestingProxy, ptpc)
 			return nil
 		}
-		//np.SetState(PeerStateDisconnect, ptpc)
 	}
 	return nil
 }

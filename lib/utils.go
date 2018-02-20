@@ -80,6 +80,8 @@ func StringifyState(state PeerState) string {
 		return "Disconnected"
 	case PeerStateStop:
 		return "Stopped"
+	case PeerStateCooldown:
+		return "Cooldown"
 	}
 	return "Unknown"
 }

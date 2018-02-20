@@ -87,6 +87,15 @@ func (dht *DHTClient) Connect(ipList []net.IP, proxyList []*proxyServer) error {
 	ips := []string{}
 	proxies := []string{}
 	for _, ip := range ipList {
+		skip := false
+		for _, a := range ActiveInterfaces {
+			if a.Equal(ip) {
+				skip = true
+			}
+		}
+		if skip {
+			continue
+		}
 		ips = append(ips, ip.String())
 	}
 	for _, proxy := range proxyList {
