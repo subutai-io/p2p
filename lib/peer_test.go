@@ -5,33 +5,27 @@ import (
 )
 
 func TestSetState(t *testing.T) {
-	// TODO: Fix this test
-	// np := new(NetworkPeer)
-	// ptpc := new(PeerToPeer)
-
-	// states := [...]int{
-	// 	int(PeerStateInit),
-	// 	int(PeerStateRequestedIP),
-	// 	int(PeerStateConnecting),
-	// 	int(PeerStateConnectingDirectlyWait),
-	// 	int(PeerStateConnectingDirectly),
-	// 	int(PeerStateConnectingInternetWait),
-	// 	int(PeerStateConnectingInternet),
-	// 	int(PeerStateConnected),
-	// 	int(PeerStateHandshaking),
-	// 	int(PeerStateHandshakingFailed),
-	// 	int(PeerStateWaitingForwarder),
-	// 	int(PeerStateWaitingForwarderFailed),
-	// 	int(PeerStateHandshakingForwarder),
-	// 	int(PeerStateDisconnect),
-	// 	int(PeerStateStop)}
-
-	// for i := 0; i < len(states); i++ {
-	// 	np.SetState(PeerState(states[i]), ptpc)
-	// 	if np.State != PeerState(states[i]) {
-	// 		t.Errorf("wait: %d; get: %d", states[i], np.State)
-	// 	}
-	// }
+	np := new(NetworkPeer)
+	ptpc := new(PeerToPeer)
+	states := [...]int{
+		int(PeerStateInit),
+		int(PeerStateRequestedIP),
+		int(PeerStateRequestingProxy),
+		int(PeerStateWaitingForProxy),
+		int(PeerStateWaitingToConnect),
+		int(PeerStateConnecting),
+		int(PeerStateRouting),
+		int(PeerStateConnected),
+		int(PeerStateDisconnect),
+		int(PeerStateStop),
+		int(PeerStateCooldown),
+	}
+	for i := 0; i < len(states); i++ {
+		np.SetState(PeerState(states[i]), ptpc)
+		if np.State != PeerState(states[i]) {
+			t.Errorf("wait: %d; get: %d", states[i], np.State)
+		}
+	}
 }
 
 func TestRun(t *testing.T) {
@@ -57,16 +51,6 @@ func TestStateInit(t *testing.T) {
 	if err != nil {
 		t.Error("Error in initializing peer")
 	}
-}
-
-func TestStateConnecting(t *testing.T) {
-	// TODO: Fix this test
-	// np := new(NetworkPeer)
-	// ptp := new(PeerToPeer)
-	// np.stateConnecting(ptp)
-	// if np.State != PeerStateConnectingDirectlyWait {
-	// 	t.Errorf("Error. Wait %v, get %v", PeerStateConnectingDirectlyWait, np.State)
-	// }
 }
 
 func TestStateConnected(t *testing.T) {
@@ -107,26 +91,4 @@ func TestStateStop(t *testing.T) {
 	if err != nil && np.State == PeerStateStop {
 		t.Error("Error")
 	}
-}
-
-func TestSetPeerAddr(t *testing.T) {
-	// TODO: Fix this test
-	// np := new(NetworkPeer)
-
-	// ip := new(net.UDPAddr)
-	// ip.IP = []byte("10.156.119.247")
-	// ip.Port = 45109
-
-	// np.KnownIPs = append(np.KnownIPs, ip)
-	// get := np.SetPeerAddr()
-	// if !get {
-	// 	t.Errorf("Error. Wait: %t, get: %t", true, get)
-	// }
-
-	// np2 := new(NetworkPeer)
-	// wait2 := false
-	// get2 := np2.SetPeerAddr()
-	// if get2 != wait2 {
-	// 	t.Errorf("Error: Wait %v, get %v", wait2, get2)
-	// }
 }
