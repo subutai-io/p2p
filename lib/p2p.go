@@ -43,6 +43,8 @@ type PeerHandshake struct {
 	Endpoint     *net.UDPAddr
 }
 
+var ActiveInterfaces []net.IP
+
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
 func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	var err error
@@ -87,6 +89,7 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	if err != nil {
 		return err
 	}
+	ActiveInterfaces = append(ActiveInterfaces, p.Interface.GetIP())
 	Log(Debug, "Interface has been configured")
 	return err
 }
@@ -638,7 +641,13 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 }
 
 // StopInstance stops current instance
-func (p *PeerToPeer) StopInstance() {
+func (p *PeerToPeer) Close() error {
+	for i, ip := range ActiveInterfaces {
+		if ip.Equal(p.Interface.GetIP()) {
+			ActiveInterfaces = append(ActiveInterfaces[:i], ActiveInterfaces[i+1:]...)
+			break
+		}
+	}
 	hash := p.Dht.NetworkHash
 	Log(Info, "Stopping instance %s", hash)
 	peers := p.Peers.Get()
@@ -668,4 +677,5 @@ func (p *PeerToPeer) StopInstance() {
 	}
 	p.ReadyToStop = true
 	Log(Info, "Instance %s stopped", hash)
+	return nil
 }

@@ -213,6 +213,15 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 				if alreadyConnected {
 					continue
 				}
+				skipLocal := false
+				for _, localIP := range ActiveInterfaces {
+					if localIP.Equal(ep.IP) {
+						skipLocal = true
+					}
+				}
+				if skipLocal {
+					continue
+				}
 				payload := []byte(ptpc.Dht.ID + ep.String())
 				msg, err := ptpc.CreateMessage(MsgTypeIntroReq, payload, 0, true)
 				if err != nil {

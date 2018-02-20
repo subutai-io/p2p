@@ -129,7 +129,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		err := bootstrap.registerInstance(newInst.ID, newInst)
 		if err != nil {
 			ptp.Log(ptp.Error, "Failed to register instance with bootstrap nodes")
-			newInst.PTP.StopInstance()
+			newInst.PTP.Close()
 			resp.Output = resp.Output + "Failed to register instance"
 			resp.ExitCode = 2001
 			return errors.New("Failed to register instance")
@@ -140,7 +140,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		newInst.PTP.FindNetworkAddresses()
 		err = newInst.PTP.Dht.Connect(newInst.PTP.LocalIPs, newInst.PTP.ProxyManager.GetList())
 		if err != nil {
-			newInst.PTP.StopInstance()
+			newInst.PTP.Close()
 			resp.Output = resp.Output + err.Error()
 			resp.ExitCode = 2002
 			return err
@@ -149,7 +149,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		err = newInst.PTP.PrepareInterfaces(args.IP, args.Dev)
 		if err != nil {
 			ptp.Log(ptp.Error, "Failed to configure network interface: %s", err)
-			newInst.PTP.StopInstance()
+			newInst.PTP.Close()
 			resp.Output = resp.Output + "Failed to configure network: " + err.Error()
 			resp.ExitCode = 2002
 			return errors.New("Failed to configure network interface")
