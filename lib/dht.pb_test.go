@@ -333,3 +333,18 @@ func TestGetPayload(t *testing.T) {
 		t.Errorf("Error. Wait %v, get %v", nil, get)
 	}
 }
+
+func TestGetVersion(t *testing.T) {
+	dht := new(DHTPacket)
+	var i int32
+	for i = 0; i < 10; i++ {
+		dht.Version = i
+		if dht.GetVersion() != i {
+			t.Error("Error. Wrong value of version")
+		}
+	}
+	dht = nil
+	if dht.GetVersion() != 0 {
+		t.Error("Error")
+	}
+}
