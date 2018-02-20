@@ -49,11 +49,41 @@ import "testing"
 func TestInit(t *testing.T) {
 	dht := new(DHTClient)
 	err := dht.Init("hash")
-	if err != nil {
-		t.Errorf("Error in TCPInit")
+	if err == nil && dht.NetworkHash != "hash" {
+		t.Error(err)
 	}
-	err1 := dht.Init("hash")
-	if err1 != nil {
-		t.Errorf("Error. Wait %v, get %v", "dht.cdn.subut.ai:6881", dht.Routers)
+}
+
+func TestRead(t *testing.T) {
+	dht := new(DHTClient)
+	pct := new(DHTPacket)
+	packetChan := make(chan *DHTPacket, 1)
+	packetChan <- pct
+	dht.IncomingData = packetChan
+	get, _ := dht.read()
+	if get != pct {
+		t.Error("Error")
+	}
+	pct2 := new(DHTPacket)
+	pct2 = nil
+	packetChan <- pct2
+	dht.IncomingData = packetChan
+	get2, err := dht.read()
+	if get2 != nil {
+		t.Error(err)
+	}
+}
+
+func TestWaitID(t *testing.T) {
+	dht := new(DHTClient)
+	dht.ID = "12345"
+	err := dht.WaitID()
+	if err == nil {
+		t.Error(err)
+	}
+	dht.ID = "123456789101112131415161718192212223"
+	err2 := dht.WaitID()
+	if err2 != nil {
+		t.Error(err2)
 	}
 }
