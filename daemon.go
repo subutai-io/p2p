@@ -40,6 +40,17 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 	StartProfiling(profiling)
 	go ptp.InitPlatform()
 	ptp.InitErrors()
+	if DefaultLog == "TRACE" {
+		ptp.SetMinLogLevel(ptp.Trace)
+	} else if DefaultLog == "DEBUG" {
+		ptp.SetMinLogLevel(ptp.Debug)
+	} else if DefaultLog == "INFO" {
+		ptp.SetMinLogLevel(ptp.Info)
+	} else if DefaultLog == "WARNING" {
+		ptp.SetMinLogLevel(ptp.Warning)
+	} else if DefaultLog == "ERROR" {
+		ptp.SetMinLogLevel(ptp.Error)
+	}
 
 	if !ptp.CheckPermissions() {
 		os.Exit(1)

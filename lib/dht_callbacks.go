@@ -84,6 +84,10 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 		Log(Warning, "Received empty peer list")
 		return nil
 	}
+	if packet.Data == p.Dht.ID {
+		Log(Debug, "Skipping self")
+		return nil
+	}
 
 	Log(Debug, "Received `find`: %+v", packet)
 	peer := p.Peers.GetPeer(packet.Data)
@@ -288,8 +292,9 @@ func (p *PeerToPeer) packetStop(packet *DHTPacket) error {
 
 func (p *PeerToPeer) packetUnknown(packet *DHTPacket) error {
 	// func (dht *DHTClient) packetUnknown(packet *DHTPacket) error {
-	Log(Warning, "Bootstap node refuses our identity. Shutting down")
-	return p.Dht.Close()
+	Log(Warning, "Bootstap node refuses our identity. Reconnecting")
+	p.FindNetworkAddresses()
+	return p.Dht.Connect(p.LocalIPs, p.ProxyManager.GetList())
 }
 
 func (p *PeerToPeer) packetUnsupported(packet *DHTPacket) error {

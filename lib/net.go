@@ -78,7 +78,7 @@ func P2PMessageHeaderFromBytes(bytes []byte) (*P2PMessageHeader, error) {
 // Serialize constructs a P2P message
 func (v *P2PMessage) Serialize() []byte {
 	v.Header.SerializedLen = uint16(len(v.Data))
-	Log(Trace, "--- Serialize P2PMessage header.SerializedLen : %d", v.Header.SerializedLen)
+	// Log(Trace, "--- Serialize P2PMessage header.SerializedLen : %d", v.Header.SerializedLen)
 	resBuf := v.Header.Serialize()
 	resBuf = append(resBuf, v.Data...)
 	return resBuf
@@ -95,14 +95,14 @@ func P2PMessageFromBytes(bytes []byte) (*P2PMessage, error) {
 	if res.Header == nil {
 		return nil, nil
 	}
-	Log(Trace, "--- P2PMessageHeaderFromBytes Length : %d, SerLen : %d", res.Header.Length, res.Header.SerializedLen)
+	// Log(Trace, "--- P2PMessageHeaderFromBytes Length : %d, SerLen : %d", res.Header.Length, res.Header.SerializedLen)
 	if res.Header.Magic != MagicCookie {
 		return nil, errors.New("magic cookie not presented")
 	}
 	res.Data = make([]byte, res.Header.SerializedLen)
-	Log(Trace, "BYTES : %s", bytes)
+	// Log(Trace, "BYTES : %s", bytes)
 	copy(res.Data[:], bytes[HeaderSize:])
-	Log(Trace, "res.Data : %s", res.Data)
+	// Log(Trace, "res.Data : %s", res.Data)
 	return res, err
 }
 

@@ -280,7 +280,7 @@ func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
 			np.SetState(PeerStateDisconnect, ptpc)
 			return fmt.Errorf("Wait for connection failed: Peer doesn't responded in a timely manner")
 		}
-		if time.Since(recheck) > recheckTimeout {
+		if time.Since(recheck) > recheckTimeout && int(np.RemoteState) != 0 {
 			Log(Debug, "Peer %s is in %s state", np.ID, StringifyState(np.RemoteState))
 			recheck = time.Now()
 			np.reportState(ptpc)
