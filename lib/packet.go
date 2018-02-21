@@ -184,7 +184,7 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
 	}
 	id, err := p.Peers.GetID(packet.TargetIP.String())
 	if err != nil {
-		Log(Debug, "Unknown IP requested")
+		Log(Trace, "Unknown IP requested: %s", packet.TargetIP.String())
 		return
 	}
 	peer := p.Peers.GetPeer(id)
