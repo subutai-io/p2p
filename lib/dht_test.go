@@ -74,6 +74,7 @@ func TestRead(t *testing.T) {
 	}
 }
 
+//run 10 sec
 func TestWaitID(t *testing.T) {
 	dht := new(DHTClient)
 	dht.ID = "12345"
