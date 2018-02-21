@@ -14,7 +14,6 @@ func TestSetState(t *testing.T) {
 		int(PeerStateWaitingForProxy),
 		int(PeerStateWaitingToConnect),
 		int(PeerStateConnecting),
-		int(PeerStateRouting),
 		int(PeerStateConnected),
 		int(PeerStateDisconnect),
 		int(PeerStateStop),
