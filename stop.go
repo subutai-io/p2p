@@ -69,7 +69,7 @@ func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
 		} else {
 			ip := inst.PTP.Interface.GetIP().String()
 			resp.Output = "Shutting down " + args.Hash
-			inst.PTP.StopInstance()
+			inst.PTP.Close()
 			p.Instances.Delete(args.Hash)
 			p.Instances.SaveInstances(p.SaveFile)
 			k := 0

@@ -72,14 +72,14 @@ func StringifyState(state PeerState) string {
 		return "Waiting for connection"
 	case PeerStateConnecting:
 		return "Initializing connection"
-	case PeerStateRouting:
-		return "Routing"
 	case PeerStateConnected:
 		return "Connected"
 	case PeerStateDisconnect:
 		return "Disconnected"
 	case PeerStateStop:
 		return "Stopped"
+	case PeerStateCooldown:
+		return "Cooldown"
 	}
 	return "Unknown"
 }

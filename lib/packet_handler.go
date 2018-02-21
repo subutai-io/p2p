@@ -173,7 +173,7 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 	id := string(msg.Data[0:36])
 	peer := p.Peers.GetPeer(id)
 	if peer == nil {
-		Log(Debug, "Introduction request came from unknown peer: %s [%s]", id, srcAddr.String())
+		Log(Trace, "Introduction request came from unknown peer: %s -> %s [%s]", id, msg.Data[36:], srcAddr.String())
 		//p.Dht.sendFind()
 		return
 	}
