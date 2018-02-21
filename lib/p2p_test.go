@@ -63,7 +63,7 @@ func TestRetrieveFirstDHTRouters(t *testing.T) {
 	ptp := new(PeerToPeer)
 	wait, err := net.ResolveUDPAddr("udp4", "192.168.11.5:6882")
 	if err != nil {
-		t.Error("error")
+		t.Error(err)
 	}
 	ptp.Routers = ""
 	get := ptp.retrieveFirstDHTRouter()
@@ -98,19 +98,14 @@ func TestValidateMac(t *testing.T) {
 
 func TestValidateInterfaceName(t *testing.T) {
 	ptp := new(PeerToPeer)
-	get1 := ptp.validateMac("-")
-	if get1 != nil {
-		t.Error("Error. Invalid MAC")
-	}
-	hw, _ := GenerateMAC()
-	var h net.HardwareAddr
-	get2 := ptp.validateMac(hw)
-	if reflect.DeepEqual(get2, h) {
+	get, _ := ptp.validateInterfaceName("")
+	if get != "vptp1" {
 		t.Error("Error")
 	}
-	get := ptp.validateMac("")
-	if reflect.DeepEqual(get, h) {
-		t.Error("Error")
+	sym135 := "Peersmakeaportionoftheirresourcessuchasprocessingpowerdiskstorageornetwork bandwidthdirectlyavailableto othernetworkparticipantswithout"
+	get2, err := ptp.validateInterfaceName(sym135)
+	if get2 != "" {
+		t.Error(err)
 	}
 }
 
