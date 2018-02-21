@@ -1,6 +1,7 @@
 package ptp
 
 import (
+	"net"
 	"reflect"
 	"testing"
 )
@@ -74,5 +75,24 @@ func TestGetPeer(t *testing.T) {
 	get2 := l.GetPeer("-1")
 	if get2 != nil {
 		t.Error("Error")
+	}
+}
+
+func TestGetEndpointAndProxy(t *testing.T) {
+	l := new(PeerList)
+	get, i, err := l.GetEndpointAndProxy("01:02:03:04:05:06")
+	if get != nil && i != 0 {
+		t.Error(err)
+	}
+	l.tableMacID = make(map[string]string)
+	l.tableMacID["10:11:12:13:14:15"] = "888"
+	l.peers = make(map[string]*NetworkPeer)
+	np := new(NetworkPeer)
+	addr, _ := net.ResolveUDPAddr("udp4", "192.168.44.1:24")
+	np.Endpoint = addr
+	l.peers["888"] = np
+	get2, i2, err2 := l.GetEndpointAndProxy("10:11:12:13:14:15")
+	if get2 != addr && i2 != 0 {
+		t.Error(err2)
 	}
 }
