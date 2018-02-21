@@ -95,16 +95,32 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 			if err != nil {
 				continue
 			}
-			peer.KnownIPs = append(peer.KnownIPs, addr)
-			Log(Debug, "Adding endpoint: %s", addr.String())
+			isNew := true
+			for _, eip := range peer.KnownIPs {
+				if eip.String() == addr.String() {
+					isNew = false
+				}
+			}
+			if isNew {
+				peer.KnownIPs = append(peer.KnownIPs, addr)
+				Log(Debug, "Adding endpoint: %s", addr.String())
+			}
 		}
 		for _, proxy := range packet.Proxies {
 			addr, err := net.ResolveUDPAddr("udp4", proxy)
 			if err != nil {
 				continue
 			}
-			peer.Proxies = append(peer.Proxies, addr)
-			Log(Debug, "Adding proxy: %s", addr.String())
+			isNew := true
+			for _, eproxy := range peer.Proxies {
+				if eproxy.String() == addr.String() {
+					isNew = false
+				}
+			}
+			if isNew {
+				peer.Proxies = append(peer.Proxies, addr)
+				Log(Debug, "Adding proxy: %s", addr.String())
+			}
 		}
 		peer.SetState(PeerStateInit, p)
 		peer.LastFind = time.Now()
@@ -112,8 +128,10 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 		p.Peers.RunPeer(peer.ID, p)
 	} else {
 		peer.LastFind = time.Now()
+
 		ips := []*net.UDPAddr{}
 		proxies := []*net.UDPAddr{}
+
 		for _, ip := range packet.Arguments {
 			addr, err := net.ResolveUDPAddr("udp4", ip)
 			if err != nil {
@@ -260,7 +278,7 @@ func (p *PeerToPeer) packetState(packet *DHTPacket) error {
 		p.Peers.Update(packet.Data, peer)
 		Log(Debug, "Peer %s reported state '%s'", peer.ID, StringifyState(peer.RemoteState))
 	} else {
-		Log(Warning, "Received state of unknown pecer. Updating peers")
+		Log(Warning, "Received state of unknown peer. Updating peers")
 		p.Dht.sendFind()
 	}
 	return nil

@@ -174,7 +174,7 @@ func (dht *DHTConnection) unregisterInstance(hash string) error {
 func (dht *DHTRouter) run() {
 	dht.running = false
 	dht.handshaked = false
-	data := make([]byte, 4096)
+	data := make([]byte, 4096*4)
 	for !dht.stop {
 		for !dht.running {
 			dht.connect()
@@ -193,8 +193,10 @@ func (dht *DHTRouter) run() {
 			dht.handshaked = false
 			continue
 		}
-		dht.rx += uint64(n)
-		go dht.routeData(data[:n])
+		go func() {
+			dht.rx += uint64(n)
+			dht.routeData(data[:n])
+		}()
 	}
 }
 
@@ -202,9 +204,10 @@ func (dht *DHTRouter) routeData(data []byte) {
 	packet := &ptp.DHTPacket{}
 	err := proto.Unmarshal(data, packet)
 	if err != nil {
-		ptp.Log(ptp.Warning, "Corrupted data from DHT: %s", err)
+		ptp.Log(ptp.Warning, "Corrupted data from DHT: %s [%d]", err, len(data))
 		return
 	}
+	ptp.Log(ptp.Trace, "Received DHT packet: %+v", packet)
 	if packet.Type == ptp.DHTPacketType_Ping && dht.handshaked == false {
 		supported := false
 		for _, v := range ptp.SupportedVersion {
@@ -226,7 +229,6 @@ func (dht *DHTRouter) routeData(data []byte) {
 	if !dht.handshaked {
 		return
 	}
-	ptp.Log(ptp.Trace, "Received DHT packet: %+v", packet)
 	dht.data <- packet
 }
 

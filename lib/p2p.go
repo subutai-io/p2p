@@ -286,15 +286,17 @@ func (p *PeerToPeer) ReadDHT() {
 		if err != nil {
 			break
 		}
-		cb, e := p.Dht.TCPCallbacks[packet.Type]
-		if !e {
-			Log(Error, "Unsupported packet from DHT")
-			continue
-		}
-		err = cb(packet)
-		if err != nil {
-			Log(Error, "DHT: %s", err)
-		}
+		go func() {
+			cb, e := p.Dht.TCPCallbacks[packet.Type]
+			if !e {
+				Log(Error, "Unsupported packet from DHT")
+				return
+			}
+			err = cb(packet)
+			if err != nil {
+				Log(Error, "DHT: %s", err)
+			}
+		}()
 	}
 }
 
@@ -631,7 +633,7 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 	Log(Trace, "Requested Send to %s", dst.String())
 	endpoint, proxy, err := p.Peers.GetEndpointAndProxy(dst.String())
 	if err == nil && endpoint != nil {
-		Log(Debug, "Sending to %s via proxy id %d", dst.String(), proxy)
+		Log(Trace, "Sending to %s via proxy id %d", dst.String(), proxy)
 		//msg.Header.ProxyID = uint16(proxy)
 		size, err := p.UDPSocket.SendMessage(msg, endpoint)
 		return size, err

@@ -51,9 +51,7 @@ func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
 // SetState modify local state of peer
 func (np *NetworkPeer) SetState(state PeerState, ptpc *PeerToPeer) {
 	np.State = state
-	if state != PeerStateRouting && state != PeerStateConnected {
-		np.reportState(ptpc)
-	}
+	np.reportState(ptpc)
 }
 
 // NetworkPeerState represents a state for remote peers
@@ -77,7 +75,7 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 	np.handlers[PeerStateRequestingProxy] = np.stateRequestingProxy
 	np.handlers[PeerStateWaitingForProxy] = np.stateWaitingForProxy
 	np.handlers[PeerStateWaitingToConnect] = np.stateWaitingToConnect
-	np.handlers[PeerStateRouting] = np.stateRouting
+	// np.handlers[PeerStateRouting] = np.stateRouting
 	np.handlers[PeerStateCooldown] = np.stateCooldown
 
 	for {
@@ -190,14 +188,18 @@ func (np *NetworkPeer) RequestForwarder(ptpc *PeerToPeer) {
 // Run hope punching in a separate goroutine and switch to
 // Routing/Connected mode
 func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
+	if np.RemoteState != PeerStateConnecting {
+		return nil
+	}
 	Log(Debug, "Connecting to %s", np.ID)
-	eps := []*net.UDPAddr{}
-	eps = append(eps, np.Proxies...)
-	eps = append(eps, np.KnownIPs...)
+
 	go func() {
 		if np.punchingInProgress {
 			return
 		}
+		eps := []*net.UDPAddr{}
+		eps = append(eps, np.Proxies...)
+		eps = append(eps, np.KnownIPs...)
 		Log(Debug, "Hole punching %s", np.ID)
 
 		np.punchingInProgress = true
@@ -240,7 +242,7 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 		}
 		np.punchingInProgress = false
 	}()
-	np.SetState(PeerStateRouting, ptpc)
+	np.SetState(PeerStateConnected, ptpc)
 	return nil
 }
 
@@ -260,17 +262,17 @@ func (np *NetworkPeer) stateWaitingForProxy(ptpc *PeerToPeer) error {
 }
 
 func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
-	Log(Debug, "Waiting for other peer to join connection state")
+	Log(Debug, "Waiting for peer [%s] to join connection state", np.ID)
 	started := time.Now()
 	timeout := time.Duration(60000 * time.Millisecond)
 	recheck := time.Now()
 	recheckTimeout := time.Duration(5000 * time.Millisecond)
 	for {
-		if np.State != PeerStateWaitingToConnect {
-			return nil
-		}
+		// if np.State != PeerStateWaitingToConnect {
+		// 	return nil
+		// }
 		if np.RemoteState == PeerStateWaitingToConnect || np.RemoteState == PeerStateConnecting {
-			Log(Debug, "Peer %s joined connection state", np.ID)
+			Log(Debug, "Peer [%s] have joined required state: %s", np.ID, StringifyState(np.RemoteState))
 			np.SetState(PeerStateConnecting, ptpc)
 			break
 		}
@@ -289,7 +291,7 @@ func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
 	return nil
 }
 
-func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
+func (np *NetworkPeer) Route(ptpc *PeerToPeer) error {
 	for len(np.Endpoints) == 0 && np.punchingInProgress {
 		time.Sleep(time.Millisecond * 100)
 	}
@@ -309,8 +311,16 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 				break
 			}
 		}
+		isNew := true
 		if isProxy {
-			proxies = append(proxies, ep)
+			for _, sep := range proxies {
+				if sep.Addr.String() == ep.Addr.String() {
+					isNew = false
+				}
+			}
+			if isNew {
+				proxies = append(proxies, ep)
+			}
 			continue
 		}
 		// Check if it's LAN
@@ -319,11 +329,25 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 			continue
 		}
 		if rc {
-			locals = append(locals, ep)
+			for _, sep := range locals {
+				if sep.Addr.String() == ep.Addr.String() {
+					isNew = false
+				}
+			}
+			if isNew {
+				locals = append(locals, ep)
+			}
 			continue
 		}
 		// Add as Internet Endpoint
-		internet = append(internet, ep)
+		for _, sep := range internet {
+			if sep.Addr.String() == ep.Addr.String() {
+				isNew = false
+			}
+		}
+		if isNew {
+			internet = append(internet, ep)
+		}
 	}
 	np.EndpointsLock.RUnlock()
 
@@ -336,7 +360,6 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 
 	if len(np.Endpoints) > 0 {
 		np.Endpoint = np.Endpoints[0].Addr
-		np.SetState(PeerStateConnected, ptpc)
 		np.ConnectionAttempts = 0
 	} else {
 		if np.RemoteState == PeerStateWaitingToConnect {
@@ -369,6 +392,8 @@ func (np *NetworkPeer) stateRouting(ptpc *PeerToPeer) error {
 
 // stateConnected is executed when connection was established and peer is operating normally
 func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
+
+	np.Route(ptpc)
 
 	if np.RemoteState == PeerStateDisconnect {
 		Log(Debug, "Peer %s disconnecting", np.ID)
@@ -411,7 +436,6 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 		np.EndpointsLock.RUnlock()
 	}
 
-	np.SetState(PeerStateRouting, ptpc)
 	return nil
 }
 
@@ -422,7 +446,7 @@ func (np *NetworkPeer) stateCooldown(ptpc *PeerToPeer) error {
 		time.Sleep(time.Millisecond * 100)
 	}
 	np.ConnectionAttempts++
-	np.SetState(PeerStateRouting, ptpc)
+	np.SetState(PeerStateConnecting, ptpc)
 	return nil
 }
 
