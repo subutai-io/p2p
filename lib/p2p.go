@@ -168,6 +168,7 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 		Log(Error, "Failed to retrieve list of network interfaces")
 		return
 	}
+	p.LocalIPs = p.LocalIPs[:0]
 	for _, i := range inf {
 		addresses, err := i.Addrs()
 

@@ -138,6 +138,7 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 				continue
 			}
 			ips = append(ips, addr)
+			Log(Debug, "Updating endpoint: %s", addr.String())
 		}
 		peer.KnownIPs = ips
 		for _, proxy := range packet.Proxies {
@@ -146,7 +147,7 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 				continue
 			}
 			proxies = append(proxies, addr)
-			Log(Debug, "Adding proxy: %s", addr.String())
+			Log(Debug, "Updating proxy: %s", addr.String())
 		}
 		peer.Proxies = proxies
 		p.Peers.Update(peer.ID, peer)
