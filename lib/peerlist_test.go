@@ -6,6 +6,33 @@ import (
 	"testing"
 )
 
+func TestOperate_peerlist(t *testing.T) {
+	l := new(PeerList)
+	np1 := new(NetworkPeer)
+	ip1 := net.IP([]byte{192, 168, 12, 12})
+	np1.PeerLocalIP = ip1
+	_, hw := GenerateMAC()
+	np1.PeerHW = hw
+	l.Init()
+	l.peers["222"] = np1
+	l.operate(OperateDelete, "222", np1)
+	_, exists := l.peers["222"]
+	if exists {
+		t.Error("Error. Can't delete peer from peerlist")
+	}
+	np2 := new(NetworkPeer)
+	ip2 := net.IP([]byte{192, 168, 12, 13})
+	np2.PeerLocalIP = ip2
+	_, h := GenerateMAC()
+	np2.PeerHW = h
+	l.operate(OperateUpdate, "333", np1)
+	_, exist := l.peers["333"]
+	if !exist {
+		t.Error("Error. Can't create peer")
+	}
+	Log(Info, "Test of peerlist.go")
+}
+
 func TestUpdateTables(t *testing.T) {
 	l := new(PeerList)
 	l.Init()
