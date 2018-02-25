@@ -13,16 +13,16 @@ switch (env.BRANCH_NAME) {
 		break;
 	case ~/dev/:
 		cdnHost = "devcdn.subutai.io";
-		dhtHost = "18.195.169.215:6881";
+		dhtHost = "eu0.devcdn.subutai.io:6881";
         gitcmd = "git checkout -B dev && git pull origin dev"
         break;
 	case ~/sysnet/:
-		cdnHost = "devcdn.subutai.io";
-		dhtHost = "18.196.2.161:6881";
+		cdnHost = "sysnetcdn.subutai.io";
+		dhtHost = "eu0.sysnetcdn.subutai.io:6881";
         gitcmd = "git checkout -B sysnet && git pull origin sysnet "
         break;
 	default: 
-		cdnHost = "devcdn.subutai.io";
+		cdnHost = "cdn.subutai.io";
 		dhtHost = "mdht.subut.ai:6881"
 		break;
 }

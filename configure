@@ -69,9 +69,9 @@ if [ "$dht" == "" ]; then
     elif [ "$branch" == "master" ]; then
         dht="54.93.172.70:6881"
     elif [ "$branch" == "sysnet" ]; then
-        dht="18.196.2.161:6881"
+        dht="sysnetcdn.subutai.io:6881"
     else
-        dht="18.195.169.215:6881"
+        dht="eu0.devcdn.subutai.io:6881"
     fi
     echo "DHT is set to $dht"
 else
