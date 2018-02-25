@@ -137,8 +137,16 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 			if err != nil {
 				continue
 			}
-			ips = append(ips, addr)
-			Log(Debug, "Updating endpoint: %s", addr.String())
+			isNew := true
+			for _, eip := range ips {
+				if eip.String() == ip {
+					isNew = false
+				}
+			}
+			if isNew {
+				ips = append(ips, addr)
+				Log(Debug, "Updating endpoint: %s", addr.String())
+			}
 		}
 		peer.KnownIPs = ips
 		for _, proxy := range packet.Proxies {
@@ -146,8 +154,16 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 			if err != nil {
 				continue
 			}
-			proxies = append(proxies, addr)
-			Log(Debug, "Updating proxy: %s", addr.String())
+			isNew := true
+			for _, eproxy := range proxies {
+				if eproxy.String() == proxy {
+					isNew = false
+				}
+			}
+			if isNew {
+				proxies = append(proxies, addr)
+				Log(Debug, "Updating proxy: %s", addr.String())
+			}
 		}
 		peer.Proxies = proxies
 		p.Peers.Update(peer.ID, peer)
