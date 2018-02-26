@@ -416,11 +416,11 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 
 	// TODO: This code is old. Analyze if we still can loose HW or IP
 	// and remove this part of code if it's impossible
-	if np.PeerHW == nil || np.PeerLocalIP == nil {
-		Log(Warning, "Missing system information for this peer")
-		np.SetState(PeerStateDisconnect, ptpc)
-		return nil
-	}
+	// if np.PeerHW == nil || np.PeerLocalIP == nil {
+	// 	Log(Warning, "Missing system information for this peer")
+	// 	np.SetState(PeerStateDisconnect, ptpc)
+	// 	return nil
+	// }
 
 	if time.Since(np.LastContact) > time.Duration(time.Millisecond*3000) {
 		np.LastContact = time.Now()
