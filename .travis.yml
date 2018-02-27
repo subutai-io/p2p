@@ -2,17 +2,14 @@ language: go
 go: 1.9
 os:
   - linux
-matrix:
-  include:
-    - os: linux
-      dist: trusty
-      sudo: required
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -qq devscripts
-  - git clone https://github.com/subutai-io/p2p-packages.git /tmp/p2p-packages
-  - openssl aes-256-cbc -K $encrypted_62c1e8a94b65_key -iv $encrypted_62c1e8a94b65_iv -in /tmp/p2p-packages/secret.key.enc -out /tmp/p2p-packages/secret.key -d
-  - gpg --import /tmp/p2p-packages/secret.key && rm -f /tmp/p2p-packages/secret.key
+  - sudo apt-get install -qq devscripts build-essential dh-make
+  - git clone https://github.com/subutai-io/p2p-packages.git $P2P_PACKAGE_DIR
+  - openssl aes-256-cbc -K $encrypted_62c1e8a94b65_key -iv $encrypted_62c1e8a94b65_iv -in $P2P_PACKAGE_DIR/secret.key.enc -out /tmp/p2p-packages/secret.key -d
+  - gpg --import $P2P_PACKAGE_DIR/secret.key && rm -f $P2P_PACKAGE_DIR/secret.key*
+  - $P2P_PACKAGE_DIR/extra/bomutils.sh
+  - $P2P_PACKAGE_DIR/extra/xar.sh
 install:
   - go get
   - go get golang.org/x/sys/windows
@@ -23,49 +20,62 @@ script:
     fi
   - make all
   - make test
+  - if [ ! -z "$TRAVIS_TAG" ] ; 
+    then cd $P2P_PACKAGE_DIR && ./configure --debian --branch=HEAD ; 
+    else cd $P2P_PACKAGE_DIR && ./configure --debian --branch=$TRAVIS_BRANCH ;
+    fi
+  - cd $P2P_PACKAGE_DIR/linux && cp ${TRAVIS_BUILD_DIR}/bin/p2p $P2P_PACKAGE_DIR/linux/debian/ && debuild -B -d
+  - $P2P_PACKAGE_DIR/extra/find-deb.sh $P2P_PACKAGE_DIR/linux $P2P_PACKAGE_DIR/subutai-p2p
+  - if [ ! -z "$TRAVIS_TAG" ] ; 
+    then cd $P2P_PACKAGE_DIR && ./configure --darwin --branch=HEAD ; 
+    else cd $P2P_PACKAGE_DIR && ./configure --darwin --branch=$TRAVIS_BRANCH ;
+    fi
+  - cd $P2P_PACKAGE_DIR/darwin && ./pack.sh ${TRAVIS_BUILD_DIR}/bin/p2p_osx
+  - $P2P_PACKAGE_DIR/deploy.sh $P2P_PACKAGE_DIR/subutai-p2p HEAD .deb-travis-test ; 
+  - cd ${TRAVIS_BUILD_DIR}
 deploy:
   - provider: script
-    script: /tmp/p2p-packages/deploy.sh bin/p2p dev
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p dev -travis-test
     skip_cleanup: true
     on:
       branch: dev
   - provider: script
-    script: /tmp/p2p-packages/deploy.sh bin/p2p_osx dev
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p_osx dev -travis-test
     skip_cleanup: true
     on:
       branch: dev
   - provider: script
-    script: /tmp/p2p-packages/deploy.sh bin/p2p.exe dev
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p.exe dev -travis-test
     skip_cleanup: true
     on:
       branch: dev
   - provider: script
-    script: /tmp/p2p-packages/deploy.sh bin/p2p master
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p master -travis-test
     skip_cleanup: true
     on:
       branch: master
   - provider: script
-    script: /tmp/p2p-packages/deploy.sh bin/p2p_osx master
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p_osx master -travis-test
     skip_cleanup: true
     on:
       branch: master
   - provider: script
-    script: /tmp/p2p-packages/deploy.sh bin/p2p.exe master
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p.exe master -travis-test
     skip_cleanup: true
     on:
       branch: master
   - provider: script
-    script: /tmp/p2p-packages/deploy.sh bin/p2p HEAD
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p HEAD -travis-test
     skip_cleanup: true
     on:
       tags: true
   - provider: script
-    script: /tmp/p2p-packages/deploy.sh bin/p2p_osx HEAD
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p_osx HEAD -travis-test
     skip_cleanup: true
     on:
       tags: true
   - provider: script
-    script: /tmp/p2p-packages/deploy.sh bin/p2p.exe HEAD
+    script: $P2P_PACKAGE_DIR/deploy.sh bin/p2p.exe HEAD -travis-test
     skip_cleanup: true
     on:
       tags: true
