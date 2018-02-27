@@ -8,21 +8,21 @@ gitcmd = ""
 
 switch (env.BRANCH_NAME) {
 	case ~/master/: 
-		cdnHost = "mastercdn.subut.ai"; 
+		cdnHost = "mastercdn.subutai.io"; 
 		dhtHost = "54.93.172.70:6881"
 		break;
 	case ~/dev/:
-		cdnHost = "devcdn.subut.ai";
-		dhtHost = "18.195.169.215:6881";
+		cdnHost = "devcdn.subutai.io";
+		dhtHost = "eu0.devcdn.subutai.io:6881";
         gitcmd = "git checkout -B dev && git pull origin dev"
         break;
 	case ~/sysnet/:
-		cdnHost = "devcdn.subut.ai";
-		dhtHost = "18.195.169.215:6881";
+		cdnHost = "sysnetcdn.subutai.io";
+		dhtHost = "eu0.sysnetcdn.subutai.io:6881";
         gitcmd = "git checkout -B sysnet && git pull origin sysnet "
         break;
 	default: 
-		cdnHost = "devcdn.subut.ai";
+		cdnHost = "cdn.subutai.io";
 		dhtHost = "mdht.subut.ai:6881"
 		break;
 }
@@ -180,7 +180,7 @@ try {
 				git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
 				cd /tmp/p2p-packaging
 				${gitcmd}
-				wget --no-check-certificate https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p -O /tmp/p2p-packaging/linux/debian/p2p
+				wget --no-check-certificate https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p -O /tmp/p2p-packaging/linux/debian/p2p
 				chmod +x /tmp/p2p-packaging/linux/debian/p2p
 				./configure --debian --branch=${env.BRANCH_NAME}
 				cd linux
@@ -209,7 +209,7 @@ try {
 				rm -rf /tmp/p2p-packaging
 				git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
 				cd /tmp/p2p-packaging
-				curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/p2p-packaging/darwin/p2p_osx
+				curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/p2p-packaging/darwin/p2p_osx
 				chmod +x /tmp/p2p-packaging/darwin/p2p_osx
 				/tmp/p2p-packaging/darwin/pack.sh /tmp/p2p-packaging/darwin/p2p_osx ${env.BRANCH_NAME}
 			"""
@@ -232,8 +232,8 @@ try {
 				echo rm -rf /c/tmp/p2p-packaging > c:\\tmp\\p2p-win.do
 				echo git clone git@github.com:optdyn/p2p-packaging.git /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
 				echo cd /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
-				echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=p2p.exe -o /c/tmp/p2p-packaging/p2p.exe >> c:\\tmp\\p2p-win.do
-				echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subut.ai:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o /c/tmp/p2p-packaging/tap-windows-9.21.2.exe >> c:\\tmp\\p2p-win.do
+				echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p.exe -o /c/tmp/p2p-packaging/p2p.exe >> c:\\tmp\\p2p-win.do
+				echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o /c/tmp/p2p-packaging/tap-windows-9.21.2.exe >> c:\\tmp\\p2p-win.do
 
 				echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi > c:\\tmp\\p2p-win-upload.do
 

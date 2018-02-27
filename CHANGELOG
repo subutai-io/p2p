@@ -1,5 +1,12 @@
 # Change Log
 
+## [6.3.0] 02/10/2018
+
+* New connection process with multiple endpoints
+* DHT client moved from instances to daemon - now a single connection to 
+bootstrap node for the whole process
+* Code cleanup: removed obsolete peer states, DHT client code
+
 ## [6.2.18] 02/17/2018
 
 * Fixed problems with TAP interfaces on Windows

@@ -119,7 +119,7 @@ func (l *PeerList) GetEndpointAndProxy(mac string) (*net.UDPAddr, uint16, error)
 	if exists {
 		peer, exists := l.peers[id]
 		if exists && peer.Endpoint != nil {
-			return peer.Endpoint, uint16(peer.ProxyID), nil
+			return peer.Endpoint, uint16(0), nil
 		}
 	}
 	return nil, 0, fmt.Errorf("Specified hardware address was not found in table")
