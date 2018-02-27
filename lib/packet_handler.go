@@ -90,9 +90,12 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 // HandleXpeerPingMessage receives a cross-peer ping message
 func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 
-	query := string(msg.Data)[:3]
-	if query == "req" {
-		response := append([]byte("res"), msg.Data[3:]...)
+	query := string(msg.Data)[:1]
+	if query == "q" {
+		id := string(msg.Data)[1:37]
+		endpoint := string(msg.Data)[37:]
+		response := append([]byte("r"), []byte(endpoint)...)
+
 		msg, err := p.CreateMessage(MsgTypeXpeerPing, response, 0, true)
 		if err != nil {
 			Log(Debug, "Failed to create ping response: %s", err)
@@ -101,17 +104,33 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 		// Look if we really know this peer
 
 		for _, peer := range p.Peers.Get() {
-			for i, ep := range peer.Endpoints {
-				if ep.Addr.String() == srcAddr.String() {
-					peer.Endpoints[i].LastContact = time.Now()
-					p.UDPSocket.SendMessage(msg, ep.Addr)
+			if peer.ID == id {
+				for i, ep := range peer.Endpoints {
+					if ep.Addr.String() == srcAddr.String() {
+						peer.Endpoints[i].LastContact = time.Now()
+						p.UDPSocket.SendMessage(msg, ep.Addr)
+						return
+					}
+				}
+				// It is possible that we received ping over proxy. In this case
+				// origin address will not match any of the endpoints. Therefore
+				// we are going to iterate over registered proxies
+				overProxy := false
+				for _, proxy := range p.ProxyManager.get() {
+					if proxy.Endpoint.String() == string(response) {
+						overProxy = true
+						break
+					}
+				}
+				if overProxy && peer.State == PeerStateConnected && peer.RemoteState == PeerStateConnected {
+					p.UDPSocket.SendMessage(msg, peer.Endpoint)
 					return
 				}
 			}
 		}
-		Log(Debug, "Received ping from unknown endpoint: %s", srcAddr.String())
-	} else if query == "res" {
-		endpoint := msg.Data[3:]
+		Log(Debug, "Received ping from unknown endpoint: %s [%s ID: %s]", srcAddr.String(), endpoint, id)
+	} else if query == "r" {
+		endpoint := msg.Data[1:]
 		for _, peer := range p.Peers.Get() {
 			if peer == nil {
 				continue
@@ -124,7 +143,7 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 			}
 		}
 	} else {
-		Log(Debug, "Wrong xpeer ping message")
+		Log(Trace, "Wrong xpeer ping message")
 	}
 }
 
