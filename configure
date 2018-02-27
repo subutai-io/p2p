@@ -69,7 +69,7 @@ if [ "$dht" == "" ]; then
     elif [ "$branch" == "master" ]; then
         dht="54.93.172.70:6881"
     elif [ "$branch" == "sysnet" ]; then
-        dht="sysnetcdn.subutai.io:6881"
+        dht="eu0.sysnetcdn.subutai.io:6881"
     else
         dht="eu0.devcdn.subutai.io:6881"
     fi

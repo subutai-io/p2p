@@ -193,57 +193,68 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 	}
 	Log(Debug, "Connecting to %s", np.ID)
 
-	go func() {
-		if np.punchingInProgress {
-			return
-		}
-		eps := []*net.UDPAddr{}
-		eps = append(eps, np.Proxies...)
-		eps = append(eps, np.KnownIPs...)
-		Log(Debug, "Hole punching %s", np.ID)
+	started := time.Now()
+	go np.punchUDPHole(ptpc)
 
-		np.punchingInProgress = true
-		round := 0
-		for round < 10 {
-			for _, ep := range eps {
-				alreadyConnected := false
-				for _, nep := range np.Endpoints {
-					if nep.Addr.String() == ep.String() {
-						alreadyConnected = true
-					}
+	for time.Since(started) < time.Duration(time.Millisecond*30000) {
+		if len(np.Endpoints) > 0 {
+			np.SetState(PeerStateConnected, ptpc)
+			return nil
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
+	Log(Debug, "Couldn't connect to the peer in any way")
+	return nil
+}
+
+func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) {
+	if np.punchingInProgress {
+		return
+	}
+	eps := []*net.UDPAddr{}
+	eps = append(eps, np.Proxies...)
+	eps = append(eps, np.KnownIPs...)
+	Log(Debug, "Hole punching %s", np.ID)
+
+	np.punchingInProgress = true
+	round := 0
+	for round < 10 {
+		for _, ep := range eps {
+			alreadyConnected := false
+			for _, nep := range np.Endpoints {
+				if nep.Addr.String() == ep.String() {
+					alreadyConnected = true
 				}
-				if alreadyConnected {
-					continue
+			}
+			if alreadyConnected {
+				continue
+			}
+			skipLocal := false
+			for _, localIP := range ActiveInterfaces {
+				if localIP.Equal(ep.IP) {
+					skipLocal = true
 				}
-				skipLocal := false
-				for _, localIP := range ActiveInterfaces {
-					if localIP.Equal(ep.IP) {
-						skipLocal = true
-					}
-				}
-				if skipLocal {
-					continue
-				}
-				payload := []byte(ptpc.Dht.ID + ep.String())
-				msg, err := ptpc.CreateMessage(MsgTypeIntroReq, payload, 0, true)
-				if err != nil {
-					Log(Error, "Couldn't create an intro message: %s", err)
-					continue
-				}
-				_, err = ptpc.UDPSocket.SendMessage(msg, ep)
-				if err != nil {
-					Log(Error, "Failed to send message to %s: %s", ep.String(), err)
-					continue
-				}
-				time.Sleep(time.Millisecond * 50)
+			}
+			if skipLocal {
+				continue
+			}
+			payload := []byte(ptpc.Dht.ID + ep.String())
+			msg, err := ptpc.CreateMessage(MsgTypeIntroReq, payload, 0, true)
+			if err != nil {
+				Log(Error, "Couldn't create an intro message: %s", err)
+				continue
+			}
+			_, err = ptpc.UDPSocket.SendMessage(msg, ep)
+			if err != nil {
+				Log(Error, "Failed to send message to %s: %s", ep.String(), err)
+				continue
 			}
 			time.Sleep(time.Millisecond * 50)
-			round++
 		}
-		np.punchingInProgress = false
-	}()
-	np.SetState(PeerStateConnected, ptpc)
-	return nil
+		time.Sleep(time.Millisecond * 50)
+		round++
+	}
+	np.punchingInProgress = false
 }
 
 func (np *NetworkPeer) stateRequestingProxy(ptpc *PeerToPeer) error {
@@ -416,17 +427,17 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 
 	// TODO: This code is old. Analyze if we still can loose HW or IP
 	// and remove this part of code if it's impossible
-	if np.PeerHW == nil || np.PeerLocalIP == nil {
-		Log(Warning, "Missing system information for this peer")
-		np.SetState(PeerStateDisconnect, ptpc)
-		return nil
-	}
+	// if np.PeerHW == nil || np.PeerLocalIP == nil {
+	// 	Log(Warning, "Missing system information for this peer")
+	// 	np.SetState(PeerStateDisconnect, ptpc)
+	// 	return nil
+	// }
 
 	if time.Since(np.LastContact) > time.Duration(time.Millisecond*3000) {
 		np.LastContact = time.Now()
 		np.EndpointsLock.RLock()
 		for _, ep := range np.Endpoints {
-			payload := append([]byte("req"), []byte(ep.Addr.String())...)
+			payload := append([]byte("q"+ptpc.Dht.ID), []byte(ep.Addr.String())...)
 			msg, err := ptpc.CreateMessage(MsgTypeXpeerPing, payload, 0, true)
 			if err != nil {
 				continue
