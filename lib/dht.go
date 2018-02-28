@@ -161,16 +161,34 @@ func (dht *DHTClient) sendFind() error {
 }
 
 // This method will send request of IPs of particular peer known to BSN
-func (dht *DHTClient) sendNode(id string) error {
+func (dht *DHTClient) sendNode(id string, ipList []net.IP) error {
 	if len(id) != 36 {
 		return fmt.Errorf("Failed to send node: Malformed ID %s", id)
 	}
+
+	ips := []string{}
+	for _, ip := range ipList {
+		if ip == nil {
+			continue
+		}
+		exists := false
+		for _, eip := range ips {
+			if eip == ip.String() {
+				exists = true
+			}
+		}
+		if !exists {
+			ips = append(ips, ip.String())
+		}
+	}
+
 	packet := &DHTPacket{
-		Type:     DHTPacketType_Node,
-		Id:       dht.ID,
-		Infohash: dht.NetworkHash,
-		Data:     id,
-		Version:  PacketVersion,
+		Type:      DHTPacketType_Node,
+		Id:        dht.ID,
+		Infohash:  dht.NetworkHash,
+		Data:      id,
+		Arguments: ips,
+		Version:   PacketVersion,
 	}
 	return dht.send(packet)
 }
