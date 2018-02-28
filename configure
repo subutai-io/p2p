@@ -86,7 +86,7 @@ elif [ "$branch" == "master" ]; then
 elif [ "$branch" == "dev" ]; then
     log_level="DEBUG"
 elif [ "$branch" == "sysnet" ]; then
-    log_level="TRACE"
+    log_level="DEBUG"
 fi
 
 echo "Checking go environment"
