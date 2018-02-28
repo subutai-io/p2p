@@ -27,13 +27,13 @@ APP=$(NAME_PREFIX)
 
 SNAPDHT=mdht.subut.ai:6881
 ifeq ($(BRANCH),dev)
-	SNAPDHT=18.195.169.215:6881
+	SNAPDHT=eu0.devcdn.subutai.io:6881
 endif
 ifeq ($(BRANCH),master)
 	SNAPDHT=54.93.172.70:6881
 endif
 ifeq ($(BRANCH),sysnet)
-	SNAPDHT=18.195.169.215:6881
+	SNAPDHT=eu0.sysnetcdn.subutai.io:6881
 endif
 
 build: directories
