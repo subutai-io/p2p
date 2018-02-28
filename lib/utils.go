@@ -83,3 +83,14 @@ func StringifyState(state PeerState) string {
 	}
 	return "Unknown"
 }
+
+// IsInterfaceLocal will return true if specified IP is in list of
+// local network interfaces
+func IsInterfaceLocal(ip net.IP) bool {
+	for _, localIP := range ActiveInterfaces {
+		if localIP.Equal(ip) {
+			return true
+		}
+	}
+	return false
+}

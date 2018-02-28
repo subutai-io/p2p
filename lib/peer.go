@@ -38,6 +38,7 @@ type NetworkPeer struct {
 	EndpointsLock      sync.RWMutex                       // Mutex for endpoints operations
 	punchingInProgress bool                               // Whether or not UDP hole punching is running
 	LastFind           time.Time                          // Moment when we got this peer from DHT
+	LastPunch          time.Time                          // Last time we run hole punch
 }
 
 func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
@@ -114,7 +115,7 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 func (np *NetworkPeer) stateInit(ptpc *PeerToPeer) error {
 	// Send request about IPs of a peer
 	Log(Debug, "Initializing new peer: %s", np.ID)
-	ptpc.Dht.sendNode(np.ID)
+	ptpc.Dht.sendNode(np.ID, []net.IP{})
 	np.Endpoint = nil
 	np.PeerHW = nil
 	np.PeerLocalIP = nil
@@ -144,7 +145,7 @@ func (np *NetworkPeer) stateRequestedIP(ptpc *PeerToPeer) error {
 		if time.Since(requestSentAt) > updateInterval {
 			Log(Warning, "Didn't got network addresses for peer. Requesting again")
 			requestSentAt = time.Now()
-			err := ptpc.Dht.sendNode(np.ID)
+			err := ptpc.Dht.sendNode(np.ID, []net.IP{})
 			if err != nil {
 				np.SetState(PeerStateDisconnect, ptpc)
 				return fmt.Errorf("Failed to request IPs: %s", err)
@@ -211,6 +212,7 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) {
 	if np.punchingInProgress {
 		return
 	}
+	np.LastPunch = time.Now()
 	eps := []*net.UDPAddr{}
 	eps = append(eps, np.Proxies...)
 	eps = append(eps, np.KnownIPs...)
@@ -220,22 +222,10 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) {
 	round := 0
 	for round < 10 {
 		for _, ep := range eps {
-			alreadyConnected := false
-			for _, nep := range np.Endpoints {
-				if nep.Addr.String() == ep.String() {
-					alreadyConnected = true
-				}
-			}
-			if alreadyConnected {
+			if np.isEndpointActive(ep) {
 				continue
 			}
-			skipLocal := false
-			for _, localIP := range ActiveInterfaces {
-				if localIP.Equal(ep.IP) {
-					skipLocal = true
-				}
-			}
-			if skipLocal {
+			if IsInterfaceLocal(ep.IP) {
 				continue
 			}
 			payload := []byte(ptpc.Dht.ID + ep.String())
@@ -255,6 +245,15 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) {
 		round++
 	}
 	np.punchingInProgress = false
+}
+
+func (np *NetworkPeer) isEndpointActive(ep *net.UDPAddr) bool {
+	for _, nep := range np.Endpoints {
+		if nep.Addr.String() == ep.String() {
+			return true
+		}
+	}
+	return false
 }
 
 func (np *NetworkPeer) stateRequestingProxy(ptpc *PeerToPeer) error {
@@ -423,6 +422,10 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 		Log(Debug, "Peer %s is waiting for us to connect", np.ID)
 		np.SetState(PeerStateWaitingToConnect, ptpc)
 		return nil
+	}
+
+	if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) {
+		go np.punchUDPHole(ptpc)
 	}
 
 	// TODO: This code is old. Analyze if we still can loose HW or IP
