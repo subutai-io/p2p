@@ -36,7 +36,7 @@ func GetConfigurationTool() string {
 }
 
 func newTAP(tool, ip, mac, mask string, mtu int) (*TAPLinux, error) {
-	Log(Info, "Acquiring TAP interface [Linux]")
+	Log(Debug, "Acquiring TAP interface [Linux]")
 	nip := net.ParseIP(ip)
 	if nip == nil {
 		return nil, fmt.Errorf("Failed to parse IP during TAP creation")
@@ -166,8 +166,15 @@ func (t *TAPLinux) Configure() error {
 	if err != nil {
 		return err
 	}
-
-	return t.setMac()
+	err = t.ifDown()
+	if err != nil {
+		return err
+	}
+	err = t.setMac()
+	if err != nil {
+		return err
+	}
+	return t.ifUp()
 }
 
 // ReadPacket will read single packet from network interface
@@ -231,6 +238,26 @@ func (t *TAPLinux) linkUp() error {
 	err := linkup.Run()
 	if err != nil {
 		Log(Error, "Failed to up link: %v", err)
+		return err
+	}
+	return nil
+}
+
+func (t *TAPLinux) ifUp() error {
+	linkup := exec.Command("ifconfig", t.Name, "up")
+	err := linkup.Run()
+	if err != nil {
+		Log(Error, "Failed to up link: %v", err)
+		return err
+	}
+	return nil
+}
+
+func (t *TAPLinux) ifDown() error {
+	linkup := exec.Command("ifconfig", t.Name, "down")
+	err := linkup.Run()
+	if err != nil {
+		Log(Error, "Failed to down link: %v", err)
 		return err
 	}
 	return nil

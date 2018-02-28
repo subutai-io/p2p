@@ -15,6 +15,7 @@ import (
 var AppVersion = "Unknown"
 var BuildID = "Unknown"
 var DefaultDHT = "mdht.subut.ai:6881"
+var DefaultLog = "INFO"
 
 // InterfaceNames - List of all interfaces names that was used by p2p historically. These interfaces may not present in the system anymore
 var InterfaceNames []string
