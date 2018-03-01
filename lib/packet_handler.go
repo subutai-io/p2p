@@ -28,7 +28,6 @@ func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error
 		Log(Error, "Received broken message")
 		return
 	}
-	//var msgType MSG_TYPE = MSG_TYPE(msg.Header.Type)
 	// Decrypt message if crypter is active
 	if p.Crypter.Active && (msg.Header.Type == MsgTypeIntro || msg.Header.Type == MsgTypeNenc || msg.Header.Type == MsgTypeIntroReq || msg.Header.Type == MsgTypeTest || msg.Header.Type == MsgTypeXpeerPing) {
 		var decErr error
@@ -56,24 +55,11 @@ func (p *PeerToPeer) HandleNotEncryptedMessage(msg *P2PMessage, srcAddr *net.UDP
 
 // HandlePingMessage is a PING message from a proxy handler
 func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
-
 	addr, err := net.ResolveUDPAddr("udp4", string(msg.Data))
-	// p.proxyLock.Lock()
-	// defer p.proxyLock.Unlock()
 	if err != nil {
 		if p.ProxyManager.touch(srcAddr.String()) {
 			p.UDPSocket.SendMessage(msg, srcAddr)
 		}
-		// for i, proxy := range p.Proxies {
-		// 	if proxy == nil {
-		// 		continue
-		// 	}
-		// 	if p.Proxies[i] != nil && proxy.Addr != nil && srcAddr != nil && proxy.Addr.String() == srcAddr.String() {
-		// 		p.Proxies[i].LastUpdate = time.Now()
-		// 		p.UDPSocket.SendMessage(msg, srcAddr)
-		// 		break
-		// 	}
-		// }
 		return
 	}
 	port := addr.Port
@@ -117,7 +103,7 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 				// we are going to iterate over registered proxies
 				overProxy := false
 				for _, proxy := range p.ProxyManager.get() {
-					if proxy.Endpoint.String() == string(response) {
+					if proxy.Endpoint.String() == string(endpoint) {
 						overProxy = true
 						break
 					}
@@ -235,80 +221,11 @@ func (p *PeerToPeer) HandleProxyMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	if rc {
 		Log(Debug, "This peer is now available over %s", ep.String())
 	}
-
-	// p.proxyLock.Lock()
-	// defer p.proxyLock.Unlock()
-	// for i, proxy := range p.Proxies {
-	// 	if proxy.Addr.String() == srcAddr.String() && proxy.Status == proxyConnecting {
-	// 		p.Proxies[i].Status = proxyActive
-	// 		addr, err := net.ResolveUDPAddr("udp4", string(msg.Data))
-	// 		if err != nil {
-	// 			Log(Error, "Failed to resolve proxy address: %s", err)
-	// 			return
-	// 		}
-	// 		Log(Debug, "This peer is now available over %s", addr.String())
-	// 		p.Dht.sendReportProxy(addr)
-	// 		break
-	// 	}
-	// }
 }
 
 // HandleBadTun notified peer about proxy being malfunction
+// This method is not used in currenct scheme
+// TODO: Consider to remove
 func (p *PeerToPeer) HandleBadTun(msg *P2PMessage, srcAddr *net.UDPAddr) {
-	// peers := p.Peers.Get()
-	// for i, peer := range peers {
-	// 	if peer.ProxyID == msg.Header.ProxyID && peer.Endpoint.String() == srcAddr.String() {
-	// 		Log(Debug, "Cleaning bad tunnel %d from %s", msg.Header.ProxyID, srcAddr.String())
-	// 		peer.ProxyID = 0
-	// 		peer.Endpoint = nil
-	// 		peer.Forwarder = nil
-	// 		peer.PeerAddr = nil
-	// 		peer.SetState(PeerStateInit, p)
-	// 		p.Peers.Update(i, peer)
-	// 	}
-	// }
+
 }
-
-// HandleTestMessage responses with a test message when another peer trying to
-// establish direct connection
-// func (p *PeerToPeer) HandleTestMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
-// 	if len(p.Dht.ID) != 36 {
-// 		return
-// 	}
-
-// 	if len(msg.Data) != 36 {
-// 		Log(Error, "Malformed data received during test: %s [L: %d]", string(msg.Data), msg.Header.Length)
-// 		return
-// 	}
-
-// 	// See if we have peer with this ID
-// 	id := string(msg.Data[0:36])
-// 	if len(id) != 36 {
-// 		Log(Error, "Wrong ID during test message")
-// 		return
-// 	}
-
-// 	peer := p.Peers.GetPeer(id)
-// 	if peer != nil {
-// 		if peer.State == PeerStateConnectingDirectly || peer.State == PeerStateConnectingInternet {
-// 			peer.TestPacketReceived = true
-// 			p.Peers.Update(id, peer)
-// 			response := CreateTestP2PMessage(p.Crypter, p.Dht.ID, 0)
-// 			_, err := p.UDPSocket.SendMessage(response, srcAddr)
-// 			if err != nil {
-// 				Log(Error, "Failed to respond to test message: %v", err)
-// 			}
-// 		} else if peer.State == PeerStateConnected && peer.IsUsingTURN {
-// 			Log(Info, "Received test message from peer which was previously connected over TURN")
-// 			if len(peer.KnownIPs) == 0 {
-// 				return
-// 			}
-// 			peer.Endpoint = peer.KnownIPs[0]
-// 			peer.IsUsingTURN = false
-// 			p.Peers.Update(peer.ID, peer)
-// 			Log(Info, "Peer %s switched to direct UDP connection %s", peer.ID, peer.Endpoint.String())
-// 		} else {
-// 			Log(Info, "Received test message for peer in unsupported state")
-// 		}
-// 	}
-// }
