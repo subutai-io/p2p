@@ -117,7 +117,7 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 				// we are going to iterate over registered proxies
 				overProxy := false
 				for _, proxy := range p.ProxyManager.get() {
-					if proxy.Endpoint.String() == string(response) {
+					if proxy.Endpoint.String() == string(endpoint) {
 						overProxy = true
 						break
 					}
