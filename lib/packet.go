@@ -228,7 +228,7 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
 	if err != nil {
 		Log(Error, "Failed to marshal ARP Ethernet Frame")
 	}
-	Log(Debug, "%v", packet.String())
+	Log(Trace, "%v", packet.String())
 	p.WriteToDevice(fb, uint16(proto), false)
 }
 
