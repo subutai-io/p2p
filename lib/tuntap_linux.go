@@ -166,7 +166,7 @@ func (t *TAPLinux) Configure() error {
 	if err != nil {
 		return err
 	}
-	err = t.ifDown()
+	err = t.linkDown()
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func (t *TAPLinux) Configure() error {
 	if err != nil {
 		return err
 	}
-	return t.ifUp()
+	return t.linkUp()
 }
 
 // ReadPacket will read single packet from network interface
@@ -243,8 +243,8 @@ func (t *TAPLinux) linkUp() error {
 	return nil
 }
 
-func (t *TAPLinux) ifUp() error {
-	linkup := exec.Command("ifconfig", t.Name, "up")
+func (t *TAPLinux) linkDown() error {
+	linkup := exec.Command(t.Tool, "link", "set", "dev", t.Name, "down")
 	err := linkup.Run()
 	if err != nil {
 		Log(Error, "Failed to up link: %v", err)
@@ -253,15 +253,25 @@ func (t *TAPLinux) ifUp() error {
 	return nil
 }
 
-func (t *TAPLinux) ifDown() error {
-	linkup := exec.Command("ifconfig", t.Name, "down")
-	err := linkup.Run()
-	if err != nil {
-		Log(Error, "Failed to down link: %v", err)
-		return err
-	}
-	return nil
-}
+// func (t *TAPLinux) ifUp() error {
+// 	linkup := exec.Command("ifconfig", t.Name, "up")
+// 	err := linkup.Run()
+// 	if err != nil {
+// 		Log(Error, "Failed to up link: %v", err)
+// 		return err
+// 	}
+// 	return nil
+// }
+
+// func (t *TAPLinux) ifDown() error {
+// 	linkup := exec.Command("ifconfig", t.Name, "down")
+// 	err := linkup.Run()
+// 	if err != nil {
+// 		Log(Error, "Failed to down link: %v", err)
+// 		return err
+// 	}
+// 	return nil
+// }
 
 func (t *TAPLinux) setIP() error {
 	Log(Info, "Setting %s IP on device %s", t.IP.String(), t.Name)
