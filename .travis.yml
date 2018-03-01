@@ -1,7 +1,5 @@
 language: go
 go: 1.9
-os:
-  - linux
 matrix:
   include:
     - os: linux
