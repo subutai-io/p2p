@@ -86,6 +86,7 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 
 	Log(Debug, "Received `find`: %+v", packet)
 	peer := p.Peers.GetPeer(packet.Data)
+
 	if peer == nil {
 		peer := new(NetworkPeer)
 		Log(Debug, "Received new peer %s", packet.Data)
@@ -101,6 +102,14 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 					isNew = false
 				}
 			}
+
+			// Check if this endpoint is not local (own) ep
+			for _, ip := range p.LocalIPs {
+				if ip.Equal(addr.IP) {
+					isNew = false
+				}
+			}
+
 			if isNew {
 				peer.KnownIPs = append(peer.KnownIPs, addr)
 				Log(Debug, "Adding endpoint: %s", addr.String())
@@ -117,6 +126,14 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 					isNew = false
 				}
 			}
+
+			// Check if this proxy is not ours
+			for _, epr := range p.ProxyManager.get() {
+				if epr.Endpoint.String() == addr.String() {
+					isNew = false
+				}
+			}
+
 			if isNew {
 				peer.Proxies = append(peer.Proxies, addr)
 				Log(Debug, "Adding proxy: %s", addr.String())
