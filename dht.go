@@ -174,7 +174,7 @@ func (dht *DHTConnection) unregisterInstance(hash string) error {
 func (dht *DHTRouter) run() {
 	dht.running = false
 	dht.handshaked = false
-	data := make([]byte, 4096*4)
+	data := make([]byte, 1024)
 	for !dht.stop {
 		for !dht.running {
 			dht.connect()

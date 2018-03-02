@@ -404,7 +404,7 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 	np.route(ptpc)
 
-	if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && len(np.Endpoints) < 2 {
+	if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && len(np.Endpoints) < len(np.Proxies)+1 {
 		go np.punchUDPHole(ptpc)
 	}
 
