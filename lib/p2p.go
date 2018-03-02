@@ -626,7 +626,9 @@ func (p *PeerToPeer) Close() error {
 
 	if p.Interface != nil {
 		err := p.Interface.Close()
-		Log(Error, "Failed to close TAP interface: %s", err)
+		if err != nil {
+			Log(Error, "Failed to close TAP interface: %s", err)
+		}
 	}
 	p.ReadyToStop = true
 	Log(Info, "Instance %s stopped", hash)

@@ -229,6 +229,7 @@ func (dht *DHTRouter) routeData(data []byte) {
 		}
 	}
 	if !dht.handshaked {
+		ptp.Log(ptp.Trace, "Skipping packet: not handshaked")
 		return
 	}
 	dht.data <- packet
