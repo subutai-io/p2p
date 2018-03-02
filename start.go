@@ -131,7 +131,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 			ptp.Log(ptp.Error, "Failed to register instance with bootstrap nodes")
 			newInst.PTP.Close()
 			resp.Output = resp.Output + "Failed to register instance"
-			resp.ExitCode = 2001
+			resp.ExitCode = 601
 			return errors.New("Failed to register instance")
 		}
 
@@ -142,7 +142,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		if err != nil {
 			newInst.PTP.Close()
 			resp.Output = resp.Output + err.Error()
-			resp.ExitCode = 2002
+			resp.ExitCode = 602
 			return err
 		}
 
@@ -151,7 +151,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 			ptp.Log(ptp.Error, "Failed to configure network interface: %s", err)
 			newInst.PTP.Close()
 			resp.Output = resp.Output + "Failed to configure network: " + err.Error()
-			resp.ExitCode = 2002
+			resp.ExitCode = 603
 			return errors.New("Failed to configure network interface")
 		}
 		go newInst.PTP.ListenInterface()

@@ -111,7 +111,7 @@ func (dht *DHTClient) Connect(ipList []net.IP, proxyList []*proxyServer) error {
 	}
 	// Waiting for 3 seconds to get connection confirmation
 	sent := time.Now()
-	for time.Since(sent) < time.Duration(3000*time.Millisecond) {
+	for time.Since(sent) < time.Duration(5000*time.Millisecond) {
 		if dht.Connected {
 			return nil
 		}

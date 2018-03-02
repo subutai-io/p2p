@@ -94,3 +94,53 @@ func IsInterfaceLocal(ip net.IP) bool {
 	}
 	return false
 }
+
+// FindNetworkAddresses method lists interfaces available in the system and retrieves their
+// IP addresses
+func (p *PeerToPeer) FindNetworkAddresses() {
+	Log(Debug, "Looking for available network interfaces")
+	inf, err := net.Interfaces()
+	if err != nil {
+		Log(Error, "Failed to retrieve list of network interfaces")
+		return
+	}
+	p.LocalIPs = p.LocalIPs[:0]
+	for _, i := range inf {
+		addresses, err := i.Addrs()
+
+		if err != nil {
+			Log(Error, "Failed to retrieve address for interface. %v", err)
+			continue
+		}
+		for _, addr := range addresses {
+			var decision = "Ignoring"
+			var ipType = "Unknown"
+			ip, _, err := net.ParseCIDR(addr.String())
+			if err != nil {
+				Log(Error, "Failed to parse CIDR notation: %v", err)
+			}
+			if ip.IsLoopback() {
+				ipType = "Loopback"
+			} else if ip.IsMulticast() {
+				ipType = "Multicast"
+			} else if ip.IsGlobalUnicast() {
+				decision = "Saving"
+				ipType = "Global Unicast"
+			} else if ip.IsLinkLocalUnicast() {
+				ipType = "Link Local Unicast"
+			} else if ip.IsLinkLocalMulticast() {
+				ipType = "Link Local Multicast"
+			} else if ip.IsInterfaceLocalMulticast() {
+				ipType = "Interface Local Multicast"
+			}
+			if !p.IsIPv4(ip.String()) {
+				decision = "No IPv4"
+			}
+			Log(Trace, "Interface %s: %s. Type: %s. %s", i.Name, addr.String(), ipType, decision)
+			if decision == "Saving" {
+				p.LocalIPs = append(p.LocalIPs, ip)
+			}
+		}
+	}
+	Log(Trace, "%d interfaces were saved", len(p.LocalIPs))
+}
