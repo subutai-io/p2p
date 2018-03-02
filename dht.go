@@ -143,6 +143,8 @@ func (dht *DHTConnection) run() {
 		i, e := dht.instances[packet.Infohash]
 		if e {
 			i.PTP.Dht.IncomingData <- packet
+		} else {
+			ptp.Log(ptp.Debug, "DHT received data from unknown instance %s: %+v", packet.Infohash, packet)
 		}
 	}
 }
