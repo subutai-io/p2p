@@ -301,7 +301,7 @@ func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
 	return nil
 }
 
-func (np *NetworkPeer) Route(ptpc *PeerToPeer) error {
+func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 	for len(np.Endpoints) == 0 && np.punchingInProgress {
 		time.Sleep(time.Millisecond * 100)
 	}
@@ -402,53 +402,14 @@ func (np *NetworkPeer) Route(ptpc *PeerToPeer) error {
 
 // stateConnected is executed when connection was established and peer is operating normally
 func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
+	np.route(ptpc)
 
-	np.Route(ptpc)
-
-	if np.RemoteState == PeerStateDisconnect {
-		Log(Debug, "Peer %s disconnecting", np.ID)
-		np.SetState(PeerStateDisconnect, ptpc)
-		return nil
-	} else if np.RemoteState == PeerStateStop {
-		Log(Debug, "Peer %s has been stopped", np.ID)
-		np.SetState(PeerStateDisconnect, ptpc)
-		return nil
-	} else if np.RemoteState == PeerStateInit {
-		Log(Debug, "Remote peer %s decided to reconnect", np.ID)
-		// TODO: Consider moving to Disconnect state here
-		np.SetState(PeerStateInit, ptpc)
-		return nil
-	} else if np.RemoteState == PeerStateWaitingToConnect {
-		Log(Debug, "Peer %s is waiting for us to connect", np.ID)
-		np.SetState(PeerStateWaitingToConnect, ptpc)
-		return nil
-	}
-
-	if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) {
+	if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && len(np.Endpoints) < len(np.Proxies)+1 {
 		go np.punchUDPHole(ptpc)
 	}
 
-	// TODO: This code is old. Analyze if we still can loose HW or IP
-	// and remove this part of code if it's impossible
-	// if np.PeerHW == nil || np.PeerLocalIP == nil {
-	// 	Log(Warning, "Missing system information for this peer")
-	// 	np.SetState(PeerStateDisconnect, ptpc)
-	// 	return nil
-	// }
-
-	if time.Since(np.LastContact) > time.Duration(time.Millisecond*3000) {
-		np.LastContact = time.Now()
-		np.EndpointsLock.RLock()
-		for _, ep := range np.Endpoints {
-			payload := append([]byte("q"+ptpc.Dht.ID), []byte(ep.Addr.String())...)
-			msg, err := ptpc.CreateMessage(MsgTypeXpeerPing, payload, 0, true)
-			if err != nil {
-				continue
-			}
-			ptpc.UDPSocket.SendMessage(msg, ep.Addr)
-		}
-		np.EndpointsLock.RUnlock()
-	}
+	np.pingEndpoints(ptpc)
+	np.syncWithRemoteState(ptpc)
 
 	return nil
 }
@@ -476,4 +437,43 @@ func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
 	}
 	np.Endpoints = append(np.Endpoints, PeerEndpoint{Addr: addr, LastContact: time.Now()})
 	return nil
+}
+
+// This method will send xpeer ping message to endpoints
+// if ping timeout has been passed
+func (np *NetworkPeer) pingEndpoints(ptpc *PeerToPeer) {
+	if time.Since(np.LastContact) > time.Duration(time.Millisecond*3000) {
+		np.LastContact = time.Now()
+		np.EndpointsLock.RLock()
+		for _, ep := range np.Endpoints {
+			payload := append([]byte("q"+ptpc.Dht.ID), []byte(ep.Addr.String())...)
+			msg, err := ptpc.CreateMessage(MsgTypeXpeerPing, payload, 0, true)
+			if err != nil {
+				continue
+			}
+			ptpc.UDPSocket.SendMessage(msg, ep.Addr)
+		}
+		np.EndpointsLock.RUnlock()
+	}
+}
+
+// This method will check if remote state requires local
+// state to be modified (e.g. on disconnect)
+// This method should be called only when local state is
+// Connected
+func (np *NetworkPeer) syncWithRemoteState(ptpc *PeerToPeer) {
+	if np.RemoteState == PeerStateDisconnect {
+		Log(Debug, "Peer %s disconnecting", np.ID)
+		np.SetState(PeerStateDisconnect, ptpc)
+	} else if np.RemoteState == PeerStateStop {
+		Log(Debug, "Peer %s has been stopped", np.ID)
+		np.SetState(PeerStateDisconnect, ptpc)
+	} else if np.RemoteState == PeerStateInit {
+		Log(Debug, "Remote peer %s decided to reconnect", np.ID)
+		// TODO: Consider moving to Disconnect state here
+		np.SetState(PeerStateInit, ptpc)
+	} else if np.RemoteState == PeerStateWaitingToConnect {
+		Log(Debug, "Peer %s is waiting for us to connect", np.ID)
+		np.SetState(PeerStateWaitingToConnect, ptpc)
+	}
 }
