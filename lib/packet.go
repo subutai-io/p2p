@@ -131,8 +131,11 @@ func (p *PeerToPeer) handlePacketIPv4(contents []byte, proto int) {
 	if f.EtherType != ethernet.EtherTypeIPv4 {
 		return
 	}
-	msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto), 1, 1, 1)
-	p.SendTo(f.Destination, msg)
+	//msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto), 1, 1, 1)
+	msg, err := p.CreateMessage(MsgTypeNenc, contents, uint16(proto), true)
+	if err == nil && msg != nil {
+		p.SendTo(f.Destination, msg)
+	}
 }
 
 // TODO: Implement IPv6 Support
@@ -181,7 +184,7 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
 	}
 	id, err := p.Peers.GetID(packet.TargetIP.String())
 	if err != nil {
-		Log(Debug, "Unknown IP requested")
+		Log(Trace, "Unknown IP requested: %s", packet.TargetIP.String())
 		return
 	}
 	peer := p.Peers.GetPeer(id)
@@ -225,7 +228,7 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
 	if err != nil {
 		Log(Error, "Failed to marshal ARP Ethernet Frame")
 	}
-	Log(Debug, "%v", packet.String())
+	Log(Trace, "%v", packet.String())
 	p.WriteToDevice(fb, uint16(proto), false)
 }
 
