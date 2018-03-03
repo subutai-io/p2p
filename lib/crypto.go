@@ -98,6 +98,9 @@ func (c Crypto) decrypt(key []byte, data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(data) < aes.BlockSize {
+		return nil, nil
+	}
 	encData := data[aes.BlockSize:]
 	if len(data)%aes.BlockSize != 0 {
 		return nil, fmt.Errorf("Input not full blocks: %s", string(data))
