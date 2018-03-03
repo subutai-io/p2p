@@ -38,6 +38,13 @@ func CommandShow(queryPort int, hash, ip string, interfaces, all, bind bool) {
 	out, err := sendRequestRaw(queryPort, "show", req)
 	if err != nil {
 		fmt.Println(err.Error())
+		if err == errorFailedToMarshal {
+			os.Exit(112)
+		} else if err == errorFailedToCreatePOSTRequest {
+			os.Exit(113)
+		} else if err == errorFailedToExecuteRequest {
+			os.Exit(115)
+		}
 		os.Exit(1)
 	}
 	show := []ShowOutput{}

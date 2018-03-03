@@ -97,7 +97,7 @@ func (d *Daemon) Status() (*statusResponse, error) {
 			instance.Peers = append(instance.Peers, &statusPeer{
 				ID:        peer.ID,
 				IP:        peer.PeerLocalIP.String(),
-				State:     StringifyState(peer.State),
+				State:     ptp.StringifyState(peer.State),
 				LastError: peer.LastError,
 			})
 		}

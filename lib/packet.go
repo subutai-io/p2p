@@ -122,7 +122,7 @@ func (p *PeerToPeer) handlePacket(contents []byte, proto int) {
 
 // Handles a IPv4 packet and sends it to it's destination
 func (p *PeerToPeer) handlePacketIPv4(contents []byte, proto int) {
-	Log(Trace, "Handling IPv4 Packet")
+
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		Log(Error, "Failed to unmarshal IPv4 packet")
@@ -131,38 +131,41 @@ func (p *PeerToPeer) handlePacketIPv4(contents []byte, proto int) {
 	if f.EtherType != ethernet.EtherTypeIPv4 {
 		return
 	}
-	msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto), 1, 1, 1)
-	p.SendTo(f.Destination, msg)
+	//msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto), 1, 1, 1)
+	msg, err := p.CreateMessage(MsgTypeNenc, contents, uint16(proto), true)
+	if err == nil && msg != nil {
+		p.SendTo(f.Destination, msg)
+	}
 }
 
 // TODO: Implement IPv6 Support
 func (p *PeerToPeer) handlePacketIPv6(contents []byte, proto int) {
-	Log(Trace, "Handling IPv6 Packet")
+
 }
 
 // TODO: Implement PARC Universal Support
 func (p *PeerToPeer) handlePARCUniversalPacket(contents []byte, proto int) {
-	Log(Trace, "Handling PARC Universal Packet")
+
 }
 
 // TODO: Implement RARP Support
 func (p *PeerToPeer) handleRARPPacket(contents []byte, proto int) {
-	Log(Trace, "Handling RARP Packet")
+
 }
 
 // TODO: Implement 802.1q Support
 func (p *PeerToPeer) handle8021qPacket(contents []byte, proto int) {
-	Log(Trace, "Handling 802.1q Packet")
+
 }
 
 // TODO: Implement PPPoE Discovery Support
 func (p *PeerToPeer) handlePPPoEDiscoveryPacket(contents []byte, proto int) {
-	Log(Trace, "Handling PPPoE Discovery Packet")
+
 }
 
 // TODO: Implement PPPoE Session Support
 func (p *PeerToPeer) handlePPPoESessionPacket(contents []byte, proto int) {
-	Log(Trace, "Handling PPPoE Session Packet")
+
 }
 
 func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
@@ -181,7 +184,7 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
 	}
 	id, err := p.Peers.GetID(packet.TargetIP.String())
 	if err != nil {
-		Log(Debug, "Unknown IP requested")
+		Log(Trace, "Unknown IP requested: %s", packet.TargetIP.String())
 		return
 	}
 	peer := p.Peers.GetPeer(id)
@@ -225,12 +228,12 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
 	if err != nil {
 		Log(Error, "Failed to marshal ARP Ethernet Frame")
 	}
-	Log(Debug, "%v", packet.String())
+	Log(Trace, "%v", packet.String())
 	p.WriteToDevice(fb, uint16(proto), false)
 }
 
 func (p *PeerToPeer) handlePacketLLDP(contents []byte, proto int) {
-	Log(Trace, "Handling LLDP Session Packet")
+
 }
 
 func (p *ARPPacket) String() string {

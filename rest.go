@@ -3,12 +3,20 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	ptp "github.com/subutai-io/p2p/lib"
+)
+
+var (
+	errorFailedToMarshal           = errors.New("Failed to marshal JSON request")
+	errorFailedToCreatePOSTRequest = errors.New("Failed to create POST request")
+	errorFailedToExecuteRequest    = errors.New("Failed to execute request")
 )
 
 type request struct {
@@ -46,7 +54,13 @@ func setupRESTHandlers(port int, d *Daemon) {
 	http.HandleFunc("/rest/v1/debug", d.execRESTDebug)
 	http.HandleFunc("/rest/v1/set", d.execRESTSet)
 
-	go http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	go func() {
+		err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+		if err != nil {
+			fmt.Printf("Failed to start HTTP listener: %s", err)
+			os.Exit(98)
+		}
+	}()
 }
 
 func sendRequest(port int, command string, args *DaemonArgs) (*RESTResponse, error) {
@@ -79,18 +93,21 @@ func sendRequest(port int, command string, args *DaemonArgs) (*RESTResponse, err
 func sendRequestRaw(port int, command string, r *request) ([]byte, error) {
 	data, err := json.Marshal(r)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to marshal request: %s", err)
+		ptp.Log(ptp.Error, "%s: %s", errorFailedToMarshal, err)
+		return nil, errorFailedToMarshal
 	}
 
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/rest/v1/%s", port, command), bytes.NewBuffer(data))
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create request: %s", err)
+		ptp.Log(ptp.Error, "%s: %s", errorFailedToCreatePOSTRequest, err)
+		return nil, errorFailedToCreatePOSTRequest
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Couldn't execute command. Check if p2p daemon is running.")
+		ptp.Log(ptp.Error, "%s. Check if p2p daemon is running", errorFailedToExecuteRequest)
+		return nil, errorFailedToExecuteRequest
 	}
 	defer resp.Body.Close()
 	return ioutil.ReadAll(resp.Body)
