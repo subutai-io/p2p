@@ -581,15 +581,11 @@ func (p *PeerToPeer) ParseIntroString(intro string) (*PeerHandshake, error) {
 
 // SendTo sends a p2p packet by MAC address
 func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
-	Log(Trace, "Requested Send to %s", dst.String())
-	endpoint, proxy, err := p.Peers.GetEndpointAndProxy(dst.String())
+	endpoint, _, err := p.Peers.GetEndpointAndProxy(dst.String())
 	if err == nil && endpoint != nil {
-		Log(Trace, "Sending to %s via proxy id %d", dst.String(), proxy)
-		//msg.Header.ProxyID = uint16(proxy)
 		size, err := p.UDPSocket.SendMessage(msg, endpoint)
 		return size, err
 	}
-	Log(Trace, "Skipping packet")
 	return 0, nil
 }
 

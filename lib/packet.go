@@ -122,7 +122,7 @@ func (p *PeerToPeer) handlePacket(contents []byte, proto int) {
 
 // Handles a IPv4 packet and sends it to it's destination
 func (p *PeerToPeer) handlePacketIPv4(contents []byte, proto int) {
-	Log(Trace, "Handling IPv4 Packet")
+
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		Log(Error, "Failed to unmarshal IPv4 packet")
@@ -140,32 +140,32 @@ func (p *PeerToPeer) handlePacketIPv4(contents []byte, proto int) {
 
 // TODO: Implement IPv6 Support
 func (p *PeerToPeer) handlePacketIPv6(contents []byte, proto int) {
-	Log(Trace, "Handling IPv6 Packet")
+
 }
 
 // TODO: Implement PARC Universal Support
 func (p *PeerToPeer) handlePARCUniversalPacket(contents []byte, proto int) {
-	Log(Trace, "Handling PARC Universal Packet")
+
 }
 
 // TODO: Implement RARP Support
 func (p *PeerToPeer) handleRARPPacket(contents []byte, proto int) {
-	Log(Trace, "Handling RARP Packet")
+
 }
 
 // TODO: Implement 802.1q Support
 func (p *PeerToPeer) handle8021qPacket(contents []byte, proto int) {
-	Log(Trace, "Handling 802.1q Packet")
+
 }
 
 // TODO: Implement PPPoE Discovery Support
 func (p *PeerToPeer) handlePPPoEDiscoveryPacket(contents []byte, proto int) {
-	Log(Trace, "Handling PPPoE Discovery Packet")
+
 }
 
 // TODO: Implement PPPoE Session Support
 func (p *PeerToPeer) handlePPPoESessionPacket(contents []byte, proto int) {
-	Log(Trace, "Handling PPPoE Session Packet")
+
 }
 
 func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
@@ -233,7 +233,7 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
 }
 
 func (p *PeerToPeer) handlePacketLLDP(contents []byte, proto int) {
-	Log(Trace, "Handling LLDP Session Packet")
+
 }
 
 func (p *ARPPacket) String() string {
