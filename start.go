@@ -141,6 +141,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		err = newInst.PTP.Dht.Connect(newInst.PTP.LocalIPs, newInst.PTP.ProxyManager.GetList())
 		if err != nil {
 			newInst.PTP.Close()
+			bootstrap.unregisterInstance(newInst.ID)
 			resp.Output = resp.Output + err.Error()
 			resp.ExitCode = 602
 			return err
@@ -150,6 +151,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		if err != nil {
 			ptp.Log(ptp.Error, "Failed to configure network interface: %s", err)
 			newInst.PTP.Close()
+			bootstrap.unregisterInstance(newInst.ID)
 			resp.Output = resp.Output + "Failed to configure network: " + err.Error()
 			resp.ExitCode = 603
 			return errors.New("Failed to configure network interface")

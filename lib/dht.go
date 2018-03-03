@@ -25,24 +25,24 @@ type RemotePeerState struct {
 
 // DHTClient is a main structure of a DHT client
 type DHTClient struct {
-	Routers           string                        // Comma-separated list of bootstrap nodes
-	NetworkHash       string                        // Saved network hash
-	ID                string                        // Current instance ID
-	FailedRouters     []string                      // List of routes that we failed to connect to
-	Connections       []*net.TCPConn                // TCP connections to bootstrap nodes
-	LocalPort         int                           // UDP port number used by this instance
-	RemotePort        int                           // UDP port number reported by echo server
-	Forwarders        []Forwarder                   // List of worwarders
-	TCPCallbacks      map[DHTPacketType]dhtCallback // Callbacks for incoming packets
-	Mode              OperatingMode                 // DHT Client mode ???
-	IPList            []net.IP                      // List of network active interfaces
-	IP                net.IP                        // IP of local interface received from DHCP or specified manually
-	Network           *net.IPNet                    // Network information about current network. Used to inform p2p about mask for interface
-	Connected         bool                          // Whether connection with bootstrap nodes established or not
-	isShutdown        bool                          // Whether DHT shutting down or not
-	LastUpdate        time.Time                     // When last `find` packet was sent
-	OutboundIP        net.IP                        // Outbound IP
-	ListenerIsRunning bool                          // True if listener is runnning
+	Routers       string                        // Comma-separated list of bootstrap nodes
+	NetworkHash   string                        // Saved network hash
+	ID            string                        // Current instance ID
+	FailedRouters []string                      // List of routes that we failed to connect to
+	Connections   []*net.TCPConn                // TCP connections to bootstrap nodes
+	LocalPort     int                           // UDP port number used by this instance
+	RemotePort    int                           // UDP port number reported by echo server
+	Forwarders    []Forwarder                   // List of worwarders
+	TCPCallbacks  map[DHTPacketType]dhtCallback // Callbacks for incoming packets
+	Mode          OperatingMode                 // DHT Client mode ???
+	IPList        []net.IP                      // List of network active interfaces
+	IP            net.IP                        // IP of local interface received from DHCP or specified manually
+	Network       *net.IPNet                    // Network information about current network. Used to inform p2p about mask for interface
+	Connected     bool                          // Whether connection with bootstrap nodes established or not
+	//isShutdown        bool                          // Whether DHT shutting down or not
+	LastUpdate        time.Time // When last `find` packet was sent
+	OutboundIP        net.IP    // Outbound IP
+	ListenerIsRunning bool      // True if listener is runnning
 	IncomingData      chan *DHTPacket
 	OutgoingData      chan *DHTPacket
 }
@@ -131,10 +131,11 @@ func (dht *DHTClient) read() (*DHTPacket, error) {
 
 // Sends bytes to all connected bootstrap nodes
 func (dht *DHTClient) send(packet *DHTPacket) error {
-	if dht.OutgoingData != nil && !dht.isShutdown {
+	// if dht.OutgoingData != nil && !dht.isShutdown {
+	if dht.OutgoingData != nil {
 		dht.OutgoingData <- packet
 	} else {
-		Log(Debug, "%+v ||| %+v", dht.OutgoingData, dht.isShutdown)
+		// Log(Debug, "%+v ||| %+v", dht.OutgoingData, dht.isShutdown)
 		return fmt.Errorf("Trying to send to closed channel")
 	}
 	return nil
@@ -265,6 +266,13 @@ func (dht *DHTClient) sendReportProxy(addr []*net.UDPAddr) error {
 // Close will close all connections and switch DHT object to
 // shutdown mode, which will terminate every loop/goroutine
 func (dht *DHTClient) Close() error {
+	if dht.IncomingData != nil {
+		close(dht.IncomingData)
+	}
+	if dht.OutgoingData != nil {
+		close(dht.OutgoingData)
+	}
+	// dht.isShutdown = true
 	return nil
 }
 

@@ -102,6 +102,7 @@ func (dht *DHTConnection) registerInstance(hash string, inst *P2PInstance) error
 			dht.send(packet)
 		}
 	}()
+	ptp.Log(ptp.Debug, "Instance was registered with bootstrap client")
 	return nil
 }
 
@@ -132,19 +133,21 @@ func (dht *DHTConnection) run() {
 	for {
 		packet := <-dht.incoming
 		if packet == nil {
-			break
+			continue
 		}
+		ptp.Log(ptp.Trace, "Routing DHT Packet %+v", packet)
 		if packet.Type == ptp.DHTPacketType_Ping {
 			dht.ip = packet.Data
+			continue
 		}
 		if packet.Infohash == "" {
 			continue
 		}
 		i, e := dht.instances[packet.Infohash]
-		if e {
+		if e && i != nil && i.PTP != nil && !i.PTP.Shutdown && i.PTP.Dht != nil && i.PTP.Dht.IncomingData != nil {
 			i.PTP.Dht.IncomingData <- packet
 		} else {
-			ptp.Log(ptp.Debug, "DHT received data from unknown instance %s: %+v", packet.Infohash, packet)
+			ptp.Log(ptp.Debug, "DHT received data for unknown instance %s: %+v", packet.Infohash, packet)
 		}
 	}
 }
