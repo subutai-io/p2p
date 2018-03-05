@@ -3,6 +3,7 @@ package ptp
 import (
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 )
 
@@ -190,5 +191,6 @@ func (dht *DHTClient) packetUnknown(packet *DHTPacket) error {
 
 func (dht *DHTClient) packetUnsupported(packet *DHTPacket) error {
 	Log(Error, "Bootstap node doesn't support our version. Shutting down")
+	os.Exit(0)
 	return dht.Close()
 }
