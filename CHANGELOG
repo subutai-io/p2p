@@ -1,5 +1,9 @@
 # Change Log
 
+## [6.2.19] 03/06/2018
+
+* Added disconnect on version mismatch
+
 ## [6.2.18] 02/17/2018
 
 * Fixed problems with TAP interfaces on Windows
