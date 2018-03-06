@@ -27,6 +27,5 @@ test_script:
 
 notifications:
   - provider: Slack
-    auth_token:
-      secure: RYalRLpV6rf6klOj0E/Q5Y7Y1XXlXipucFWxgFeXglk=
-    channel: '#p2p-bots'
+    incoming_webhook:
+      secure: EH0gGIsLRLevwZRtCfJVMO6Bw+OP7p+1eyWatC0h6IorO7ksOj+PsENn5duSz59F45IIrPB0c318ZAzXGEhiUhD/Huor6zS/mQfejsO5RTg=
