@@ -21,7 +21,7 @@ build:
   - cmd: go get
   - cmd: go build github.com/subutai-io/p2p
   - cmd: c:\root\src\github.com\subutai-io\p2p\p2p.exe -v
-  - cmd: "C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.exe" c:\root\p2p-packages\windows\win.sln \/Rebuild Release
+  - cmd: "C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\Common7\\IDE\\devenv.exe" c:\root\p2p-packages\windows\win.sln \/Rebuild Release
 deploy: false
 
 notifications:
