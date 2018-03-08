@@ -18,10 +18,11 @@ install:
   - git clone --depth 1 https://github.com/subutai-io/p2p-packages.git c:\root\p2p-packages
 
 build_script: 
-  - cmd: go get
-  - cmd: go build github.com/subutai-io/p2p
-  - cmd: c:\root\src\github.com\subutai-io\p2p\p2p.exe -v
-  - cmd: "C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\Common7\\IDE\\devenv.exe" c:\\root\\p2p-packages\\windows\\win.sln /Rebuild Release
+  - go get
+  - go build github.com/subutai-io/p2p
+  - c:\root\src\github.com\subutai-io\p2p\p2p.exe -v
+  - "C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\Common7\\IDE\\devenv.exe" c:\\root\\p2p-packages\\windows\\win.sln /Rebuild Release
+
 deploy: false
 
 notifications:
