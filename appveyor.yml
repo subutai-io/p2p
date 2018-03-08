@@ -17,10 +17,14 @@ install:
   - go env
   - git clone --depth 1 https://github.com/subutai-io/p2p-packages.git c:\root\p2p-packages
 
-build: false
+build: 
+  - cmd: go get
+  - cmd: go build github.com/subutai-io/p2p
+  - cmd: c:\root\src\github.com\subutai-io\p2p\p2p.exe -v
+  - cmd: "C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.exe" c:\root\p2p-packages\windows\win.sln \/Rebuild Release
 deploy: false
 
-test_script:
-  - go get
-  - go build github.com/subutai-io/p2p
-  - c:\root\src\github.com\subutai-io\p2p\p2p.exe -v
+notifications:
+  - provider: Slack
+    incoming_webhook:
+      secure: EH0gGIsLRLevwZRtCfJVMO6Bw+OP7p+1eyWatC0h6IorO7ksOj+PsENn5duSz59F45IIrPB0c318ZAzXGEhiUhD/Huor6zS/mQfejsO5RTg=
