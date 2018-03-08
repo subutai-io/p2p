@@ -17,6 +17,8 @@ install:
   - go env
   - git clone --depth 1 https://github.com/subutai-io/p2p-packages.git c:\root\p2p-packages
   - curl -fsSLk https://eu0.cdn.subutai.io:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o c:\root\p2p-packages\tap-windows-9.21.2.exe
+  - curl -fsSLk https://files.gpg4win.org/gpg4win-3.0.3.exe -o c:\root\gpg4win.exe
+  - c:\root\gpg4win.exe /S
 
 build_script: 
   - cmd: >-
