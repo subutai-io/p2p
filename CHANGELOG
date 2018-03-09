@@ -1,5 +1,11 @@
 # Change Log
 
+## [6.2.20] 03/092018
+
+* Improvements in Windows networking subsystem
+* Fixed several problems with Windows package
+* Signed Windows package
+
 ## [6.2.19] 03/06/2018
 
 * Added disconnect on version mismatch
