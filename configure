@@ -8,9 +8,6 @@ usage: configure [options]
 Configure p2p
 
 Options:
-    --scheme=<build_scheme>
-        Builds p2p with specified build scheme. Supported schemes is: master, dev, branch. Default: master
-
     --dht=<url>
         Default DHT url
 
@@ -26,21 +23,14 @@ Options:
 ENDHELP
 }
 
-gopath=
 name_prefix=p2p
-scheme="master"
-branch=`git rev-parse --abbrev-ref HEAD`
+gopath=
+branch=
 dht=""
 argOS=""
-version=`cat VERSION`
-build=`git describe`
-source_list=`ls | grep .go`
-source_files="${source_list//$'\n'/ }"
 
 while [ $# -ge 1 ]; do
     case "$1" in
-        --scheme=*)
-            scheme="`echo ${1} | awk '{print substr($0,10)}'`" ;;
         --branch=*)
             branch="`echo ${1} | awk '{print substr($0,10)}'`" ;;
         --dht=*)
@@ -61,6 +51,7 @@ while [ $# -ge 1 ]; do
     shift
 done
 
+
 if [ "$argOS" != "linux" ] && [ "$argOS" != "darwin" ] && [ "$argOS" != "windows" ]; then
     argOS=""
 fi
@@ -69,7 +60,26 @@ if [ -z "$argOS" ]; then
     argOS=$(uname -s | tr '[:upper:]' '[:lower:]')
 fi
 
-echo "Preparing $scheme build for ${argOS}"
+if [ "$argOS" == "windows" ]; then
+    location="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    cd $location
+fi
+
+if [ -z "$branch" ]; then
+    echo "Branch was not specified. Trying to determine"
+    branch=`git rev-parse --abbrev-ref HEAD`
+    if [ $? -ne 0 ]; then
+        echo "Failed to determine branch using git command. Exiting"
+        exit 25
+    fi
+fi
+
+echo "Preparing \"${branch}\" build for ${argOS}"
+
+version=`cat VERSION`
+build=`git describe`
+source_list=`ls | grep .go`
+source_files="${source_list//$'\n'/ }"
 
 name_base="$name_prefix"
 if [ "$branch" != "HEAD" ]; then
