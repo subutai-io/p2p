@@ -47,7 +47,7 @@ deploy_script:
 
       {
 
-        $branch_name = "HEAD"
+        iex "c:\\root\\p2p-packages\\deploy.sh c:\root\p2p-packages\p2p.exe HEAD -appveyor-test"
 
       }
 
@@ -55,48 +55,10 @@ deploy_script:
 
       {
 
-        switch ($env:APPVEYOR_REPO_BRANCH)
-
-        {
-
-          master 
-
-          {
-
-            $branch_name = "master"
-
-            $cdn = "master"
-
-          }
-
-          dev
-
-          {
-
-            $branch_name = "dev"
-
-            $cdn = "dev"
-
-          }
-
-          windows-devops
-
-          {
-            $branch_name = "sysnet"
-
-            $cdn = "sysnet"
-
-          }
-
-        } 
+        iex "c:\\root\\p2p-packages\\deploy.sh c:\root\p2p-packages\p2p.exe $env:APPVEYOR_REPO_BRANCH -appveyor-test"
 
       }
 
-      if ($branch_name -ne "unknown") {
-
-        iex "c:\\root\\p2p-packages\\deploy.sh c:\root\p2p-packages\p2p.exe ${branch_name} -appveyor-test"
-        
-      }
 
 notifications:
   - provider: Slack
