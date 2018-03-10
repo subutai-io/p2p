@@ -21,8 +21,13 @@ install:
   - echo c:\root\gpg4win.exe /S
   - gpg --list-keys
 
+before_build:
+  - C:\msys64\usr\bin\bash -lc "$(cygpath ${APPVEYOR_BUILD_FOLDER})/configure"
+
 build_script: 
   - cmd: >-
+      type config.make
+
       go get
 
       go build github.com/subutai-io/p2p
