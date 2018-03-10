@@ -47,7 +47,9 @@ deploy_script:
 
       {
 
-        iex "c:\\root\\p2p-packages\\deploy.sh c:\root\p2p-packages\p2p.exe HEAD -appveyor-test"
+        iex "c:\\root\\p2p-packages\\deploy.sh c:\root\p2p-packages\p2p.exe HEAD -appveyor-test" | Tee-Object -Variable output
+
+        echo "Deployment: ${output}"
 
       }
 
@@ -55,7 +57,9 @@ deploy_script:
 
       {
 
-        iex "c:\\root\\p2p-packages\\deploy.sh c:\root\p2p-packages\p2p.exe $env:APPVEYOR_REPO_BRANCH -appveyor-test"
+        iex "c:\\root\\p2p-packages\\deploy.sh c:\root\p2p-packages\p2p.exe $env:APPVEYOR_REPO_BRANCH -appveyor-test" | Tee-Object -Variable output
+
+        echo "Deployment: ${output}"
 
       }
 
