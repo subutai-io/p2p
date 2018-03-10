@@ -40,36 +40,62 @@ build_script:
 deploy_script:
   - ps: >-
       $branch_name = "unknown"
+
       $cdn = ""
 
       if ($env:APPVEYOR_REPO_TAG -eq "true") 
+
       {
+
         $branch_name = "HEAD"
+
       }
+
       Else 
+
       {
+
         switch ($env:APPVEYOR_REPO_BRANCH)
+
         {
+
           master 
+
           {
+
             $branch_name = "master"
+
             $cdn = "master"
+
           }
+
           dev
+
           {
+
             $branch_name = "dev"
+
             $cdn = "dev"
+
           }
+
           windows-devops
+
           {
             $branch_name = "sysnet"
+
             $cdn = "sysnet"
+
           }
+
         } 
+
       }
 
       if ($branch_name -ne "unknown") {
+
         iex "c:\\root\\p2p-packages\\deploy.sh c:\root\p2p-packages\p2p.exe ${branch_name} -appveyor-test"
+        
       }
 
 notifications:
