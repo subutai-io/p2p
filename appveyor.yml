@@ -8,6 +8,7 @@ environment:
   GOVERSION: 1.9
 
 install:
+  - nuget install secure-file -ExcludeVersion
   - rmdir c:\go /s /q
   - appveyor DownloadFile https://storage.googleapis.com/golang/go%GOVERSION%.windows-amd64.msi
   - msiexec /i go%GOVERSION%.windows-amd64.msi /q
@@ -18,6 +19,8 @@ install:
   - git clone --depth 1 https://github.com/subutai-io/p2p-packages.git c:\root\p2p-packages
   - curl -fsSLk https://eu0.cdn.subutai.io:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o c:\root\p2p-packages\tap-windows-9.21.2.exe
   - gpg --list-keys
+  - secure-file\tools\secure-file -decrypt c:\root\p2p-packages\appveyor\private.key.enc -secret %GPG_KEY_SECRET%
+  - gpg --import c:\root\p2p-packages\appveyor\private.key
 
 before_build:
   - C:\msys64\usr\bin\bash -lc "$(cygpath ${APPVEYOR_BUILD_FOLDER})/configure --os=windows --branch=%APPVEYOR_REPO_BRANCH%"
