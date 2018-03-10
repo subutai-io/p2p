@@ -20,15 +20,11 @@ install:
   - gpg --list-keys
 
 before_build:
-  - C:\msys64\usr\bin\bash -lc "$(cygpath ${APPVEYOR_BUILD_FOLDER})/configure --os=windows"
+  - C:\msys64\usr\bin\bash -lc "$(cygpath ${APPVEYOR_BUILD_FOLDER})/configure --os=windows --branch=%APPVEYOR_REPO_BRANCH%"
 
 build_script: 
   - cmd: >-
-      type build.bat
-
-      go get
-
-      go build github.com/subutai-io/p2p
+      build.bat
 
       c:\root\src\github.com\subutai-io\p2p\p2p.exe -v
 
