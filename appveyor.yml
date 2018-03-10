@@ -2,6 +2,8 @@ version: "{build}"
 
 clone_folder: c:\root\src\github.com\subutai-io\p2p
 
+image: Visual Studio 2015
+
 install:
   - nuget install secure-file -ExcludeVersion
   - rmdir c:\go /s /q
@@ -25,7 +27,7 @@ build_script:
   - cmd: >-
       build.bat
 
-      signtool sign /tr http://timestamp.comodoca.com/authenticode /f c:\root\p2p-packages\appveyor\sign /p %SIGN_KEY% c:\root\src\github.com\subutai-io\p2p\p2p.exe
+      %signtool% sign /tr http://timestamp.comodoca.com/authenticode /f c:\root\p2p-packages\appveyor\sign /p %SIGN_KEY% c:\root\src\github.com\subutai-io\p2p\p2p.exe
 
       c:\root\src\github.com\subutai-io\p2p\p2p.exe -v
 
@@ -33,7 +35,7 @@ build_script:
 
       "C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\Common7\\IDE\\devenv.exe" c:\\root\\p2p-packages\\windows\\win.sln /Rebuild Release
 
-      signtool sign /tr http://timestamp.comodoca.com/authenticode /f c:\root\p2p-packages\appveyor\sign /p %SIGN_KEY% c:\\root\\p2p-packages\\windows\\P2PInstaller\\Release\\P2PInstaller.msi
+      %signtool% sign /tr http://timestamp.comodoca.com/authenticode /f c:\root\p2p-packages\appveyor\sign /p %SIGN_KEY% c:\\root\\p2p-packages\\windows\\P2PInstaller\\Release\\P2PInstaller.msi
 
 deploy_script:
   - echo 1
