@@ -2,11 +2,6 @@ version: "{build}"
 
 clone_folder: c:\root\src\github.com\subutai-io\p2p
 
-environment:
-  GOPATH: c:\root
-  DEPTESTBYPASS501: 1
-  GOVERSION: 1.9
-
 install:
   - nuget install secure-file -ExcludeVersion
   - rmdir c:\go /s /q
