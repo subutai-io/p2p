@@ -22,11 +22,11 @@ install:
   - gpg --list-keys
 
 before_build:
-  - C:\msys64\usr\bin\bash -lc "$(cygpath ${APPVEYOR_BUILD_FOLDER})/configure"
+  - C:\msys64\usr\bin\bash -lc "$(cygpath ${APPVEYOR_BUILD_FOLDER})/configure --os=windows"
 
 build_script: 
   - cmd: >-
-      type config.make
+      type build.bat
 
       go get
 
