@@ -38,7 +38,10 @@ build_script:
       %signtool% sign /tr http://timestamp.comodoca.com/authenticode /f c:\root\p2p-packages\appveyor\sign /p %SIGN_KEY% c:\\root\\p2p-packages\\windows\\P2PInstaller\\Release\\P2PInstaller.msi
 
 deploy_script:
-  - echo 12
+  - ps: >-
+      if ($env:APPVEYOR_REPO_BRANCH -eq "windows-devops") {
+        echo "Windows Devops"
+      }
 
 notifications:
   - provider: Slack
