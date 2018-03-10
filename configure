@@ -26,9 +26,7 @@ Options:
 ENDHELP
 }
 
-upx_bin=upx
 gopath=
-upx_go=$GOPATH/bin/goupx
 name_prefix=p2p
 scheme="master"
 branch=`git rev-parse --abbrev-ref HEAD`
@@ -107,19 +105,23 @@ elif [ "$branch" == "sysnet" ]; then
     log_level="DEBUG"
 fi
 
-echo "Checking go environment"
-if [ "$GOPATH" == "" ]; then
-    echo "GOPATH is not set. Setting to /tmp/go-path-tmp directory"
-	gopath=/tmp/go-path-tmp
-fi
+if [ "$argOS" != "windows" ]; then
 
-echo "Downloading necessary packages"
-if [ ! -z $gopath ]; then
-    export GOPATH=$HOME
-    export GOBIN=$HOME/go-bin
-fi
+    echo "Checking go environment"
+    if [ "$GOPATH" == "" ]; then
+        echo "GOPATH is not set. Setting to /tmp/go-path-tmp directory"
+        gopath=/tmp/go-path-tmp
+    fi
 
-go get
+    echo "Downloading necessary packages"
+    if [ ! -z $gopath ]; then
+        export GOPATH=$HOME
+        export GOBIN=$HOME/go-bin
+    fi
+
+    go get
+
+fi
 
 if [ "$argOS" == "windows" ]; then
     output_file="build.bat"
