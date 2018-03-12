@@ -223,7 +223,9 @@ func (dht *DHTRouter) routeData(data []byte) {
 		if !supported {
 			ptp.Log(ptp.Error, "Version mismatch. Server have %d. We have %d", packet.Version, ptp.PacketVersion)
 			dht.stop = true
-			dht.conn.Close()
+			if dht.conn != nil {
+				dht.conn.Close()
+			}
 		} else {
 			dht.handshaked = true
 			ptp.Log(ptp.Info, "Connected to a bootstrap node: %s [%s]", dht.addr.String(), packet.Data)
