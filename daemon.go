@@ -38,7 +38,7 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 		ptp.SetSyslogSocket(syslog)
 	}
 	StartProfiling(profiling)
-	go ptp.InitPlatform()
+	ptp.InitPlatform()
 	ptp.InitErrors()
 	if DefaultLog == "TRACE" {
 		ptp.SetMinLogLevel(ptp.Trace)
