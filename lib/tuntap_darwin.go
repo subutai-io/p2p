@@ -181,3 +181,13 @@ func (t *TAPDarwin) WritePacket(packet *Packet) error {
 func (t *TAPDarwin) Run() {
 
 }
+
+// FilterInterface will return true if this interface needs to be filtered out
+func FilterInterface(infName, infIP string) bool {
+	ping := exec.Command("ping", "-t", "1", "-c", "1", "-S", infIP, "ptest.subutai.io")
+	if ping.Run() != nil {
+		Log(Info, "Filtered %s %s", infName, infIP)
+		return true
+	}
+	return false
+}

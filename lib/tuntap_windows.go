@@ -433,3 +433,8 @@ func tapControlCode(request, method uint32) uint32 {
 func controlCode(device_type, function, method, access uint32) uint32 {
 	return (device_type << 16) | (access << 14) | (function << 2) | method
 }
+
+// FilterInterface will return true if this interface needs to be filtered out
+func FilterInterface(infName, infIP string) bool {
+	return false
+}
