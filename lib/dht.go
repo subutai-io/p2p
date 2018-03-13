@@ -5,7 +5,6 @@ import (
 	"net"
 	"time"
 
-	proto "github.com/golang/protobuf/proto"
 	uuid "github.com/wayn3h0/go-uuid"
 )
 
@@ -134,7 +133,10 @@ func (dht *DHTClient) read() (*DHTPacket, error) {
 func (dht *DHTClient) send(packet *DHTPacket) error {
 	// if dht.OutgoingData != nil && !dht.isShutdown {
 	if dht.OutgoingData != nil {
-		dht.OutgoingData <- packet
+		packets, _ := dht.ProducePacket(packet)
+		for _, npacket := range packets {
+			dht.OutgoingData <- npacket
+		}
 	} else {
 		// Log(Debug, "%+v ||| %+v", dht.OutgoingData, dht.isShutdown)
 		return fmt.Errorf("Trying to send to closed channel")
@@ -322,16 +324,12 @@ func (dht *DHTClient) ReportLoad(clientsNum int) error {
 
 // ProduceData will return one or more byte slices for a provided packet
 // If packet is too big it will be split into multiple packets
-func (dht *DHTClient) ProduceData(packet *DHTPacket) ([][]byte, error) {
+func (dht *DHTClient) ProducePacket(packet *DHTPacket) ([]*DHTPacket, error) {
 
-	result := [][]byte{}
+	result := []*DHTPacket{}
 
-	if len(packet.Proxies) > 4 && len(packet.Arguments) > 4 {
-		data, err := proto.Marshal(packet)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, data)
+	if len(packet.Proxies) < 4 && len(packet.Arguments) < 4 {
+		result = append(result, packet)
 	} else {
 		for len(packet.Proxies) != 0 || len(packet.Arguments) != 0 {
 			npacket := &DHTPacket{
@@ -359,11 +357,7 @@ func (dht *DHTClient) ProduceData(packet *DHTPacket) ([][]byte, error) {
 				packet.Arguments = packet.Arguments[:0]
 			}
 
-			data, err := proto.Marshal(npacket)
-			if err != nil {
-				return result, err
-			}
-			result = append(result, data)
+			result = append(result, npacket)
 		}
 	}
 
