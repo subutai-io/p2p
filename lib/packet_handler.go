@@ -166,7 +166,7 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	//peer.Endpoints = append(peer.Endpoints, PeerEndpoint{Addr: hs.Endpoint, LastContact: time.Now()})
 	// peer.SetState(PeerStateConnected, p)
 	p.Peers.Update(hs.ID, peer)
-	Log(Info, "Connection with peer %s has been established over %s", hs.ID, hs.Endpoint.String())
+	Log(Debug, "Connection with peer %s has been established over %s", hs.ID, hs.Endpoint.String())
 }
 
 // HandleIntroRequestMessage is a handshake request from another peer

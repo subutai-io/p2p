@@ -312,8 +312,8 @@ func (p *PeerToPeer) packetState(packet *DHTPacket) error {
 		p.Peers.Update(packet.Data, peer)
 		Log(Debug, "Peer %s reported state '%s'", peer.ID, StringifyState(peer.RemoteState))
 	} else {
-		Log(Warning, "Received state of unknown peer. Updating peers")
-		p.Dht.sendFind()
+		Log(Trace, "Received state of unknown peer. Updating peers")
+		//p.Dht.sendFind()
 	}
 	return nil
 }
