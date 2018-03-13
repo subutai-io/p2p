@@ -128,7 +128,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 
 		err := bootstrap.registerInstance(newInst.ID, newInst)
 		if err != nil {
-			ptp.Log(ptp.Error, "Failed to register instance with bootstrap nodes")
+			ptp.Log(ptp.Error, "Failed to register instance with bootstrap nodes: %s", err.Error())
 			newInst.PTP.Close()
 			resp.Output = resp.Output + "Failed to register instance: %s" + err.Error()
 			resp.ExitCode = 601
