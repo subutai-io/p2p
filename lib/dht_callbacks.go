@@ -150,6 +150,9 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 		proxies := []*net.UDPAddr{}
 
 		for _, ip := range packet.Arguments {
+			if ip == "" {
+				continue
+			}
 			addr, err := net.ResolveUDPAddr("udp4", ip)
 			if err != nil {
 				continue
@@ -167,6 +170,9 @@ func (p *PeerToPeer) packetFind(packet *DHTPacket) error {
 		}
 		peer.KnownIPs = ips
 		for _, proxy := range packet.Proxies {
+			if proxy == "" {
+				continue
+			}
 			addr, err := net.ResolveUDPAddr("udp4", proxy)
 			if err != nil {
 				continue
