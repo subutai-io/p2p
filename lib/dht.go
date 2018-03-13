@@ -322,11 +322,11 @@ func (dht *DHTClient) ReportLoad(clientsNum int) error {
 
 // ProduceData will return one or more byte slices for a provided packet
 // If packet is too big it will be split into multiple packets
-func (dht *DHTClient) ProduceData(packet *DHTPacket) ([][]byte, error) {
+func (dht *DHTClient) ProducePacket(packet *DHTPacket) ([][]byte, error) {
 
 	result := [][]byte{}
 
-	if len(packet.Proxies) > 4 && len(packet.Arguments) > 4 {
+	if len(packet.Proxies) < 4 && len(packet.Arguments) < 4 {
 		data, err := proto.Marshal(packet)
 		if err != nil {
 			return result, err
