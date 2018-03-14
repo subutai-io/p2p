@@ -91,10 +91,9 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 
 		for _, peer := range p.Peers.Get() {
 			if peer.ID == id {
-				for i, ep := range peer.Endpoints {
-					if ep.Addr.String() == srcAddr.String() {
-						peer.Endpoints[i].LastContact = time.Now()
-						p.UDPSocket.SendMessage(msg, ep.Addr)
+				for _, ep := range peer.KnownIPs {
+					if ep.String() == srcAddr.String() {
+						p.UDPSocket.SendMessage(msg, ep)
 						return
 					}
 				}
