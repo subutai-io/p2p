@@ -137,7 +137,7 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 				decision = "No IPv4"
 			}
 			Log(Trace, "Interface %s: %s. Type: %s. %s", i.Name, addr.String(), ipType, decision)
-			if decision == "Saving" && FilterInterface(i.Name, addr.String()) {
+			if decision == "Saving" && !FilterInterface(i.Name, addr.String()) {
 				p.LocalIPs = append(p.LocalIPs, ip)
 			}
 		}

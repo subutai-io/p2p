@@ -297,8 +297,10 @@ func (t *TAPLinux) setMac() error {
 
 // FilterInterface will return true if this interface needs to be filtered out
 func FilterInterface(infName, infIP string) bool {
+	Log(Trace, "ping -4 -w 1 -c 1 -I %s ptest.subutai.io", infName)
 	ping := exec.Command("ping", "-4", "-w", "1", "-c", "1", "-I", infName, "ptest.subutai.io")
 	if ping.Run() != nil {
+		Log(Debug, "Filtered %s %s", infName, infIP)
 		return true
 	}
 	return false
