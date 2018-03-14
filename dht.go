@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net"
@@ -155,7 +156,7 @@ func (dht *DHTConnection) run() {
 func (dht *DHTConnection) unregisterInstance(hash string) error {
 	dht.lock.Lock()
 	defer dht.lock.Unlock()
-	ptp.Log(ptp.Debug, "Unregistering instance %s from bootstrap")
+	ptp.Log(ptp.Debug, "Unregistering instance %s from bootstrap", hash)
 	inst, e := dht.instances[hash]
 	if !e {
 		return fmt.Errorf("Can't unregister hash %s: Instance doesn't exists", hash)
@@ -179,7 +180,7 @@ func (dht *DHTConnection) unregisterInstance(hash string) error {
 func (dht *DHTRouter) run() {
 	dht.running = false
 	dht.handshaked = false
-	data := make([]byte, 1024)
+
 	for !dht.stop {
 		for !dht.running {
 			dht.connect()
@@ -191,6 +192,7 @@ func (dht *DHTRouter) run() {
 			}
 			dht.sleep()
 		}
+		data := make([]byte, 1024)
 		n, err := dht.conn.Read(data)
 		if err != nil {
 			ptp.Log(ptp.Warning, "BSN socket closed: %s", err)
@@ -200,7 +202,15 @@ func (dht *DHTRouter) run() {
 		}
 		go func() {
 			dht.rx += uint64(n)
-			dht.routeData(data[:n])
+			i := 0
+			for i >= 0 {
+				i = bytes.Index(data, []byte{0x0a, 0x0b, 0x0c, 0x0a})
+				if i <= 0 {
+					break
+				}
+				dht.routeData(data[:i])
+				data = data[i:]
+			}
 		}()
 	}
 }
