@@ -189,9 +189,6 @@ func (np *NetworkPeer) RequestForwarder(ptpc *PeerToPeer) {
 // Run hope punching in a separate goroutine and switch to
 // Routing/Connected mode
 func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
-	if np.RemoteState != PeerStateConnecting {
-		return nil
-	}
 	Log(Debug, "Connecting to %s", np.ID)
 
 	started := time.Now()
@@ -202,9 +199,14 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 			np.SetState(PeerStateConnected, ptpc)
 			return nil
 		}
+		if time.Since(started) > time.Duration(time.Millisecond*3000) && np.RemoteState == PeerStateWaitingToConnect {
+			np.SetState(PeerStateWaitingToConnect, ptpc)
+			return nil
+		}
 		time.Sleep(time.Millisecond * 100)
 	}
 	Log(Debug, "Couldn't connect to the peer in any way")
+	np.SetState(PeerStateConnected, ptpc)
 	return nil
 }
 
@@ -278,9 +280,6 @@ func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
 	recheck := time.Now()
 	recheckTimeout := time.Duration(5000 * time.Millisecond)
 	for {
-		// if np.State != PeerStateWaitingToConnect {
-		// 	return nil
-		// }
 		if np.RemoteState == PeerStateWaitingToConnect || np.RemoteState == PeerStateConnecting {
 			Log(Debug, "Peer [%s] have joined required state: %s", np.ID, StringifyState(np.RemoteState))
 			np.SetState(PeerStateConnecting, ptpc)
