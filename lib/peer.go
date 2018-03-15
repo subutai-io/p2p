@@ -280,7 +280,7 @@ func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
 	recheck := time.Now()
 	recheckTimeout := time.Duration(5000 * time.Millisecond)
 	for {
-		if np.RemoteState == PeerStateWaitingToConnect || np.RemoteState == PeerStateConnecting {
+		if np.RemoteState == PeerStateWaitingToConnect || np.RemoteState == PeerStateConnecting || np.RemoteState == PeerStateConnected {
 			Log(Debug, "Peer [%s] have joined required state: %s", np.ID, StringifyState(np.RemoteState))
 			np.SetState(PeerStateConnecting, ptpc)
 			break

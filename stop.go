@@ -80,6 +80,7 @@ func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
 				}
 			}
 			usedIPs = usedIPs[:k]
+			bootstrap.unregisterInstance(args.Hash)
 			return nil
 		}
 	} else if args.Dev != "" {
