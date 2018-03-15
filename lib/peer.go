@@ -200,7 +200,7 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 			return nil
 		}
 		if time.Since(started) > time.Duration(time.Millisecond*3000) && np.RemoteState == PeerStateWaitingToConnect {
-			np.SetState(PeerStateWaitingToConnect, ptpc)
+			np.SetState(PeerStateDisconnect, ptpc)
 			return nil
 		}
 		time.Sleep(time.Millisecond * 100)
@@ -276,11 +276,11 @@ func (np *NetworkPeer) stateWaitingForProxy(ptpc *PeerToPeer) error {
 func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
 	Log(Debug, "Waiting for peer [%s] to join connection state", np.ID)
 	started := time.Now()
-	timeout := time.Duration(60000 * time.Millisecond)
+	timeout := time.Duration(30000 * time.Millisecond)
 	recheck := time.Now()
 	recheckTimeout := time.Duration(5000 * time.Millisecond)
 	for {
-		if np.RemoteState == PeerStateWaitingToConnect || np.RemoteState == PeerStateConnecting {
+		if np.RemoteState == PeerStateWaitingToConnect || np.RemoteState == PeerStateConnecting || np.RemoteState == PeerStateConnected {
 			Log(Debug, "Peer [%s] have joined required state: %s", np.ID, StringifyState(np.RemoteState))
 			np.SetState(PeerStateConnecting, ptpc)
 			break
