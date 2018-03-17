@@ -1,6 +1,7 @@
 package ptp
 
 import (
+	"fmt"
 	"net"
 	"testing"
 )
@@ -21,4 +22,10 @@ func TestGenerateMac(t *testing.T) {
 		}
 		macs[smac] = mac
 	}
+}
+
+func TestFindNetworkAddresses(t *testing.T) {
+	ptp := new(PeerToPeer)
+	ptp.FindNetworkAddresses()
+	fmt.Printf("%+v\n", ptp.LocalIPs)
 }

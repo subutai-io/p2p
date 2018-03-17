@@ -51,14 +51,6 @@ func TestIsIPv4(t *testing.T) {
 	}
 }
 
-func TestFindNetworkAddresses(t *testing.T) {
-	ptp := new(PeerToPeer)
-	ptp.FindNetworkAddresses()
-	if !true {
-		t.Error("Error in function")
-	}
-}
-
 func TestRetrieveFirstDHTRouters(t *testing.T) {
 	ptp := new(PeerToPeer)
 	wait, err := net.ResolveUDPAddr("udp4", "192.168.11.5:6882")
