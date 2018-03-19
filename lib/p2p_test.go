@@ -4,10 +4,14 @@ import (
 	"bytes"
 	"net"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
 func TestIsDeviceExists(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		return
+	}
 	ptp := new(PeerToPeer)
 	dev1 := "lo"
 	get1 := ptp.IsDeviceExists(dev1)
@@ -22,6 +26,9 @@ func TestIsDeviceExists(t *testing.T) {
 }
 
 func TestGenerateDeviceName(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		return
+	}
 	p := new(PeerToPeer)
 	dev := p.GenerateDeviceName(12)
 	if dev != "vptp12" {
@@ -48,14 +55,6 @@ func TestIsIPv4(t *testing.T) {
 	get3 := ptp.IsIPv4(ip3)
 	if get3 != wait3 {
 		t.Errorf("Error: wait %v, get %v", wait3, get3)
-	}
-}
-
-func TestFindNetworkAddresses(t *testing.T) {
-	ptp := new(PeerToPeer)
-	ptp.FindNetworkAddresses()
-	if !true {
-		t.Error("Error in function")
 	}
 }
 
