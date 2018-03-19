@@ -4,10 +4,14 @@ import (
 	"bytes"
 	"net"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
 func TestIsDeviceExists(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		return
+	}
 	ptp := new(PeerToPeer)
 	dev1 := "lo"
 	get1 := ptp.IsDeviceExists(dev1)
@@ -22,6 +26,9 @@ func TestIsDeviceExists(t *testing.T) {
 }
 
 func TestGenerateDeviceName(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		return
+	}
 	p := new(PeerToPeer)
 	dev := p.GenerateDeviceName(12)
 	if dev != "vptp12" {

@@ -189,5 +189,6 @@ func FilterInterface(infName, infIP string) bool {
 		Log(Info, "Filtered %s %s", infName, infIP)
 		return true
 	}
+	Log(Info, "Added %s %s", infName, infIP)
 	return false
 }
