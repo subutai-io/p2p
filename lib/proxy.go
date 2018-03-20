@@ -84,7 +84,7 @@ func (p *ProxyManager) check() {
 			}
 			Log(Debug, "Failed to connect to proxy %s", id)
 		}
-		if proxy.Status == proxyActive && time.Since(proxy.LastUpdate) > time.Duration(30*time.Second) {
+		if proxy.Status == proxyActive && time.Since(proxy.LastUpdate) > time.Duration(90*time.Second) {
 			err := proxy.Close()
 			if err != nil {
 				Log(Debug, "Failed to close proxy: %s", err)
