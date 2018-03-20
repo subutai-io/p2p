@@ -105,6 +105,10 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 		return
 	}
 	p.LocalIPs = p.LocalIPs[:0]
+	ips := []net.IP{}
+	// We use reserve to collect all multicast interfaces and use them as a fallback
+	// in a case when we don't find any interfaces with outbound traffic enabled
+	reserve := []net.IP{}
 	for _, i := range inf {
 		addresses, err := i.Addrs()
 
@@ -113,34 +117,25 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 			continue
 		}
 		for _, addr := range addresses {
-			var decision = "Ignoring"
-			var ipType = "Unknown"
 			ip, _, err := net.ParseCIDR(addr.String())
 			if err != nil {
 				Log(Error, "Failed to parse CIDR notation: %v", err)
 			}
-			if ip.IsLoopback() {
-				ipType = "Loopback"
-			} else if ip.IsMulticast() {
-				ipType = "Multicast"
-			} else if ip.IsGlobalUnicast() {
-				decision = "Saving"
-				ipType = "Global Unicast"
-			} else if ip.IsLinkLocalUnicast() {
-				ipType = "Link Local Unicast"
-			} else if ip.IsLinkLocalMulticast() {
-				ipType = "Link Local Multicast"
-			} else if ip.IsInterfaceLocalMulticast() {
-				ipType = "Interface Local Multicast"
-			}
-			if !p.IsIPv4(ip.String()) {
-				decision = "No IPv4"
-			}
-			Log(Trace, "Interface %s: %s. Type: %s. %s", i.Name, addr.String(), ipType, decision)
-			if decision == "Saving" && !FilterInterface(i.Name, ip.String()) {
-				p.LocalIPs = append(p.LocalIPs, ip)
+
+			if ip.IsGlobalUnicast() && p.IsIPv4(ip.String()) {
+				if !FilterInterface(i.Name, ip.String()) {
+					ips = append(ips, ip)
+				} else {
+					reserve = append(reserve, ip)
+				}
 			}
 		}
 	}
+	if len(ips) == 0 {
+		p.LocalIPs = reserve
+	} else {
+		p.LocalIPs = ips
+	}
+
 	Log(Trace, "%d interfaces were saved", len(p.LocalIPs))
 }

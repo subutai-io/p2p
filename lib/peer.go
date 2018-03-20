@@ -76,7 +76,6 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 	np.handlers[PeerStateRequestingProxy] = np.stateRequestingProxy
 	np.handlers[PeerStateWaitingForProxy] = np.stateWaitingForProxy
 	np.handlers[PeerStateWaitingToConnect] = np.stateWaitingToConnect
-	// np.handlers[PeerStateRouting] = np.stateRouting
 	np.handlers[PeerStateCooldown] = np.stateCooldown
 
 	for {
