@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"net"
@@ -200,18 +199,19 @@ func (dht *DHTRouter) run() {
 			dht.handshaked = false
 			continue
 		}
-		go func() {
-			dht.rx += uint64(n)
-			i := 0
-			for i >= 0 {
-				i = bytes.Index(data, []byte{0x0a, 0x0b, 0x0c, 0x0a})
-				if i <= 0 {
-					break
-				}
-				dht.routeData(data[:i])
-				data = data[i:]
-			}
-		}()
+		dht.routeData(data[:n])
+		// go func() {
+		// 	dht.rx += uint64(n)
+		// 	i := 0
+		// 	for i >= 0 {
+		// 		i = bytes.Index(data, []byte{0x0a, 0x0b, 0x0c, 0x0a})
+		// 		if i <= 0 {
+		// 			break
+		// 		}
+		// 		dht.routeData(data[:i])
+		// 		data = data[i:]
+		// 	}
+		// }()
 	}
 }
 
