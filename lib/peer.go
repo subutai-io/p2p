@@ -46,6 +46,7 @@ func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
 	if stateStr == "" {
 		return
 	}
+	Log(Trace, "Reporting state %s to %s", StringifyState(np.State), np.ID)
 	ptpc.Dht.sendState(np.ID, stateStr)
 }
 
@@ -76,7 +77,6 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 	np.handlers[PeerStateRequestingProxy] = np.stateRequestingProxy
 	np.handlers[PeerStateWaitingForProxy] = np.stateWaitingForProxy
 	np.handlers[PeerStateWaitingToConnect] = np.stateWaitingToConnect
-	// np.handlers[PeerStateRouting] = np.stateRouting
 	np.handlers[PeerStateCooldown] = np.stateCooldown
 
 	for {
@@ -295,6 +295,10 @@ func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
 			Log(Debug, "Peer %s is in %s state", np.ID, StringifyState(np.RemoteState))
 			recheck = time.Now()
 			np.reportState(ptpc)
+		}
+		if np.RemoteState == PeerStateDisconnect || np.RemoteState == PeerStateStop {
+			np.SetState(PeerStateDisconnect, ptpc)
+			return fmt.Errorf("Connection refused: remote peer stopped")
 		}
 	}
 	return nil
