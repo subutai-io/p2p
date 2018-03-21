@@ -110,7 +110,8 @@ func (p *PeerToPeer) ListenInterface() {
 		packet, err := p.Interface.ReadPacket()
 		if err != nil {
 			Log(Error, "Reading packet: %s", err)
-			continue
+			p.Close()
+			break
 		}
 		go p.handlePacket(packet.Packet, packet.Protocol)
 	}
