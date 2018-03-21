@@ -268,11 +268,6 @@ func (t *TAPWindows) ReadPacket() (*Packet, error) {
 	var pkt *Packet
 	pkt = &Packet{Packet: buf[0:n]}
 	pkt.Protocol = int(binary.BigEndian.Uint16(buf[p : p+2]))
-	// flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
-	// if flags&flagTruncated != 0 {
-	// 	pkt.Truncated = true
-	// }
-	// pkt.Truncated = false
 	return pkt, nil
 }
 

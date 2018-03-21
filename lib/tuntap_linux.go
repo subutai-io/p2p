@@ -253,26 +253,6 @@ func (t *TAPLinux) linkDown() error {
 	return nil
 }
 
-// func (t *TAPLinux) ifUp() error {
-// 	linkup := exec.Command("ifconfig", t.Name, "up")
-// 	err := linkup.Run()
-// 	if err != nil {
-// 		Log(Error, "Failed to up link: %v", err)
-// 		return err
-// 	}
-// 	return nil
-// }
-
-// func (t *TAPLinux) ifDown() error {
-// 	linkup := exec.Command("ifconfig", t.Name, "down")
-// 	err := linkup.Run()
-// 	if err != nil {
-// 		Log(Error, "Failed to down link: %v", err)
-// 		return err
-// 	}
-// 	return nil
-// }
-
 func (t *TAPLinux) setIP() error {
 	Log(Info, "Setting %s IP on device %s", t.IP.String(), t.Name)
 	setip := exec.Command(t.Tool, "addr", "add", t.IP.String()+"/24", "dev", t.Name)
