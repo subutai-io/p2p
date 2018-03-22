@@ -65,30 +65,30 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 		os.Exit(152)
 	}
 	go bootstrap.run()
-	for _, r := range bootstrap.routers {
-		if r != nil {
-			go r.run()
+	go func() {
+		for _, r := range bootstrap.routers {
+			if r != nil {
+				go r.run()
+			}
 		}
-	}
+		for !bootstrap.isActive {
+			for _, r := range bootstrap.routers {
+				if r.running && r.handshaked {
+					bootstrap.isActive = true
+					break
+				}
+			}
+			time.Sleep(time.Millisecond * 100)
+		}
+		for bootstrap.ip == "" {
+			time.Sleep(time.Millisecond * 100)
+		}
+		OutboundIP = net.ParseIP(bootstrap.ip)
+	}()
 
-	for bootstrap.ip == "" {
-		time.Sleep(time.Millisecond * 100)
-	}
-
-	OutboundIP = net.ParseIP(bootstrap.ip)
 	proc := new(Daemon)
 	proc.Initialize(sFile)
 	setupRESTHandlers(port, proc)
-
-	// ptp.Log(ptp.Info, "Determining outbound IP")
-	// nat, host, err := stun.NewClient().Discover()
-	// if err != nil {
-	// 	ptp.Log(ptp.Error, "Failed to discover outbound IP: %s", err)
-	// 	OutboundIP = nil
-	// } else {
-	// 	OutboundIP = net.ParseIP(host.IP())
-	// 	ptp.Log(ptp.Info, "Public IP is %s. %s", OutboundIP.String(), nat)
-	// }
 
 	if sFile != "" {
 		ptp.Log(ptp.Info, "Restore file provided")

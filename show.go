@@ -132,6 +132,15 @@ func (d *Daemon) Show(args *request) ([]byte, error) {
 		out := []ShowOutput{ShowOutput{Error: "P2P Daemon is in initialization mode. Can't handle request", Code: 105}}
 		return d.showOutput(out)
 	}
+	if !bootstrap.isActive {
+		out := []ShowOutput{ShowOutput{Error: "Not connected to DHT nodes", Code: 106}}
+		return d.showOutput(out)
+	}
+	if bootstrap.ip == "" {
+		out := []ShowOutput{ShowOutput{Error: "Didn't received outbound IP yet", Code: 107}}
+		return d.showOutput(out)
+	}
+
 	if args.Hash != "" {
 		inst := d.Instances.GetInstance(args.Hash)
 		if inst != nil {
