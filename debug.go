@@ -67,52 +67,48 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 		resp.Output += fmt.Sprintf("Hash: %s\n", inst.ID)
 		resp.Output += fmt.Sprintf("ID: %s\n", inst.PTP.Dht.ID)
 		resp.Output += fmt.Sprintf("UDP Port: %d\n", inst.PTP.UDPSocket.GetPort())
-		resp.Output += fmt.Sprintf("Network interfaces:\n")
+		resp.Output += fmt.Sprintf("Network interfaces: ")
 		for _, ip := range inst.PTP.LocalIPs {
-			resp.Output += fmt.Sprintf("\tIP: %s\n", ip.String())
+			resp.Output += fmt.Sprintf("%s ", ip.String())
 		}
+		resp.Output += "\n"
 		resp.Output += fmt.Sprintf("P2P Interface %s, HW Addr: %s, IP: %s\n", inst.PTP.Interface.GetName(), inst.PTP.Interface.GetHardwareAddress().String(), inst.PTP.Interface.GetIP().String())
-		resp.Output += fmt.Sprintf("Proxies:\n")
+		resp.Output += fmt.Sprintf("Proxies: ")
 		proxyList := inst.PTP.ProxyManager.GetList()
 		if len(proxyList) == 0 {
-			resp.Output += fmt.Sprintf("\tNo proxies in use\n")
+			resp.Output += fmt.Sprintf("No proxies in use")
 		}
 		for _, proxy := range proxyList {
-			resp.Output += fmt.Sprintf("\tProxy address: %s Assigned Endpoint: %s\n", proxy.Addr.String(), proxy.Endpoint.String())
+			resp.Output += fmt.Sprintf("%s/%d ", proxy.Addr.String(), proxy.Endpoint.Port)
 		}
+		resp.Output += "\n"
 		resp.Output += fmt.Sprintf("Peers:\n")
 
 		peers := inst.PTP.Peers.Get()
 		for _, peer := range peers {
 			resp.Output += fmt.Sprintf("\t--- %s ---\n", peer.ID)
-			resp.Output += fmt.Sprintf("\tState: %s\n", ptp.StringifyState(peer.State))
-			resp.Output += fmt.Sprintf("\tRemote State: %s\n", ptp.StringifyState(peer.RemoteState))
+			resp.Output += fmt.Sprintf("\tStates: %s | %s\n", ptp.StringifyState(peer.State), ptp.StringifyState(peer.RemoteState))
 			if peer.PeerLocalIP == nil {
 				resp.Output += "\tNo IP assigned\n"
 			} else if peer.PeerHW == nil {
 				resp.Output += "\tNo MAC assigned\n"
 			} else {
-				resp.Output += fmt.Sprintf("\tHWAddr: %s\n", peer.PeerHW.String())
-				resp.Output += fmt.Sprintf("\tIP: %s\n", peer.PeerLocalIP.String())
+				resp.Output += fmt.Sprintf("\tNetwork: %s %s\n", peer.PeerLocalIP.String(), peer.PeerHW.String())
 				resp.Output += fmt.Sprintf("\tEndpoint: %s\n", peer.Endpoint)
-				resp.Output += fmt.Sprintf("\tAll Endpoints:\n")
-				for _, ep := range peer.Endpoints {
-					resp.Output += fmt.Sprintf("\t\t%s\n", ep.Addr.String())
+				resp.Output += fmt.Sprintf("\tAll Endpoints: ")
+				for _, ep := range peer.EndpointsActive {
+					resp.Output += fmt.Sprintf("%s ", ep.Addr.String())
 				}
+				resp.Output += "\n"
 			}
-			resp.Output += fmt.Sprintf("\tEndpoints pool: \n")
+			resp.Output += fmt.Sprintf("\tEndpoints pool: ")
 			pool := []*net.UDPAddr{}
 			pool = append(pool, peer.KnownIPs...)
 			pool = append(pool, peer.Proxies...)
 			for _, v := range pool {
-				resp.Output += fmt.Sprintf("\t  %s", v.String())
-				for _, ep := range peer.Endpoints {
-					if v.String() == ep.Addr.String() {
-						resp.Output += fmt.Sprintf("\tActive")
-					}
-				}
-				resp.Output += fmt.Sprintf("\n")
+				resp.Output += fmt.Sprintf("%s ", v.String())
 			}
+			resp.Output += "\n"
 			resp.Output += fmt.Sprintf("\t--- End of %s ---\n", peer.ID)
 		}
 	}

@@ -120,9 +120,9 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 			if peer == nil {
 				continue
 			}
-			for i, ep := range peer.Endpoints {
+			for i, ep := range peer.EndpointsHeap {
 				if ep.Addr.String() == string(endpoint) {
-					peer.Endpoints[i].LastContact = time.Now()
+					peer.EndpointsHeap[i].LastContact = time.Now()
 					return
 				}
 			}

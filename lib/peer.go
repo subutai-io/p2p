@@ -18,6 +18,13 @@ type PeerEndpoint struct {
 	LastContact time.Time
 }
 
+// PeerStats represents different peer statistics
+type PeerStats struct {
+	localNum    int // Number of local network connections
+	internetNum int // Number of internet connections
+	proxyNum    int // Number of proxy connections
+}
+
 // NetworkPeer represents a peer
 type NetworkPeer struct {
 	ID                 string                             // ID of a peer
@@ -34,11 +41,13 @@ type NetworkPeer struct {
 	ConnectionAttempts uint8                              // How many times we tried to connect
 	handlers           map[PeerState]StateHandlerCallback // List of callbacks for different peer states
 	Running            bool                               // Whether peer is running or not
-	Endpoints          []PeerEndpoint                     // List of active endpoints
+	EndpointsHeap      []PeerEndpoint                     // List of all endpoints
+	EndpointsActive    []PeerEndpoint                     // List of active endpoints
 	EndpointsLock      sync.RWMutex                       // Mutex for endpoints operations
 	punchingInProgress bool                               // Whether or not UDP hole punching is running
 	LastFind           time.Time                          // Moment when we got this peer from DHT
 	LastPunch          time.Time                          // Last time we run hole punch
+	Stat               PeerStats                          // Peer statistics
 }
 
 func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
@@ -195,7 +204,7 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 	go np.punchUDPHole(ptpc)
 
 	for time.Since(started) < time.Duration(time.Millisecond*30000) {
-		if len(np.Endpoints) > 0 {
+		if len(np.EndpointsHeap) > 0 {
 			np.SetState(PeerStateConnected, ptpc)
 			return nil
 		}
@@ -250,7 +259,7 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) {
 }
 
 func (np *NetworkPeer) isEndpointActive(ep *net.UDPAddr) bool {
-	for _, nep := range np.Endpoints {
+	for _, nep := range np.EndpointsActive {
 		if nep.Addr.String() == ep.String() {
 			return true
 		}
@@ -305,14 +314,17 @@ func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
 }
 
 func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
-	for len(np.Endpoints) == 0 && np.punchingInProgress {
-		time.Sleep(time.Millisecond * 100)
+	for len(np.EndpointsHeap) == 0 {
+		return nil
 	}
 	locals := []PeerEndpoint{}
 	internet := []PeerEndpoint{}
 	proxies := []PeerEndpoint{}
+
+	stat := PeerStats{}
+
 	np.EndpointsLock.RLock()
-	for _, ep := range np.Endpoints {
+	for _, ep := range np.EndpointsHeap {
 		if time.Since(ep.LastContact) > time.Duration(time.Second*10) {
 			continue
 		}
@@ -333,6 +345,7 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 			}
 			if isNew {
 				proxies = append(proxies, ep)
+				stat.proxyNum++
 			}
 			continue
 		}
@@ -349,6 +362,7 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 			}
 			if isNew {
 				locals = append(locals, ep)
+				stat.localNum++
 			}
 			continue
 		}
@@ -360,19 +374,21 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 		}
 		if isNew {
 			internet = append(internet, ep)
+			stat.internetNum++
 		}
 	}
 	np.EndpointsLock.RUnlock()
 
 	np.EndpointsLock.Lock()
-	np.Endpoints = np.Endpoints[:0]
-	np.Endpoints = append(np.Endpoints, locals...)
-	np.Endpoints = append(np.Endpoints, internet...)
-	np.Endpoints = append(np.Endpoints, proxies...)
+	np.EndpointsActive = np.EndpointsActive[:0]
+	np.EndpointsActive = append(np.EndpointsActive, locals...)
+	np.EndpointsActive = append(np.EndpointsActive, internet...)
+	np.EndpointsActive = append(np.EndpointsActive, proxies...)
 	np.EndpointsLock.Unlock()
+	np.Stat = stat
 
-	if len(np.Endpoints) > 0 {
-		np.Endpoint = np.Endpoints[0].Addr
+	if len(np.EndpointsActive) > 0 {
+		np.Endpoint = np.EndpointsActive[0].Addr
 		np.ConnectionAttempts = 0
 	} else {
 		if np.RemoteState == PeerStateWaitingToConnect {
@@ -407,7 +423,7 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 	np.route(ptpc)
 
-	if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && len(np.Endpoints) <= 1 {
+	if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && np.Stat.localNum < 1 && np.Stat.internetNum < 1 {
 		go np.punchUDPHole(ptpc)
 	}
 
@@ -433,12 +449,12 @@ func (np *NetworkPeer) stateCooldown(ptpc *PeerToPeer) error {
 func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
 	np.EndpointsLock.Lock()
 	defer np.EndpointsLock.Unlock()
-	for _, ep := range np.Endpoints {
+	for _, ep := range np.EndpointsHeap {
 		if ep.Addr.String() == addr.String() {
 			return fmt.Errorf("Endpoint already exists")
 		}
 	}
-	np.Endpoints = append(np.Endpoints, PeerEndpoint{Addr: addr, LastContact: time.Now()})
+	np.EndpointsHeap = append(np.EndpointsHeap, PeerEndpoint{Addr: addr, LastContact: time.Now()})
 	return nil
 }
 
@@ -448,7 +464,7 @@ func (np *NetworkPeer) pingEndpoints(ptpc *PeerToPeer) {
 	if time.Since(np.LastContact) > time.Duration(time.Millisecond*3000) {
 		np.LastContact = time.Now()
 		np.EndpointsLock.RLock()
-		for _, ep := range np.Endpoints {
+		for _, ep := range np.EndpointsHeap {
 			payload := append([]byte("q"+ptpc.Dht.ID), []byte(ep.Addr.String())...)
 			msg, err := ptpc.CreateMessage(MsgTypeXpeerPing, payload, 0, true)
 			if err != nil {
