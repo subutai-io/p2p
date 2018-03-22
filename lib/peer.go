@@ -313,17 +313,11 @@ func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
 	return nil
 }
 
-func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
-	for len(np.EndpointsHeap) == 0 {
-		return nil
-	}
+func (np *NetworkPeer) sortEndpoints(ptpc *PeerToPeer) ([]PeerEndpoint, []PeerEndpoint, []PeerEndpoint) {
+	np.EndpointsLock.RLock()
 	locals := []PeerEndpoint{}
 	internet := []PeerEndpoint{}
 	proxies := []PeerEndpoint{}
-
-	stat := PeerStats{}
-
-	np.EndpointsLock.RLock()
 	for _, ep := range np.EndpointsHeap {
 		if time.Since(ep.LastContact) > time.Duration(time.Second*10) {
 			continue
@@ -345,7 +339,6 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 			}
 			if isNew {
 				proxies = append(proxies, ep)
-				stat.proxyNum++
 			}
 			continue
 		}
@@ -362,7 +355,6 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 			}
 			if isNew {
 				locals = append(locals, ep)
-				stat.localNum++
 			}
 			continue
 		}
@@ -374,10 +366,19 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 		}
 		if isNew {
 			internet = append(internet, ep)
-			stat.internetNum++
 		}
 	}
 	np.EndpointsLock.RUnlock()
+	return locals, internet, proxies
+}
+
+func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
+	for len(np.EndpointsHeap) == 0 {
+		return nil
+	}
+
+	stat := PeerStats{}
+	locals, internet, proxies := np.sortEndpoints(ptpc)
 
 	np.EndpointsLock.Lock()
 	np.EndpointsActive = np.EndpointsActive[:0]
@@ -385,6 +386,10 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 	np.EndpointsActive = append(np.EndpointsActive, internet...)
 	np.EndpointsActive = append(np.EndpointsActive, proxies...)
 	np.EndpointsLock.Unlock()
+
+	stat.localNum = len(locals)
+	stat.internetNum = len(internet)
+	stat.proxyNum = len(proxies)
 	np.Stat = stat
 
 	if len(np.EndpointsActive) > 0 {
