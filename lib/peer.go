@@ -18,6 +18,13 @@ type PeerEndpoint struct {
 	LastContact time.Time
 }
 
+// PeerStats represents different peer statistics
+type PeerStats struct {
+	localNum    int // Number of local network connections
+	internetNum int // Number of internet connections
+	proxyNum    int // Number of proxy connections
+}
+
 // NetworkPeer represents a peer
 type NetworkPeer struct {
 	ID                 string                             // ID of a peer
@@ -40,6 +47,7 @@ type NetworkPeer struct {
 	punchingInProgress bool                               // Whether or not UDP hole punching is running
 	LastFind           time.Time                          // Moment when we got this peer from DHT
 	LastPunch          time.Time                          // Last time we run hole punch
+	Stat               PeerStats                          // Peer statistics
 }
 
 func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
@@ -312,6 +320,9 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 	locals := []PeerEndpoint{}
 	internet := []PeerEndpoint{}
 	proxies := []PeerEndpoint{}
+
+	stat := PeerStats{}
+
 	np.EndpointsLock.RLock()
 	for _, ep := range np.EndpointsHeap {
 		if time.Since(ep.LastContact) > time.Duration(time.Second*10) {
@@ -334,6 +345,7 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 			}
 			if isNew {
 				proxies = append(proxies, ep)
+				stat.proxyNum++
 			}
 			continue
 		}
@@ -350,6 +362,7 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 			}
 			if isNew {
 				locals = append(locals, ep)
+				stat.localNum++
 			}
 			continue
 		}
@@ -361,6 +374,7 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 		}
 		if isNew {
 			internet = append(internet, ep)
+			stat.internetNum++
 		}
 	}
 	np.EndpointsLock.RUnlock()
@@ -371,6 +385,7 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 	np.EndpointsActive = append(np.EndpointsActive, internet...)
 	np.EndpointsActive = append(np.EndpointsActive, proxies...)
 	np.EndpointsLock.Unlock()
+	np.Stat = stat
 
 	if len(np.EndpointsActive) > 0 {
 		np.Endpoint = np.EndpointsActive[0].Addr
@@ -408,7 +423,7 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 	np.route(ptpc)
 
-	if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && len(np.EndpointsActive) <= 1 {
+	if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && np.Stat.localNum < 1 && np.Stat.internetNum < 1 {
 		go np.punchUDPHole(ptpc)
 	}
 
