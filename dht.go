@@ -26,7 +26,8 @@ type DHTConnection struct {
 	instances  map[string]*P2PInstance // Instances
 	registered []string                // List of registered swarm IDs
 	incoming   chan *ptp.DHTPacket     // Packets received by routers
-	ip         string
+	ip         string                  // Our outbound IP
+	isActive   bool                    // Whether DHT connection is active or not
 }
 
 // DHTRouter represents a connection to a router
