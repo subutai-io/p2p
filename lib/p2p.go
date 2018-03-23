@@ -456,7 +456,20 @@ func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
 // Run is a main loop
 func (p *PeerToPeer) Run() {
 	// Request proxies from DHT
-	p.Dht.sendProxy()
+	//p.Dht.sendProxy()
+
+	proxyAddr, err := net.ResolveUDPAddr("udp4", "mastercdn.subutai.io:40622")
+	if err == nil {
+		if p.ProxyManager.new(proxyAddr) == nil {
+			go func() {
+				msg, err := p.CreateMessage(MsgTypeProxy, []byte(p.Dht.ID), 0, false)
+				if err == nil {
+					p.UDPSocket.SendMessage(msg, proxyAddr)
+				}
+			}()
+		}
+	}
+
 	initialRequestSent := false
 	started := time.Now()
 	p.Dht.LastUpdate = time.Now()
