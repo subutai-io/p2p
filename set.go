@@ -24,6 +24,17 @@ func (d *Daemon) execRESTSet(w http.ResponseWriter, r *http.Request) {
 	if !ReadyToServe {
 		resp, _ := getResponse(105, "P2P Daemon is in initialization state")
 		w.Write(resp)
+		return
+	}
+	if !bootstrap.isActive {
+		resp, _ := getResponse(106, "Not connected to DHT nodes")
+		w.Write(resp)
+		return
+	}
+	if bootstrap.ip == "" {
+		resp, _ := getResponse(107, "Didn't received outbound IP yet")
+		w.Write(resp)
+		return
 	}
 	args := new(DaemonArgs)
 	err := getJSON(r.Body, args)
