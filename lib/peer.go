@@ -395,31 +395,27 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 	if len(np.EndpointsActive) > 0 {
 		np.Endpoint = np.EndpointsActive[0].Addr
 		np.ConnectionAttempts = 0
-	} else {
-		if np.RemoteState == PeerStateWaitingToConnect {
-			np.SetState(PeerStateWaitingToConnect, ptpc)
-			return nil
-		}
-		np.ConnectionAttempts++
-		np.LastError = "No more endpoints"
-		if time.Since(np.LastFind) > time.Duration(time.Second*90) {
-			Log(Debug, "No endpoints and no updates from DHT")
-			np.SetState(PeerStateDisconnect, ptpc)
-			return nil
-		}
-		if len(np.KnownIPs) > 0 && len(np.Proxies) > 0 {
-			Log(Debug, "We have IPs and Proxies. Syncing states")
-			np.SetState(PeerStateWaitingToConnect, ptpc)
-			return nil
-		} else if len(np.KnownIPs) == 0 {
-			Log(Debug, "Don't know any endpoints. Requesting")
-			np.SetState(PeerStateRequestedIP, ptpc)
-			return nil
-		} else if len(np.Proxies) == 0 {
-			Log(Debug, "Don't know any proxies. Requesting")
-			np.SetState(PeerStateRequestingProxy, ptpc)
-			return nil
-		}
+		// } else {
+		// 	np.ConnectionAttempts++
+		// 	np.LastError = "No more endpoints"
+		// 	if time.Since(np.LastFind) > time.Duration(time.Second*90) {
+		// 		Log(Debug, "No endpoints and no updates from DHT")
+		// 		np.SetState(PeerStateDisconnect, ptpc)
+		// 		return nil
+		// 	}
+		// 	if len(np.KnownIPs) > 0 && len(np.Proxies) > 0 {
+		// 		Log(Debug, "We have IPs and Proxies. Syncing states")
+		// 		np.SetState(PeerStateWaitingToConnect, ptpc)
+		// 		return nil
+		// 	} else if len(np.KnownIPs) == 0 {
+		// 		Log(Debug, "Don't know any endpoints. Requesting")
+		// 		np.SetState(PeerStateRequestedIP, ptpc)
+		// 		return nil
+		// 	} else if len(np.Proxies) == 0 {
+		// 		Log(Debug, "Don't know any proxies. Requesting")
+		// 		np.SetState(PeerStateRequestingProxy, ptpc)
+		// 		return nil
+		// 	}
 	}
 	return nil
 }
@@ -435,6 +431,11 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 
 	np.pingEndpoints(ptpc)
 	np.syncWithRemoteState(ptpc)
+
+	if time.Since(np.LastFind) > time.Duration(time.Second*90) {
+		Log(Debug, "No endpoints and no updates from DHT")
+		np.SetState(PeerStateDisconnect, ptpc)
+	}
 
 	return nil
 }

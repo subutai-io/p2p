@@ -230,15 +230,14 @@ func (dht *DHTClient) sendDHCP(ip net.IP, network *net.IPNet) error {
 }
 
 func (dht *DHTClient) sendProxy() error {
-	return nil
-	// Log(Debug, "Requesting proxies")
-	// packet := &DHTPacket{
-	// 	Type:     DHTPacketType_Proxy,
-	// 	Infohash: dht.NetworkHash,
-	// 	Id:       dht.ID,
-	// 	Version:  PacketVersion,
-	// }
-	// return dht.send(packet)
+	Log(Debug, "Requesting proxies")
+	packet := &DHTPacket{
+		Type:     DHTPacketType_Proxy,
+		Infohash: dht.NetworkHash,
+		Id:       dht.ID,
+		Version:  PacketVersion,
+	}
+	return dht.send(packet)
 }
 
 func (dht *DHTClient) sendRequestProxy(id string) error {
