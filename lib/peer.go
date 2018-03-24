@@ -396,10 +396,6 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 		np.Endpoint = np.EndpointsActive[0].Addr
 		np.ConnectionAttempts = 0
 	} else {
-		if np.RemoteState == PeerStateWaitingToConnect {
-			np.SetState(PeerStateWaitingToConnect, ptpc)
-			return nil
-		}
 		np.ConnectionAttempts++
 		np.LastError = "No more endpoints"
 		if time.Since(np.LastFind) > time.Duration(time.Second*90) {
