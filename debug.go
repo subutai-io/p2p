@@ -90,6 +90,9 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 			resp.Output += fmt.Sprintf("No proxies in use")
 		}
 		for _, proxy := range proxyList {
+			if proxy.Addr == nil || proxy.Endpoint == nil {
+				continue
+			}
 			resp.Output += fmt.Sprintf("%s/%d ", proxy.Addr.String(), proxy.Endpoint.Port)
 		}
 		resp.Output += "\n"
