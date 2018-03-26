@@ -1,0 +1,83 @@
+swagger: "2.0"
+info:
+  description: "Subutai P2P operations"
+  version: "6.3.0"
+  title: "Subutai P2P"
+  termsOfService: "https://subutai.io"
+  contact:
+    email: "msavochkin@optimal-dynamics.com"
+  license:
+    name: "GPLv3"
+    url: "https://www.gnu.org/licenses/gpl-3.0.en.html"
+host: "localhost"
+basePath: "/v1"
+schemes:
+- "http"
+- "https"
+tags:
+- name: "instance"
+  description: "P2P Instance manipulation"
+paths:
+  /instance:
+    post:
+      tags: 
+      - "instance"
+      summary: "Create new P2P instance"
+      description: ""
+      operationId: "CreateInstance"
+      consumes:
+      - "application/json"
+      - "application/xml"
+      produces:
+      - "application/json"
+      - "application/xml"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Instance configuration"
+        required: true 
+        schema:
+          $ref: "#/definitions/Instance"
+      responses:
+        200:
+          description: "Sucessfully created"
+        405:
+          description: "Invalid input"
+        503:
+          description: "Service unavailable"
+    get:
+      tags:
+      - "instance"
+      summary: "List P2P instances"
+      description: "List all p2p instances "
+  /instance/info:
+    get:
+      tags:
+      - "instance"
+      summary: "Display instance information"
+      description: "Display detailed information about specified instance"
+      produces:
+        - "application/json"
+        - "application/xml"
+      parameters:
+      - in: "query"
+        description: "Instance hash"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "Sucessful operation"
+          schema: 
+            $ref: "#/definitions/Instance"
+        404:
+          description: "Instance not found"
+        503:
+          description: "Service unavailable"
+definitions:
+  Instance:
+    type: object
+    properties:
+      hash:
+        type: "string"
+    xml:
+      name: "Instance"
