@@ -457,6 +457,7 @@ func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
 func (p *PeerToPeer) Run() {
 	// Request proxies from DHT
 	p.Dht.sendProxy()
+
 	initialRequestSent := false
 	started := time.Now()
 	p.Dht.LastUpdate = time.Now()
