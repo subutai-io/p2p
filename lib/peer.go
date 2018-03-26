@@ -236,9 +236,9 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) {
 			if np.isEndpointActive(ep) {
 				continue
 			}
-			if IsInterfaceLocal(ep.IP) {
-				continue
-			}
+			// if IsInterfaceLocal(ep.IP) {
+			// 	continue
+			// }
 			payload := []byte(ptpc.Dht.ID + ep.String())
 			msg, err := ptpc.CreateMessage(MsgTypeIntroReq, payload, 0, true)
 			if err != nil {
