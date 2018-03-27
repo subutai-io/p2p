@@ -103,7 +103,7 @@ func (dht *DHTConnection) send(packet *ptp.DHTPacket) {
 	}
 	for i, router := range dht.routers {
 		if router.running && router.handshaked {
-			n, err := router.conn.Write(data)
+			n, err := router.sendRaw(data)
 			if err != nil {
 				ptp.Log(ptp.Error, "Failed to send data to %s", router.addr.String())
 				continue
@@ -122,7 +122,8 @@ func (dht *DHTConnection) run() {
 			continue
 		}
 		ptp.Log(ptp.Trace, "Routing DHT Packet %+v", packet)
-		if packet.Type == ptp.DHTPacketType_Ping {
+		// Ping should always provide us with outbound IP value
+		if packet.Type == ptp.DHTPacketType_Ping && packet.Data != "" {
 			dht.ip = packet.Data
 			continue
 		}

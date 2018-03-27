@@ -215,7 +215,7 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 		time.Sleep(time.Millisecond * 100)
 	}
 	Log(Debug, "Couldn't connect to the peer in any way")
-	np.SetState(PeerStateConnected, ptpc)
+	np.SetState(PeerStateDisconnect, ptpc)
 	return nil
 }
 

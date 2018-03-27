@@ -48,11 +48,11 @@ func (dht *DHTRouter) run() {
 			continue
 		}
 		dht.lastContact = time.Now()
-		go dht.passData(data, n)
+		go dht.handleData(data, n)
 	}
 }
 
-func (dht *DHTRouter) passData(data []byte, length int) {
+func (dht *DHTRouter) handleData(data []byte, length int) {
 	dht.rx += uint64(length)
 	i := 0
 	handled := 0
@@ -136,4 +136,25 @@ func (dht *DHTRouter) sleep() {
 	for time.Since(started) < timeout {
 		time.Sleep(time.Millisecond * 200)
 	}
+}
+
+func (dht *DHTRouter) keepAlive() {
+	lastPing := time.Now()
+	for {
+		if time.Since(lastPing) > time.Duration(time.Millisecond*30000) {
+			lastPing = time.Now()
+		}
+		if time.Since(dht.lastContact) > time.Duration(time.Millisecond*120000) && dht.running {
+			ptp.Log(ptp.Warning, "Disconnected from DHT router %s by timeout", dht.addr.String())
+			dht.handshaked = false
+			dht.running = false
+			dht.conn.Close()
+			dht.conn = nil
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
+}
+
+func (dht *DHTRouter) sendRaw(data []byte) (int, error) {
+	return dht.conn.Write(data)
 }
