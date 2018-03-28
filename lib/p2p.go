@@ -36,6 +36,7 @@ type PeerToPeer struct {
 	outboundIP      net.IP                               // Outbound IP
 }
 
+// PeerHandshake holds handshake information received from peer
 type PeerHandshake struct {
 	ID           string
 	IP           net.IP
@@ -43,6 +44,7 @@ type PeerHandshake struct {
 	Endpoint     *net.UDPAddr
 }
 
+// ActiveInterfaces is a global (daemon-wise) list of reserved IP addresses
 var ActiveInterfaces []net.IP
 
 // AssignInterface - Creates TUN/TAP Interface and configures it with provided IP tool
@@ -287,6 +289,7 @@ func (p *PeerToPeer) retrieveFirstDHTRouter() *net.UDPAddr {
 	return addr
 }
 
+// PrepareInterfaces will assign IPs to interfaces
 func (p *PeerToPeer) PrepareInterfaces(ip, interfaceName string) error {
 
 	iface, err := p.validateInterfaceName(interfaceName)
@@ -591,7 +594,7 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 	return 0, nil
 }
 
-// StopInstance stops current instance
+// Close stops current instance
 func (p *PeerToPeer) Close() error {
 	for i, ip := range ActiveInterfaces {
 		if ip.Equal(p.Interface.GetIP()) {
