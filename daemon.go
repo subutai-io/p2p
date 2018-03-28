@@ -69,6 +69,7 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 		for _, r := range bootstrap.routers {
 			if r != nil {
 				go r.run()
+				go r.keepAlive()
 			}
 		}
 		for !bootstrap.isActive {

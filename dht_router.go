@@ -140,6 +140,7 @@ func (dht *DHTRouter) sleep() {
 
 func (dht *DHTRouter) keepAlive() {
 	lastPing := time.Now()
+	dht.lastContact = time.Now()
 	for {
 		if time.Since(lastPing) > time.Duration(time.Millisecond*30000) {
 			lastPing = time.Now()
