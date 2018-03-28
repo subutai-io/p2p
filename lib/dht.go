@@ -322,7 +322,7 @@ func (dht *DHTClient) ReportLoad(clientsNum int) error {
 	return nil
 }
 
-// ProduceData will return one or more byte slices for a provided packet
+// ProducePacket will return one or more byte slices for a provided packet
 // If packet is too big it will be split into multiple packets
 func (dht *DHTClient) ProducePacket(packet *DHTPacket) ([]*DHTPacket, error) {
 
