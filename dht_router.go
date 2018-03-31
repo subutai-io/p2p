@@ -142,8 +142,11 @@ func (dht *DHTRouter) keepAlive() {
 	lastPing := time.Now()
 	dht.lastContact = time.Now()
 	for {
-		if time.Since(lastPing) > time.Duration(time.Millisecond*30000) {
+		if time.Since(lastPing) > time.Duration(time.Millisecond*60000) {
 			lastPing = time.Now()
+			if dht.ping() != nil {
+				ptp.Log(ptp.Error, "DHT router ping failed")
+			}
 		}
 		if time.Since(dht.lastContact) > time.Duration(time.Millisecond*120000) && dht.running {
 			ptp.Log(ptp.Warning, "Disconnected from DHT router %s by timeout", dht.addr.String())
@@ -158,4 +161,22 @@ func (dht *DHTRouter) keepAlive() {
 
 func (dht *DHTRouter) sendRaw(data []byte) (int, error) {
 	return dht.conn.Write(data)
+}
+
+func (dht *DHTRouter) ping() error {
+	ptp.Log(ptp.Trace, "Sending ping to dht %s", dht.addr.String())
+	packet := &ptp.DHTPacket{
+		Type:    ptp.DHTPacketType_Ping,
+		Query:   "req",
+		Version: ptp.PacketVersion,
+	}
+	data, err := proto.Marshal(packet)
+	if err != nil {
+		return err
+	}
+	_, err = dht.sendRaw(data)
+	if err != nil {
+		return err
+	}
+	return nil
 }
