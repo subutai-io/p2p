@@ -424,10 +424,10 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 	np.route(ptpc)
 
-	if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && np.Stat.localNum < 1 && np.Stat.internetNum < 1 {
-		Log(Info, "New hole punch activity: Local %d Internet %d", np.Stat.localNum, np.Stat.internetNum)
-		go np.punchUDPHole(ptpc)
-	}
+	// if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && np.Stat.localNum < 1 && np.Stat.internetNum < 1 {
+	// 	Log(Info, "New hole punch activity: Local %d Internet %d", np.Stat.localNum, np.Stat.internetNum)
+	// 	go np.punchUDPHole(ptpc)
+	// }
 
 	np.pingEndpoints(ptpc)
 	np.syncWithRemoteState(ptpc)
