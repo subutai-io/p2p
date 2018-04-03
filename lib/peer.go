@@ -61,6 +61,9 @@ func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
 
 // SetState modify local state of peer
 func (np *NetworkPeer) SetState(state PeerState, ptpc *PeerToPeer) {
+	if state != np.State {
+		Log(Debug, "Peer %s changed state from %s to %s", np.ID, StringifyState(np.State), StringifyState(state))
+	}
 	np.State = state
 	np.reportState(ptpc)
 }
