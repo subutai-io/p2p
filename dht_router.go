@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"net"
 	"time"
 
@@ -160,6 +161,9 @@ func (dht *DHTRouter) keepAlive() {
 }
 
 func (dht *DHTRouter) sendRaw(data []byte) (int, error) {
+	if dht.conn == nil {
+		return -1, fmt.Errorf("Can't send: connection is nil")
+	}
 	return dht.conn.Write(data)
 }
 
