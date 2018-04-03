@@ -110,7 +110,7 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 				resp.Output += fmt.Sprintf("\tNetwork: %s %s\n", peer.PeerLocalIP.String(), peer.PeerHW.String())
 				resp.Output += fmt.Sprintf("\tEndpoint: %s\n", peer.Endpoint)
 				resp.Output += fmt.Sprintf("\tAll Endpoints: ")
-				for _, ep := range peer.EndpointsActive {
+				for _, ep := range peer.EndpointsHeap {
 					resp.Output += fmt.Sprintf("%s ", ep.Addr.String())
 				}
 				resp.Output += "\n"
