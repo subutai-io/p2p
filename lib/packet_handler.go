@@ -94,6 +94,7 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 				for _, ep := range peer.KnownIPs {
 					if ep.String() == srcAddr.String() {
 						p.UDPSocket.SendMessage(msg, ep)
+						peer.BumpEndpoint(ep.String())
 						return
 					}
 				}
