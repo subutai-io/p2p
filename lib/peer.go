@@ -420,6 +420,9 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 		// 		np.SetState(PeerStateRequestingProxy, ptpc)
 		// 		return nil
 		// 	}
+	} else {
+		np.Endpoint = nil
+		np.SetState(PeerStateDisconnect, ptpc)
 	}
 	return nil
 }
@@ -427,6 +430,9 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 // stateConnected is executed when connection was established and peer is operating normally
 func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 	np.route(ptpc)
+	if np.State != PeerStateConnected {
+		return nil
+	}
 
 	// if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && np.Stat.localNum < 1 && np.Stat.internetNum < 1 {
 	// 	Log(Info, "New hole punch activity: Local %d Internet %d", np.Stat.localNum, np.Stat.internetNum)
@@ -436,10 +442,10 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 	np.pingEndpoints(ptpc)
 	np.syncWithRemoteState(ptpc)
 
-	if time.Since(np.LastFind) > time.Duration(time.Second*90) {
-		Log(Debug, "No endpoints and no updates from DHT")
-		np.SetState(PeerStateDisconnect, ptpc)
-	}
+	// if time.Since(np.LastFind) > time.Duration(time.Second*90) {
+	// 	Log(Debug, "No endpoints and no updates from DHT")
+	// 	np.SetState(PeerStateDisconnect, ptpc)
+	// }
 
 	return nil
 }
