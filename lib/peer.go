@@ -42,7 +42,7 @@ type NetworkPeer struct {
 	ConnectionAttempts uint8                              // How many times we tried to connect
 	handlers           map[PeerState]StateHandlerCallback // List of callbacks for different peer states
 	Running            bool                               // Whether peer is running or not
-	EndpointsHeap      []PeerEndpoint                     // List of all endpoints
+	EndpointsHeap      []*PeerEndpoint                    // List of all endpoints
 	// EndpointsActive    []PeerEndpoint                     // List of active endpoints
 	EndpointsLock      sync.RWMutex // Mutex for endpoints operations
 	punchingInProgress bool         // Whether or not UDP hole punching is running
@@ -317,11 +317,11 @@ func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
 	return nil
 }
 
-func (np *NetworkPeer) sortEndpoints(ptpc *PeerToPeer) ([]PeerEndpoint, []PeerEndpoint, []PeerEndpoint) {
+func (np *NetworkPeer) sortEndpoints(ptpc *PeerToPeer) ([]*PeerEndpoint, []*PeerEndpoint, []*PeerEndpoint) {
 	np.EndpointsLock.RLock()
-	locals := []PeerEndpoint{}
-	internet := []PeerEndpoint{}
-	proxies := []PeerEndpoint{}
+	locals := []*PeerEndpoint{}
+	internet := []*PeerEndpoint{}
+	proxies := []*PeerEndpoint{}
 	for _, ep := range np.EndpointsHeap {
 		if time.Since(ep.LastContact) > time.Duration(time.Second*10) {
 			continue
@@ -421,6 +421,7 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 		// 		return nil
 		// 	}
 	} else {
+		Log(Debug, "No active endpoints. Disconnecting peer %s", np.ID)
 		np.Endpoint = nil
 		np.SetState(PeerStateDisconnect, ptpc)
 	}
@@ -471,7 +472,7 @@ func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
 			return fmt.Errorf("Endpoint already exists")
 		}
 	}
-	np.EndpointsHeap = append(np.EndpointsHeap, PeerEndpoint{Addr: addr, LastContact: time.Now()})
+	np.EndpointsHeap = append(np.EndpointsHeap, &PeerEndpoint{Addr: addr, LastContact: time.Now()})
 	return nil
 }
 
@@ -480,7 +481,7 @@ func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
 func (np *NetworkPeer) pingEndpoints(ptpc *PeerToPeer) {
 	np.EndpointsLock.RLock()
 	for _, ep := range np.EndpointsHeap {
-		if time.Since(ep.LastPing) > time.Duration(time.Millisecond*30000) {
+		if time.Since(ep.LastPing) > time.Duration(time.Millisecond*3000) {
 			ep.LastPing = time.Now()
 			payload := append([]byte("q"+ptpc.Dht.ID), []byte(ep.Addr.String())...)
 			msg, err := ptpc.CreateMessage(MsgTypeXpeerPing, payload, 0, true)
@@ -511,5 +512,16 @@ func (np *NetworkPeer) syncWithRemoteState(ptpc *PeerToPeer) {
 	} else if np.RemoteState == PeerStateWaitingToConnect {
 		Log(Debug, "Peer %s is waiting for us to connect", np.ID)
 		np.SetState(PeerStateWaitingToConnect, ptpc)
+	}
+}
+
+func (np *NetworkPeer) BumpEndpoint(epAddr string) {
+	np.EndpointsLock.Lock()
+	defer np.EndpointsLock.Unlock()
+	for _, ep := range np.EndpointsHeap {
+		if ep.Addr.String() == epAddr {
+			ep.LastContact = time.Now()
+			ep.LastPing = time.Now()
+		}
 	}
 }
