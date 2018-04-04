@@ -267,15 +267,15 @@ func (p *PeerToPeer) packetRequestProxy(packet *DHTPacket) error {
 		list = append(list, addr)
 	}
 
-	peers := p.Peers.Get()
-	for _, proxy := range list {
-		for _, existingPeer := range peers {
-			if existingPeer.Endpoint.String() == proxy.String() && existingPeer.ID != packet.Data {
-				existingPeer.SetState(PeerStateDisconnect, p)
-				Log(Info, "Peer %s was associated with address %s. Disconnecting", existingPeer.ID, proxy.String())
-			}
-		}
-	}
+	// peers := p.Peers.Get()
+	// for _, proxy := range list {
+	// 	for _, existingPeer := range peers {
+	// 		if existingPeer.Endpoint.String() == proxy.String() && existingPeer.ID != packet.Data {
+	// 			existingPeer.SetState(PeerStateDisconnect, p)
+	// 			Log(Info, "Peer %s was associated with address %s. Disconnecting", existingPeer.ID, proxy.String())
+	// 		}
+	// 	}
+	// }
 
 	peer := p.Peers.GetPeer(packet.Data)
 	if peer != nil {

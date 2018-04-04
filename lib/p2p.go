@@ -447,18 +447,6 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 	return ip, ipnet.Mask, nil
 }
 
-// TODO: Check if this method is still used
-func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
-	peer := p.Peers.GetPeer(id)
-	if peer == nil {
-		return fmt.Errorf("Peer was not found")
-	}
-	Log(Debug, "Removing peer %s: Reason %s", id, reason)
-	peer.SetState(PeerStateDisconnect, p)
-	p.Peers.Update(id, peer)
-	return nil
-}
-
 // Run is a main loop
 func (p *PeerToPeer) Run() {
 	// Request proxies from DHT
