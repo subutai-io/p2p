@@ -329,12 +329,13 @@ func (p *PeerToPeer) packetStop(packet *DHTPacket) error {
 }
 
 func (p *PeerToPeer) packetUnknown(packet *DHTPacket) error {
-	Log(Warning, "Bootstap node refuses our identity. Reconnecting")
 	p.FindNetworkAddresses()
 	if len(packet.Data) > 0 && packet.Data == "DHCP" {
+		Log(Warning, "Network information was requested")
 		p.ReportIP(p.Interface.GetIP().String(), p.Interface.GetHardwareAddress().String(), p.Interface.GetName())
 		return nil
 	}
+	Log(Warning, "Bootstap node refuses our identity. Reconnecting")
 	return p.Dht.Connect(p.LocalIPs, p.ProxyManager.GetList())
 }
 
