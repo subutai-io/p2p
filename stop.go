@@ -72,7 +72,7 @@ func (d *Daemon) execRESTStop(w http.ResponseWriter, r *http.Request) {
 func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
 	resp.ExitCode = 0
 	if args.Hash != "" {
-		inst := p.Instances.GetInstance(args.Hash)
+		inst := p.Instances.getInstance(args.Hash)
 		if inst == nil {
 			resp.ExitCode = 1
 			resp.Output = "Instance with hash " + args.Hash + " was not found"
@@ -81,8 +81,8 @@ func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
 			ip := inst.PTP.Interface.GetIP().String()
 			resp.Output = "Shutting down " + args.Hash
 			inst.PTP.Close()
-			p.Instances.Delete(args.Hash)
-			p.Instances.SaveInstances(p.SaveFile)
+			p.Instances.delete(args.Hash)
+			p.Instances.saveInstances(p.SaveFile)
 			k := 0
 			for k, i := range usedIPs {
 				if i != ip {
@@ -96,7 +96,7 @@ func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
 		}
 	} else if args.Dev != "" {
 		resp.Output = "Removing " + args.Dev
-		instances := p.Instances.Get()
+		instances := p.Instances.get()
 		for i, inf := range InterfaceNames {
 			if inf == args.Dev {
 				for _, instance := range instances {

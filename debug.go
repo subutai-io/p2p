@@ -69,7 +69,7 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 		}
 	}
 	resp.Output += fmt.Sprintf("Instances information:\n")
-	instances := p.Instances.Get()
+	instances := p.Instances.get()
 	for _, inst := range instances {
 		resp.Output += fmt.Sprintf("Bootstrap nodes:\n")
 		for _, conn := range inst.PTP.Dht.Connections {

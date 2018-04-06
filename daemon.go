@@ -94,7 +94,7 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 	if sFile != "" {
 		ptp.Log(ptp.Info, "Restore file provided")
 		// Try to restore from provided file
-		instances, err := proc.Instances.LoadInstances(proc.SaveFile)
+		instances, err := proc.Instances.loadInstances(proc.SaveFile)
 		if err != nil {
 			ptp.Log(ptp.Error, "Failed to load instances: %v", err)
 		} else {

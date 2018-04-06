@@ -142,7 +142,7 @@ func (d *Daemon) Show(args *request) ([]byte, error) {
 	}
 
 	if args.Hash != "" {
-		inst := d.Instances.GetInstance(args.Hash)
+		inst := d.Instances.getInstance(args.Hash)
 		if inst != nil {
 			if args.IP != "" {
 				out, err := d.showIP(args.IP, inst)
@@ -215,7 +215,7 @@ func (d *Daemon) showHash(instance *P2PInstance) ([]byte, error) {
 }
 
 func (d *Daemon) showInterfaces() ([]byte, error) {
-	instances := d.Instances.Get()
+	instances := d.Instances.get()
 	out := []ShowOutput{}
 	for _, inst := range instances {
 		if inst.PTP != nil {
@@ -236,7 +236,7 @@ func (d *Daemon) showAllInterfaces() ([]byte, error) {
 }
 
 func (d *Daemon) showBindInterfaces() ([]byte, error) {
-	instances := d.Instances.Get()
+	instances := d.Instances.get()
 	out := []ShowOutput{}
 	for _, inst := range instances {
 		if inst.PTP != nil && inst.PTP.Interface != nil {
@@ -248,7 +248,7 @@ func (d *Daemon) showBindInterfaces() ([]byte, error) {
 }
 
 func (d *Daemon) showInstances() ([]byte, error) {
-	instances := d.Instances.Get()
+	instances := d.Instances.get()
 	out := []ShowOutput{}
 	for key, inst := range instances {
 		if inst.PTP != nil {
