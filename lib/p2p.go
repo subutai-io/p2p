@@ -54,6 +54,9 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 		return fmt.Errorf("Failed to initialize TAP")
 	}
 	err = p.Interface.Init(interfaceName)
+	if p.Interface.IsConfigured() {
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("Failed to initialize TAP: %s", err)
 	}
@@ -63,6 +66,9 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	}
 	if p.Interface.GetHardwareAddress() == nil {
 		return fmt.Errorf("No Hardware address provided")
+	}
+	if p.Interface.GetName() == "" {
+		return fmt.Errorf("Wrong interface name provided: %s", p.Interface.GetName())
 	}
 
 	// Extract necessary information from config file
@@ -93,6 +99,7 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	}
 	ActiveInterfaces = append(ActiveInterfaces, p.Interface.GetIP())
 	Log(Debug, "Interface has been configured")
+	p.Interface.MarkConfigured()
 	return err
 }
 
@@ -427,7 +434,7 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 			return nil, nil, fmt.Errorf("Invalid address were provided for network interface. Use -ip \"dhcp\" or specify correct IP address")
 		}
 		ipAddress += `/24`
-		Log(Warning, "IP was not in CIDR format. Assumming /24")
+		Log(Debug, "IP was not in CIDR format. Assumming /24")
 		ip, ipnet, err = net.ParseCIDR(ipAddress)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to setup provided IP address for local device")
@@ -455,6 +462,7 @@ func (p *PeerToPeer) Run() {
 	initialRequestSent := false
 	started := time.Now()
 	p.Dht.LastUpdate = time.Now()
+	lastDHCPReport := time.Now()
 	for {
 		if p.Shutdown {
 			// TODO: Do it more safely
@@ -471,6 +479,10 @@ func (p *PeerToPeer) Run() {
 		if !initialRequestSent && time.Since(started) > time.Duration(time.Millisecond*5000) {
 			initialRequestSent = true
 			p.Dht.sendFind()
+		}
+		if time.Since(lastDHCPReport) > time.Duration(time.Second*300) {
+			lastDHCPReport = time.Now()
+			p.ReportIP(p.Interface.GetIP().String(), p.Interface.GetHardwareAddress().String(), p.Interface.GetName())
 		}
 	}
 	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)
