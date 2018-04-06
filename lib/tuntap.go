@@ -40,4 +40,6 @@ type TAP interface {
 	ReadPacket() (*Packet, error)
 	WritePacket(*Packet) error
 	Run()
+	IsConfigured() bool
+	MarkConfigured()
 }

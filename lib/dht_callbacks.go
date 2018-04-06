@@ -329,6 +329,7 @@ func (p *PeerToPeer) packetStop(packet *DHTPacket) error {
 }
 
 func (p *PeerToPeer) packetUnknown(packet *DHTPacket) error {
+	Log(Debug, "Received unknown packet")
 	p.FindNetworkAddresses()
 	if len(packet.Data) > 0 && packet.Data == "DHCP" {
 		Log(Warning, "Network information was requested")
