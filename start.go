@@ -102,7 +102,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 
 	// Validate if interface name is unique
 	if args.Dev != "" {
-		instances := d.Instances.Get()
+		instances := d.Instances.get()
 		for _, inst := range instances {
 			if inst.PTP.Interface.GetName() == args.Dev {
 				resp.ExitCode = 1
@@ -112,7 +112,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		}
 	}
 
-	inst := d.Instances.GetInstance(args.Hash)
+	inst := d.Instances.getInstance(args.Hash)
 	if inst == nil {
 		resp.Output = resp.Output + "Lookup finished\n"
 		if args.Key != "" {
@@ -191,12 +191,12 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 
 		usedIPs = append(usedIPs, newInst.PTP.Interface.GetIP().String())
 		ptp.Log(ptp.Info, "Instance created")
-		d.Instances.Update(args.Hash, newInst)
+		d.Instances.update(args.Hash, newInst)
 
 		go newInst.PTP.Run()
 		if d.SaveFile != "" {
 			resp.Output = resp.Output + "Saving instance into file"
-			d.Instances.SaveInstances(d.SaveFile)
+			d.Instances.saveInstances(d.SaveFile)
 		}
 	} else {
 		resp.Output = resp.Output + "Hash already in use\n"
