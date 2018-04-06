@@ -372,22 +372,18 @@ func main() {
 					Value:       52523,
 					Destination: &RPCPort,
 				},
+				cli.StringFlag{
+					Name:        "hash",
+					Usage:       "Limit results to specified instance",
+					Value:       "",
+					Destination: &Infohash,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				CommandStatus(RPCPort)
+				CommandStatus(RPCPort, Infohash)
 				return nil
 			},
 		},
 	}
 	app.Run(os.Args)
 }
-
-// Dial connects to a local RPC server
-// func Dial(rpchost string) *rpc.Client {
-// 	client, err := rpc.DialHTTP("tcp", rpchost)
-// 	if err != nil {
-// 		ptp.Log(ptp.Error, "Failed to connect to RPC %v", err)
-// 		os.Exit(1)
-// 	}
-// 	return client
-// }

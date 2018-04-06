@@ -165,6 +165,9 @@ func (p *PeerToPeer) IsIPv4(ip string) bool {
 // New is an entry point of a P2P library.
 func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int, ignoreIPs []string, outboundIP net.IP) *PeerToPeer {
 	//argDht = "mdht.subut.ai:6881"
+	Log(Debug, "Starting new P2P Instance: %s", argHash)
+	Log(Debug, "IP: %s", argIP)
+	Log(Debug, "Mac: %s", argMac)
 	p := new(PeerToPeer)
 	p.outboundIP = outboundIP
 	p.Init()
@@ -442,18 +445,6 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 		return nil, nil, fmt.Errorf("Failed to configure interface: %s", err)
 	}
 	return ip, ipnet.Mask, nil
-}
-
-// TODO: Check if this method is still used
-func (p *PeerToPeer) markPeerForRemoval(id, reason string) error {
-	peer := p.Peers.GetPeer(id)
-	if peer == nil {
-		return fmt.Errorf("Peer was not found")
-	}
-	Log(Debug, "Removing peer %s: Reason %s", id, reason)
-	peer.SetState(PeerStateDisconnect, p)
-	p.Peers.Update(id, peer)
-	return nil
 }
 
 // Run is a main loop
