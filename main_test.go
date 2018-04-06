@@ -13,17 +13,17 @@ func TestStateRestore(t *testing.T) {
 	i2 := new(P2PInstance)
 	i1.Args.IP = "10.10.10.10"
 	i1.Args.Dev = "vptp1"
-	daemon.Instances.Update("1", i1)
+	daemon.Instances.update("1", i1)
 	i2.Args.IP = "127.0.0.1"
 	i2.Args.Dev = "vptp2"
-	daemon.Instances.Update("2", i2)
+	daemon.Instances.update("2", i2)
 
-	_, err := daemon.Instances.SaveInstances("t.file")
+	_, err := daemon.Instances.saveInstances("t.file")
 	if err != nil {
 		t.Errorf("%v", err)
 	}
 
-	loaded, err := daemon.Instances.LoadInstances("t.file")
+	loaded, err := daemon.Instances.loadInstances("t.file")
 	if err != nil {
 		t.Errorf("Failed to load instances: %v", err)
 	}
