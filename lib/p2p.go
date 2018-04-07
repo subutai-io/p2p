@@ -68,7 +68,11 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	}
 
 	// Extract necessary information from config file
-	p.Config.Read()
+	err = p.Config.Read()
+	if err != nil {
+		Log(Error, "Failed to extract information from config file: %v", err)
+		return err
+	}
 
 	err = p.Interface.Open()
 	if err != nil {

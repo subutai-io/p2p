@@ -1,6 +1,7 @@
 package ptp
 
 import (
+	"fmt"
 	"io/ioutil"
 
 	yaml "gopkg.in/yaml.v2"
@@ -35,8 +36,7 @@ func (y *Configuration) Read() error {
 	}
 	err = yaml.Unmarshal(yamlFile, y)
 	if err != nil {
-		Log(Error, "Failed to parse config: %v", err)
-		return err
+		return fmt.Errorf("Failed to parse config: %v", err)
 	}
 	return nil
 }
