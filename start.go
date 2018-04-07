@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 
 	ptp "github.com/subutai-io/p2p/lib"
 )
@@ -17,6 +18,10 @@ func CommandStart(restPort int, ip, hash, mac, dev, dht, keyfile, key, ttl strin
 	if hash == "" {
 		fmt.Printf("Hash cannot be empty. Please start new instances with -hash VALUE argument\n")
 		os.Exit(12)
+	}
+	if strings.Index(hash, "~") != -1 {
+		fmt.Printf("Hash cannot contain the ~. Please start new instances with hash value that doesn't contain it.\n")
+		os.Exit(170899001)
 	}
 	args.Hash = hash
 	if mac != "" {
