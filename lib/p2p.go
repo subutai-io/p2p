@@ -2,21 +2,17 @@ package ptp
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"strings"
 	"sync"
 	"time"
 
 	upnp "github.com/NebulousLabs/go-upnp"
-	"gopkg.in/yaml.v2"
 )
 
 // PeerToPeer - Main structure
 type PeerToPeer struct {
-	IPTool          string                               `yaml:"iptool"`  // Network interface configuration tool
-	AddTap          string                               `yaml:"addtap"`  // Path to addtap.bat
-	InfFile         string                               `yaml:"inffile"` // Path to deltap.bat
+	Config          Configuration                        // Network interface configuration tool
 	UDPSocket       *Network                             // Peer-to-peer interconnection socket
 	LocalIPs        []net.IP                             // List of IPs available in the system
 	Dht             *DHTClient                           // DHT Client
@@ -54,6 +50,9 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 		return fmt.Errorf("Failed to initialize TAP")
 	}
 	err = p.Interface.Init(interfaceName)
+	if p.Interface.IsConfigured() {
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("Failed to initialize TAP: %s", err)
 	}
@@ -64,19 +63,14 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	if p.Interface.GetHardwareAddress() == nil {
 		return fmt.Errorf("No Hardware address provided")
 	}
+	if p.Interface.GetName() == "" {
+		return fmt.Errorf("Wrong interface name provided: %s", p.Interface.GetName())
+	}
 
 	// Extract necessary information from config file
-	// TODO: Remove hard-coded path
-	yamlFile, err := ioutil.ReadFile(ConfigDir + "/p2p/config.yaml")
+	err = p.Config.Read()
 	if err != nil {
-		Log(Debug, "Failed to load config: %v", err)
-		p.IPTool = "/sbin/ip"
-		p.AddTap = "C:\\Program Files\\TAP-Windows\\bin\\tapinstall.exe"
-		p.InfFile = "C:\\Program Files\\TAP-Windows\\driver\\OemVista.inf"
-	}
-	err = yaml.Unmarshal(yamlFile, p)
-	if err != nil {
-		Log(Error, "Failed to parse config: %v", err)
+		Log(Error, "Failed to extract information from config file: %v", err)
 		return err
 	}
 
@@ -93,6 +87,7 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	}
 	ActiveInterfaces = append(ActiveInterfaces, p.Interface.GetIP())
 	Log(Debug, "Interface has been configured")
+	p.Interface.MarkConfigured()
 	return err
 }
 
@@ -427,7 +422,7 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 			return nil, nil, fmt.Errorf("Invalid address were provided for network interface. Use -ip \"dhcp\" or specify correct IP address")
 		}
 		ipAddress += `/24`
-		Log(Warning, "IP was not in CIDR format. Assumming /24")
+		Log(Debug, "IP was not in CIDR format. Assumming /24")
 		ip, ipnet, err = net.ParseCIDR(ipAddress)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to setup provided IP address for local device")
@@ -455,6 +450,7 @@ func (p *PeerToPeer) Run() {
 	initialRequestSent := false
 	started := time.Now()
 	p.Dht.LastUpdate = time.Now()
+	lastDHCPReport := time.Now()
 	for {
 		if p.Shutdown {
 			// TODO: Do it more safely
@@ -471,6 +467,10 @@ func (p *PeerToPeer) Run() {
 		if !initialRequestSent && time.Since(started) > time.Duration(time.Millisecond*5000) {
 			initialRequestSent = true
 			p.Dht.sendFind()
+		}
+		if time.Since(lastDHCPReport) > time.Duration(time.Second*300) {
+			lastDHCPReport = time.Now()
+			p.ReportIP(p.Interface.GetIP().String(), p.Interface.GetHardwareAddress().String(), p.Interface.GetName())
 		}
 	}
 	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)
