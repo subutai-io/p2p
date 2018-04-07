@@ -8,12 +8,11 @@ import (
 	"time"
 
 	upnp "github.com/NebulousLabs/go-upnp"
-	yaml "gopkg.in/yaml.v2"
 )
 
 // PeerToPeer - Main structure
 type PeerToPeer struct {
-	YamlConfig      YamlConfiguration                    // Network interface configuration tool
+	Config          Configuration                        // Network interface configuration tool
 	UDPSocket       *Network                             // Peer-to-peer interconnection socket
 	LocalIPs        []net.IP                             // List of IPs available in the system
 	Dht             *DHTClient                           // DHT Client
@@ -69,14 +68,7 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	}
 
 	// Extract necessary information from config file
-	yamlFile := p.YamlConfig.Read()
-
-	err = yaml.Unmarshal(yamlFile, p)
-	if err != nil {
-		Log(Error, "Failed to parse config: %v", err)
-		return err
-	}
-	return nil
+	p.Config.Read()
 
 	err = p.Interface.Open()
 	if err != nil {

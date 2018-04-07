@@ -2,34 +2,29 @@ package ptp
 
 import (
 	"io/ioutil"
+
+	yaml "gopkg.in/yaml.v2"
 )
 
-type YamlConfiguration struct {
+type Configuration struct {
 	IPTool  string `yaml:"iptool"`  // Network interface configuration tool
 	AddTap  string `yaml:"addtap"`  // Path to addtap.bat
 	InfFile string `yaml:"inffile"` // Path to deltap.bat
 }
 
-func (y *YamlConfiguration) GetIPTool() string {
+func (y *Configuration) GetIPTool() string {
 	return y.IPTool
 }
 
-func (y *YamlConfiguration) GetAddTap() string {
+func (y *Configuration) GetAddTap() string {
 	return y.AddTap
 }
 
-func (y *YamlConfiguration) GetInfFile() string {
+func (y *Configuration) GetInfFile() string {
 	return y.InfFile
 }
 
-func (y *YamlConfiguration) Assign(_IPTool, _AddTap, _InfFile string) error {
-	y.IPTool = _IPTool
-	y.AddTap = _AddTap
-	y.InfFile = _InfFile
-	return nil
-}
-
-func (y *YamlConfiguration) Read() []byte {
+func (y *Configuration) Read() error {
 	// TODO: Remove hard-coded path
 	yamlFile, err := ioutil.ReadFile(ConfigDir + "/p2p/config.yaml")
 	if err != nil {
@@ -38,5 +33,10 @@ func (y *YamlConfiguration) Read() []byte {
 		y.AddTap = "C:\\Program Files\\TAP-Windows\\bin\\tapinstall.exe"
 		y.InfFile = "C:\\Program Files\\TAP-Windows\\driver\\OemVista.inf"
 	}
-	return yamlFile
+	err = yaml.Unmarshal(yamlFile, y)
+	if err != nil {
+		Log(Error, "Failed to parse config: %v", err)
+		return err
+	}
+	return nil
 }
