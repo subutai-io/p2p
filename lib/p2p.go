@@ -2,21 +2,18 @@ package ptp
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"strings"
 	"sync"
 	"time"
 
 	upnp "github.com/NebulousLabs/go-upnp"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // PeerToPeer - Main structure
 type PeerToPeer struct {
-	IPTool          string                               `yaml:"iptool"`  // Network interface configuration tool
-	AddTap          string                               `yaml:"addtap"`  // Path to addtap.bat
-	InfFile         string                               `yaml:"inffile"` // Path to deltap.bat
+	YamlConfig      YamlConfiguration                    // Network interface configuration tool
 	UDPSocket       *Network                             // Peer-to-peer interconnection socket
 	LocalIPs        []net.IP                             // List of IPs available in the system
 	Dht             *DHTClient                           // DHT Client
@@ -72,19 +69,14 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	}
 
 	// Extract necessary information from config file
-	// TODO: Remove hard-coded path
-	yamlFile, err := ioutil.ReadFile(ConfigDir + "/p2p/config.yaml")
-	if err != nil {
-		Log(Debug, "Failed to load config: %v", err)
-		p.IPTool = "/sbin/ip"
-		p.AddTap = "C:\\Program Files\\TAP-Windows\\bin\\tapinstall.exe"
-		p.InfFile = "C:\\Program Files\\TAP-Windows\\driver\\OemVista.inf"
-	}
+	yamlFile := p.YamlConfig.Read()
+
 	err = yaml.Unmarshal(yamlFile, p)
 	if err != nil {
 		Log(Error, "Failed to parse config: %v", err)
 		return err
 	}
+	return nil
 
 	err = p.Interface.Open()
 	if err != nil {
