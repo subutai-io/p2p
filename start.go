@@ -21,7 +21,7 @@ func CommandStart(restPort int, ip, hash, mac, dev, dht, keyfile, key, ttl strin
 	}
 	if strings.Index(hash, "~") != -1 {
 		fmt.Printf("Hash cannot contain the ~. Please start new instances with hash value that doesn't contain it.\n")
-		os.Exit(170899001)
+		os.Exit(17)
 	}
 	args.Hash = hash
 	if mac != "" {
