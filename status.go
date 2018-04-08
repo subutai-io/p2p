@@ -46,20 +46,45 @@ func CommandStatus(restPort int, hash string) {
 		os.Exit(response.Code)
 	}
 
-	for _, instance := range response.Instances {
-		if len(hash) == 0 {
-			fmt.Printf("%s|%s\n", instance.ID, instance.IP)
-		}
-		for _, peer := range instance.Peers {
+	if len(hash) == 0 {
+		for _, instance := range response.Instances {
 			if len(hash) == 0 {
-				fmt.Printf("%s|", peer.ID)
+				fmt.Printf("%s|%s\n", instance.ID, instance.IP)
 			}
-			fmt.Printf("%s|State:%s|", peer.IP, peer.State)
-			if peer.LastError != "" {
-				fmt.Printf("LastError:%s", peer.LastError)
+			for _, peer := range instance.Peers {
+				if len(hash) == 0 {
+					fmt.Printf("%s|", peer.ID)
+				}
+				fmt.Printf("%s|State:%s|", peer.IP, peer.State)
+				if peer.LastError != "" {
+					fmt.Printf("LastError:%s", peer.LastError)
+				}
+				fmt.Printf("\n")
 			}
-			fmt.Printf("\n")
 		}
+	} else {
+		fmt.Printf("[\n")
+		for _, instance := range response.Instances {
+			i := 0
+			for _, peer := range instance.Peers {
+				i++
+				fmt.Printf("\t{\n")
+				fmt.Printf("\t\t\"ip\": \"%s\",\n", peer.IP)
+				fmt.Printf("\t\t\"state\": \"%s\"", peer.State)
+				if peer.LastError != "" {
+					fmt.Printf(",\n")
+					fmt.Printf("\t\t\"last_error\": \"%s\"\n", peer.IP)
+				} else {
+					fmt.Printf("\n")
+				}
+				fmt.Printf("\t}")
+				if i != len(instance.Peers) {
+					fmt.Printf(",")
+				}
+				fmt.Printf("\n")
+			}
+		}
+		fmt.Printf("]\n")
 	}
 	os.Exit(0)
 }

@@ -61,27 +61,27 @@ func isPrivateIP(ip net.IP) (bool, error) {
 func StringifyState(state PeerState) string {
 	switch state {
 	case PeerStateInit:
-		return "Initializing"
+		return "INITIALIZING"
 	case PeerStateRequestedIP:
-		return "Waiting for IP"
+		return "WAITING_IP"
 	case PeerStateRequestingProxy:
-		return "Requesting proxies"
+		return "REQUESTING_PROXIES"
 	case PeerStateWaitingForProxy:
-		return "Waiting for proxies"
+		return "WAITING_PROXIES"
 	case PeerStateWaitingToConnect:
-		return "Waiting for connection"
+		return "WAITING_CONNECTION"
 	case PeerStateConnecting:
-		return "Initializing connection"
+		return "INITIALIZING_CONNECTION"
 	case PeerStateConnected:
-		return "Connected"
+		return "CONNECTED"
 	case PeerStateDisconnect:
-		return "Disconnected"
+		return "DISCONNECTED"
 	case PeerStateStop:
-		return "Stopped"
+		return "STOPPED"
 	case PeerStateCooldown:
-		return "Cooldown"
+		return "COOLDOWN"
 	}
-	return "Unknown"
+	return "UNKNOWN"
 }
 
 // IsInterfaceLocal will return true if specified IP is in list of
