@@ -399,27 +399,6 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 	if len(np.EndpointsHeap) > 0 {
 		np.Endpoint = np.EndpointsHeap[0].Addr
 		np.ConnectionAttempts = 0
-		// } else {
-		// 	np.ConnectionAttempts++
-		// 	np.LastError = "No more endpoints"
-		// 	if time.Since(np.LastFind) > time.Duration(time.Second*90) {
-		// 		Log(Debug, "No endpoints and no updates from DHT")
-		// 		np.SetState(PeerStateDisconnect, ptpc)
-		// 		return nil
-		// 	}
-		// 	if len(np.KnownIPs) > 0 && len(np.Proxies) > 0 {
-		// 		Log(Debug, "We have IPs and Proxies. Syncing states")
-		// 		np.SetState(PeerStateWaitingToConnect, ptpc)
-		// 		return nil
-		// 	} else if len(np.KnownIPs) == 0 {
-		// 		Log(Debug, "Don't know any endpoints. Requesting")
-		// 		np.SetState(PeerStateRequestedIP, ptpc)
-		// 		return nil
-		// 	} else if len(np.Proxies) == 0 {
-		// 		Log(Debug, "Don't know any proxies. Requesting")
-		// 		np.SetState(PeerStateRequestingProxy, ptpc)
-		// 		return nil
-		// 	}
 	} else {
 		Log(Debug, "No active endpoints. Disconnecting peer %s", np.ID)
 		np.Endpoint = nil
@@ -435,10 +414,10 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 		return nil
 	}
 
-	// if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && np.Stat.localNum < 1 && np.Stat.internetNum < 1 {
-	// 	Log(Info, "New hole punch activity: Local %d Internet %d", np.Stat.localNum, np.Stat.internetNum)
-	// 	go np.punchUDPHole(ptpc)
-	// }
+	if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && np.Stat.localNum < 1 && np.Stat.internetNum < 1 {
+		Log(Info, "New hole punch activity: Local %d Internet %d", np.Stat.localNum, np.Stat.internetNum)
+		go np.punchUDPHole(ptpc)
+	}
 
 	np.pingEndpoints(ptpc)
 	np.syncWithRemoteState(ptpc)

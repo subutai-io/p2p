@@ -450,7 +450,6 @@ func (p *PeerToPeer) Run() {
 	initialRequestSent := false
 	started := time.Now()
 	p.Dht.LastUpdate = time.Now()
-	lastDHCPReport := time.Now()
 	for {
 		if p.Shutdown {
 			// TODO: Do it more safely
@@ -467,10 +466,6 @@ func (p *PeerToPeer) Run() {
 		if !initialRequestSent && time.Since(started) > time.Duration(time.Millisecond*5000) {
 			initialRequestSent = true
 			p.Dht.sendFind()
-		}
-		if time.Since(lastDHCPReport) > time.Duration(time.Second*300) {
-			lastDHCPReport = time.Now()
-			p.ReportIP(p.Interface.GetIP().String(), p.Interface.GetHardwareAddress().String(), p.Interface.GetName())
 		}
 	}
 	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)
