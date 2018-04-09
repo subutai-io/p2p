@@ -1,6 +1,6 @@
 # Change Log
 
-## [6.3.0] 03/12/2018
+## [6.3.0] 04/09/2018
 
 * New connection process with multiple endpoints
 * DHT client moved from instances to daemon - now a single connection to 
