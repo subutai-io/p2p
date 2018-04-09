@@ -79,5 +79,17 @@ definitions:
     properties:
       hash:
         type: "string"
+      ip:
+        type: "string"
+        default: "dhcp"
+      interface:
+        type: "string"
+        default: "vptp"
+      mac:
+        type: "string"
+      keyfile:
+        type: "string"
+      key: 
+        type: "string"
     xml:
       name: "Instance"
