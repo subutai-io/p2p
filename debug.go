@@ -11,7 +11,7 @@ import (
 	ptp "github.com/subutai-io/p2p/lib"
 )
 
-// Debug prints debug information
+// CommandDebug prints debug information
 func CommandDebug(restPort int) {
 	out, err := sendRequest(restPort, "debug", &DaemonArgs{})
 	if err != nil {
