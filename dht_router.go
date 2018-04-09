@@ -143,13 +143,13 @@ func (dht *DHTRouter) keepAlive() {
 	lastPing := time.Now()
 	dht.lastContact = time.Now()
 	for {
-		if time.Since(lastPing) > time.Duration(time.Millisecond*60000) {
+		if time.Since(lastPing) > time.Duration(time.Millisecond*30000) && time.Since(dht.lastContact) > time.Duration(time.Millisecond*40) {
 			lastPing = time.Now()
 			if dht.ping() != nil {
 				ptp.Log(ptp.Error, "DHT router ping failed")
 			}
 		}
-		if time.Since(dht.lastContact) > time.Duration(time.Millisecond*120000) && dht.running {
+		if time.Since(dht.lastContact) > time.Duration(time.Millisecond*60000) && dht.running {
 			ptp.Log(ptp.Warning, "Disconnected from DHT router %s by timeout", dht.addr.String())
 			dht.handshaked = false
 			dht.running = false
