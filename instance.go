@@ -2,13 +2,13 @@ package main
 
 import (
 	"bytes"
-	"encoding/gob"
 	"fmt"
 	"net"
 	"os"
 	"sync"
 
 	ptp "github.com/subutai-io/p2p/lib"
+	"strconv"
 )
 
 // RunArgs is a list of arguments used at instance startup and
@@ -108,26 +108,61 @@ func (p *InstanceList) getInstance(id string) *P2PInstance {
 func (p *InstanceList) encodeInstances() ([]byte, error) {
 	var savedInstances []RunArgs
 	instances := p.get()
-	for _, inst := range instances {
-		savedInstances = append(savedInstances, inst.Args)
+	for _, instance := range instances {
+		savedInstances = append(savedInstances, instance.Args)
 	}
-	b := bytes.Buffer{}
-	e := gob.NewEncoder(&b)
-	err := e.Encode(savedInstances)
-	if err != nil {
-		ptp.Log(ptp.Error, "Failed to encode instances: %v", err)
-		return []byte(""), err
+	var result []byte
+	flag := false
+	for _, instance := range savedInstances {
+		if flag == true {
+			result = append(result[:], "---"...)
+		}
+		s := ""
+		s += instance.IP + "|"
+		s += instance.Mac + "|"
+		s += instance.Dev + "|"
+		s += instance.Hash + "|"
+		s += instance.Dht + "|"
+		s += instance.Keyfile + "|"
+		s += instance.Key + "|"
+		s += instance.TTL + "|"
+		var Fwd int
+		if instance.Fwd == true {
+			Fwd = 1
+		} else {
+			Fwd = 0
+		}
+		s += string(Fwd) + "|"
+		s += strconv.Itoa(instance.Port)
+		result = append(result[:], bytes.NewBufferString(s).Bytes()[:]...)
+		flag = true
 	}
-	return b.Bytes(), nil
+	return result, nil
 }
 
 func (p *InstanceList) decodeInstances(data []byte) ([]RunArgs, error) {
 	var args []RunArgs
-	b := bytes.Buffer{}
-	b.Write(data)
-	d := gob.NewDecoder(&b)
-	err := d.Decode(&args)
-	return args, err
+	blocksOfInstances := bytes.Split(data, bytes.NewBufferString("---").Bytes())
+	for _, str := range blocksOfInstances {
+		var item RunArgs
+		blocksOfArguments := bytes.Split(str, bytes.NewBufferString("|").Bytes())
+		item.IP = string(blocksOfArguments[0])
+		item.Mac = string(blocksOfArguments[1])
+		item.Dev = string(blocksOfArguments[2])
+		item.Hash = string(blocksOfArguments[3])
+		item.Dht = string(blocksOfArguments[4])
+		item.Keyfile = string(blocksOfArguments[5])
+		item.Key = string(blocksOfArguments[6])
+		item.TTL = string(blocksOfArguments[7])
+		if string(blocksOfArguments[8]) == "true" {
+			item.Fwd = true
+		} else {
+			item.Fwd = false
+		}
+		item.Port, _ = strconv.Atoi(string(blocksOfArguments[9]))
+		args = append(args, item)
+	}
+	return args, nil
 }
 
 // Calls encodeInstances() and saves results into specified file
