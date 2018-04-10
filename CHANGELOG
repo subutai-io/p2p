@@ -1,8 +1,9 @@
 # Change Log
 
-## [6.3.1] 04/10/2018
+## [6.3.1] 04/09/2018
 
-* Draft next version
+* Improved connection for local and internet peers
+* Reconnection stability
 
 ## [6.3.0] 04/09/2018
 
