@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
+	"runtime"
 	"testing"
 )
 
@@ -23,7 +25,7 @@ func TestEncodingInstances(t *testing.T) {
 	instanceList.instances["hell"] = P2Pinstance
 	_, err := instanceList.encodeInstances()
 	if err != nil {
-		t.Errorf("Failed to encode instances: %v", err)
+		t.Errorf("Failed to encode instances (1/1): %v", err)
 	}
 }
 
@@ -44,18 +46,18 @@ func TestDecodingInstances(t *testing.T) {
 	instanceList.instances["hell"] = P2Pinstance
 	data, err := instanceList.encodeInstances()
 	if err != nil {
-		t.Errorf("Failed to decode instances: %v", err)
+		t.Errorf("Failed to decode instances (1/2): %v", err)
 	}
 	_, err = instanceList.decodeInstances(data)
 	if err != nil {
-		t.Errorf("Failed to decode instances: %v", err)
+		t.Errorf("Failed to decode instances (2/2): %v", err)
 	}
 }
 
 func TestSaveInstances(t *testing.T) {
 	file, err := os.OpenFile("test", os.O_CREATE|os.O_RDWR, 0700)
 	if err != nil {
-		t.Errorf("Failed to save instances: %v", err)
+		t.Errorf("Failed to save instances (1/3): %v", err)
 	}
 	defer file.Close()
 	P2Pinstance := new(P2PInstance)
@@ -74,15 +76,18 @@ func TestSaveInstances(t *testing.T) {
 	instanceList.instances["hell"] = P2Pinstance
 	data, err := instanceList.encodeInstances()
 	if err != nil {
-		t.Errorf("Failed to save instances: %v", err)
+		t.Errorf("Failed to save instances (2/3): %v", err)
 	}
 	_, err = file.Write(data)
 	if err != nil {
-		t.Errorf("Failed to save instances: %v", err)
+		t.Errorf("Failed to save instances (3/3): %v", err)
 	}
 }
 
 func TestLoadInstances(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		fmt.Println("This test is not supported on Windows")
+	}
 	P2Pinstance := new(P2PInstance)
 	P2Pinstance.Args.IP = "10.10.10.1"
 	P2Pinstance.Args.Mac = "Mac"
@@ -101,25 +106,28 @@ func TestLoadInstances(t *testing.T) {
 	data, err := instanceList.encodeInstances()
 	t.Log(data)
 	if err != nil {
-		t.Errorf("Failed to load instances: %v", err)
+		t.Errorf("Failed to load instances (1/6): %v", err)
 	}
-	file, err := os.OpenFile("test", os.O_CREATE|os.O_RDWR, 0700)
+	file, err := os.OpenFile("/tmp/test", os.O_CREATE|os.O_RDWR, 0700)
+	defer func() {
+		os.Remove("/tmp/test")
+	}()
 	if err != nil {
-		t.Errorf("Failed to load instances: %v", err)
+		t.Errorf("Failed to load instances (2/6): %v", err)
 	}
 	_, err = file.Write(data)
 	if err != nil {
-		t.Errorf("Failed to load instances: %v", err)
+		t.Errorf("Failed to load instances (3/6): %v", err)
 	}
 	file.Close()
-	file, err = os.Open("test")
+	file, err = os.Open("/tmp/test")
 	if err != nil {
-		t.Errorf("Failed to load instances: %v", err)
+		t.Errorf("Failed to load instances (4/6): %v", err)
 	}
 	data = make([]byte, 100000)
 	_, err = file.Read(data)
 	if err != nil {
-		t.Errorf("Failed to load instances: %v", err)
+		t.Errorf("Failed to load instances (5/6): %v", err)
 	}
 	file.Close()
 	data = bytes.Trim(data, "\x00") // TODO: add more security to this
@@ -127,6 +135,6 @@ func TestLoadInstances(t *testing.T) {
 	t.Log(string(data))
 	_, err = instanceList.decodeInstances(data)
 	if err != nil {
-		t.Errorf("Failed to load instances: %v", err)
+		t.Errorf("Failed to load instances (6/6): %v", err)
 	}
 }
