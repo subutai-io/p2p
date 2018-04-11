@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 
 	ptp "github.com/subutai-io/p2p/lib"
 )
@@ -17,6 +18,10 @@ func CommandStart(restPort int, ip, hash, mac, dev, dht, keyfile, key, ttl strin
 	if hash == "" {
 		fmt.Printf("Hash cannot be empty. Please start new instances with -hash VALUE argument\n")
 		os.Exit(12)
+	}
+	if strings.Index(hash, "~") != -1 {
+		fmt.Printf("Hash cannot contain the ~. Please start new instances with hash value that doesn't contain it.\n")
+		os.Exit(17)
 	}
 	args.Hash = hash
 	if mac != "" {
@@ -102,7 +107,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 
 	// Validate if interface name is unique
 	if args.Dev != "" {
-		instances := d.Instances.Get()
+		instances := d.Instances.get()
 		for _, inst := range instances {
 			if inst.PTP.Interface.GetName() == args.Dev {
 				resp.ExitCode = 1
@@ -112,7 +117,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		}
 	}
 
-	inst := d.Instances.GetInstance(args.Hash)
+	inst := d.Instances.getInstance(args.Hash)
 	if inst == nil {
 		resp.Output = resp.Output + "Lookup finished\n"
 		if args.Key != "" {
@@ -140,7 +145,10 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		err := bootstrap.registerInstance(newInst.ID, newInst)
 		if err != nil {
 			ptp.Log(ptp.Error, "Failed to register instance with bootstrap nodes: %s", err.Error())
-			newInst.PTP.Close()
+			if newInst.PTP != nil {
+				newInst.PTP.Close()
+				newInst.PTP = nil
+			}
 			resp.Output = resp.Output + "Failed to register instance: %s" + err.Error()
 			resp.ExitCode = 601
 			return errors.New("Failed to register instance")
@@ -151,7 +159,10 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		newInst.PTP.FindNetworkAddresses()
 		err = newInst.PTP.Dht.Connect(newInst.PTP.LocalIPs, newInst.PTP.ProxyManager.GetList())
 		if err != nil {
-			newInst.PTP.Close()
+			if newInst.PTP != nil {
+				newInst.PTP.Close()
+				newInst.PTP = nil
+			}
 			bootstrap.unregisterInstance(newInst.ID)
 			resp.Output = resp.Output + err.Error()
 			resp.ExitCode = 602
@@ -161,7 +172,10 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		err = newInst.PTP.PrepareInterfaces(args.IP, args.Dev)
 		if err != nil {
 			ptp.Log(ptp.Error, "Failed to configure network interface: %s", err)
-			newInst.PTP.Close()
+			if newInst.PTP != nil {
+				newInst.PTP.Close()
+				newInst.PTP = nil
+			}
 			bootstrap.unregisterInstance(newInst.ID)
 			resp.Output = resp.Output + "Failed to configure network: " + err.Error()
 			resp.ExitCode = 603
@@ -182,12 +196,12 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 
 		usedIPs = append(usedIPs, newInst.PTP.Interface.GetIP().String())
 		ptp.Log(ptp.Info, "Instance created")
-		d.Instances.Update(args.Hash, newInst)
+		d.Instances.update(args.Hash, newInst)
 
 		go newInst.PTP.Run()
 		if d.SaveFile != "" {
 			resp.Output = resp.Output + "Saving instance into file"
-			d.Instances.SaveInstances(d.SaveFile)
+			d.Instances.saveInstances(d.SaveFile)
 		}
 	} else {
 		resp.Output = resp.Output + "Hash already in use\n"

@@ -133,10 +133,7 @@ func (dht *DHTClient) read() (*DHTPacket, error) {
 func (dht *DHTClient) send(packet *DHTPacket) error {
 	// if dht.OutgoingData != nil && !dht.isShutdown {
 	if dht.OutgoingData != nil {
-		packets, _ := dht.ProducePacket(packet)
-		for _, npacket := range packets {
-			dht.OutgoingData <- npacket
-		}
+		dht.OutgoingData <- packet
 	} else {
 		// Log(Debug, "%+v ||| %+v", dht.OutgoingData, dht.isShutdown)
 		return fmt.Errorf("Trying to send to closed channel")
@@ -320,46 +317,4 @@ func (dht *DHTClient) RegisterProxy(ip net.IP, port int) error {
 // ReportLoad will send amount of tunnels created on particular proxy
 func (dht *DHTClient) ReportLoad(clientsNum int) error {
 	return nil
-}
-
-// ProduceData will return one or more byte slices for a provided packet
-// If packet is too big it will be split into multiple packets
-func (dht *DHTClient) ProducePacket(packet *DHTPacket) ([]*DHTPacket, error) {
-
-	result := []*DHTPacket{}
-
-	if len(packet.Proxies) < 4 && len(packet.Arguments) < 4 {
-		result = append(result, packet)
-	} else {
-		for len(packet.Proxies) != 0 || len(packet.Arguments) != 0 {
-			npacket := &DHTPacket{
-				Type:     packet.Type,
-				Id:       packet.Id,
-				Infohash: packet.Infohash,
-				Data:     packet.Data,
-				Query:    packet.Query,
-				Extra:    packet.Extra,
-				Payload:  packet.Payload,
-				Version:  packet.Version,
-			}
-			if len(packet.Proxies) > 4 {
-				npacket.Proxies = packet.Proxies[0:4]
-				packet.Proxies = packet.Proxies[4:]
-			} else {
-				npacket.Proxies = packet.Proxies[0:len(packet.Proxies)]
-				packet.Proxies = packet.Proxies[:0]
-			}
-			if len(packet.Arguments) > 4 {
-				npacket.Arguments = packet.Arguments[0:4]
-				packet.Arguments = packet.Arguments[4:]
-			} else {
-				npacket.Arguments = packet.Arguments[0:len(packet.Arguments)]
-				packet.Arguments = packet.Arguments[:0]
-			}
-
-			result = append(result, npacket)
-		}
-	}
-
-	return result, nil
 }

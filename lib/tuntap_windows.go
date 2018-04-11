@@ -81,18 +81,19 @@ func newTAP(tool, ip, mac, mask string, mtu int) (*TAPWindows, error) {
 
 // TAPLinux is an interface for TAP device on Linux platform
 type TAPWindows struct {
-	IP        net.IP           // IP
-	Mask      net.IPMask       // Mask
-	Mac       net.HardwareAddr // Hardware Address
-	MacNotSet bool
-	Name      string // Network interface name
-	Interface string // ?????????????????
-	Tool      string // Path to `ip`
-	MTU       int    // MTU value
-	file      syscall.Handle
-	Handle    syscall.Handle
-	Rx        chan []byte
-	Tx        chan []byte
+	IP         net.IP           // IP
+	Mask       net.IPMask       // Mask
+	Mac        net.HardwareAddr // Hardware Address
+	MacNotSet  bool
+	Name       string // Network interface name
+	Interface  string // ?????????????????
+	Tool       string // Path to `ip`
+	MTU        int    // MTU value
+	file       syscall.Handle
+	Handle     syscall.Handle
+	Rx         chan []byte
+	Tx         chan []byte
+	Configured bool
 }
 
 // GetName returns a name of interface
@@ -419,6 +420,14 @@ func (t *TAPWindows) removeZeroes(s string) string {
 		}
 	}
 	return string(res[:size])
+}
+
+func (t *TAPWindows) IsConfigured() bool {
+	return t.Configured
+}
+
+func (t *TAPWindows) MarkConfigured() {
+	t.Configured = true
 }
 
 func tapControlCode(request, method uint32) uint32 {

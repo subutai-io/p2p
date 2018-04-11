@@ -51,13 +51,14 @@ func newTAP(tool, ip, mac, mask string, mtu int) (*TAPDarwin, error) {
 
 // TAPDarwin is an interface for TAP device on Linux platform
 type TAPDarwin struct {
-	IP   net.IP           // IP
-	Mask net.IPMask       // Mask
-	Mac  net.HardwareAddr // Hardware Address
-	Name string           // Network interface name
-	Tool string           // Path to `ip`
-	MTU  int              // MTU value
-	file *os.File         // Interface descriptor
+	IP         net.IP           // IP
+	Mask       net.IPMask       // Mask
+	Mac        net.HardwareAddr // Hardware Address
+	Name       string           // Network interface name
+	Tool       string           // Path to `ip`
+	MTU        int              // MTU value
+	file       *os.File         // Interface descriptor
+	Configured bool
 }
 
 // GetName returns a name of interface
@@ -180,6 +181,14 @@ func (t *TAPDarwin) WritePacket(packet *Packet) error {
 // Run will start TAP processes
 func (t *TAPDarwin) Run() {
 
+}
+
+func (t *TAPDarwin) IsConfigured() bool {
+	return t.Configured
+}
+
+func (t *TAPDarwin) MarkConfigured() {
+	t.Configured = true
 }
 
 // FilterInterface will return true if this interface needs to be filtered out

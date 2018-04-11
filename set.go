@@ -100,7 +100,7 @@ func (p *Daemon) AddKey(args *RunArgs, resp *Response) error {
 		resp.ExitCode = 1
 		resp.Output = "You have not specified key"
 	}
-	inst := p.Instances.GetInstance(args.Hash)
+	inst := p.Instances.getInstance(args.Hash)
 	if inst == nil {
 		resp.ExitCode = 1
 		resp.Output = "No instances with specified hash were found"
@@ -111,7 +111,7 @@ func (p *Daemon) AddKey(args *RunArgs, resp *Response) error {
 
 		newKey = inst.PTP.Crypter.EnrichKeyValues(newKey, args.Key, args.TTL)
 		inst.PTP.Crypter.Keys = append(inst.PTP.Crypter.Keys, newKey)
-		p.Instances.Update(args.Hash, inst)
+		p.Instances.update(args.Hash, inst)
 	}
 	return nil
 }

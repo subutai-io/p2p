@@ -73,19 +73,19 @@ func (p *InstanceList) operate(action InstOperation, id string, inst *P2PInstanc
 	return nil
 }
 
-func (p *InstanceList) Init() {
+func (p *InstanceList) init() {
 	p.instances = make(map[string]*P2PInstance)
 }
 
-func (p *InstanceList) Update(id string, inst *P2PInstance) error {
+func (p *InstanceList) update(id string, inst *P2PInstance) error {
 	return p.operate(InstWrite, id, inst)
 }
 
-func (p *InstanceList) Delete(id string) error {
+func (p *InstanceList) delete(id string) error {
 	return p.operate(InstDelete, id, nil)
 }
 
-func (p *InstanceList) Get() map[string]*P2PInstance {
+func (p *InstanceList) get() map[string]*P2PInstance {
 	result := make(map[string]*P2PInstance)
 	p.lock.RLock()
 	for id, inst := range p.instances {
@@ -95,7 +95,7 @@ func (p *InstanceList) Get() map[string]*P2PInstance {
 	return result
 }
 
-func (p *InstanceList) GetInstance(id string) *P2PInstance {
+func (p *InstanceList) getInstance(id string) *P2PInstance {
 	p.lock.RLock()
 	inst, exists := p.instances[id]
 	p.lock.RUnlock()
@@ -105,9 +105,9 @@ func (p *InstanceList) GetInstance(id string) *P2PInstance {
 	return inst
 }
 
-func (p *InstanceList) EncodeInstances() ([]byte, error) {
+func (p *InstanceList) encodeInstances() ([]byte, error) {
 	var savedInstances []RunArgs
-	instances := p.Get()
+	instances := p.get()
 	for _, inst := range instances {
 		savedInstances = append(savedInstances, inst.Args)
 	}
@@ -121,7 +121,7 @@ func (p *InstanceList) EncodeInstances() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func (p *InstanceList) DecodeInstances(data []byte) ([]RunArgs, error) {
+func (p *InstanceList) decodeInstances(data []byte) ([]RunArgs, error) {
 	var args []RunArgs
 	b := bytes.Buffer{}
 	b.Write(data)
@@ -132,13 +132,13 @@ func (p *InstanceList) DecodeInstances(data []byte) ([]RunArgs, error) {
 
 // Calls encodeInstances() and saves results into specified file
 // Return number of bytes written and error if any
-func (p *InstanceList) SaveInstances(filename string) (int, error) {
+func (p *InstanceList) saveInstances(filename string) (int, error) {
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0700)
 	if err != nil {
 		return 0, err
 	}
 	defer file.Close()
-	data, err := p.EncodeInstances()
+	data, err := p.encodeInstances()
 	if err != nil {
 		return 0, err
 	}
@@ -149,7 +149,7 @@ func (p *InstanceList) SaveInstances(filename string) (int, error) {
 	return s, nil
 }
 
-func (p *InstanceList) LoadInstances(filename string) ([]RunArgs, error) {
+func (p *InstanceList) loadInstances(filename string) ([]RunArgs, error) {
 	var loadedInstances []RunArgs
 	file, err := os.Open(filename)
 	if err != nil {
@@ -162,7 +162,7 @@ func (p *InstanceList) LoadInstances(filename string) ([]RunArgs, error) {
 		return loadedInstances, err
 	}
 
-	loadedInstances, err = p.DecodeInstances(data)
+	loadedInstances, err = p.decodeInstances(data)
 	return loadedInstances, err
 }
 
@@ -198,7 +198,7 @@ type Daemon struct {
 
 func (p *Daemon) Initialize(saveFile string) {
 	p.Instances = new(InstanceList)
-	p.Instances.Init()
+	p.Instances.init()
 	p.SaveFile = saveFile
 }
 
