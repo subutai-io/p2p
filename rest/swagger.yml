@@ -15,13 +15,15 @@ schemes:
 - "http"
 - "https"
 tags:
-- name: "instance"
-  description: "P2P Instance manipulation"
+- name: "instances"
+  description: "P2P Instances manipulation"
+- name: "swarm"
+  description: "Manipulate single swarms"
 paths:
   /instance:
     post:
       tags: 
-      - "instance"
+      - "instances"
       summary: "Create new P2P instance"
       description: ""
       operationId: "CreateInstance"
@@ -47,20 +49,55 @@ paths:
           description: "Service unavailable"
     get:
       tags:
-      - "instance"
+      - "instances"
       summary: "List P2P instances"
-      description: "List all p2p instances "
-  /instance/info:
-    get:
+      description: "List all p2p instances"
+      operationId: "ListInstances"
+      consumes:
+        - "application/json"
+        - "application/xml"
+      produces:
+        - "application/json"
+        - "application/xml"
+    delete:
       tags:
-      - "instance"
-      summary: "Display instance information"
-      description: "Display detailed information about specified instance"
+      - "instances"
+      summary: "Destroy P2P instance"
+      description: "This command will shutdown P2P instance"
+      operationId: "CloseInstance"
+      consumes:
+        - "application/json"
+        - "application/xml"
       produces:
         - "application/json"
         - "application/xml"
       parameters:
       - in: "query"
+        name: "hash"
+        description: "Instance configuration"
+        required: true 
+        schema:
+          $ref: "#/definitions/Instance"
+      responses:
+        200:
+          description: "Sucessfully created"
+        405:
+          description: "Invalid input"
+        503:
+          description: "Service unavailable"
+  /swarm:
+    get:
+      tags:
+      - "swarm"
+      summary: "Display instance information"
+      description: "Display detailed information about specified instance"
+      operationId: "SwarmStatus"
+      produces:
+        - "application/json"
+        - "application/xml"
+      parameters:
+      - in: "query"
+        name: "hash"
         description: "Instance hash"
         required: true
         type: "string"
@@ -69,10 +106,34 @@ paths:
           description: "Sucessful operation"
           schema: 
             $ref: "#/definitions/Instance"
-        404:
-          description: "Instance not found"
         503:
           description: "Service unavailable"
+  /swarm/{hash}:
+    post:
+      tags:
+      - "swarm"
+      summary: "Update swarm keys"
+      description: "Add new crypto keys to an existing swarm"
+      operationId: "SwarmOptions"
+      consumes:
+        - "application/json"
+        - "application/xml"
+      produces:
+        - "application/json"
+        - "application/xml"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Instance configuration"
+        required: true 
+        schema:
+          $ref: "#/definitions/Key"
+      - in: "query"
+        name: "hash"
+        description: "Instance hash"
+        required: true
+        type: "string"
+      
 definitions:
   Instance:
     type: object
@@ -87,9 +148,18 @@ definitions:
         default: "vptp"
       mac:
         type: "string"
-      keyfile:
-        type: "string"
       key: 
-        type: "string"
+        $ref: "#/definitions/Key"
     xml:
       name: "Instance"
+  Key:
+    type: object
+    properties:
+      key:
+        type: "string"
+      keyfile:
+        type: "string"
+      until:
+        type: "string"
+    xml:
+      name: "Key"
