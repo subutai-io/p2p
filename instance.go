@@ -127,7 +127,6 @@ func (p *InstanceList) encodeInstances() ([]byte, error) {
 		result.WriteString(instance.Keyfile + "~")
 		result.WriteString(instance.Key + "~")
 		result.WriteString(instance.TTL + "~")
-		fmt.Println(result.String())
 		var Fwd int
 		if instance.Fwd == true {
 			Fwd = 1
