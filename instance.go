@@ -107,7 +107,7 @@ func (p *InstanceList) getInstance(id string) *P2PInstance {
 	return inst
 }
 
-func (p *InstanceList) encodeInstances() ([]byte, error) {
+func (p *InstanceList) encodeInstances() []byte {
 	var savedInstances []RunArgs
 	instances := p.get()
 	for _, instance := range instances {
@@ -135,7 +135,7 @@ func (p *InstanceList) encodeInstances() ([]byte, error) {
 		result.WriteString(strconv.Itoa(instance.Port))
 		flag = true
 	}
-	return result.Bytes(), nil
+	return result.Bytes()
 }
 
 func (p *InstanceList) decodeInstances(data []byte) ([]RunArgs, error) {
@@ -161,7 +161,7 @@ func (p *InstanceList) decodeInstances(data []byte) ([]RunArgs, error) {
 			item.Key = string(blocksOfArguments[6])
 			item.TTL = string(blocksOfArguments[7])
 			item.Fwd = false
-			if string(blocksOfArguments[8]) == "true" {
+			if string(blocksOfArguments[8]) == "1" {
 				item.Fwd = true
 			}
 			item.Port, err = strconv.Atoi(string(blocksOfArguments[9]))
@@ -182,13 +182,10 @@ func (p *InstanceList) saveInstances(filename string) (int, error) {
 		return 0, err
 	}
 	defer file.Close()
-	data, err := p.encodeInstances()
-	if err != nil {
-		return 0, err
-	}
+	data := p.encodeInstances()
 	s, err := file.Write(data)
 	if err != nil {
-		return s, err
+		return s, err // uncovered - hard to cover
 	}
 	return s, nil
 }
@@ -202,10 +199,10 @@ func (p *InstanceList) loadInstances(filename string) ([]RunArgs, error) {
 	defer file.Close()
 	data := make([]byte, 100000)
 	_, err = file.Read(data)
-	data = bytes.Trim(data, "\x00") // TODO: add more security to this
 	if err != nil {
-		return loadedInstances, err
+		return loadedInstances, err // uncovered - hard to cover
 	}
+	data = bytes.Trim(data, "\x00") // TODO: add more security to this
 	loadedInstances, err = p.decodeInstances(data)
 	return loadedInstances, err
 }
@@ -240,14 +237,14 @@ type Daemon struct {
 	OutboundIP net.IP
 }
 
-func (p *Daemon) Initialize(saveFile string) {
-	p.Instances = new(InstanceList)
-	p.Instances.init()
-	p.SaveFile = saveFile
+func (d *Daemon) Initialize(saveFile string) {
+	d.Instances = new(InstanceList)
+	d.Instances.init()
+	d.SaveFile = saveFile
 }
 
 // Execute is a dummy method used for tests
-func (p *Daemon) Execute(args *Args, resp *Response) error {
+func (d *Daemon) Execute(args *Args, resp *Response) error {
 	resp.ExitCode = 0
 	resp.Output = ""
 	return nil
