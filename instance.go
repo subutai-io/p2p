@@ -2,13 +2,15 @@ package main
 
 import (
 	"bytes"
+	"encoding/gob"
 	"fmt"
 	"net"
 	"os"
 	"sync"
 
-	ptp "github.com/subutai-io/p2p/lib"
 	"strconv"
+
+	ptp "github.com/subutai-io/p2p/lib"
 )
 
 // RunArgs is a list of arguments used at instance startup and
@@ -111,56 +113,64 @@ func (p *InstanceList) encodeInstances() ([]byte, error) {
 	for _, instance := range instances {
 		savedInstances = append(savedInstances, instance.Args)
 	}
-	var result []byte
+	var result bytes.Buffer
 	flag := false
 	for _, instance := range savedInstances {
 		if flag == true {
-			result = append(result[:], "---"...)
+			result.WriteString("|~|")
 		}
-		s := ""
-		s += instance.IP + "|"
-		s += instance.Mac + "|"
-		s += instance.Dev + "|"
-		s += instance.Hash + "|"
-		s += instance.Dht + "|"
-		s += instance.Keyfile + "|"
-		s += instance.Key + "|"
-		s += instance.TTL + "|"
+		result.WriteString(instance.IP + "~")
+		result.WriteString(instance.Mac + "~")
+		result.WriteString(instance.Dev + "~")
+		result.WriteString(instance.Hash + "~")
+		result.WriteString(instance.Dht + "~")
+		result.WriteString(instance.Keyfile + "~")
+		result.WriteString(instance.Key + "~")
+		result.WriteString(instance.TTL + "~")
+		fmt.Println(result.String())
 		var Fwd int
 		if instance.Fwd == true {
 			Fwd = 1
-		} else {
-			Fwd = 0
 		}
-		s += string(Fwd) + "|"
-		s += strconv.Itoa(instance.Port)
-		result = append(result[:], bytes.NewBufferString(s).Bytes()[:]...)
+		result.WriteString(strconv.Itoa(Fwd) + "~")
+		result.WriteString(strconv.Itoa(instance.Port))
 		flag = true
 	}
-	return result, nil
+	return result.Bytes(), nil
 }
 
 func (p *InstanceList) decodeInstances(data []byte) ([]RunArgs, error) {
 	var args []RunArgs
-	blocksOfInstances := bytes.Split(data, bytes.NewBufferString("---").Bytes())
-	for _, str := range blocksOfInstances {
-		var item RunArgs
-		blocksOfArguments := bytes.Split(str, bytes.NewBufferString("|").Bytes())
-		item.IP = string(blocksOfArguments[0])
-		item.Mac = string(blocksOfArguments[1])
-		item.Dev = string(blocksOfArguments[2])
-		item.Hash = string(blocksOfArguments[3])
-		item.Dht = string(blocksOfArguments[4])
-		item.Keyfile = string(blocksOfArguments[5])
-		item.Key = string(blocksOfArguments[6])
-		item.TTL = string(blocksOfArguments[7])
-		if string(blocksOfArguments[8]) == "true" {
-			item.Fwd = true
-		} else {
+	b := bytes.Buffer{}
+	b.Write(data)
+	d := gob.NewDecoder(&b)
+	err := d.Decode(&args)
+	if err != nil {
+		blocksOfInstances := bytes.Split(data, bytes.NewBufferString("|~|").Bytes())
+		for _, str := range blocksOfInstances {
+			blocksOfArguments := bytes.Split(str, bytes.NewBufferString("~").Bytes())
+			if len(blocksOfArguments) != 10 {
+				return nil, fmt.Errorf("Couldn't decode the instances")
+			}
+			var item RunArgs
+			item.IP = string(blocksOfArguments[0])
+			item.Mac = string(blocksOfArguments[1])
+			item.Dev = string(blocksOfArguments[2])
+			item.Hash = string(blocksOfArguments[3])
+			item.Dht = string(blocksOfArguments[4])
+			item.Keyfile = string(blocksOfArguments[5])
+			item.Key = string(blocksOfArguments[6])
+			item.TTL = string(blocksOfArguments[7])
 			item.Fwd = false
+			if string(blocksOfArguments[8]) == "true" {
+				item.Fwd = true
+			}
+			item.Port, err = strconv.Atoi(string(blocksOfArguments[9]))
+			if err != nil {
+				return nil, fmt.Errorf("Couldn't decode the Port: %v", err)
+			}
+			args = append(args, item)
 		}
-		item.Port, _ = strconv.Atoi(string(blocksOfArguments[9]))
-		args = append(args, item)
 	}
 	return args, nil
 }
@@ -193,10 +203,10 @@ func (p *InstanceList) loadInstances(filename string) ([]RunArgs, error) {
 	defer file.Close()
 	data := make([]byte, 100000)
 	_, err = file.Read(data)
+	data = bytes.Trim(data, "\x00") // TODO: add more security to this
 	if err != nil {
 		return loadedInstances, err
 	}
-
 	loadedInstances, err = p.decodeInstances(data)
 	return loadedInstances, err
 }
