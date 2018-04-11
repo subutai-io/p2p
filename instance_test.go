@@ -47,11 +47,9 @@ func TestGetInstance(t *testing.T) {
 	if instanceList.getInstance("instance") == nil {
 		t.Errorf("Failed to get instance (1/2): getInstance returned nil, but instance exists")
 	}
-	/*
-		if instanceList.getInstance("non-instance") != nil {
-			t.Errorf("Failed to get instance (2/2): getInstance returned an instance, but instance does not exist")
-		}
-	*/
+	if instanceList.getInstance("non-instance") != nil {
+		t.Errorf("Failed to get instance (2/2): getInstance returned an instance, but instance does not exist")
+	}
 }
 
 func TestEncodingInstances(t *testing.T) {
