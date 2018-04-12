@@ -149,6 +149,38 @@ func TestEncodingInstances(t *testing.T) {
 	if bytes.NewBuffer(instanceList.encodeInstances()).String() != "10.10.10.1~Mac~Dev~Hash~Dht~Keyfile~Key~TTL~1~0" {
 		t.Errorf("Failed to encode instances (1): encodedInstances incorrectly encoded the instanceList")
 	}
+	P2Pinstance = new(P2PInstance)
+	P2Pinstance.Args.Mac = "Mac"
+	P2Pinstance.Args.Dev = "Dev"
+	P2Pinstance.Args.Hash = "Hash"
+	P2Pinstance.Args.Dht = "Dht"
+	P2Pinstance.Args.Keyfile = "Keyfile"
+	P2Pinstance.Args.Key = "Key"
+	P2Pinstance.Args.TTL = "TTL"
+	P2Pinstance.Args.Fwd = true
+	P2Pinstance.Args.Port = 0
+	instanceList = new(InstanceList)
+	instanceList.init()
+	instanceList.update("instance", P2Pinstance)
+	if bytes.NewBuffer(instanceList.encodeInstances()).String() != "10.10.10.1~Mac~Dev~Hash~Dht~Keyfile~Key~TTL~1~0" {
+		t.Errorf("Failed to encode instances (2): encodedInstances incorrectly encoded the instanceList")
+	}
+	P2Pinstance = new(P2PInstance)
+	instanceList = new(InstanceList)
+	instanceList.init()
+	instanceList.update("instance", P2Pinstance)
+	if bytes.NewBuffer(instanceList.encodeInstances()).String() != "10.10.10.1~Mac~Dev~Hash~Dht~Keyfile~Key~TTL~1~0" {
+		t.Errorf("Failed to encode instances (3): encodedInstances incorrectly encoded the instanceList")
+	}
+	P2Pinstance = new(P2PInstance)
+	P2Pinstance.Args.IP = "10.10.10.1"
+	instanceList = new(InstanceList)
+	instanceList.init()
+	instanceList.update("instance", P2Pinstance)
+	if bytes.NewBuffer(instanceList.encodeInstances()).String() != "10.10.10.1~Mac~Dev~Hash~Dht~Keyfile~Key~TTL~1~0" {
+		t.Errorf("Failed to encode instances (4): encodedInstances incorrectly encoded the instanceList")
+	}
+
 }
 
 func TestDecodingInstances(t *testing.T) {
