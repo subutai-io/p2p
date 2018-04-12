@@ -162,14 +162,14 @@ func TestEncodingInstances(t *testing.T) {
 	instanceList = new(InstanceList)
 	instanceList.init()
 	instanceList.update("instance", P2Pinstance)
-	if bytes.NewBuffer(instanceList.encodeInstances()).String() != "10.10.10.1~Mac~Dev~Hash~Dht~Keyfile~Key~TTL~1~0" {
+	if bytes.NewBuffer(instanceList.encodeInstances()).String() != "~Mac~Dev~Hash~Dht~Keyfile~Key~TTL~1~0" {
 		t.Errorf("Failed to encode instances (2): encodedInstances incorrectly encoded the instanceList")
 	}
 	P2Pinstance = new(P2PInstance)
 	instanceList = new(InstanceList)
 	instanceList.init()
 	instanceList.update("instance", P2Pinstance)
-	if bytes.NewBuffer(instanceList.encodeInstances()).String() != "10.10.10.1~Mac~Dev~Hash~Dht~Keyfile~Key~TTL~1~0" {
+	if bytes.NewBuffer(instanceList.encodeInstances()).String() != "~~~~~~~~~" {
 		t.Errorf("Failed to encode instances (3): encodedInstances incorrectly encoded the instanceList")
 	}
 	P2Pinstance = new(P2PInstance)
@@ -177,10 +177,9 @@ func TestEncodingInstances(t *testing.T) {
 	instanceList = new(InstanceList)
 	instanceList.init()
 	instanceList.update("instance", P2Pinstance)
-	if bytes.NewBuffer(instanceList.encodeInstances()).String() != "10.10.10.1~Mac~Dev~Hash~Dht~Keyfile~Key~TTL~1~0" {
+	if bytes.NewBuffer(instanceList.encodeInstances()).String() != "10.10.10.1~~~~~~~~~" {
 		t.Errorf("Failed to encode instances (4): encodedInstances incorrectly encoded the instanceList")
 	}
-
 }
 
 func TestDecodingInstances(t *testing.T) {
