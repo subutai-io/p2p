@@ -8,6 +8,8 @@ import (
 	"os"
 	"sync"
 
+	"strconv"
+
 	ptp "github.com/subutai-io/p2p/lib"
 )
 
@@ -105,20 +107,35 @@ func (p *InstanceList) getInstance(id string) *P2PInstance {
 	return inst
 }
 
-func (p *InstanceList) encodeInstances() ([]byte, error) {
+func (p *InstanceList) encodeInstances() []byte {
 	var savedInstances []RunArgs
 	instances := p.get()
-	for _, inst := range instances {
-		savedInstances = append(savedInstances, inst.Args)
+	for _, instance := range instances {
+		savedInstances = append(savedInstances, instance.Args)
 	}
-	b := bytes.Buffer{}
-	e := gob.NewEncoder(&b)
-	err := e.Encode(savedInstances)
-	if err != nil {
-		ptp.Log(ptp.Error, "Failed to encode instances: %v", err)
-		return []byte(""), err
+	var result bytes.Buffer
+	flag := false
+	for _, instance := range savedInstances {
+		if flag == true {
+			result.WriteString("|~|")
+		}
+		result.WriteString(instance.IP + "~")
+		result.WriteString(instance.Mac + "~")
+		result.WriteString(instance.Dev + "~")
+		result.WriteString(instance.Hash + "~")
+		result.WriteString(instance.Dht + "~")
+		result.WriteString(instance.Keyfile + "~")
+		result.WriteString(instance.Key + "~")
+		result.WriteString(instance.TTL + "~")
+		var Fwd int
+		if instance.Fwd == true {
+			Fwd = 1
+		}
+		result.WriteString(strconv.Itoa(Fwd) + "~")
+		result.WriteString(strconv.Itoa(instance.Port))
+		flag = true
 	}
-	return b.Bytes(), nil
+	return result.Bytes()
 }
 
 func (p *InstanceList) decodeInstances(data []byte) ([]RunArgs, error) {
@@ -127,7 +144,34 @@ func (p *InstanceList) decodeInstances(data []byte) ([]RunArgs, error) {
 	b.Write(data)
 	d := gob.NewDecoder(&b)
 	err := d.Decode(&args)
-	return args, err
+	if err != nil {
+		blocksOfInstances := bytes.Split(data, bytes.NewBufferString("|~|").Bytes())
+		for _, str := range blocksOfInstances {
+			blocksOfArguments := bytes.Split(str, bytes.NewBufferString("~").Bytes())
+			if len(blocksOfArguments) != 10 {
+				return nil, fmt.Errorf("Couldn't decode the instances")
+			}
+			var item RunArgs
+			item.IP = string(blocksOfArguments[0])
+			item.Mac = string(blocksOfArguments[1])
+			item.Dev = string(blocksOfArguments[2])
+			item.Hash = string(blocksOfArguments[3])
+			item.Dht = string(blocksOfArguments[4])
+			item.Keyfile = string(blocksOfArguments[5])
+			item.Key = string(blocksOfArguments[6])
+			item.TTL = string(blocksOfArguments[7])
+			item.Fwd = false
+			if string(blocksOfArguments[8]) == "1" {
+				item.Fwd = true
+			}
+			item.Port, err = strconv.Atoi(string(blocksOfArguments[9]))
+			if err != nil {
+				return nil, fmt.Errorf("Couldn't decode the Port: %v", err)
+			}
+			args = append(args, item)
+		}
+	}
+	return args, nil
 }
 
 // Calls encodeInstances() and saves results into specified file
@@ -138,13 +182,10 @@ func (p *InstanceList) saveInstances(filename string) (int, error) {
 		return 0, err
 	}
 	defer file.Close()
-	data, err := p.encodeInstances()
-	if err != nil {
-		return 0, err
-	}
+	data := p.encodeInstances()
 	s, err := file.Write(data)
 	if err != nil {
-		return s, err
+		return s, err // uncovered - hard to cover
 	}
 	return s, nil
 }
@@ -159,9 +200,9 @@ func (p *InstanceList) loadInstances(filename string) ([]RunArgs, error) {
 	data := make([]byte, 100000)
 	_, err = file.Read(data)
 	if err != nil {
-		return loadedInstances, err
+		return loadedInstances, err // uncovered - hard to cover
 	}
-
+	data = bytes.Trim(data, "\x00") // TODO: add more security to this
 	loadedInstances, err = p.decodeInstances(data)
 	return loadedInstances, err
 }
@@ -196,14 +237,14 @@ type Daemon struct {
 	OutboundIP net.IP
 }
 
-func (p *Daemon) Initialize(saveFile string) {
-	p.Instances = new(InstanceList)
-	p.Instances.init()
-	p.SaveFile = saveFile
+func (d *Daemon) Initialize(saveFile string) {
+	d.Instances = new(InstanceList)
+	d.Instances.init()
+	d.SaveFile = saveFile
 }
 
 // Execute is a dummy method used for tests
-func (p *Daemon) Execute(args *Args, resp *Response) error {
+func (d *Daemon) Execute(args *Args, resp *Response) error {
 	resp.ExitCode = 0
 	resp.Output = ""
 	return nil
