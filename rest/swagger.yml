@@ -1,0 +1,165 @@
+swagger: "2.0"
+info:
+  description: "Subutai P2P operations"
+  version: "6.3.0"
+  title: "Subutai P2P"
+  termsOfService: "https://subutai.io"
+  contact:
+    email: "msavochkin@optimal-dynamics.com"
+  license:
+    name: "GPLv3"
+    url: "https://www.gnu.org/licenses/gpl-3.0.en.html"
+host: "localhost"
+basePath: "/v1"
+schemes:
+- "http"
+- "https"
+tags:
+- name: "instances"
+  description: "P2P Instances manipulation"
+- name: "swarm"
+  description: "Manipulate single swarms"
+paths:
+  /instance:
+    post:
+      tags: 
+      - "instances"
+      summary: "Create new P2P instance"
+      description: ""
+      operationId: "CreateInstance"
+      consumes:
+      - "application/json"
+      - "application/xml"
+      produces:
+      - "application/json"
+      - "application/xml"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Instance configuration"
+        required: true 
+        schema:
+          $ref: "#/definitions/Instance"
+      responses:
+        200:
+          description: "Sucessfully created"
+        405:
+          description: "Invalid input"
+        503:
+          description: "Service unavailable"
+    get:
+      tags:
+      - "instances"
+      summary: "List P2P instances"
+      description: "List all p2p instances"
+      operationId: "ListInstances"
+      consumes:
+        - "application/json"
+        - "application/xml"
+      produces:
+        - "application/json"
+        - "application/xml"
+    delete:
+      tags:
+      - "instances"
+      summary: "Destroy P2P instance"
+      description: "This command will shutdown P2P instance"
+      operationId: "CloseInstance"
+      consumes:
+        - "application/json"
+        - "application/xml"
+      produces:
+        - "application/json"
+        - "application/xml"
+      parameters:
+      - in: "query"
+        name: "hash"
+        description: "Instance configuration"
+        required: true 
+        schema:
+          $ref: "#/definitions/Instance"
+      responses:
+        200:
+          description: "Sucessfully created"
+        405:
+          description: "Invalid input"
+        503:
+          description: "Service unavailable"
+  /swarm:
+    get:
+      tags:
+      - "swarm"
+      summary: "Display instance information"
+      description: "Display detailed information about specified instance"
+      operationId: "SwarmStatus"
+      produces:
+        - "application/json"
+        - "application/xml"
+      parameters:
+      - in: "query"
+        name: "hash"
+        description: "Instance hash"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "Sucessful operation"
+          schema: 
+            $ref: "#/definitions/Instance"
+        503:
+          description: "Service unavailable"
+  /swarm/{hash}:
+    post:
+      tags:
+      - "swarm"
+      summary: "Update swarm keys"
+      description: "Add new crypto keys to an existing swarm"
+      operationId: "SwarmOptions"
+      consumes:
+        - "application/json"
+        - "application/xml"
+      produces:
+        - "application/json"
+        - "application/xml"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Instance configuration"
+        required: true 
+        schema:
+          $ref: "#/definitions/Key"
+      - in: "query"
+        name: "hash"
+        description: "Instance hash"
+        required: true
+        type: "string"
+      
+definitions:
+  Instance:
+    type: object
+    properties:
+      hash:
+        type: "string"
+      ip:
+        type: "string"
+        default: "dhcp"
+      interface:
+        type: "string"
+        default: "vptp"
+      mac:
+        type: "string"
+      key: 
+        $ref: "#/definitions/Key"
+    xml:
+      name: "Instance"
+  Key:
+    type: object
+    properties:
+      key:
+        type: "string"
+      keyfile:
+        type: "string"
+      until:
+        type: "string"
+    xml:
+      name: "Key"

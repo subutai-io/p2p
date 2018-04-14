@@ -28,6 +28,7 @@ loop:
 				changes <- c.CurrentStatus
 				changes <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown:
+				changes <- svc.Status{State: svc.Stopped, Accepts: cmdsAccepted}
 				SignalChannel <- os.Interrupt
 				break loop
 			case svc.Pause:

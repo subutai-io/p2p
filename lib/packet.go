@@ -297,55 +297,22 @@ func (p *ARPPacket) UnmarshalARP(b []byte) error {
 		return io.ErrUnexpectedEOF
 	}
 
-	// Retrieve fixed length data
-
-	p.HardwareType = binary.BigEndian.Uint16(b[0:2])
-	p.ProtocolType = binary.BigEndian.Uint16(b[2:4])
-
-	p.HardwareAddrLength = b[4]
-	p.IPLength = b[5]
-
-	p.Operation = Operation(binary.BigEndian.Uint16(b[6:8]))
-
-	// Unmarshal variable length data at correct offset using lengths
-	// defined by ml and il
-	//
-	// These variables are meant to improve readability of offset calculations
-	// for the code below
-	n := 8
-	ml := int(p.HardwareAddrLength)
-	ml2 := ml * 2
-	il := int(p.IPLength)
-	il2 := il * 2
-
 	// Must have enough room to retrieve both hardware address and IP addresses
-	addrl := n + ml2 + il2
-	if len(b) < addrl {
+	if len(b) < 28 {
 		return io.ErrUnexpectedEOF
 	}
 
-	// Allocate single byte slice to store address information, which
-	// is resliced into fields
-	bb := make([]byte, addrl-n)
-
 	// Sender hardware address
-	copy(bb[0:ml], b[n:n+ml])
-	p.SenderHardwareAddr = bb[0:ml]
-	n += ml
+	p.SenderHardwareAddr = b[8:14]
 
 	// Sender IP address
-	copy(bb[ml:ml+il], b[n:n+il])
-	p.SenderIP = bb[ml : ml+il]
-	n += il
+	p.SenderIP = b[14:18]
 
 	// Target hardware address
-	copy(bb[ml+il:ml2+il], b[n:n+ml])
-	p.TargetHardwareAddr = bb[ml+il : ml2+il]
-	n += ml
+	p.TargetHardwareAddr = b[18:24]
 
 	// Target IP address
-	copy(bb[ml2+il:ml2+il2], b[n:n+il])
-	p.TargetIP = bb[ml2+il : ml2+il2]
+	p.TargetIP = b[24:28]
 
 	return nil
 }
