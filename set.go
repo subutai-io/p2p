@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	ptp "github.com/subutai-io/p2p/lib"
 )
@@ -66,15 +67,15 @@ func (p *Daemon) SetLog(args *NameValueArg, resp *Response) error {
 	resp.ExitCode = 0
 	if args.Name == "log" {
 		resp.Output = "Logging level has switched to " + args.Value + " level"
-		if args.Value == "DEBUG" {
+		if strings.ToLower(args.Value) == "debug" {
 			ptp.SetMinLogLevel(ptp.Debug)
-		} else if args.Value == "INFO" {
+		} else if strings.ToLower(args.Value) == "INFO" {
 			ptp.SetMinLogLevel(ptp.Info)
-		} else if args.Value == "TRACE" {
+		} else if strings.ToLower(args.Value) == "TRACE" {
 			ptp.SetMinLogLevel(ptp.Trace)
-		} else if args.Value == "WARNING" {
+		} else if strings.ToLower(args.Value) == "WARNING" {
 			ptp.SetMinLogLevel(ptp.Warning)
-		} else if args.Value == "ERROR" {
+		} else if strings.ToLower(args.Value) == "ERROR" {
 			ptp.SetMinLogLevel(ptp.Error)
 		} else {
 			resp.ExitCode = 1
