@@ -64,7 +64,11 @@ func (dht *DHTRouter) handleData(data []byte, length int) {
 		}
 		handled++
 		dht.routeData(data[:i])
-		data = data[i:]
+		if i+4 < len(data) {
+			data = data[i+4:]
+		} else {
+			break
+		}
 	}
 	if handled == 0 {
 		dht.routeData(data[:length])
