@@ -1,5 +1,3 @@
-// +build ignore
-
 package ptp
 
 import (
@@ -10,6 +8,10 @@ import (
 
 func TestEncrypt(t *testing.T) {
 	crypto := new(Crypto)
+	_, err := crypto.encrypt([]byte{}, []byte{})
+	if err == nil {
+		t.Errorf("Encrypt didn't return error on empty key")
+	}
 	var key CryptoKey
 	crypto.EnrichKeyValues(key, "keylessthan32", "1")
 }
@@ -34,7 +36,7 @@ func BenchmarkEncrypt(b *testing.B) {
 	crypto.EnrichKeyValues(key, "keylessthan32", "1")
 	for i := 0; i < b.N; i++ {
 		for _, str := range data {
-			crypto.Encrypt(crypto.ActiveKey.Key, []byte(str))
+			crypto.encrypt(crypto.ActiveKey.Key, []byte(str))
 		}
 	}
 }
