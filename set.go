@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	ptp "github.com/subutai-io/p2p/lib"
 )
@@ -61,20 +62,21 @@ func (d *Daemon) execRESTSet(w http.ResponseWriter, r *http.Request) {
 }
 
 // SetLog modifies specific option
-func (p *Daemon) SetLog(args *NameValueArg, resp *Response) error {
+func (d *Daemon) SetLog(args *NameValueArg, resp *Response) error {
+	args.Value = strings.ToLower(args.Value)
 	ptp.Log(ptp.Info, "Setting option %s to %s", args.Name, args.Value)
 	resp.ExitCode = 0
 	if args.Name == "log" {
 		resp.Output = "Logging level has switched to " + args.Value + " level"
-		if args.Value == "DEBUG" {
+		if args.Value == "debug" {
 			ptp.SetMinLogLevel(ptp.Debug)
-		} else if args.Value == "INFO" {
+		} else if args.Value == "info" {
 			ptp.SetMinLogLevel(ptp.Info)
-		} else if args.Value == "TRACE" {
+		} else if args.Value == "trace" {
 			ptp.SetMinLogLevel(ptp.Trace)
-		} else if args.Value == "WARNING" {
+		} else if args.Value == "warning" {
 			ptp.SetMinLogLevel(ptp.Warning)
-		} else if args.Value == "ERROR" {
+		} else if args.Value == "error" {
 			ptp.SetMinLogLevel(ptp.Error)
 		} else {
 			resp.ExitCode = 1
