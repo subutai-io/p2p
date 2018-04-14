@@ -22,7 +22,6 @@ tests/*
 
 # Logs
 *.log
-workdir
 
 # Debian
 *.docs
@@ -38,3 +37,7 @@ debian/extra-code
 darwin/*.pkg
 darwin/flat
 darwin/root
+
+# tests
+lib/MarshalBinary*
+*workdir*
