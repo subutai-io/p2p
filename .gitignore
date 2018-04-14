@@ -22,6 +22,7 @@ tests/*
 
 # Logs
 *.log
+workdir
 
 # Debian
 *.docs

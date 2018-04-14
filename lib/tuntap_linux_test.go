@@ -11,10 +11,13 @@ func TestGetDeviceBase(t *testing.T) {
 
 func TestGetConfigurationTool(t *testing.T) {
 	get := GetConfigurationTool()
-	wait := "/sbin/ip"
-	if get != wait {
-		t.Error("Error", get)
+	wait := []string{"/sbin/ip", "/bin/ip", "/usr/bin/ip"}
+	for _, w := range wait {
+		if get == w {
+			return
+		}
 	}
+	t.Error("Error: ", get)
 }
 
 func TestNewTAP(t *testing.T) {
