@@ -111,12 +111,11 @@ paths:
         200:
           description: "Sucessful operation"
           schema: 
-            $ref: "#/definitions/Instance"
+            $ref: "#/definitions/InstanceDetails"
         404:
           description: "Hash not found"
         503:
           description: "Service unavailable"
-  /swarm/{hash}:
     post:
       tags:
       - "swarm"
@@ -149,6 +148,25 @@ paths:
         503:
           description: "Service unavailable"
   /daemon:
+    get:
+      tags:
+        - "daemon"
+      summary: "Get daemon information"
+      description: "Returns information about P2P daemon"
+      operationId: "DaemonInfo"
+      consumes:
+        - "application/json"
+        - "application/xml"
+      produces:
+        - "application/json"
+        - "application/xml"
+      responses:
+        200:
+          description: "Sucessful operation"
+          schema:
+            $ref: "#/definitions/Daemon"
+        503:
+          description: "Service unavailable"
     post:
       tags:
         - "daemon"
@@ -180,16 +198,11 @@ definitions:
       hash:
         type: "string"
         required: true
-      ip:
-        type: "string"
-        default: "dhcp"
       interface:
-        type: "string"
-        default: "vptp"
-      mac:
-        type: "string"
+        $ref: "#/definitions/Interface"
       port:
         type: "string"
+        description: "Specific UDP port or port range [from-to]"
       key: 
         $ref: "#/definitions/Key"
     xml:
@@ -198,6 +211,25 @@ definitions:
     type: array
     items:
       $ref: "#/definitions/Instance"
+  InstanceDetails:
+    type: object
+    properties:
+      id:
+        type: "string"
+      hash:
+        type: "string"
+      interface: 
+        $ref: "#/definitions/Interface"
+      port:
+        type: "integer"
+      proxies:
+        type: "array"
+        items:
+          $ref: "#/definitions/Proxy"
+      peers:
+        type: "array"
+        items:
+          $ref: "#/definitions/Peer"
   Key:
     type: object
     properties:
@@ -216,3 +248,71 @@ definitions:
         type: "string"
         default: "info"
         required: true
+  Daemon:
+    type: object
+    properties:
+      version:
+        type: "string"
+      build:
+        type: "string"
+      os:
+        type: "string"
+      dht:
+        type: array
+        items:
+          $ref: "#/definitions/DHT"
+      uptime: 
+        type: "string"
+  DHT:
+    type: object
+    properties:
+      endpoint:
+        type: "string"
+      rx: 
+        type: "string"
+      tx: 
+        type: "string"
+  Interface:
+    type: object
+    properties:
+      name:
+        type: "string"
+      ip:
+        type: "string"
+      mac:
+        type: "string"
+  Proxy:
+    type: object
+    properties:
+      addr:
+        type: "string"
+        description: "UDP address of proxy this instance is connected to"
+      endpoint:
+        type: "string"
+        description: "UDP address of proxy that was binded for current instance"
+  Peer:
+    type: object
+    properties:
+      id:
+        type: "string"
+        description: "Unique ID of this peer"
+      state:
+        type: "string"
+        description: "State of the peer on our end"
+      rstate:
+        type: "string"
+        description: "State of our peer on remote end"
+      interface:
+        $ref: "#/definitions/Interface"
+      endpoint:
+        type: "string"
+        description: "Active endpoint"
+      endpoint_pool:
+        type: "array"
+        items: 
+          type: "string"
+      endpoint_list:
+        type: "array"
+        items:
+          type: "string"
+      
