@@ -19,6 +19,8 @@ tags:
   description: "P2P Instances manipulation"
 - name: "swarm"
   description: "Manipulate single swarms"
+- name: "daemon"
+  description: "Modify daemon behaviour"
 paths:
   /instance:
     post:
@@ -43,8 +45,8 @@ paths:
       responses:
         200:
           description: "Sucessfully created"
-        405:
-          description: "Invalid input"
+        400:
+          description: "Bad request"
         503:
           description: "Service unavailable"
     get:
@@ -53,12 +55,16 @@ paths:
       summary: "List P2P instances"
       description: "List all p2p instances"
       operationId: "ListInstances"
-      consumes:
-        - "application/json"
-        - "application/xml"
       produces:
         - "application/json"
         - "application/xml"
+      responses:
+        200:
+          description: "Sucessful operation"
+          schema:
+            $ref: "#/definitions/Instances"
+        503:
+          description: "Service unavailable"
     delete:
       tags:
       - "instances"
@@ -81,8 +87,8 @@ paths:
       responses:
         200:
           description: "Sucessfully created"
-        405:
-          description: "Invalid input"
+        400:
+          description: "Bad request"
         503:
           description: "Service unavailable"
   /swarm:
@@ -106,6 +112,8 @@ paths:
           description: "Sucessful operation"
           schema: 
             $ref: "#/definitions/Instance"
+        404:
+          description: "Hash not found"
         503:
           description: "Service unavailable"
   /swarm/{hash}:
@@ -133,13 +141,45 @@ paths:
         description: "Instance hash"
         required: true
         type: "string"
-      
+      responses:
+        200:
+          description: "Sucessful operation"
+        400:
+          description: "Bad request"
+        503:
+          description: "Service unavailable"
+  /daemon:
+    post:
+      tags:
+        - "daemon"
+      summary: "Modify daemon"
+      description: "Modify daemon options on runtime"
+      operationId: "DaemonOptions"
+      consumes:
+        - "application/json"
+        - "application/xml"
+      produces:
+        - "application/json"
+        - "application/xml"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Instance configuration"
+        required: true 
+        schema:
+          $ref: "#/definitions/Log"
+      responses:
+        200:
+          description: "Sucessful operation"
+        503:
+          description: "Service unavailable"
 definitions:
   Instance:
     type: object
     properties:
       hash:
         type: "string"
+        required: true
       ip:
         type: "string"
         default: "dhcp"
@@ -148,10 +188,16 @@ definitions:
         default: "vptp"
       mac:
         type: "string"
+      port:
+        type: "string"
       key: 
         $ref: "#/definitions/Key"
     xml:
       name: "Instance"
+  Instances:
+    type: array
+    items:
+      $ref: "#/definitions/Instance"
   Key:
     type: object
     properties:
@@ -163,3 +209,10 @@ definitions:
         type: "string"
     xml:
       name: "Key"
+  Log:
+    type: object
+    properties:
+      level:
+        type: "string"
+        default: "info"
+        required: true
