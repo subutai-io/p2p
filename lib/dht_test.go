@@ -67,6 +67,8 @@ func TestSend(t *testing.T) {
 		p1 := &DHTPacket{
 			Type:      DHTPacketType_Connect,
 		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
 		go func() {
 			err := dht.send(p1)
 			if err != nil {
@@ -78,11 +80,11 @@ func TestSend(t *testing.T) {
 		if data.Type != p1.Type {
 			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
 		}
-		if len(data.Arguments) != len(p1.Arguments) {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), len(p1.Arguments))
+		if len(data.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
 		}
-		if len(data.Proxies) != len(p1.Proxies) {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), len(p1.Proxies))
+		if len(data.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
 		}
 	}
 	{
@@ -92,6 +94,8 @@ func TestSend(t *testing.T) {
 			Type:      DHTPacketType_Connect,
 			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
 		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
 		go func() {
 			err := dht.send(p1)
 			if err != nil {
@@ -103,11 +107,11 @@ func TestSend(t *testing.T) {
 		if data.Type != p1.Type {
 			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
 		}
-		if len(data.Arguments) != len(p1.Arguments) {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), len(p1.Arguments))
+		if len(data.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
 		}
-		if len(data.Proxies) != len(p1.Proxies) {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), len(p1.Proxies))
+		if len(data.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
 		}
 	}
 	{
@@ -117,6 +121,8 @@ func TestSend(t *testing.T) {
 			Type:      DHTPacketType_Connect,
 			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
 		go func() {
 			err := dht.send(p1)
 			if err != nil {
@@ -128,11 +134,11 @@ func TestSend(t *testing.T) {
 		if data.Type != p1.Type {
 			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
 		}
-		if len(data.Arguments) != len(p1.Arguments) {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), len(p1.Arguments))
+		if len(data.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
 		}
-		if len(data.Proxies) != len(p1.Proxies) {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), len(p1.Proxies))
+		if len(data.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
 		}
 	}
 	{
@@ -143,6 +149,8 @@ func TestSend(t *testing.T) {
 			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
 			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
 		go func() {
 			err := dht.send(p1)
 			if err != nil {
@@ -154,11 +162,11 @@ func TestSend(t *testing.T) {
 		if data.Type != p1.Type {
 			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
 		}
-		if len(data.Arguments) != len(p1.Arguments) {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), len(p1.Arguments))
+		if len(data.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
 		}
-		if len(data.Proxies) != len(p1.Proxies) {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), len(p1.Proxies))
+		if len(data.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
 		}
 	}
 	{
@@ -171,6 +179,8 @@ func TestSend(t *testing.T) {
 		for i := 0; i < 100000; i++ {
 			p1.Arguments = append(p1.Arguments, "Azret Argument")
 		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
 		go func() {
 			err := dht.send(p1)
 			if err != nil {
@@ -178,7 +188,9 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := []*DHTPacket{}
-		for i := 0; i < 10000 + 1; i++ {
+		data = append(data, <-dht.OutgoingData)
+		data = append(data, <-dht.OutgoingData)
+		for i := 0; i < 10000 + 1 - 2; i++ {
 			item := <-dht.OutgoingData
 			data = append(data, item)
 		}
@@ -192,11 +204,11 @@ func TestSend(t *testing.T) {
 			allArguments = append(allArguments, packet.Arguments[:]...)
 			allProxies = append(allProxies, packet.Proxies[:]...)
 		}
-		if len(allArguments) != len(p1.Arguments) {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(allArguments), len(p1.Arguments))
+		if len(allArguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(allArguments), lenArguments)
 		}
-		if len(allProxies) != len(p1.Proxies) {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(allProxies), len(p1.Proxies))
+		if len(allProxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(allProxies), lenProxies)
 		}
 	}
 	{
@@ -209,6 +221,8 @@ func TestSend(t *testing.T) {
 		for i := 0; i < 100000; i++ {
 			p1.Proxies = append(p1.Proxies, "Azret Proxy")
 		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
 		go func() {
 			err := dht.send(p1)
 			if err != nil {
@@ -230,11 +244,11 @@ func TestSend(t *testing.T) {
 			allArguments = append(allArguments, packet.Arguments[:]...)
 			allProxies = append(allProxies, packet.Proxies[:]...)
 		}
-		if len(allArguments) != len(p1.Arguments) {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(allArguments), len(p1.Arguments))
+		if len(allArguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(allArguments), lenArguments)
 		}
-		if len(allProxies) != len(p1.Proxies) {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(allProxies), len(p1.Proxies))
+		if len(allProxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(allProxies), lenProxies)
 		}
 	}
 	{
@@ -251,6 +265,8 @@ func TestSend(t *testing.T) {
 		for i := 0; i < 100000; i++ {
 			p1.Proxies = append(p1.Proxies, "Azret Proxy")
 		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
 		go func() {
 			err := dht.send(p1)
 			if err != nil {
@@ -272,11 +288,11 @@ func TestSend(t *testing.T) {
 			allArguments = append(allArguments, packet.Arguments[:]...)
 			allProxies = append(allProxies, packet.Proxies[:]...)
 		}
-		if len(allArguments) != len(p1.Arguments) {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(allArguments), len(p1.Arguments))
+		if len(allArguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(allArguments), lenArguments)
 		}
-		if len(allProxies) != len(p1.Proxies) {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(allProxies), len(p1.Proxies))
+		if len(allProxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(allProxies), lenProxies)
 		}
 	}
 }

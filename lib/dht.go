@@ -149,9 +149,18 @@ func (dht *DHTClient) send(packet *DHTPacket) error {
 				blockLengthProxies := min(10, len(packet.Proxies))
 				args := packet.Arguments[:blockLengthArgs]
 				proxies := packet.Proxies[:blockLengthProxies]
-				currentPacket := packet
-				currentPacket.Arguments = args
-				currentPacket.Proxies = proxies
+				currentPacket := &DHTPacket{
+					Type:      packet.Type,
+					Id:        packet.Id,
+					Infohash:  packet.Infohash,
+					Data:      packet.Data,
+					Query:     packet.Query,
+					Arguments: args,
+					Proxies:   proxies,
+					Extra:     packet.Extra,
+					Payload:   packet.Payload,
+					Version:   packet.Version,
+				}
 				dht.OutgoingData <- currentPacket
 				packet.Arguments = packet.Arguments[blockLengthArgs:]
 				packet.Proxies = packet.Proxies[blockLengthProxies:]
