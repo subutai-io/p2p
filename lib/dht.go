@@ -140,7 +140,7 @@ func min(a, b int) int {
 func (dht *DHTClient) send(packet *DHTPacket) error {
 	// if dht.OutgoingData != nil && !dht.isShutdown {
 	if dht.OutgoingData != nil {
-		for len(packet.Arguments) != 0 || len(packet.Arguments) != 0 {
+		for len(packet.Arguments) != 0 || len(packet.Proxies) != 0 {
 			blockLengthArgs := min(10, len(packet.Arguments))
 			blockLengthProxies := min(10, len(packet.Proxies))
 			args := packet.Arguments[:blockLengthArgs]
