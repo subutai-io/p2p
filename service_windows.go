@@ -40,7 +40,6 @@ loop:
 			}
 		}
 	}
-	changes <- svc.Status{State: svc.StopPending}
 	return
 }
 
