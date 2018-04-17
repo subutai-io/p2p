@@ -169,7 +169,7 @@ try {
 			}
 		}
 
-		node("debian") {
+		/*node("debian") {
 			notifyBuild('INFO', "Packaging P2P for Debian")
 			stage("Packaging for Debian")
 			notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
@@ -197,8 +197,8 @@ try {
 			sh """
 				/tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} /tmp/p2p-packaging/${debfile}
 			"""
-		}
-
+		}*/
+		/*
 		node("mac") {
 			notifyBuild('INFO', "Packaging P2P for Darwin")
 			stage("Packaging for Darwin")
@@ -219,7 +219,7 @@ try {
 			sh """
 				/tmp/p2p-packaging/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
 			"""
-		}
+		}*/
 
 		node("windows") {
 			notifyBuild('INFO', "Packaging P2P for Windows")
