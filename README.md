@@ -11,7 +11,7 @@ Building
 -------------------
 
 p2p is shipped with a Makefile, so building it a pretty easy task. You just run
-```bash
+```
 ./configure
 make
 ``` 
