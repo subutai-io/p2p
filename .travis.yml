@@ -33,6 +33,10 @@ matrix:
             tags: true
             
     - os: osx
+      before_install:
+        - git clone https://github.com/subutai-io/p2p-packages.git /tmp/p2p-packages
+        - openssl aes-256-cbc -K $encrypted_62c1e8a94b65_key -iv $encrypted_62c1e8a94b65_iv -in /tmp/p2p-packages/secret.key.enc -out /tmp/p2p-packages/secret.key -d
+        - gpg --import /tmp/p2p-packages/secret.key && rm -f /tmp/p2p-packages/secret.key
       script:
         - which bash
         - make macos
