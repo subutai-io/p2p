@@ -140,19 +140,23 @@ func min(a, b int) int {
 func (dht *DHTClient) send(packet *DHTPacket) error {
 	// if dht.OutgoingData != nil && !dht.isShutdown {
 	if dht.OutgoingData != nil {
-		dht.OutgoingData <- packet
-		// for len(packet.Arguments) != 0 || len(packet.Proxies) != 0 {
-		// 	blockLengthArgs := min(10, len(packet.Arguments))
-		// 	blockLengthProxies := min(10, len(packet.Proxies))
-		// 	args := packet.Arguments[:blockLengthArgs]
-		// 	proxies := packet.Proxies[:blockLengthProxies]
-		// 	currentPacket := packet
-		// 	currentPacket.Arguments = args
-		// 	currentPacket.Proxies = proxies
-		// 	dht.OutgoingData <- currentPacket
-		// 	packet.Arguments = packet.Arguments[blockLengthArgs:]
-		// 	packet.Proxies = packet.Proxies[blockLengthProxies:]
-		// }
+		// dht.OutgoingData <- packet
+		if len(packet.Arguments) == 0 && len(packet.Proxies) == 0 {
+			dht.OutgoingData <- packet
+		} else {
+			for len(packet.Arguments) != 0 || len(packet.Proxies) != 0 {
+				blockLengthArgs := min(10, len(packet.Arguments))
+				blockLengthProxies := min(10, len(packet.Proxies))
+				args := packet.Arguments[:blockLengthArgs]
+				proxies := packet.Proxies[:blockLengthProxies]
+				currentPacket := packet
+				currentPacket.Arguments = args
+				currentPacket.Proxies = proxies
+				dht.OutgoingData <- currentPacket
+				packet.Arguments = packet.Arguments[blockLengthArgs:]
+				packet.Proxies = packet.Proxies[blockLengthProxies:]
+			}
+		}
 	} else {
 		// Log(Debug, "%+v ||| %+v", dht.OutgoingData, dht.isShutdown)
 		return fmt.Errorf("Trying to send to closed channel")
