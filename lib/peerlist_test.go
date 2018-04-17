@@ -1,9 +1,37 @@
 package ptp
 
 import (
+	"net"
 	"reflect"
 	"testing"
 )
+
+func TestOperate_peerlist(t *testing.T) {
+	l := new(PeerList)
+	np1 := new(NetworkPeer)
+	ip1 := net.IP([]byte{192, 168, 12, 12})
+	np1.PeerLocalIP = ip1
+	_, hw := GenerateMAC()
+	np1.PeerHW = hw
+	l.Init()
+	l.peers["222"] = np1
+	l.operate(OperateDelete, "222", np1)
+	_, exists := l.peers["222"]
+	if exists {
+		t.Error("Error. Can't delete peer from peerlist")
+	}
+	np2 := new(NetworkPeer)
+	ip2 := net.IP([]byte{192, 168, 12, 13})
+	np2.PeerLocalIP = ip2
+	_, h := GenerateMAC()
+	np2.PeerHW = h
+	l.operate(OperateUpdate, "333", np1)
+	_, exist := l.peers["333"]
+	if !exist {
+		t.Error("Error. Can't create peer")
+	}
+	Log(Info, "Test of peerlist.go")
+}
 
 func TestUpdateTables(t *testing.T) {
 	l := new(PeerList)
@@ -74,5 +102,24 @@ func TestGetPeer(t *testing.T) {
 	get2 := l.GetPeer("-1")
 	if get2 != nil {
 		t.Error("Error")
+	}
+}
+
+func TestGetEndpointAndProxy(t *testing.T) {
+	l := new(PeerList)
+	get, i, err := l.GetEndpointAndProxy("01:02:03:04:05:06")
+	if get != nil && i != 0 {
+		t.Error(err)
+	}
+	l.tableMacID = make(map[string]string)
+	l.tableMacID["10:11:12:13:14:15"] = "888"
+	l.peers = make(map[string]*NetworkPeer)
+	np := new(NetworkPeer)
+	addr, _ := net.ResolveUDPAddr("udp4", "192.168.44.1:24")
+	np.Endpoint = addr
+	l.peers["888"] = np
+	get2, i2, err2 := l.GetEndpointAndProxy("10:11:12:13:14:15")
+	if get2 != addr && i2 != 0 {
+		t.Error(err2)
 	}
 }

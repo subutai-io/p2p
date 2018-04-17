@@ -5,23 +5,6 @@ import (
 	"testing"
 )
 
-func TestClose(t *testing.T) {
-	d := new(proxyServer)
-	d.Addr = new(net.UDPAddr)
-	d.Addr.IP = []byte("192.168.34.2")
-	d.Addr.Port = 8787
-	d.Addr.Zone = "Zone"
-	ips := "192.168.11.5"
-	d.Endpoint, _ = net.ResolveUDPAddr("network", ips)
-	d.Status = proxyActive
-
-	d.Close()
-
-	if d.Addr != nil && d.Status != 2 && d.Endpoint != nil {
-		t.Error("Close Error")
-	}
-}
-
 func TestOperate(t *testing.T) {
 	p := new(ProxyManager)
 	prsrv := new(proxyServer)
@@ -118,5 +101,22 @@ func TestActivate(t *testing.T) {
 	get2 := p.activate("0", endpoint)
 	if get2 {
 		t.Error("Error")
+	}
+}
+
+func TestClose(t *testing.T) {
+	d := new(proxyServer)
+	d.Addr = new(net.UDPAddr)
+	d.Addr.IP = []byte("192.168.34.2")
+	d.Addr.Port = 8787
+	d.Addr.Zone = "Zone"
+	ips := "192.168.11.5:24"
+	d.Endpoint, _ = net.ResolveUDPAddr("udp4", ips)
+	d.Status = proxyActive
+
+	d.Close()
+
+	if d.Addr != nil && d.Status != 2 && d.Endpoint != nil {
+		t.Error("Close Error")
 	}
 }
