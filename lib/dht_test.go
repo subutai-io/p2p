@@ -179,7 +179,8 @@ func TestSend(t *testing.T) {
 		}()
 		data := []*DHTPacket{}
 		for i := 0; i < 10000 + 1; i++ {
-			data = append(data, <-dht.OutgoingData)
+			item := <-dht.OutgoingData
+			data = append(data, item)
 		}
 		close(dht.OutgoingData)
 		allArguments := []string{}
@@ -216,7 +217,8 @@ func TestSend(t *testing.T) {
 		}()
 		data := []*DHTPacket{}
 		for i := 0; i < 10000 + 1; i++ {
-			data = append(data, <-dht.OutgoingData)
+			item := <-dht.OutgoingData
+			data = append(data, item)
 		}
 		close(dht.OutgoingData)
 		allArguments := []string{}
@@ -257,7 +259,8 @@ func TestSend(t *testing.T) {
 		}()
 		data := []*DHTPacket{}
 		for i := 0; i < 10000 + 1; i++ {
-			data = append(data, <-dht.OutgoingData)
+			item := <-dht.OutgoingData
+			data = append(data, item)
 		}
 		close(dht.OutgoingData)
 		allArguments := []string{}
