@@ -15,6 +15,10 @@ matrix:
       script:
         - make linux
         - make test
+        - cp bin/p2p /tmp/p2p-packages/linux/
+        - (cd /tmp/p2p-packages && ./configure --debian)
+        - (cd /tmp/p2p-packages/linux && debuild -B -d)
+        - ls -l /tmp/p2p-packages/linux
       deploy:
         - provider: script
           script: /tmp/p2p-packages/deploy.sh bin/p2p dev
