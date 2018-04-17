@@ -40,9 +40,16 @@ matrix:
       script:
         - which bash
         - make macos
+        - /tmp/p2p-packages/darwin/pack.sh bin/p2p_osx
+        - mv /tmp/p2p-packages/darwin/p2p.pkg /tmp/subutai-p2p-dev.pkg
       deploy:
         - provider: script
           script: /tmp/p2p-packages/deploy.sh bin/p2p_osx dev
+          skip_cleanup: true
+          on:
+            branch: dev
+        - provider: script
+          script: /tmp/p2p-packages/deploy.sh /tmp/subutai-p2p-dev.pkg dev
           skip_cleanup: true
           on:
             branch: dev
