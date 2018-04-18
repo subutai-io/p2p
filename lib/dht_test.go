@@ -61,20 +61,238 @@ func TestInit(t *testing.T) {
 }
 
 func TestSend(t *testing.T) {
-	dht := new(DHTClient)
-	dht.OutgoingData = make(chan *DHTPacket)
-	p1 := &DHTPacket{
-		Type:      DHTPacketType_Connect,
-		Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
+	{
+		dht := new(DHTClient)
+		dht.OutgoingData = make(chan *DHTPacket)
+		p1 := &DHTPacket{
+			Type:      DHTPacketType_Connect,
+		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
+		go func() {
+			err := dht.send(p1)
+			if err != nil {
+				t.Fatalf("Could not send packet")
+			}
+		}()
+		data := <-dht.OutgoingData
+		close(dht.OutgoingData)
+		if data.Type != p1.Type {
+			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
+		}
+		if len(data.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
+		}
+		if len(data.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
+		}
 	}
-	go func() {
-		dht.send(p1)
-	}()
-	data := <-dht.OutgoingData
-	if data.Type != p1.Type {
-		t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
+	{
+		dht := new(DHTClient)
+		dht.OutgoingData = make(chan *DHTPacket)
+		p1 := &DHTPacket{
+			Type:      DHTPacketType_Connect,
+			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
+		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
+		go func() {
+			err := dht.send(p1)
+			if err != nil {
+				t.Fatalf("Could not send packet")
+			}
+		}()
+		data := <-dht.OutgoingData
+		close(dht.OutgoingData)
+		if data.Type != p1.Type {
+			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
+		}
+		if len(data.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
+		}
+		if len(data.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
+		}
 	}
-	if len(data.Arguments) != len(p1.Arguments) {
-		t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), len(p1.Arguments))
+	{
+		dht := new(DHTClient)
+		dht.OutgoingData = make(chan *DHTPacket)
+		p1 := &DHTPacket{
+			Type:      DHTPacketType_Connect,
+			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
+		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
+		go func() {
+			err := dht.send(p1)
+			if err != nil {
+				t.Fatalf("Could not send packet")
+			}
+		}()
+		data := <-dht.OutgoingData
+		close(dht.OutgoingData)
+		if data.Type != p1.Type {
+			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
+		}
+		if len(data.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
+		}
+		if len(data.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
+		}
+	}
+	{
+		dht := new(DHTClient)
+		dht.OutgoingData = make(chan *DHTPacket)
+		p1 := &DHTPacket{
+			Type:      DHTPacketType_Connect,
+			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
+			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
+		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
+		go func() {
+			err := dht.send(p1)
+			if err != nil {
+				t.Fatalf("Could not send packet")
+			}
+		}()
+		data := <-dht.OutgoingData
+		close(dht.OutgoingData)
+		if data.Type != p1.Type {
+			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
+		}
+		if len(data.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
+		}
+		if len(data.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
+		}
+	}
+	{
+		dht := new(DHTClient)
+		dht.OutgoingData = make(chan *DHTPacket)
+		p1 := &DHTPacket{
+			Type:      DHTPacketType_Connect,
+			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
+		}
+		for i := 0; i < 100000; i++ {
+			p1.Arguments = append(p1.Arguments, "Azret Argument")
+		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
+		go func() {
+			err := dht.send(p1)
+			if err != nil {
+				t.Fatalf("Could not send packet")
+			}
+		}()
+		data := []*DHTPacket{}
+		data = append(data, <-dht.OutgoingData)
+		data = append(data, <-dht.OutgoingData)
+		for i := 0; i < 10000 + 1 - 2; i++ {
+			item := <-dht.OutgoingData
+			data = append(data, item)
+		}
+		close(dht.OutgoingData)
+		allArguments := []string{}
+		allProxies := []string{}
+		for _, packet := range data {
+			if packet.Type != p1.Type {
+				t.Fatalf("Data mismatch on type: %d -> %d", int(packet.Type), int(p1.Type))
+			}
+			allArguments = append(allArguments, packet.Arguments[:]...)
+			allProxies = append(allProxies, packet.Proxies[:]...)
+		}
+		if len(allArguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(allArguments), lenArguments)
+		}
+		if len(allProxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(allProxies), lenProxies)
+		}
+	}
+	{
+		dht := new(DHTClient)
+		dht.OutgoingData = make(chan *DHTPacket)
+		p1 := &DHTPacket{
+			Type:      DHTPacketType_Connect,
+			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
+		}
+		for i := 0; i < 100000; i++ {
+			p1.Proxies = append(p1.Proxies, "Azret Proxy")
+		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
+		go func() {
+			err := dht.send(p1)
+			if err != nil {
+				t.Fatalf("Could not send packet")
+			}
+		}()
+		data := []*DHTPacket{}
+		for i := 0; i < 10000 + 1; i++ {
+			item := <-dht.OutgoingData
+			data = append(data, item)
+		}
+		close(dht.OutgoingData)
+		allArguments := []string{}
+		allProxies := []string{}
+		for _, packet := range data {
+			if packet.Type != p1.Type {
+				t.Fatalf("Data mismatch on type: %d -> %d", int(packet.Type), int(p1.Type))
+			}
+			allArguments = append(allArguments, packet.Arguments[:]...)
+			allProxies = append(allProxies, packet.Proxies[:]...)
+		}
+		if len(allArguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(allArguments), lenArguments)
+		}
+		if len(allProxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(allProxies), lenProxies)
+		}
+	}
+	{
+		dht := new(DHTClient)
+		dht.OutgoingData = make(chan *DHTPacket)
+		p1 := &DHTPacket{
+			Type:      DHTPacketType_Connect,
+			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
+			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
+		}
+		for i := 0; i < 100000; i++ {
+			p1.Arguments = append(p1.Arguments, "Azret Argument")
+		}
+		for i := 0; i < 100000; i++ {
+			p1.Proxies = append(p1.Proxies, "Azret Proxy")
+		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
+		go func() {
+			err := dht.send(p1)
+			if err != nil {
+				t.Fatalf("Could not send packet")
+			}
+		}()
+		data := []*DHTPacket{}
+		for i := 0; i < 10000 + 1; i++ {
+			item := <-dht.OutgoingData
+			data = append(data, item)
+		}
+		close(dht.OutgoingData)
+		allArguments := []string{}
+		allProxies := []string{}
+		for _, packet := range data {
+			if packet.Type != p1.Type {
+				t.Fatalf("Data mismatch on type: %d -> %d", int(packet.Type), int(p1.Type))
+			}
+			allArguments = append(allArguments, packet.Arguments[:]...)
+			allProxies = append(allProxies, packet.Proxies[:]...)
+		}
+		if len(allArguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(allArguments), lenArguments)
+		}
+		if len(allProxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(allProxies), lenProxies)
+		}
 	}
 }

@@ -113,21 +113,24 @@ try {
 				set +x
 				./bin/p2p -v | cut -d " " -f 3 | tr -d '\n'
 				""", returnStdout: true)
-			String responseP2P = sh (script: """
-				set +x
-				curl -s -k ${url}/raw/info?name=p2p
-				""", returnStdout: true)
-			sh """
-				set +x
-				curl -s -k -H "token: ${token}" -Ffile=@bin/p2p -Fversion=${p2pVersion} ${url}/raw/upload
-			"""
-			/* delete old p2p */
-			if (responseP2P != "Not found") {
-				def jsonp2p = jsonParse(responseP2P)
+			if (env.BRANCH_NAME == 'master') {
+				String responseP2P = sh (script: """
+					set +x
+					curl -s -k ${url}/raw/info?name=p2p
+					""", returnStdout: true)
 				sh """
 					set +x
-					curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2p[0]["id"]}'&'token=${token}
+					curl -s -k -H "token: ${token}" -Ffile=@bin/p2p -Fversion=${p2pVersion} ${url}/raw/upload
 				"""
+				/* delete old p2p */
+				
+				if (responseP2P != "Not found") {
+					def jsonp2p = jsonParse(responseP2P)
+					sh """
+						set +x
+						curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2p[0]["id"]}'&'token=${token}
+					"""
+				}
 			}
 
 			/* upload p2p.exe */
@@ -151,75 +154,79 @@ try {
 
 			/* upload p2p_osx */
 			unstash 'p2p_osx'
-			String responseP2Posx = sh (script: """
-				set +x
-				curl -s -k ${url}/raw/info?name=p2p_osx
-				""", returnStdout: true)
-			sh """
-				set +x
-				curl -s -k -H "token: ${token}" -Ffile=@bin/p2p_osx -Fversion=${p2pVersion} ${url}/raw/upload
-			"""
-			/* delete old p2p */
-			if (responseP2Posx != "Not found") {
-				def jsonp2posx = jsonParse(responseP2Posx)
+			if (env.BRANCH_NAME == 'master') {
+				String responseP2Posx = sh (script: """
+					set +x
+					curl -s -k ${url}/raw/info?name=p2p_osx
+					""", returnStdout: true)
 				sh """
 					set +x
-					curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2posx[0]["id"]}'&'token=${token}
+					curl -s -k -H "token: ${token}" -Ffile=@bin/p2p_osx -Fversion=${p2pVersion} ${url}/raw/upload
 				"""
+				/* delete old p2p */
+				if (responseP2Posx != "Not found") {
+					def jsonp2posx = jsonParse(responseP2Posx)
+					sh """
+						set +x
+						curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2posx[0]["id"]}'&'token=${token}
+					"""
+				}
 			}
 		}
 
-		/*node("debian") {
-			notifyBuild('INFO', "Packaging P2P for Debian")
-			stage("Packaging for Debian")
-			notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
+		if (env.BRANCH_NAME == 'master') {
+			node("debian") {
+				notifyBuild('INFO', "Packaging P2P for Debian")
+				stage("Packaging for Debian")
+				notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
 
-			sh """
-				set -x
-				rm -rf /tmp/p2p-packaging
-				git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
-				cd /tmp/p2p-packaging
-				${gitcmd}
-				wget --no-check-certificate https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p -O /tmp/p2p-packaging/linux/debian/p2p
-				chmod +x /tmp/p2p-packaging/linux/debian/p2p
-				./configure --debian --branch=${env.BRANCH_NAME}
-				cd linux
-				debuild -B -d
-			"""
+				sh """
+					set -x
+					rm -rf /tmp/p2p-packaging
+					git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
+					cd /tmp/p2p-packaging
+					${gitcmd}
+					wget --no-check-certificate https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p -O /tmp/p2p-packaging/linux/debian/p2p
+					chmod +x /tmp/p2p-packaging/linux/debian/p2p
+					./configure --debian --branch=${env.BRANCH_NAME}
+					cd linux
+					debuild -B -d
+				"""
 
-			notifyBuildDetails = "\nFailed on stage - Uploading Debian Package"
+				notifyBuildDetails = "\nFailed on stage - Uploading Debian Package"
 
-			String debfile = sh (script: """
-				set +x
-				ls /tmp/p2p-packaging | grep .deb | tr -d '\n'
-				""", returnStdout: true)
+				String debfile = sh (script: """
+					set +x
+					ls /tmp/p2p-packaging | grep .deb | tr -d '\n'
+					""", returnStdout: true)
 
-			sh """
-				/tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} /tmp/p2p-packaging/${debfile}
-			"""
-		}*/
-		/*
-		node("mac") {
-			notifyBuild('INFO', "Packaging P2P for Darwin")
-			stage("Packaging for Darwin")
-			notifyBuildDetails = "\nFailed on stage - Starting Darwin Packaging"
+				sh """
+					/tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} /tmp/p2p-packaging/${debfile}
+				"""
+			}
+			
+			node("mac") {
+				notifyBuild('INFO', "Packaging P2P for Darwin")
+				stage("Packaging for Darwin")
+				notifyBuildDetails = "\nFailed on stage - Starting Darwin Packaging"
 
-			sh """
-				set -x
-				rm -rf /tmp/p2p-packaging
-				git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
-				cd /tmp/p2p-packaging
-				curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/p2p-packaging/darwin/p2p_osx
-				chmod +x /tmp/p2p-packaging/darwin/p2p_osx
-				/tmp/p2p-packaging/darwin/pack.sh /tmp/p2p-packaging/darwin/p2p_osx ${env.BRANCH_NAME}
-			"""
+				sh """
+					set -x
+					rm -rf /tmp/p2p-packaging
+					git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
+					cd /tmp/p2p-packaging
+					curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/p2p-packaging/darwin/p2p_osx
+					chmod +x /tmp/p2p-packaging/darwin/p2p_osx
+					/tmp/p2p-packaging/darwin/pack.sh /tmp/p2p-packaging/darwin/p2p_osx ${env.BRANCH_NAME}
+				"""
 
-			notifyBuildDetails = "\nFailed on stage - Uploading Darwin Package"
+				notifyBuildDetails = "\nFailed on stage - Uploading Darwin Package"
 
-			sh """
-				/tmp/p2p-packaging/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
-			"""
-		}*/
+				sh """
+					/tmp/p2p-packaging/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
+				"""
+			}
+		}
 
 		node("windows") {
 			notifyBuild('INFO', "Packaging P2P for Windows")
