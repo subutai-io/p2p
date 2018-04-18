@@ -19,7 +19,7 @@ matrix:
         - (cd /tmp/p2p-packages && ./configure --debian)
         - (cd /tmp/p2p-packages/linux && debuild -B -d)
         - if [ ! -z "$TRAVIS_TAG" ] ; 
-          (debfile=$(ls /tmp/p2p-packages | grep .deb | head -1) ; mv $debfile /tmp/p2p-packages/subutai-p2p.deb) ; 
+          then debfile=$(ls /tmp/p2p-packages | grep .deb | head -1) ; mv $debfile /tmp/p2p-packages/subutai-p2p.deb) ; 
           else (debfile=$(ls /tmp/p2p-packages | grep .deb | head -1) ; mv $debfile /tmp/p2p-packages/subutai-p2p-$TRAVIS_BRANCH.deb) ;
           fi
       deploy:
@@ -54,7 +54,7 @@ matrix:
         - make macos
         - /tmp/p2p-packages/darwin/pack.sh bin/p2p_osx
         - if [ ! -z "$TRAVIS_TAG" ] ; 
-          mv /tmp/p2p-packages/darwin/p2p.pkg /tmp/p2p-packages/subutai-p2p.pkg) ; 
+          then mv /tmp/p2p-packages/darwin/p2p.pkg /tmp/p2p-packages/subutai-p2p.pkg) ; 
           else mv /tmp/p2p-packages/darwin/p2p.pkg /tmp/p2p-packages/subutai-p2p-$TRAVIS_BRANCH.pkg) ;
           fi
       deploy:
