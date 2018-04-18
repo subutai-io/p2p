@@ -84,7 +84,7 @@ try {
 		build job: 'snap.subutai-io.pipeline/master/', propagate: false, wait: false
 	}
 
-	if (env.BRANCH_NAME == 'master') {
+	if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 		node() {
 			/* Upload builed p2p artifacts to kurjun */
 			deleteDir()
@@ -113,21 +113,24 @@ try {
 				set +x
 				./bin/p2p -v | cut -d " " -f 3 | tr -d '\n'
 				""", returnStdout: true)
-			String responseP2P = sh (script: """
-				set +x
-				curl -s -k ${url}/raw/info?name=p2p
-				""", returnStdout: true)
-			sh """
-				set +x
-				curl -s -k -H "token: ${token}" -Ffile=@bin/p2p -Fversion=${p2pVersion} ${url}/raw/upload
-			"""
-			/* delete old p2p */
-			if (responseP2P != "Not found") {
-				def jsonp2p = jsonParse(responseP2P)
+			if (env.BRANCH_NAME == 'master') {
+				String responseP2P = sh (script: """
+					set +x
+					curl -s -k ${url}/raw/info?name=p2p
+					""", returnStdout: true)
 				sh """
 					set +x
-					curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2p[0]["id"]}'&'token=${token}
+					curl -s -k -H "token: ${token}" -Ffile=@bin/p2p -Fversion=${p2pVersion} ${url}/raw/upload
 				"""
+				/* delete old p2p */
+				
+				if (responseP2P != "Not found") {
+					def jsonp2p = jsonParse(responseP2P)
+					sh """
+						set +x
+						curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2p[0]["id"]}'&'token=${token}
+					"""
+				}
 			}
 
 			/* upload p2p.exe */
@@ -151,21 +154,23 @@ try {
 
 			/* upload p2p_osx */
 			unstash 'p2p_osx'
-			String responseP2Posx = sh (script: """
-				set +x
-				curl -s -k ${url}/raw/info?name=p2p_osx
-				""", returnStdout: true)
-			sh """
-				set +x
-				curl -s -k -H "token: ${token}" -Ffile=@bin/p2p_osx -Fversion=${p2pVersion} ${url}/raw/upload
-			"""
-			/* delete old p2p */
-			if (responseP2Posx != "Not found") {
-				def jsonp2posx = jsonParse(responseP2Posx)
+			if (env.BRANCH_NAME == 'master') {
+				String responseP2Posx = sh (script: """
+					set +x
+					curl -s -k ${url}/raw/info?name=p2p_osx
+					""", returnStdout: true)
 				sh """
 					set +x
-					curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2posx[0]["id"]}'&'token=${token}
+					curl -s -k -H "token: ${token}" -Ffile=@bin/p2p_osx -Fversion=${p2pVersion} ${url}/raw/upload
 				"""
+				/* delete old p2p */
+				if (responseP2Posx != "Not found") {
+					def jsonp2posx = jsonParse(responseP2Posx)
+					sh """
+						set +x
+						curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2posx[0]["id"]}'&'token=${token}
+					"""
+				}
 			}
 		}
 
