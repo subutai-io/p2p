@@ -59,3 +59,22 @@ func TestInit(t *testing.T) {
 		t.Errorf("Error. Wait %v, get %v", "dht.cdn.subut.ai:6881", dht.Routers)
 	}
 }
+
+func TestSend(t *testing.T) {
+	dht := new(DHTClient)
+	dht.OutgoingData = make(chan *DHTPacket)
+	p1 := &DHTPacket{
+		Type:      DHTPacketType_Connect,
+		Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
+	}
+	go func() {
+		dht.send(p1)
+	}()
+	data := <-dht.OutgoingData
+	if data.Type != p1.Type {
+		t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
+	}
+	if len(data.Arguments) != len(p1.Arguments) {
+		t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), len(p1.Arguments))
+	}
+}
