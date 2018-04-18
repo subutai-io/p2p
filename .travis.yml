@@ -19,8 +19,8 @@ matrix:
         - (cd /tmp/p2p-packages && ./configure --debian)
         - (cd /tmp/p2p-packages/linux && debuild -B -d)
         - if [ ! -z "$TRAVIS_TAG" ] ; 
-          then debfile=$(ls /tmp/p2p-packages | grep .deb | head -1) ; mv $debfile /tmp/p2p-packages/subutai-p2p.deb) ; 
-          else (debfile=$(ls /tmp/p2p-packages | grep .deb | head -1) ; mv $debfile /tmp/p2p-packages/subutai-p2p-$TRAVIS_BRANCH.deb) ;
+          then debfile=$(ls /tmp/p2p-packages | grep .deb | head -1) && mv $debfile /tmp/p2p-packages/subutai-p2p.deb) ; 
+          else (debfile=$(ls /tmp/p2p-packages | grep .deb | head -1) && mv $debfile /tmp/p2p-packages/subutai-p2p-$TRAVIS_BRANCH.deb) ;
           fi
       deploy:
         - provider: script
