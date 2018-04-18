@@ -61,7 +61,7 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 
 	err := bootstrap.init(DefaultDHT)
 	if err != nil {
-		ptp.Log(ptp.Error, "Failed to initilize bootstrap node connection")
+		ptp.Log(ptp.Error, "Failed to initialize bootstrap node connection")
 		os.Exit(152)
 	}
 	go bootstrap.run()

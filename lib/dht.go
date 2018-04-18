@@ -1,11 +1,11 @@
 package ptp
 
 import (
-	fmt "fmt"
+	"fmt"
 	"net"
 	"time"
 
-	uuid "github.com/wayn3h0/go-uuid"
+	"github.com/wayn3h0/go-uuid"
 )
 
 // OperatingMode - Mode in which DHT client is operating
@@ -129,11 +129,43 @@ func (dht *DHTClient) read() (*DHTPacket, error) {
 	return packet, nil
 }
 
+func min(a, b int) int {
+	if a <= b {
+		return a
+	}
+	return b
+}
+
 // Sends bytes to all connected bootstrap nodes
 func (dht *DHTClient) send(packet *DHTPacket) error {
 	// if dht.OutgoingData != nil && !dht.isShutdown {
 	if dht.OutgoingData != nil {
-		dht.OutgoingData <- packet
+		// dht.OutgoingData <- packet
+		if len(packet.Arguments) == 0 && len(packet.Proxies) == 0 {
+			dht.OutgoingData <- packet
+		} else {
+			for len(packet.Arguments) != 0 || len(packet.Proxies) != 0 {
+				blockLengthArgs := min(10, len(packet.Arguments))
+				blockLengthProxies := min(10, len(packet.Proxies))
+				args := packet.Arguments[:blockLengthArgs]
+				proxies := packet.Proxies[:blockLengthProxies]
+				currentPacket := &DHTPacket{
+					Type:      packet.Type,
+					Id:        packet.Id,
+					Infohash:  packet.Infohash,
+					Data:      packet.Data,
+					Query:     packet.Query,
+					Arguments: args,
+					Proxies:   proxies,
+					Extra:     packet.Extra,
+					Payload:   packet.Payload,
+					Version:   packet.Version,
+				}
+				dht.OutgoingData <- currentPacket
+				packet.Arguments = packet.Arguments[blockLengthArgs:]
+				packet.Proxies = packet.Proxies[blockLengthProxies:]
+			}
+		}
 	} else {
 		// Log(Debug, "%+v ||| %+v", dht.OutgoingData, dht.isShutdown)
 		return fmt.Errorf("Trying to send to closed channel")
