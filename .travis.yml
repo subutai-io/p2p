@@ -20,6 +20,7 @@ matrix:
         - (cd /tmp/p2p-packages/linux && debuild -B -d)
         - ls -l /tmp/p2p-packages/linux
         - ls -l /tmp/p2p-packages
+        - (debfile=$(ls /tmp/p2p-packages | grep .deb | head -1) ; mv $debfile /tmp/p2p-packages/subutai-p2p.deb)
       deploy:
         - provider: script
           script: /tmp/p2p-packages/deploy.sh bin/p2p dev
