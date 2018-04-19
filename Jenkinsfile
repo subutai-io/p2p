@@ -226,7 +226,7 @@ try {
 					/tmp/p2p-packaging/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
 				"""
 			}
-		}
+		} // If branch == master
 
 		node("windows") {
 			notifyBuild('INFO', "Packaging P2P for Windows")
