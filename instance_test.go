@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"runtime"
 	"testing"
+	"os"
 )
 
 func TestOperate(t *testing.T) {
@@ -299,8 +300,46 @@ func TestSaveInstances(t *testing.T) {
 	instanceList.update("instance", P2Pinstance)
 	_, err := instanceList.saveInstances("/")
 	if err == nil {
-		t.Errorf("Failed to load instances (1): must have returned non-nil but returned nil")
+		t.Errorf("Failed to save instances (1): must have returned non-nil but returned nil")
 	}
+	_, err = instanceList.saveInstances("save-4.save")
+	if err != nil {
+		t.Errorf("Failed to save instances (2): %v", err)
+	}
+	file, err := os.Open("save-4.save")
+	if err != nil {
+		t.Errorf("Failed to save instances (3): %v", err)
+	}
+	auxiliary := make([]byte, 100000)
+	file.Read(auxiliary)
+	file.Close()
+	auxiliary = bytes.Trim(auxiliary, "\x00")
+	t.Log(bytes.NewBuffer(auxiliary).String())
+	P2PinstanceSecond := new(P2PInstance)
+	P2PinstanceSecond.Args.IP = "10.10.10.2"
+	P2PinstanceSecond.Args.Mac = "Mac"
+	P2PinstanceSecond.Args.Dev = "Dev"
+	P2PinstanceSecond.Args.Hash = "Hash"
+	P2PinstanceSecond.Args.Dht = "Dht"
+	P2PinstanceSecond.Args.Keyfile = "Keyfile"
+	P2PinstanceSecond.Args.Key = "Key"
+	P2PinstanceSecond.Args.TTL = "TTL"
+	P2PinstanceSecond.Args.Fwd = false
+	P2PinstanceSecond.Args.Port = 0
+	instanceList.update("instanceSecond", P2PinstanceSecond)
+	_, err = instanceList.saveInstances("save-4.save")
+	if err != nil {
+		t.Errorf("Failed to save instances (4): %v", err)
+	}
+	file, err = os.Open("save-4.save")
+	if err != nil {
+		t.Errorf("Failed to save instances (5): %v", err)
+	}
+	auxiliary = make([]byte, 100000)
+	file.Read(auxiliary)
+	file.Close()
+	auxiliary = bytes.Trim(auxiliary, "\x00")
+	t.Log(bytes.NewBuffer(auxiliary).String())
 }
 
 func TestLoadInstances(t *testing.T) {
@@ -331,7 +370,7 @@ func TestInitialize(t *testing.T) {
 	daemon := new(Daemon)
 	daemon.Initialize("saveFile")
 	if daemon.SaveFile != "saveFile" {
-		t.Errorf("Failed to load initialize (1): daemon couldn't initialize")
+		t.Errorf("Failed to initialize (1): daemon couldn't initialize")
 	}
 }
 
