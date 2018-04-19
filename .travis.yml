@@ -58,8 +58,8 @@ matrix:
         - make macos
         - /tmp/p2p-packages/darwin/pack.sh bin/p2p_osx
         - if [ ! -z "$TRAVIS_TAG" ] ; 
-          then (mv /tmp/p2p-packages/darwin/p2p.pkg /tmp/p2p-packages/subutai-p2p.pkg) ; 
-          else (mv /tmp/p2p-packages/darwin/p2p.pkg /tmp/p2p-packages/subutai-p2p-$TRAVIS_BRANCH.pkg) ;
+          then (mv /tmp/p2p-packages/darwin/p2p.pkg /tmp/subutai-p2p.pkg) ; 
+          else (mv /tmp/p2p-packages/darwin/p2p.pkg /tmp/subutai-p2p-$TRAVIS_BRANCH.pkg) ;
           fi
       deploy:
         - provider: script
