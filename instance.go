@@ -187,11 +187,26 @@ func (p *InstanceList) decodeInstances(data []byte) ([]RunArgs, error) {
 // Calls encodeInstances() and saves results into specified file
 // Return number of bytes written and error if any
 func (p *InstanceList) saveInstances(filename string) (int, error) {
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0700)
+	file, err := os.Open(filename)
+	if err == nil {
+		file.Close()
+		os.Remove(filename)
+	}
+	file, err = os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0700)
 	if err != nil {
 		return 0, err
 	}
 	defer file.Close()
+	stat, _ := file.Stat()
+	if stat.Size() > 0 {
+		auxiliary := make([]byte, 100000)
+		len, err := file.Read(auxiliary)
+		if err != nil {
+			return 0, err
+		}
+		auxiliary = bytes.Trim(auxiliary, "\x00")	
+		return 0, fmt.Errorf("SaveFile was not empty: %+v %+v", len, bytes.NewBuffer(auxiliary).String())
+	}
 	data := p.encodeInstances()
 	s, err := file.Write(data)
 	if err != nil {
