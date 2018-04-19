@@ -148,7 +148,7 @@ func (p *InstanceList) decodeInstances(data []byte) ([]RunArgs, error) {
 		blocksOfInstancesOld := bytes.Split(data, bytes.NewBufferString("|~|").Bytes())
 		blocksOfInstances := bytes.Split(data, bytes.NewBufferString("|||").Bytes())
 		if len(blocksOfInstancesOld) == len(blocksOfInstances) {
-			if len(blocksOfInstancesOld) != 1 && len(blocksOfInstances) != 1 {
+			if len(blocksOfInstancesOld) != 1 || len(blocksOfInstances) != 1 {
 				return nil, fmt.Errorf("Unexpected error in decoding process")
 			}
 		} else {
