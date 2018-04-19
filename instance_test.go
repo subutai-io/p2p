@@ -201,7 +201,7 @@ func TestEncodingInstances(t *testing.T) {
 	P2PinstanceSemi.Args.Port = 0
 	instanceList.update("instanceSemi", P2PinstanceSemi)
 	encodedInstances := bytes.NewBuffer(instanceList.encodeInstances())
-	parts := bytes.Split(encodedInstances.Bytes(), bytes.NewBufferString("|~|").Bytes())
+	parts := bytes.Split(encodedInstances.Bytes(), bytes.NewBufferString("|||").Bytes())
 	set := make(map[string]bool)
 	for i := 0; i < 3; i++ {
 		set[bytes.NewBuffer(parts[i]).String()] = true
