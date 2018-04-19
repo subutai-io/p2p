@@ -177,7 +177,7 @@ func TestSend(t *testing.T) {
 			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
 		}
 		for i := 0; i < 100000; i++ {
-			p1.Arguments = append(p1.Arguments, "Azret Argument")
+			p1.Arguments = append(p1.Arguments, "Argument")
 		}
 		lenArguments := len(p1.Arguments)
 		lenProxies := len(p1.Proxies)
@@ -219,7 +219,7 @@ func TestSend(t *testing.T) {
 			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
 		for i := 0; i < 100000; i++ {
-			p1.Proxies = append(p1.Proxies, "Azret Proxy")
+			p1.Proxies = append(p1.Proxies, "Proxy")
 		}
 		lenArguments := len(p1.Arguments)
 		lenProxies := len(p1.Proxies)
@@ -260,10 +260,10 @@ func TestSend(t *testing.T) {
 			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
 		for i := 0; i < 100000; i++ {
-			p1.Arguments = append(p1.Arguments, "Azret Argument")
+			p1.Arguments = append(p1.Arguments, "Argument")
 		}
 		for i := 0; i < 100000; i++ {
-			p1.Proxies = append(p1.Proxies, "Azret Proxy")
+			p1.Proxies = append(p1.Proxies, "Proxy")
 		}
 		lenArguments := len(p1.Arguments)
 		lenProxies := len(p1.Proxies)

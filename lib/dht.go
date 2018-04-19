@@ -129,13 +129,6 @@ func (dht *DHTClient) read() (*DHTPacket, error) {
 	return packet, nil
 }
 
-func min(a, b int) int {
-	if a <= b {
-		return a
-	}
-	return b
-}
-
 // Sends bytes to all connected bootstrap nodes
 func (dht *DHTClient) send(packet *DHTPacket) error {
 	// if dht.OutgoingData != nil && !dht.isShutdown {

@@ -139,3 +139,10 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 
 	Log(Trace, "%d interfaces were saved", len(p.LocalIPs))
 }
+
+func min(a, b int) int {
+	if a <= b {
+		return a
+	}
+	return b
+}
