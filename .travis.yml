@@ -16,7 +16,10 @@ matrix:
         - make linux
         - make test
         - cp bin/p2p /tmp/p2p-packages/linux/debian
-        - (cd /tmp/p2p-packages && ./configure --debian)
+        - if [ ! -z "$TRAVIS_TAG" ] ; 
+          then (cd /tmp/p2p-packages && ./configure --debian --branch=HEAD) ;
+          else (cd /tmp/p2p-packages && ./configure --debian --branch=$TRAVIS_BRANCH) ;
+          fi
         - (cd /tmp/p2p-packages/linux && debuild -B -d)
         - if [ ! -z "$TRAVIS_TAG" ] ; 
           then (cd /tmp/p2p-packages && ./prepare-deb.sh HEAD /tmp/p2p-packages /tmp/p2p-packages) ; 

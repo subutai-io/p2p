@@ -32,10 +32,7 @@ func (dht *DHTRouter) run() {
 	for !dht.stop {
 		for !dht.running {
 			dht.connect()
-			if dht.running {
-				break
-			}
-			if dht.stop {
+			if dht.running || dht.stop {
 				break
 			}
 			dht.sleep()
@@ -126,6 +123,7 @@ func (dht *DHTRouter) connect() {
 		ptp.Log(ptp.Error, "Failed to establish connection with %s: %s", dht.addr.String(), err)
 		return
 	}
+	dht.lastContact = time.Now()
 	dht.fails = 0
 	dht.running = true
 }
