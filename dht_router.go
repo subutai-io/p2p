@@ -75,6 +75,7 @@ func (dht *DHTRouter) handleData(data []byte, length int) {
 func (dht *DHTRouter) routeData(data []byte) {
 	packet := &ptp.DHTPacket{}
 	err := proto.Unmarshal(data, packet)
+	ptp.Log(ptp.Trace, "DHTPacket size: [%d]", len(data))
 	if err != nil {
 		ptp.Log(ptp.Warning, "Corrupted data from DHT: %s [%d]", err, len(data))
 		return
