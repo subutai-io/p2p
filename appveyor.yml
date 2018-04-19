@@ -2,12 +2,10 @@ version: "{build}"
 
 clone_folder: c:\root\src\github.com\subutai-io\p2p
 
-environment:
-  GOPATH: c:\root
-  DEPTESTBYPASS501: 1
-  GOVERSION: 1.9
+image: Visual Studio 2015
 
 install:
+  - nuget install secure-file -ExcludeVersion
   - rmdir c:\go /s /q
   - appveyor DownloadFile https://storage.googleapis.com/golang/go%GOVERSION%.windows-amd64.msi
   - msiexec /i go%GOVERSION%.windows-amd64.msi /q
@@ -16,11 +14,33 @@ install:
   - go version
   - go env
   - git clone --depth 1 https://github.com/subutai-io/p2p-packages.git c:\root\p2p-packages
+  - curl -fsSLk https://eu0.cdn.subutai.io:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o c:\root\p2p-packages\tap-windows-9.21.2.exe
+  - gpg --list-keys
+  - secure-file\tools\secure-file -decrypt c:\root\p2p-packages\appveyor\sign.enc -secret %GPG_KEY_SECRET%
+  - secure-file\tools\secure-file -decrypt c:\root\p2p-packages\appveyor\gpg.enc -secret %GPG_KEY_SECRET%
+  - gpg --import c:\root\p2p-packages\appveyor\gpg
 
-build: false
-deploy: false
+before_build:
+  - C:\msys64\usr\bin\bash -lc "$(cygpath ${APPVEYOR_BUILD_FOLDER})/configure --os=windows --branch=%APPVEYOR_REPO_BRANCH%"
 
-test_script:
-  - go get
-  - go build github.com/subutai-io/p2p
-  - c:\root\src\github.com\subutai-io\p2p\p2p.exe -v
+build_script: 
+  - cmd: >-
+      build.bat
+
+      %signtool% sign /tr http://timestamp.comodoca.com/authenticode /f c:\root\p2p-packages\appveyor\sign /p %SIGN_KEY% c:\root\src\github.com\subutai-io\p2p\p2p.exe
+
+      c:\root\src\github.com\subutai-io\p2p\p2p.exe -v
+
+      copy c:\root\src\github.com\subutai-io\p2p\p2p.exe c:\root\p2p-packages\p2p.exe
+
+      "C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\Common7\\IDE\\devenv.exe" c:\\root\\p2p-packages\\windows\\win.sln /Rebuild Release
+
+      %signtool% sign /tr http://timestamp.comodoca.com/authenticode /f c:\root\p2p-packages\appveyor\sign /p %SIGN_KEY% c:\\root\\p2p-packages\\windows\\P2PInstaller\\Release\\P2PInstaller.msi
+
+deploy_script:
+  - C:\msys64\usr\bin\bash -lc "/c/root/p2p-packages/deploy.sh /c/root/p2p-packages/p2p.exe %APPVEYOR_REPO_BRANCH% -appveyor-test"
+
+notifications:
+  - provider: Slack
+    incoming_webhook:
+      secure: EH0gGIsLRLevwZRtCfJVMO6Bw+OP7p+1eyWatC0h6IorO7ksOj+PsENn5duSz59F45IIrPB0c318ZAzXGEhiUhD/Huor6zS/mQfejsO5RTg=
