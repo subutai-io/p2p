@@ -111,9 +111,9 @@ if [ "$branch" == "HEAD" ]; then
 elif [ "$branch" == "master" ]; then
     log_level="DEBUG"
 elif [ "$branch" == "dev" ]; then
-    log_level="DEBUG"
+    log_level="TRACE"
 elif [ "$branch" == "sysnet" ]; then
-    log_level="DEBUG"
+    log_level="TRACE"
 fi
 
 if [ "$argOS" != "windows" ]; then
