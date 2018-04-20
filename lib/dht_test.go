@@ -2,6 +2,7 @@ package ptp
 
 import (
 	"testing"
+	"github.com/gogo/protobuf/proto"
 )
 
 // import (
@@ -86,15 +87,24 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := <-dht.OutgoingData
+		packetBytes, err := proto.Marshal(data)
+		if err != nil {
+			t.Fatalf("Failed to marshal data (1): %v", err)
+		}
+		packet := &DHTPacket{}
+		err = proto.Unmarshal(packetBytes, packet)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal data (1): %v", err)
+		}
 		close(dht.OutgoingData)
-		if data.Type != p1.Type {
-			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
+		if packet.Type != p1.Type {
+			t.Fatalf("Data mismatch on type: %d -> %d", int(packet.Type), int(p1.Type))
 		}
-		if len(data.Arguments) != lenArguments {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
+		if len(packet.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(packet.Arguments), lenArguments)
 		}
-		if len(data.Proxies) != lenProxies {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
+		if len(packet.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(packet.Proxies), lenProxies)
 		}
 	}
 	{
@@ -113,15 +123,24 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := <-dht.OutgoingData
+		packetBytes, err := proto.Marshal(data)
+		if err != nil {
+			t.Fatalf("Failed to marshal data (2): %v", err)
+		}
+		packet := &DHTPacket{}
+		err = proto.Unmarshal(packetBytes, packet)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal data (2): %v", err)
+		}
 		close(dht.OutgoingData)
-		if data.Type != p1.Type {
-			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
+		if packet.Type != p1.Type {
+			t.Fatalf("Data mismatch on type: %d -> %d", int(packet.Type), int(p1.Type))
 		}
-		if len(data.Arguments) != lenArguments {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
+		if len(packet.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(packet.Arguments), lenArguments)
 		}
-		if len(data.Proxies) != lenProxies {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
+		if len(packet.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(packet.Proxies), lenProxies)
 		}
 	}
 	{
@@ -140,15 +159,24 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := <-dht.OutgoingData
+		packetBytes, err := proto.Marshal(data)
+		if err != nil {
+			t.Fatalf("Failed to marshal data (3): %v", err)
+		}
+		packet := &DHTPacket{}
+		err = proto.Unmarshal(packetBytes, packet)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal data (3): %v", err)
+		}
 		close(dht.OutgoingData)
-		if data.Type != p1.Type {
-			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
+		if packet.Type != p1.Type {
+			t.Fatalf("Data mismatch on type: %d -> %d", int(packet.Type), int(p1.Type))
 		}
-		if len(data.Arguments) != lenArguments {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
+		if len(packet.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(packet.Arguments), lenArguments)
 		}
-		if len(data.Proxies) != lenProxies {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
+		if len(packet.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(packet.Proxies), lenProxies)
 		}
 	}
 	{
@@ -168,15 +196,24 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := <-dht.OutgoingData
+		packetBytes, err := proto.Marshal(data)
+		if err != nil {
+			t.Fatalf("Failed to marshal data (4): %v", err)
+		}
+		packet := &DHTPacket{}
+		err = proto.Unmarshal(packetBytes, packet)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal data (4): %v", err)
+		}
 		close(dht.OutgoingData)
-		if data.Type != p1.Type {
-			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
+		if packet.Type != p1.Type {
+			t.Fatalf("Data mismatch on type: %d -> %d", int(packet.Type), int(p1.Type))
 		}
-		if len(data.Arguments) != lenArguments {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
+		if len(packet.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(packet.Arguments), lenArguments)
 		}
-		if len(data.Proxies) != lenProxies {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
+		if len(packet.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(packet.Proxies), lenProxies)
 		}
 	}
 	{
@@ -198,11 +235,18 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := []*DHTPacket{}
-		data = append(data, <-dht.OutgoingData)
-		data = append(data, <-dht.OutgoingData)
-		for i := 0; i < 10000 + 1 - 2; i++ {
+		for i := 0; i < 10000 + 1; i++ {
 			item := <-dht.OutgoingData
-			data = append(data, item)
+			packetBytes, err := proto.Marshal(item)
+			if err != nil {
+				t.Fatalf("Failed to marshal data (5): %v", err)
+			}
+			packet := &DHTPacket{}
+			err = proto.Unmarshal(packetBytes, packet)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal data (5): %v", err)
+			}
+			data = append(data, packet)
 		}
 		close(dht.OutgoingData)
 		allArguments := []string{}
@@ -242,7 +286,16 @@ func TestSend(t *testing.T) {
 		data := []*DHTPacket{}
 		for i := 0; i < 10000 + 1; i++ {
 			item := <-dht.OutgoingData
-			data = append(data, item)
+			packetBytes, err := proto.Marshal(item)
+			if err != nil {
+				t.Fatalf("Failed to marshal data (6): %v", err)
+			}
+			packet := &DHTPacket{}
+			err = proto.Unmarshal(packetBytes, packet)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal data (6): %v", err)
+			}
+			data = append(data, packet)
 		}
 		close(dht.OutgoingData)
 		allArguments := []string{}
@@ -286,7 +339,16 @@ func TestSend(t *testing.T) {
 		data := []*DHTPacket{}
 		for i := 0; i < 10000 + 1; i++ {
 			item := <-dht.OutgoingData
-			data = append(data, item)
+			packetBytes, err := proto.Marshal(item)
+			if err != nil {
+				t.Fatalf("Failed to marshal data (7): %v", err)
+			}
+			packet := &DHTPacket{}
+			err = proto.Unmarshal(packetBytes, packet)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal data (7): %v", err)
+			}
+			data = append(data, packet)
 		}
 		close(dht.OutgoingData)
 		allArguments := []string{}
