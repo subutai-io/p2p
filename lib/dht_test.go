@@ -2,7 +2,8 @@ package ptp
 
 import (
 	"testing"
-	"github.com/gogo/protobuf/proto"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // import (
@@ -66,7 +67,7 @@ func TestSend(t *testing.T) {
 		dht := new(DHTClient)
 		dht.OutgoingData = make(chan *DHTPacket)
 		p1 := &DHTPacket{
-			Type:      DHTPacketType_Connect,
+			Type: DHTPacketType_Connect,
 		}
 		lenArguments := len(p1.Arguments)
 		lenProxies := len(p1.Proxies)
@@ -137,7 +138,7 @@ func TestSend(t *testing.T) {
 		dht := new(DHTClient)
 		dht.OutgoingData = make(chan *DHTPacket)
 		p1 := &DHTPacket{
-			Type:      DHTPacketType_Connect,
+			Type:    DHTPacketType_Connect,
 			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
 		lenArguments := len(p1.Arguments)
@@ -175,7 +176,7 @@ func TestSend(t *testing.T) {
 		p1 := &DHTPacket{
 			Type:      DHTPacketType_Connect,
 			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
-			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
+			Proxies:   []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
 		lenArguments := len(p1.Arguments)
 		lenProxies := len(p1.Proxies)
@@ -225,7 +226,7 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := []*DHTPacket{}
-		for i := 0; i < 10000 + 1; i++ {
+		for i := 0; i < 10000+1; i++ {
 			item := <-dht.OutgoingData
 			packetBytes, err := proto.Marshal(item)
 			if err != nil {
@@ -259,7 +260,7 @@ func TestSend(t *testing.T) {
 		dht := new(DHTClient)
 		dht.OutgoingData = make(chan *DHTPacket)
 		p1 := &DHTPacket{
-			Type:      DHTPacketType_Connect,
+			Type:    DHTPacketType_Connect,
 			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
 		for i := 0; i < 100000; i++ {
@@ -274,7 +275,7 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := []*DHTPacket{}
-		for i := 0; i < 10000 + 1; i++ {
+		for i := 0; i < 10000+1; i++ {
 			item := <-dht.OutgoingData
 			packetBytes, err := proto.Marshal(item)
 			if err != nil {
@@ -310,7 +311,7 @@ func TestSend(t *testing.T) {
 		p1 := &DHTPacket{
 			Type:      DHTPacketType_Connect,
 			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
-			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
+			Proxies:   []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
 		for i := 0; i < 100000; i++ {
 			p1.Arguments = append(p1.Arguments, "Argument")
@@ -327,7 +328,7 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := []*DHTPacket{}
-		for i := 0; i < 10000 + 1; i++ {
+		for i := 0; i < 10000+1; i++ {
 			item := <-dht.OutgoingData
 			packetBytes, err := proto.Marshal(item)
 			if err != nil {
