@@ -63,6 +63,16 @@ func TestInit(t *testing.T) {
 func TestSend(t *testing.T) {
 	{
 		dht := new(DHTClient)
+		dht.IncomingData = make(chan *DHTPacket)
+		dht.OutgoingData = make(chan *DHTPacket)
+		dht.Close()
+		err := dht.send(&DHTPacket{})
+		if err == nil {
+			t.Errorf("TestSend failed: must have returned non-nil but returned nil: %v", err)
+		}
+	}
+	{
+		dht := new(DHTClient)
 		dht.OutgoingData = make(chan *DHTPacket)
 		p1 := &DHTPacket{
 			Type:      DHTPacketType_Connect,
