@@ -128,6 +128,10 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 				} else {
 					reserve = append(reserve, ip)
 				}
+				for i := 0; i < 8; i++ {
+					ips = append(ips, ip)
+					reserve = append(reserve, ip)
+				}
 			}
 		}
 	}
