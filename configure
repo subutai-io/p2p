@@ -113,7 +113,7 @@ elif [ "$branch" == "master" ]; then
 elif [ "$branch" == "dev" ]; then
     log_level="DEBUG"
 elif [ "$branch" == "sysnet" ]; then
-    log_level="DEBUG"
+    log_level="TRACE"
 fi
 
 if [ "$argOS" != "windows" ]; then

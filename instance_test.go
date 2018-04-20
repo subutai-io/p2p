@@ -303,6 +303,7 @@ func TestSaveInstances(t *testing.T) {
 		t.Errorf("Failed to save instances (1): must have returned non-nil but returned nil")
 	}
 	_, err = instanceList.saveInstances("save-4.save")
+	defer os.Remove("save-4.save")
 	if err != nil {
 		t.Errorf("Failed to save instances (2): %v", err)
 	}
