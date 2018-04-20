@@ -105,6 +105,8 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 	resp.ExitCode = 0
 	resp.Output = "Running new P2P instance for " + args.Hash + "\n"
 
+	ptp.Log(ptp.Trace, "Requested new P2P instance: %+v", args)
+
 	// Validate if interface name is unique
 	if args.Dev != "" {
 		instances := d.Instances.get()
