@@ -92,19 +92,24 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 	proc.Initialize(sFile)
 	setupRESTHandlers(port, proc)
 
-	if sFile != "" {
-		ptp.Log(ptp.Info, "Restore file provided")
-		// Try to restore from provided file
-		instances, err := proc.Instances.loadInstances(proc.SaveFile)
-		if err != nil {
-			ptp.Log(ptp.Error, "Failed to load instances: %v", err)
-		} else {
-			ptp.Log(ptp.Info, "%d instances were loaded from file", len(instances))
-			for _, inst := range instances {
-				proc.run(&inst, new(Response))
+	go func() {
+		for !bootstrap.isActive {
+			time.Sleep(100 * time.Millisecond)
+		}
+		if sFile != "" {
+			ptp.Log(ptp.Info, "Restore file provided")
+			// Try to restore from provided file
+			instances, err := proc.Instances.loadInstances(proc.SaveFile)
+			if err != nil {
+				ptp.Log(ptp.Error, "Failed to load instances: %v", err)
+			} else {
+				ptp.Log(ptp.Info, "%d instances were loaded from file", len(instances))
+				for _, inst := range instances {
+					proc.run(&inst, new(Response))
+				}
 			}
 		}
-	}
+	}()
 
 	ReadyToServe = true
 
