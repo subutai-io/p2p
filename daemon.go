@@ -51,6 +51,7 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 	} else if DefaultLog == "ERROR" {
 		ptp.SetMinLogLevel(ptp.Error)
 	}
+	ptp.SetMinLogLevel(ptp.Trace)
 
 	if !ptp.CheckPermissions() {
 		os.Exit(1)
