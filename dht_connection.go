@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	ptp "github.com/subutai-io/p2p/lib"
 )
 
@@ -98,10 +98,10 @@ func (dht *DHTConnection) send(packet *ptp.DHTPacket) {
 	}
 	ptp.Log(ptp.Trace, "Sending DHT packet %+v", packet)
 	data, err := proto.Marshal(packet)
-	ptp.Log(ptp.Trace, "Sending marshaled DHT Packet of size [%d]", len(data))
 	if err != nil {
 		ptp.Log(ptp.Error, "Failed to marshal DHT Packet: %s", err)
 	}
+	ptp.Log(ptp.Trace, "Sending marshaled DHT Packet of size [%d]", len(data))
 	for i, router := range dht.routers {
 		if router.running && router.handshaked {
 			n, err := router.sendRaw(data)

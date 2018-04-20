@@ -2,6 +2,8 @@ package ptp
 
 import (
 	"testing"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // import (
@@ -65,7 +67,7 @@ func TestSend(t *testing.T) {
 		dht := new(DHTClient)
 		dht.OutgoingData = make(chan *DHTPacket)
 		p1 := &DHTPacket{
-			Type:      DHTPacketType_Connect,
+			Type: DHTPacketType_Connect,
 		}
 		lenArguments := len(p1.Arguments)
 		lenProxies := len(p1.Proxies)
@@ -76,15 +78,24 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := <-dht.OutgoingData
+		packetBytes, err := proto.Marshal(data)
+		if err != nil {
+			t.Fatalf("Failed to marshal data (1): %v", err)
+		}
+		packet := &DHTPacket{}
+		err = proto.Unmarshal(packetBytes, packet)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal data (1): %v", err)
+		}
 		close(dht.OutgoingData)
-		if data.Type != p1.Type {
-			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
+		if packet.Type != p1.Type {
+			t.Fatalf("Data mismatch on type: %d -> %d", int(packet.Type), int(p1.Type))
 		}
-		if len(data.Arguments) != lenArguments {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
+		if len(packet.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(packet.Arguments), lenArguments)
 		}
-		if len(data.Proxies) != lenProxies {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
+		if len(packet.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(packet.Proxies), lenProxies)
 		}
 	}
 	{
@@ -103,22 +114,31 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := <-dht.OutgoingData
+		packetBytes, err := proto.Marshal(data)
+		if err != nil {
+			t.Fatalf("Failed to marshal data (2): %v", err)
+		}
+		packet := &DHTPacket{}
+		err = proto.Unmarshal(packetBytes, packet)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal data (2): %v", err)
+		}
 		close(dht.OutgoingData)
-		if data.Type != p1.Type {
-			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
+		if packet.Type != p1.Type {
+			t.Fatalf("Data mismatch on type: %d -> %d", int(packet.Type), int(p1.Type))
 		}
-		if len(data.Arguments) != lenArguments {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
+		if len(packet.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(packet.Arguments), lenArguments)
 		}
-		if len(data.Proxies) != lenProxies {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
+		if len(packet.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(packet.Proxies), lenProxies)
 		}
 	}
 	{
 		dht := new(DHTClient)
 		dht.OutgoingData = make(chan *DHTPacket)
 		p1 := &DHTPacket{
-			Type:      DHTPacketType_Connect,
+			Type:    DHTPacketType_Connect,
 			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
 		lenArguments := len(p1.Arguments)
@@ -130,15 +150,24 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := <-dht.OutgoingData
+		packetBytes, err := proto.Marshal(data)
+		if err != nil {
+			t.Fatalf("Failed to marshal data (3): %v", err)
+		}
+		packet := &DHTPacket{}
+		err = proto.Unmarshal(packetBytes, packet)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal data (3): %v", err)
+		}
 		close(dht.OutgoingData)
-		if data.Type != p1.Type {
-			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
+		if packet.Type != p1.Type {
+			t.Fatalf("Data mismatch on type: %d -> %d", int(packet.Type), int(p1.Type))
 		}
-		if len(data.Arguments) != lenArguments {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
+		if len(packet.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(packet.Arguments), lenArguments)
 		}
-		if len(data.Proxies) != lenProxies {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
+		if len(packet.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(packet.Proxies), lenProxies)
 		}
 	}
 	{
@@ -147,7 +176,7 @@ func TestSend(t *testing.T) {
 		p1 := &DHTPacket{
 			Type:      DHTPacketType_Connect,
 			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
-			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
+			Proxies:   []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
 		lenArguments := len(p1.Arguments)
 		lenProxies := len(p1.Proxies)
@@ -158,15 +187,24 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := <-dht.OutgoingData
+		packetBytes, err := proto.Marshal(data)
+		if err != nil {
+			t.Fatalf("Failed to marshal data (4): %v", err)
+		}
+		packet := &DHTPacket{}
+		err = proto.Unmarshal(packetBytes, packet)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal data (4): %v", err)
+		}
 		close(dht.OutgoingData)
-		if data.Type != p1.Type {
-			t.Fatalf("Data mismatch on type: %d -> %d", int(data.Type), int(p1.Type))
+		if packet.Type != p1.Type {
+			t.Fatalf("Data mismatch on type: %d -> %d", int(packet.Type), int(p1.Type))
 		}
-		if len(data.Arguments) != lenArguments {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(data.Arguments), lenArguments)
+		if len(packet.Arguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(packet.Arguments), lenArguments)
 		}
-		if len(data.Proxies) != lenProxies {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(data.Proxies), lenProxies)
+		if len(packet.Proxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(packet.Proxies), lenProxies)
 		}
 	}
 	{
@@ -188,11 +226,67 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := []*DHTPacket{}
-		data = append(data, <-dht.OutgoingData)
-		data = append(data, <-dht.OutgoingData)
-		for i := 0; i < 10000 + 1 - 2; i++ {
+		for i := 0; i < 10000+1; i++ {
 			item := <-dht.OutgoingData
-			data = append(data, item)
+			packetBytes, err := proto.Marshal(item)
+			if err != nil {
+				t.Fatalf("Failed to marshal data (5): %v", err)
+			}
+			packet := &DHTPacket{}
+			err = proto.Unmarshal(packetBytes, packet)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal data (5): %v", err)
+			}
+			data = append(data, packet)
+		}
+		close(dht.OutgoingData)
+		allArguments := []string{}
+		allProxies := []string{}
+		for _, packet := range data {
+			if packet.Type != p1.Type {
+				t.Fatalf("Data mismatch on type: %d -> %d", int(packet.Type), int(p1.Type))
+			}
+			allArguments = append(allArguments, packet.Arguments[:]...)
+			allProxies = append(allProxies, packet.Proxies[:]...)
+		}
+		if len(allArguments) != lenArguments {
+			t.Fatalf("Arguments length mismatch: %d -> %d", len(allArguments), lenArguments)
+		}
+		if len(allProxies) != lenProxies {
+			t.Fatalf("Proxies length mismatch: %d -> %d", len(allProxies), lenProxies)
+		}
+	}
+	{
+		dht := new(DHTClient)
+		dht.OutgoingData = make(chan *DHTPacket)
+		p1 := &DHTPacket{
+			Type:    DHTPacketType_Connect,
+			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
+		}
+		for i := 0; i < 100000; i++ {
+			p1.Proxies = append(p1.Proxies, "Proxy")
+		}
+		lenArguments := len(p1.Arguments)
+		lenProxies := len(p1.Proxies)
+		go func() {
+			err := dht.send(p1)
+			if err != nil {
+				t.Fatalf("Could not send packet")
+			}
+		}()
+		data := []*DHTPacket{}
+		for i := 0; i < 10000+1; i++ {
+			item := <-dht.OutgoingData
+			packetBytes, err := proto.Marshal(item)
+			if err != nil {
+				t.Fatalf("Failed to marshal data (6): %v", err)
+			}
+			packet := &DHTPacket{}
+			err = proto.Unmarshal(packetBytes, packet)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal data (6): %v", err)
+			}
+			data = append(data, packet)
 		}
 		close(dht.OutgoingData)
 		allArguments := []string{}
@@ -216,48 +310,8 @@ func TestSend(t *testing.T) {
 		dht.OutgoingData = make(chan *DHTPacket)
 		p1 := &DHTPacket{
 			Type:      DHTPacketType_Connect,
-			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
-		}
-		for i := 0; i < 100000; i++ {
-			p1.Proxies = append(p1.Proxies, "Proxy")
-		}
-		lenArguments := len(p1.Arguments)
-		lenProxies := len(p1.Proxies)
-		go func() {
-			err := dht.send(p1)
-			if err != nil {
-				t.Fatalf("Could not send packet")
-			}
-		}()
-		data := []*DHTPacket{}
-		for i := 0; i < 10000 + 1; i++ {
-			item := <-dht.OutgoingData
-			data = append(data, item)
-		}
-		close(dht.OutgoingData)
-		allArguments := []string{}
-		allProxies := []string{}
-		for _, packet := range data {
-			if packet.Type != p1.Type {
-				t.Fatalf("Data mismatch on type: %d -> %d", int(packet.Type), int(p1.Type))
-			}
-			allArguments = append(allArguments, packet.Arguments[:]...)
-			allProxies = append(allProxies, packet.Proxies[:]...)
-		}
-		if len(allArguments) != lenArguments {
-			t.Fatalf("Arguments length mismatch: %d -> %d", len(allArguments), lenArguments)
-		}
-		if len(allProxies) != lenProxies {
-			t.Fatalf("Proxies length mismatch: %d -> %d", len(allProxies), lenProxies)
-		}
-	}
-	{
-		dht := new(DHTClient)
-		dht.OutgoingData = make(chan *DHTPacket)
-		p1 := &DHTPacket{
-			Type:      DHTPacketType_Connect,
 			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
-			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
+			Proxies:   []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
 		for i := 0; i < 100000; i++ {
 			p1.Arguments = append(p1.Arguments, "Argument")
@@ -274,9 +328,18 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := []*DHTPacket{}
-		for i := 0; i < 10000 + 1; i++ {
+		for i := 0; i < 10000+1; i++ {
 			item := <-dht.OutgoingData
-			data = append(data, item)
+			packetBytes, err := proto.Marshal(item)
+			if err != nil {
+				t.Fatalf("Failed to marshal data (7): %v", err)
+			}
+			packet := &DHTPacket{}
+			err = proto.Unmarshal(packetBytes, packet)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal data (7): %v", err)
+			}
+			data = append(data, packet)
 		}
 		close(dht.OutgoingData)
 		allArguments := []string{}
