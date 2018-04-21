@@ -31,8 +31,8 @@ func TestRouteData(t *testing.T) {
 	router := new(DHTRouter)
 	for _, d := range data {
 		b, _ := proto.Marshal(&d)
-		if len(b) > 1024 {
-			b = b[:1024]
+		if len(b) > ptp.DHTBufferSize {
+			b = b[:ptp.DHTBufferSize]
 		}
 		router.routeData(b)
 	}

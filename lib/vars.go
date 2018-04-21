@@ -11,7 +11,7 @@ const PacketVersion int32 = 20005
 var SupportedVersion = [...]int32{20005, 200006}
 
 // DHTBufferSize is a size of DHT buffer
-const DHTBufferSize = 1024
+const DHTBufferSize = 4096
 
 // MsgType is a type of the message
 type MsgType uint16
