@@ -37,7 +37,7 @@ func (dht *DHTRouter) run() {
 			}
 			dht.sleep()
 		}
-		data := make([]byte, 1024)
+		data := make([]byte, ptp.DHTBufferSize)
 		n, err := dht.conn.Read(data)
 		if err != nil {
 			ptp.Log(ptp.Warning, "BSN socket closed: %s", err)
@@ -46,14 +46,16 @@ func (dht *DHTRouter) run() {
 			continue
 		}
 		dht.lastContact = time.Now()
-		go dht.handleData(data, n)
+		go dht.handleData(data[:n])
 	}
 }
 
-func (dht *DHTRouter) handleData(data []byte, length int) {
+func (dht *DHTRouter) handleData(data []byte) {
+	length := len(data)
 	dht.rx += uint64(length)
 	i := 0
 	handled := 0
+	ptp.Log(ptp.Trace, "Handling data: data length is [%d]", len(data))
 	for i >= 0 {
 		i = bytes.Index(data, []byte{0x0a, 0x0b, 0x0c, 0x0a})
 		if i <= 0 {
@@ -76,6 +78,7 @@ func (dht *DHTRouter) routeData(data []byte) {
 	packet := &ptp.DHTPacket{}
 	err := proto.Unmarshal(data, packet)
 	ptp.Log(ptp.Trace, "DHTPacket size: [%d]", len(data))
+	ptp.Log(ptp.Trace, "DHTPacket contains: %+v --- %+v", bytes.NewBuffer(data).String(), packet)
 	if err != nil {
 		ptp.Log(ptp.Warning, "Corrupted data from DHT: %s [%d]", err, len(data))
 		return
