@@ -37,7 +37,7 @@ func (dht *DHTRouter) run() {
 			}
 			dht.sleep()
 		}
-		data := make([]byte, 1024)
+		data := make([]byte, ptp.DHTBufferSize)
 		n, err := dht.conn.Read(data)
 		if err != nil {
 			ptp.Log(ptp.Warning, "BSN socket closed: %s", err)
