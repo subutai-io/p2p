@@ -100,12 +100,11 @@ func InitPlatform() error {
 // CheckPermissions return true if started as root/administrator
 // TODO: Implement on Windows
 func CheckPermissions() bool {
-	err := syscall.Mkdir("C:\\Windows\\checkAdministratorPermission", 0700)
+	_, err := os.Open("\\\\.\\PHYSICALDRIVE0")
 	if err != nil {
 		Log(Error, "P2P cannot run in daemon mode without Administrator privileges")
 		return false
 	}
-	syscall.Rmdir("C:\\Windows\\checkAdministratorPermission")
 	return true
 }
 
