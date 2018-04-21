@@ -15,6 +15,7 @@ import (
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/eventlog"
 	"golang.org/x/sys/windows/svc/mgr"
+
 )
 
 // Windows Platform specific constants
@@ -99,6 +100,11 @@ func InitPlatform() error {
 // CheckPermissions return true if started as root/administrator
 // TODO: Implement on Windows
 func CheckPermissions() bool {
+	_, err := os.Open("\\\\.\\PHYSICALDRIVE0")
+	if err != nil {
+		Log(Error, "P2P cannot run in daemon mode without Administrator privileges")
+		return false
+	}
 	return true
 }
 
