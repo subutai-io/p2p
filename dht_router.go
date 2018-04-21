@@ -54,6 +54,7 @@ func (dht *DHTRouter) handleData(data []byte, length int) {
 	dht.rx += uint64(length)
 	i := 0
 	handled := 0
+	ptp.Log(ptp.Trace, "Handling data: data length is [%d], suggested length is [%d]", len(data), length)
 	for i >= 0 {
 		i = bytes.Index(data, []byte{0x0a, 0x0b, 0x0c, 0x0a})
 		if i <= 0 {

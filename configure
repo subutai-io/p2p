@@ -131,6 +131,7 @@ if [ "$argOS" != "windows" ]; then
     fi
 
     go get
+    go get -u github.com/golang/protobuf/proto
 
 fi
 
