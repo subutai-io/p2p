@@ -46,15 +46,16 @@ func (dht *DHTRouter) run() {
 			continue
 		}
 		dht.lastContact = time.Now()
-		go dht.handleData(data, n)
+		go dht.handleData(data[:n])
 	}
 }
 
-func (dht *DHTRouter) handleData(data []byte, length int) {
+func (dht *DHTRouter) handleData(data []byte) {
+	length := len(data)
 	dht.rx += uint64(length)
 	i := 0
 	handled := 0
-	ptp.Log(ptp.Trace, "Handling data: data length is [%d], suggested length is [%d]", len(data), length)
+	ptp.Log(ptp.Trace, "Handling data: data length is [%d]", len(data))
 	for i >= 0 {
 		i = bytes.Index(data, []byte{0x0a, 0x0b, 0x0c, 0x0a})
 		if i <= 0 {
