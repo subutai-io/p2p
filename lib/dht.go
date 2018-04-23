@@ -39,7 +39,7 @@ type DHTClient struct {
 	IP            net.IP                        // IP of local interface received from DHCP or specified manually
 	Network       *net.IPNet                    // Network information about current network. Used to inform p2p about mask for interface
 	Connected     bool                          // Whether connection with bootstrap nodes established or not
-	//isShutdown        bool                          // Whether DHT shutting down or not
+	//isShutdown        bool                      // Whether DHT shutting down or not
 	LastUpdate        time.Time // When last `find` packet was sent
 	OutboundIP        net.IP    // Outbound IP
 	ListenerIsRunning bool      // True if listener is runnning
@@ -80,6 +80,9 @@ func (dht *DHTClient) Connect(ipList []net.IP, proxyList []*proxyServer) error {
 	ips := []string{}
 	proxies := []string{}
 	for _, ip := range ipList {
+		if ip == nil {
+			continue
+		}
 		skip := false
 		for _, a := range ActiveInterfaces {
 			if a.Equal(ip) {
@@ -123,7 +126,7 @@ func (dht *DHTClient) Connect(ipList []net.IP, proxyList []*proxyServer) error {
 
 func (dht *DHTClient) read() (*DHTPacket, error) {
 	if dht.IncomingData == nil {
-		return nil, fmt.Errorf("Trying to DHTPacket receive from closed channel")
+		return nil, fmt.Errorf("Trying to receive DHTPacket from closed channel")
 	}
 	packet := <-dht.IncomingData
 	if packet == nil {
@@ -132,7 +135,7 @@ func (dht *DHTClient) read() (*DHTPacket, error) {
 	return packet, nil
 }
 
-// Sends bytes to all connected bootstrap nodes
+// send sends bytes to all connected bootstrap nodes
 func (dht *DHTClient) send(packet *DHTPacket) error {
 	// if dht.OutgoingData != nil && !dht.isShutdown {
 	if dht.OutgoingData != nil {
@@ -169,8 +172,7 @@ func (dht *DHTClient) send(packet *DHTPacket) error {
 	return nil
 }
 
-// This method will send request for network peers known to BSN
-// As a response BSN will send array of IDs of peers in this swarm
+// sendFind will send request for network peers known to BSN. As a response BSN will send array of IDs of peers in this swarm
 func (dht *DHTClient) sendFind() error {
 	dht.LastUpdate = time.Now()
 	if dht.NetworkHash == "" {
@@ -186,7 +188,7 @@ func (dht *DHTClient) sendFind() error {
 	return dht.send(packet)
 }
 
-// This method will send request of IPs of particular peer known to BSN
+// sendNode will send request of IPs of particular peer known to BSN
 func (dht *DHTClient) sendNode(id string, ipList []net.IP) error {
 	if len(id) != 36 {
 		return fmt.Errorf("Failed to send node: Malformed ID %s", id)
@@ -266,6 +268,9 @@ func (dht *DHTClient) sendProxy() error {
 }
 
 func (dht *DHTClient) sendRequestProxy(id string) error {
+	if len(id) != 36 {
+		return fmt.Errorf("Failed to send requst proxy: Malformed ID")
+	}
 	packet := &DHTPacket{
 		Type:     DHTPacketType_RequestProxy,
 		Id:       dht.ID,
@@ -291,8 +296,7 @@ func (dht *DHTClient) sendReportProxy(addr []*net.UDPAddr) error {
 	return dht.send(packet)
 }
 
-// Close will close all connections and switch DHT object to
-// shutdown mode, which will terminate every loop/goroutine
+// Close will close all connections and switch DHT object to shutdown mode, which will terminate every loop/goroutine
 func (dht *DHTClient) Close() error {
 	if dht.IncomingData != nil {
 		close(dht.IncomingData)
@@ -306,8 +310,8 @@ func (dht *DHTClient) Close() error {
 	return nil
 }
 
-// WaitID will block DHT until valid instance ID is received from Bootstrap node
-// or specified timeout passes.
+// TODO: Refactor
+// WaitID will block DHT until valid instance ID is received from Bootstrap node or specified timeout passes.
 func (dht *DHTClient) WaitID() error {
 	started := time.Now()
 	period := time.Duration(time.Second * 10)
@@ -324,8 +328,8 @@ func (dht *DHTClient) WaitID() error {
 	return nil
 }
 
-// RegisterProxy will register current node as a proxy on
-// bootstrap node
+// TODO: Refactor
+// RegisterProxy will register current node as a proxy on bootstrap node
 func (dht *DHTClient) RegisterProxy(ip net.IP, port int) error {
 	id, err := uuid.NewTimeBased()
 	if err != nil {
@@ -342,6 +346,7 @@ func (dht *DHTClient) RegisterProxy(ip net.IP, port int) error {
 	return dht.send(packet)
 }
 
+// TODO: Refactor
 // ReportLoad will send amount of tunnels created on particular proxy
 func (dht *DHTClient) ReportLoad(clientsNum int) error {
 	return nil
