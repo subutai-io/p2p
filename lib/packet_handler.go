@@ -163,6 +163,23 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	peer.PeerLocalIP = hs.IP
 	peer.LastContact = time.Now()
 	peer.addEndpoint(hs.Endpoint)
+	for _, np := range p.Peers.Get() {
+		if np.ID == peer.ID {
+			continue
+		}
+		if np.PeerHW.String() == peer.PeerHW.String() {
+			Log(Warning, "%s: Duplicate MAC has been detected on peer %s. Disconnecting it", peer.ID, np.ID)
+			np.SetState(PeerStateDisconnect, p)
+			continue
+		}
+		for _, ep := range np.EndpointsHeap {
+			if ep.Addr.String() == hs.Endpoint.String() {
+				Log(Warning, "%s: Endpoint %s was used by another peer %s. Disconnecting it.", peer.ID, ep.Addr.String(), np.ID)
+				np.SetState(PeerStateDisconnect, p)
+				break
+			}
+		}
+	}
 	//peer.Endpoints = append(peer.Endpoints, PeerEndpoint{Addr: hs.Endpoint, LastContact: time.Now()})
 	// peer.SetState(PeerStateConnected, p)
 	p.Peers.Update(hs.ID, peer)
