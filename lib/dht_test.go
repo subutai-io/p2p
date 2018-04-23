@@ -54,11 +54,49 @@ func TestInit(t *testing.T) {
 	dht := new(DHTClient)
 	err := dht.Init("hash")
 	if err != nil {
-		t.Errorf("Error in TCPInit")
+		t.Errorf("Failed to init (1): %v", err)
 	}
-	err1 := dht.Init("hash")
-	if err1 != nil {
-		t.Errorf("Error. Wait %v, get %v", "dht.cdn.subut.ai:6881", dht.Routers)
+	err = dht.Init("hash")
+	if err != nil {
+		t.Errorf("Failed to init(2): %v. Expected %v, got %v", err, "dht.cdn.subut.ai:6881", dht.Routers)
+	}
+}
+
+func TestConnect(t *testing.T) {
+
+}
+
+func TestRead(t *testing.T) {
+	dht := new(DHTClient)
+	dht.IncomingData = nil
+	_, err := dht.read()
+	if err == nil {
+		t.Errorf("Failed to read (1): must have returned non-nil but returned nil")
+	}
+	dht.IncomingData = make(chan *DHTPacket)
+	go func() {
+		dht.IncomingData <- new(DHTPacket)
+	}()
+	packet, err := dht.read()
+	close(dht.IncomingData)
+	if err != nil {
+		t.Errorf("Failed to read (2): %v", err)
+	}
+	if packet == nil {
+		t.Errorf("Failed to read (3): must have returned non-nil packet but returned nil packet")
+	}
+	packet = nil
+	dht.IncomingData = make(chan *DHTPacket)
+	go func() {
+		dht.IncomingData <- packet
+	}()
+	packet, err = dht.read()
+	close(dht.IncomingData)
+	if err == nil {
+		t.Errorf("Failed to read (4): must have returned non-nil but returned nil")
+	}
+	if packet != nil {
+		t.Errorf("Failed to read (5): must have returned nil packet but returned non-nil packet")
 	}
 }
 

@@ -111,7 +111,7 @@ func (dht *DHTClient) Connect(ipList []net.IP, proxyList []*proxyServer) error {
 	}
 	// Waiting for 3 seconds to get connection confirmation
 	sent := time.Now()
-	for time.Since(sent) < time.Duration(5000*time.Millisecond) {
+	for time.Since(sent) < time.Duration(5000 * time.Millisecond) {
 		if dht.Connected {
 			return nil
 		}
@@ -122,6 +122,9 @@ func (dht *DHTClient) Connect(ipList []net.IP, proxyList []*proxyServer) error {
 }
 
 func (dht *DHTClient) read() (*DHTPacket, error) {
+	if dht.IncomingData == nil {
+		return nil, fmt.Errorf("Trying to DHTPacket receive from closed channel")
+	}
 	packet := <-dht.IncomingData
 	if packet == nil {
 		return nil, fmt.Errorf("Received nil packet: channel is closed")
