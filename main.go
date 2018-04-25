@@ -14,7 +14,7 @@ import (
 // AppVersion is a Version of P2P
 var AppVersion = "Unknown"
 var BuildID = "Unknown"
-var DefaultDHT = "mdht.subut.ai:6881"
+var DefaultDHT = "eu0.cdn.subutai.io:6881"
 var DefaultLog = "INFO"
 
 // InterfaceNames - List of all interfaces names that was used by p2p historically. These interfaces may not present in the system anymore
