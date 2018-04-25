@@ -14,7 +14,7 @@ import (
 // AppVersion is a Version of P2P
 var AppVersion = "Unknown"
 var BuildID = "Unknown"
-var DefaultDHT = "mdht.subut.ai:6881"
+var DefaultDHT = "eu0.cdn.subutai.io:6881"
 var DefaultLog = "INFO"
 
 // InterfaceNames - List of all interfaces names that was used by p2p historically. These interfaces may not present in the system anymore
@@ -104,6 +104,12 @@ func main() {
 					Destination: &RPCPort,
 				},
 				cli.StringFlag{
+					Name:        "dht",
+					Usage:       "Comma-separated list of endpoints",
+					Value:       DefaultDHT,
+					Destination: &DHTRouters,
+				},
+				cli.StringFlag{
 					Name:        "save",
 					Usage:       "Path to save/restore instance data file",
 					Value:       "",
@@ -123,7 +129,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				ExecDaemon(RPCPort, SaveFile, Profiling, Syslog)
+				ExecDaemon(RPCPort, DHTRouters, SaveFile, Profiling, Syslog)
 				return nil
 			},
 		},
@@ -190,7 +196,7 @@ func main() {
 				},
 				cli.StringFlag{
 					Name:        "dht",
-					Usage:       "Comman-separated list of DHT bootstrap nodes",
+					Usage:       "[Deprecated] Comman-separated list of DHT bootstrap nodes",
 					Value:       "",
 					Destination: &DHTRouters,
 				},
@@ -231,7 +237,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				CommandStart(RPCPort, IP, Infohash, Mac, InterfaceName, DHTRouters, Keyfile, Key, Until, UseForwarders, UDPPort)
+				CommandStart(RPCPort, IP, Infohash, Mac, InterfaceName, Keyfile, Key, Until, UseForwarders, UDPPort)
 				return nil
 			},
 		},
