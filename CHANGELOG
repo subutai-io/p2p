@@ -1,5 +1,23 @@
 # Change Log
 
+## [6.3.2] 04/25/2018
+
+* Removed references to previous DHT URLs
+* Fixed daemon start on windows
+* --dht flag has been deprecated on start command
+* --dht flag has been added to daemon
+* Forced peer disconnect when same MAC or endpoints are active on another peer
+* Added Administrator permission checks for Windows platform
+* Modified DHT buffer size from 1K to 4K
+* Fixed issue with wrong data length on DHT packets
+* Added a goroutine to wait for active bootstrap connection on daemon start
+* Fixed environments restore from file
+* Fixed DHT disconnect after computer sleep
+* Fixed Bug with Splitting DHT Packets
+* Added Swagger REST API
+* Faster ARP data extraction
+* Increased test coverage
+
 ## [6.3.1] 04/09/2018
 
 * Improved connection for local and internet peers
