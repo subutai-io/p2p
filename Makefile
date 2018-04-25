@@ -8,13 +8,6 @@ BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
 NAME_PREFIX=p2p
 NAME_BASE=p2p
 SOURCES=instance.go main.go rest.go start.go stop.go show.go set.go status.go debug.go daemon.go dht_connection.go dht_router.go
-#DHT=mdht.subut.ai:6881
-#ifeq ($(BRANCH),HEAD)
-#	DHT=mdht.subut.ai:6881
-#	SCHEME=
-#else
-#	SCHEME=-$(BRANCH)
-#endif
 
 
 sinclude config.make
