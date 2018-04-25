@@ -158,7 +158,7 @@ func (p *PeerToPeer) IsIPv4(ip string) bool {
 }
 
 // New is an entry point of a P2P library.
-func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int, ignoreIPs []string, outboundIP net.IP) *PeerToPeer {
+func New(argIP, argMac, argDev, argDirect, argHash, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int, ignoreIPs []string, outboundIP net.IP) *PeerToPeer {
 	//argDht = "mdht.subut.ai:6881"
 	Log(Debug, "Starting new P2P Instance: %s", argHash)
 	Log(Debug, "IP: %s", argIP)
@@ -201,7 +201,6 @@ func New(argIP, argMac, argDev, argDirect, argHash, argDht, argKeyfile, argKey, 
 	}
 
 	p.Hash = argHash
-	p.Routers = argDht
 
 	p.setupHandlers()
 

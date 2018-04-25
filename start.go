@@ -12,7 +12,7 @@ import (
 )
 
 // CommandStart will create new P2P instance
-func CommandStart(restPort int, ip, hash, mac, dev, dht, keyfile, key, ttl string, fwd bool, port int) {
+func CommandStart(restPort int, ip, hash, mac, dev, keyfile, key, ttl string, fwd bool, port int) {
 	args := &DaemonArgs{}
 	args.IP = ip
 	if hash == "" {
@@ -33,14 +33,6 @@ func CommandStart(restPort int, ip, hash, mac, dev, dht, keyfile, key, ttl strin
 	}
 	args.Mac = mac
 	args.Dev = dev
-	if dht != "" {
-		_, err := net.ResolveUDPAddr("udp4", dht)
-		if err != nil {
-			fmt.Printf("Invalid DHT node address provided. Please specify correct DHT address in form HOST:PORT\n")
-			os.Exit(14)
-		}
-	}
-	args.Dht = dht
 	args.Keyfile = keyfile
 	args.Key = key
 	args.TTL = ttl
@@ -101,7 +93,6 @@ func (d *Daemon) execRESTStart(w http.ResponseWriter, r *http.Request) {
 
 // Run starts a P2P instance
 func (d *Daemon) run(args *RunArgs, resp *Response) error {
-	args.Dht = DefaultDHT
 	resp.ExitCode = 0
 	resp.Output = "Running new P2P instance for " + args.Hash + "\n"
 
@@ -137,7 +128,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		newInst := new(P2PInstance)
 		newInst.ID = args.Hash
 		newInst.Args = *args
-		newInst.PTP = ptp.New(args.IP, args.Mac, args.Dev, "", args.Hash, args.Dht, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port, usedIPs, OutboundIP)
+		newInst.PTP = ptp.New(args.IP, args.Mac, args.Dev, "", args.Hash, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port, usedIPs, OutboundIP)
 		if newInst.PTP == nil {
 			resp.Output = resp.Output + "Failed to create P2P Instance"
 			resp.ExitCode = 1

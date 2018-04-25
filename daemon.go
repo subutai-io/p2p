@@ -1,14 +1,21 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"os/signal"
 	"runtime/pprof"
+	"strings"
 	"time"
 
 	ptp "github.com/subutai-io/p2p/lib"
+)
+
+var (
+	errEmptyDHTEndpoint = errors.New("DHT endpoint wasn't specified")
+	errBadDHTEndpoint   = errors.New("Endpoint have wrong format")
 )
 
 type DaemonArgs struct {
@@ -33,7 +40,10 @@ type DaemonArgs struct {
 var bootstrap DHTConnection
 
 // ExecDaemon starts P2P daemon
-func ExecDaemon(port int, sFile, profiling, syslog string) {
+func ExecDaemon(port int, dht, sFile, profiling, syslog string) {
+	if validateDHT(dht) != nil {
+		os.Exit(213)
+	}
 	if syslog != "" {
 		ptp.SetSyslogSocket(syslog)
 	}
@@ -59,7 +69,7 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 
 	ReadyToServe = false
 
-	err := bootstrap.init(DefaultDHT)
+	err := bootstrap.init(dht)
 	if err != nil {
 		ptp.Log(ptp.Error, "Failed to initialize bootstrap node connection")
 		os.Exit(152)
@@ -139,4 +149,20 @@ func ExecDaemon(port int, sFile, profiling, syslog string) {
 		}
 	}()
 	select {}
+}
+
+func validateDHT(dht string) error {
+	if dht == "" {
+		ptp.Log(ptp.Error, "Empty bootstrap list")
+		return errEmptyDHTEndpoint
+	}
+	eps := strings.Split(dht, ",")
+	for _, ep := range eps {
+		_, err := net.ResolveTCPAddr("tcp4", ep)
+		if err != nil {
+			ptp.Log(ptp.Error, "Bootstrap %s have bad format or wrong address: %s", ep, err)
+			return errBadDHTEndpoint
+		}
+	}
+	return nil
 }
