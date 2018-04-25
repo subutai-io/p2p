@@ -12,7 +12,6 @@ Building
 
 p2p is shipped with a Makefile, so building it a pretty easy task. You just run
 ```
-./configure
 make
 ``` 
 command to buld a single binary for current platform or you can try to
