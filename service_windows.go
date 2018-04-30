@@ -17,7 +17,6 @@ func (m *P2PService) Execute(args []string, r <-chan svc.ChangeRequest, changes 
 	go ExecDaemon(52523, DefaultDHT, "", "", "")
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPauseAndContinue
 	changes <- svc.Status{State: svc.StartPending}
-
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 loop:
 	for {
@@ -26,14 +25,15 @@ loop:
 			switch c.Cmd {
 			case svc.Interrogate:
 				changes <- c.CurrentStatus
-				changes <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown:
+				changes <- svc.Status{State: svc.StopPending}
 				changes <- svc.Status{State: svc.Stopped, Accepts: cmdsAccepted}
-				SignalChannel <- os.Interrupt
 				break loop
 			case svc.Pause:
+				changes <- svc.Status{State: svc.PausePending}
 				changes <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
 			case svc.Continue:
+				changes <- svc.Status{State: svc.ContinuePending}
 				changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 			default:
 				ptp.Log(ptp.Error, "Unexpected control request #%d", c)
