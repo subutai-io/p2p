@@ -39,6 +39,10 @@ var (
 // InitPlatform initializes Windows platform-specific parameters
 func InitPlatform() error {
 	Log(Info, "Initializing Windows Platform")
+	if _, err := os.Stat(TapTool); os.IsNotExist(err) {
+		Log(Error, "TAP-Windows 9.2x is not installed. Go to https://openvpn.net/index.php/open-source/downloads.html and download the latest version")
+		return fmt.Errorf("TAP-Windows 9.2x is not installed")
+	}
 	// Remove interfaces
 	remove := exec.Command(TapTool, "remove", TapID)
 	err := remove.Run()
