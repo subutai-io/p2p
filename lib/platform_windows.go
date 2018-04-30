@@ -28,17 +28,22 @@ const (
 )
 
 var (
-	errorFailedToRemoveInterfaces   = errors.New("Failed to remove TAP interfaces")
-	errorFailedToCreateInterface    = errors.New("Failed to create interface")
-	errorObjectCreationFailed       = errors.New("Failed to create TAP object")
-	errorFailedToRetrieveNetworkKey = errors.New("Failed to retrieve network key from registry")
-	errorFailedToQueryInterface     = errors.New("Failed to query network interface")
-	errorPreconfigurationFailed     = errors.New("Interface pre-configuration failed")
+	errorTAPIsNotInstalled			= errors.New("TAP-Windows 9.2x is not installed")
+	errorFailedToRemoveInterfaces		= errors.New("Failed to remove TAP interfaces")
+	errorFailedToCreateInterface		= errors.New("Failed to create interface")
+	errorObjectCreationFailed		= errors.New("Failed to create TAP object")
+	errorFailedToRetrieveNetworkKey		= errors.New("Failed to retrieve network key from registry")
+	errorFailedToQueryInterface		= errors.New("Failed to query network interface")
+	errorPreconfigurationFailed		= errors.New("Interface pre-configuration failed")
 )
 
 // InitPlatform initializes Windows platform-specific parameters
 func InitPlatform() error {
 	Log(Info, "Initializing Windows Platform")
+	if _, err := os.Stat(TapTool); os.IsNotExist(err) {
+		Log(Error, "TAP-Windows 9.2x is not installed. Go to https://openvpn.net/index.php/open-source/downloads.html and download the latest version. Close P2P now as it will not run properly")
+		return errorTAPIsNotInstalled
+	}
 	// Remove interfaces
 	remove := exec.Command(TapTool, "remove", TapID)
 	err := remove.Run()
