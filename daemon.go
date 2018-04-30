@@ -48,7 +48,11 @@ func ExecDaemon(port int, dht, sFile, profiling, syslog string) {
 		ptp.SetSyslogSocket(syslog)
 	}
 	StartProfiling(profiling)
-	ptp.InitPlatform()
+	err := ptp.InitPlatform()
+	if err != nil {
+		ptp.Log(ptp.Error, "An error occurred while initializing the platform: %v", err)
+		os.Exit(1717)
+	}
 	ptp.InitErrors()
 	if DefaultLog == "TRACE" {
 		ptp.SetMinLogLevel(ptp.Trace)
