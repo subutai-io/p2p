@@ -1,5 +1,9 @@
 # Change Log
 
+## [6.3.3] 04/30/2018
+
+* Fixed random crash
+
 ## [6.3.2] 04/25/2018
 
 * Removed references to previous DHT URLs
