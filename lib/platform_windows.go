@@ -41,7 +41,7 @@ var (
 func InitPlatform() error {
 	Log(Info, "Initializing Windows Platform")
 	if _, err := os.Stat(TapTool); os.IsNotExist(err) {
-		Log(Error, "TAP-Windows 9.2x is not installed. Go to https://openvpn.net/index.php/open-source/downloads.html and download the latest version")
+		Log(Error, "TAP-Windows 9.2x is not installed. Go to https://openvpn.net/index.php/open-source/downloads.html and download the latest version. Close P2P now as it will not run properly")
 		return errorTAPIsNotInstalled
 	}
 	// Remove interfaces
