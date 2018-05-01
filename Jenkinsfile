@@ -181,7 +181,7 @@ try {
 
 			String plain_version = sh (script: """
 					cat VERSION
-					""", returnStdout: true
+					""", returnStdout: true)
 
 			String date = new Date().format( 'yyyyMMddHHMMSS' )
 			def p2p_version = "${plain_version}+${date}"
