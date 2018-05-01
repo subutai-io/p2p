@@ -5,21 +5,25 @@ p2pCommitId = ""
 cdnHost = ""
 dhtHost = ""
 gitcmd = ""
+p2p_log_level = "INFO"
 
 switch (env.BRANCH_NAME) {
 	case ~/master/: 
 		cdnHost = "mastercdn.subutai.io"; 
 		dhtHost = "eu0.mastercdn.subutai.io:6881"
+		p2p_log_level = "DEBUG"
 		break;
 	case ~/dev/:
 		cdnHost = "devcdn.subutai.io";
 		dhtHost = "eu0.devcdn.subutai.io:6881";
         gitcmd = "git checkout -B dev && git pull origin dev"
+		p2p_log_level = "DEBUG"
         break;
 	case ~/sysnet/:
 		cdnHost = "sysnetcdn.subutai.io";
 		dhtHost = "eu0.sysnetcdn.subutai.io:6881";
         gitcmd = "git checkout -B sysnet && git pull origin sysnet "
+		p2p_log_level = "TRACE"
         break;
 	default: 
 		cdnHost = "cdn.subutai.io";
@@ -172,6 +176,58 @@ try {
 					"""
 				}
 			}
+		}
+
+		node("deb") {
+			notifyBuild('INFO', "Building Debian Package")
+			stage("Building Debian")
+			notifyBuildDetails = "\nFailed on stage - Building Debian Package"
+
+			String date = new Date().format( 'yyyyMMddHHMMSS' )
+			
+			def CWD = pwd()
+
+			sh """
+			rm -rf ${CWD}/p2p
+			git clone https://github.com/subutai-io/p2p
+			cd ${CWD}/p2p
+			git checkout --track origin/${env.BRANCH_NAME} && rm -rf .git*
+			"""
+
+			String plain_version = sh (script: """
+					cat ${CWD}/p2p/VERSION | tr -d '\n'
+					""", returnStdout: true)
+			def p2p_version = "${plain_version}+${date}"
+
+			sh """
+			cd ${CWD}/p2p
+			sed -i 's/quilt/native/' debian/source/format
+			sed -i 's/DHT_ENDPOINT/${dhtHost}/' debian/rules
+			sed -i 's/DEFAULT_LOG_LEVEL/${p2p_log_level}/' debian/rules
+			dch -v '${p2p_version}' -D stable 'Test build for ${p2p_version}' 1>/dev/null 2>/dev/null
+			"""
+
+			stage("Build P2P package")
+			notifyBuildDetails = "\nFailed on Stage - Build package"
+			sh """
+			cd p2p
+			dpkg-buildpackage -rfakeroot
+			cd ${CWD} || exit 1
+			for i in *.deb; do
+				echo '\$i:';
+				dpkg -c \$i;
+			done
+			"""
+
+			stage("Upload Packages")
+			notifyBuildDetails = "\nFailed on Stage - Upload"
+			sh """
+			cd ${CWD}
+			touch uploading_agent
+			scp uploading_agent subutai*.deb dak@deb.subutai.io:incoming/${env.BRANCH_NAME}/
+			ssh dak@deb.subutai.io sh /var/reprepro/scripts/scan-incoming.sh ${env.BRANCH_NAME} agent
+			"""
+
 		}
 
 		if (env.BRANCH_NAME == 'master') {
