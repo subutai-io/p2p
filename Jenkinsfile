@@ -5,21 +5,25 @@ p2pCommitId = ""
 cdnHost = ""
 dhtHost = ""
 gitcmd = ""
+p2p_log_level = "INFO"
 
 switch (env.BRANCH_NAME) {
 	case ~/master/: 
 		cdnHost = "mastercdn.subutai.io"; 
 		dhtHost = "eu0.mastercdn.subutai.io:6881"
+		p2p_log_level = "DEBUG"
 		break;
 	case ~/dev/:
 		cdnHost = "devcdn.subutai.io";
 		dhtHost = "eu0.devcdn.subutai.io:6881";
         gitcmd = "git checkout -B dev && git pull origin dev"
+		p2p_log_level = "DEBUG"
         break;
 	case ~/sysnet/:
 		cdnHost = "sysnetcdn.subutai.io";
 		dhtHost = "eu0.sysnetcdn.subutai.io:6881";
         gitcmd = "git checkout -B sysnet && git pull origin sysnet "
+		p2p_log_level = "TRACE"
         break;
 	default: 
 		cdnHost = "cdn.subutai.io";
