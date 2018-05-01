@@ -28,13 +28,6 @@ tests/*
 *.docs
 *.substvars
 *.deb
-debian/debhelper-build-stamp
-debian/files
-debian/subutai-*
-debian/postinst
-debian/changelog
-debian/control
-debian/extra-code
 darwin/*.pkg
 darwin/flat
 darwin/root

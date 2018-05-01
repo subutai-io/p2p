@@ -174,6 +174,56 @@ try {
 			}
 		}
 
+		node("deb") {
+			notifyBuild('INFO', "Building Debian Package")
+			stage("Building Debian")
+			notifyBuildDetails = "\nFailed on stage - Building Debian Package"
+
+			String plain_version = sh (script: """
+					cat VERSION
+					""", returnStdout: true)
+
+			String date = new Date().format( 'yyyyMMddHHMMSS' )
+			def p2p_version = "${plain_version}+${date}"
+			def CWD = pwd()
+
+			sh """
+			git clone https://github.com/subutai-io/p2p
+			cd p2p
+			git checkout --track origin/${env.BRANCH_NAME} && rm -rf .git*
+			"""
+
+			sh """
+			cd p2p
+			sed -i 's/quilt/native/' debian/source/format
+			sed -i 's/DHT_ENDPOINT/${dhtHost}/' debian/rules
+			sed -i 's/DEFAULT_LOG_LEVEL/${p2p_log_level}/' debian/rules
+			dch -v '${p2p_version}' -D stable 'Test build for ${p2p_version}' 1>/dev/null 2>/dev/null
+			"""
+
+			stage("Build P2P package")
+			notifyBuildDetails = "\nFailed on Stage - Build package"
+			sh """
+			cd p2p
+			dpkg-buildpackage -rfakeroot
+			cd ${CWD} || exit 1
+			for i in *.deb; do
+				echo '\$i:';
+				dpkg -c \$i;
+			done
+			"""
+
+			stage("Upload Packages")
+			notifyBuildDetails = "\nFailed on Stage - Upload"
+			sh """
+			cd ${CWD}
+			touch uploading_agent
+			scp uploading_agent subutai*.deb dak@deb.subutai.io:incoming/${release}/
+			ssh dak@deb.subutai.io sh /var/reprepro/scripts/scan-incoming.sh ${release} agent
+			"""
+
+		}
+
 		if (env.BRANCH_NAME == 'master') {
 			node("debian") {
 				notifyBuild('INFO', "Packaging P2P for Debian")
