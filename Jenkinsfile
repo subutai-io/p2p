@@ -182,7 +182,7 @@ try {
 			
 
 			String date = new Date().format( 'yyyyMMddHHMMSS' )
-			def p2p_version = "${plain_version}+${date}"
+			
 			def CWD = pwd()
 
 			sh """
@@ -194,6 +194,7 @@ try {
 			String plain_version = sh (script: """
 					cat ${CWD}/p2p/VERSION
 					""", returnStdout: true)
+			def p2p_version = "${plain_version}+${date}"
 
 			sh """
 			cd ${CWD}/p2p
