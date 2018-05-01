@@ -1,0 +1,18 @@
+Source: subutai-p2p
+Section: utils
+Priority: optional
+Maintainer: Aron Xu <happyaron.xu@gmail.com>
+Build-Depends: debhelper (>= 10), dh-golang, dh-systemd, golang-any, golang-goprotobuf-dev,
+               golang-github-ccding-go-stun-dev, golang-github-nebulouslabs-go-upnp-dev,
+               golang-github-urfave-cli-dev,golang-github-nebulouslabs-fastrand-dev,
+               golang-github-google-gofuzz-dev,
+               golang-github-mdlayher-ethernet-dev, golang-github-wayn3h0-go-uuid-dev,
+Standards-Version: 4.1.3
+Homepage: http://github.com/subutai-io/p2p
+XS-Go-Import-Path: github.com/subutai-io/p2p
+
+Package: subutai-p2p
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: p2p component of subutai
+ P2P Cloud project allows users to build their private networks.
