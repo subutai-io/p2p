@@ -193,6 +193,9 @@ func (t *TAPDarwin) MarkConfigured() {
 
 // FilterInterface will return true if this interface needs to be filtered out
 func FilterInterface(infName, infIP string) bool {
+	if len(infIP) > 4 && infIP[0:3] == "172" {
+		return true
+	}
 	Log(Info, "ping -t 1 -c 1 -S %s ptest.subutai.io", infIP)
 	ping := exec.Command("ping", "-t", "1", "-c", "1", "-S", infIP, "ptest.subutai.io")
 	if ping.Run() != nil {
