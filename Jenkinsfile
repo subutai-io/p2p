@@ -191,8 +191,13 @@ try {
 			rm -rf ${CWD}/p2p
 			git clone https://github.com/subutai-io/p2p
 			cd ${CWD}/p2p
-			git checkout --track origin/${env.BRANCH_NAME} && rm -rf .git*
 			"""
+
+			if (env.BRANCH_NAME != 'master') {
+				sh """
+				git checkout --track origin/${env.BRANCH_NAME} && rm -rf .git*
+				"""
+			}
 
 			String plain_version = sh (script: """
 					cat ${CWD}/p2p/VERSION | tr -d '\n'
