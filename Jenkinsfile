@@ -195,7 +195,7 @@ try {
 			"""
 
 			String plain_version = sh (script: """
-					cat ${CWD}/p2p/VERSION
+					cat ${CWD}/p2p/VERSION | tr -d '\n'
 					""", returnStdout: true)
 			def p2p_version = "${plain_version}+${date}"
 
