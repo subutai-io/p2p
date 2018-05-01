@@ -179,9 +179,7 @@ try {
 			stage("Building Debian")
 			notifyBuildDetails = "\nFailed on stage - Building Debian Package"
 
-			String plain_version = sh (script: """
-					cat VERSION
-					""", returnStdout: true)
+			
 
 			String date = new Date().format( 'yyyyMMddHHMMSS' )
 			def p2p_version = "${plain_version}+${date}"
@@ -189,12 +187,16 @@ try {
 
 			sh """
 			git clone https://github.com/subutai-io/p2p
-			cd p2p
+			cd ${CWD}/p2p
 			git checkout --track origin/${env.BRANCH_NAME} && rm -rf .git*
 			"""
 
+			String plain_version = sh (script: """
+					cat ${CWD}/p2p/VERSION
+					""", returnStdout: true)
+
 			sh """
-			cd p2p
+			cd ${CWD}/p2p
 			sed -i 's/quilt/native/' debian/source/format
 			sed -i 's/DHT_ENDPOINT/${dhtHost}/' debian/rules
 			sed -i 's/DEFAULT_LOG_LEVEL/${p2p_log_level}/' debian/rules
