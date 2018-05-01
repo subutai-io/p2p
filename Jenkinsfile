@@ -183,13 +183,12 @@ try {
 			stage("Building Debian")
 			notifyBuildDetails = "\nFailed on stage - Building Debian Package"
 
-			
-
 			String date = new Date().format( 'yyyyMMddHHMMSS' )
 			
 			def CWD = pwd()
 
 			sh """
+			rm -rf ${CWD}/p2p
 			git clone https://github.com/subutai-io/p2p
 			cd ${CWD}/p2p
 			git checkout --track origin/${env.BRANCH_NAME} && rm -rf .git*
