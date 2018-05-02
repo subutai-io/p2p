@@ -128,7 +128,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		newInst := new(P2PInstance)
 		newInst.ID = args.Hash
 		newInst.Args = *args
-		newInst.PTP = ptp.New(args.IP, args.Mac, args.Dev, "", args.Hash, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port, usedIPs, OutboundIP)
+		newInst.PTP = ptp.New(args.IP, args.Mac, args.Dev, "", args.Hash, args.Keyfile, args.Key, args.TTL, "", args.Fwd, args.Port, usedIPs, OutboundIP, bootstrap.routersList)
 		if newInst.PTP == nil {
 			resp.Output = resp.Output + "Failed to create P2P Instance"
 			resp.ExitCode = 1

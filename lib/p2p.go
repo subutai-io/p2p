@@ -158,11 +158,12 @@ func (p *PeerToPeer) IsIPv4(ip string) bool {
 }
 
 // New is an entry point of a P2P library.
-func New(argIP, argMac, argDev, argDirect, argHash, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int, ignoreIPs []string, outboundIP net.IP) *PeerToPeer {
+func New(argIP, argMac, argDev, argDirect, argHash, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int, ignoreIPs []string, outboundIP net.IP, routers string) *PeerToPeer {
 	Log(Debug, "Starting new P2P Instance: %s", argHash)
 	Log(Debug, "IP: %s", argIP)
 	Log(Debug, "Mac: %s", argMac)
 	p := new(PeerToPeer)
+	p.Routers = routers
 	p.outboundIP = outboundIP
 	p.Init()
 	var err error
@@ -206,7 +207,7 @@ func New(argIP, argMac, argDev, argDirect, argHash, argKeyfile, argKey, argTTL, 
 	p.UDPSocket = new(Network)
 	p.UDPSocket.Init("", port)
 	go p.UDPSocket.Listen(p.HandleP2PMessage)
-	go p.UDPSocket.KeepAlive(p.retrieveFirstDHTRouter())
+	go p.UDPSocket.KeepAlive(p.extractBestDHTRouter())
 	p.waitForRemotePort()
 
 	// Create new DHT Client, configure it and initialize
@@ -268,7 +269,7 @@ func (p *PeerToPeer) waitForRemotePort() {
 	Log(Warning, "Remote port received: %d", p.UDPSocket.remotePort)
 }
 
-func (p *PeerToPeer) retrieveFirstDHTRouter() *net.UDPAddr {
+func (p *PeerToPeer) extractBestDHTRouter() *net.UDPAddr {
 	Log(Debug, "Routers: %s", p.Routers)
 	routers := strings.Split(p.Routers, ",")
 	if len(routers) == 0 {
