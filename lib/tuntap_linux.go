@@ -286,6 +286,9 @@ func (t *TAPLinux) MarkConfigured() {
 
 // FilterInterface will return true if this interface needs to be filtered out
 func FilterInterface(infName, infIP string) bool {
+	if len(infIP) > 4 && infIP[0:3] == "172" {
+		return true
+	}
 	Log(Trace, "ping -4 -w 1 -c 1 -I %s ptest.subutai.io", infName)
 	ping := exec.Command("ping", "-4", "-w", "1", "-c", "1", "-I", infName, "ptest.subutai.io")
 	if ping.Run() != nil {
