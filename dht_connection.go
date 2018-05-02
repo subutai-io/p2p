@@ -19,13 +19,14 @@ var (
 
 // DHTConnection to a DHT bootstrap node
 type DHTConnection struct {
-	routers    []*DHTRouter            // Routers
-	lock       sync.Mutex              // Mutex for register/unregister
-	instances  map[string]*P2PInstance // Instances
-	registered []string                // List of registered swarm IDs
-	incoming   chan *ptp.DHTPacket     // Packets received by routers
-	ip         string                  // Our outbound IP
-	isActive   bool                    // Whether DHT connection is active or not
+	routers     []*DHTRouter            // Routers
+	routersList string                  // Comma-separated list of routers
+	lock        sync.Mutex              // Mutex for register/unregister
+	instances   map[string]*P2PInstance // Instances
+	registered  []string                // List of registered swarm IDs
+	incoming    chan *ptp.DHTPacket     // Packets received by routers
+	ip          string                  // Our outbound IP
+	isActive    bool                    // Whether DHT connection is active or not
 }
 
 func (dht *DHTConnection) init(routersSrc string) error {
@@ -50,6 +51,7 @@ func (dht *DHTConnection) init(routersSrc string) error {
 		router.data = dht.incoming
 		dht.routers = append(dht.routers, router)
 	}
+	dht.routersList = routersSrc
 	dht.instances = make(map[string]*P2PInstance)
 	return nil
 }
