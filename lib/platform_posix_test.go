@@ -1,10 +1,12 @@
+
+// +build !windows
+
 /*
 Generated TestInitPlatform
 Generated TestCheckPermissions
 Generated TestSyslog
 Generated TestSetupPlatform
 */
-// +build !windows
 
 package ptp
 

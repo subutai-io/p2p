@@ -142,18 +142,18 @@ func TestParseIntroString(t *testing.T) {
 /*
 Generated TestPeerToPeer_AssignInterface
 Generated TestPeerToPeer_ListenInterface
-Generated TestPeerToPeer_IsDeviceExists
-Generated TestPeerToPeer_GenerateDeviceName
-Generated TestPeerToPeer_IsIPv4
+Generated TestPeerToPeer_IsDeviceExists -> OK
+Generated TestPeerToPeer_GenerateDeviceName -> OK
+Generated TestPeerToPeer_IsIPv4 -> OK
 Generated TestNew
 Generated TestPeerToPeer_ReadDHT
 Generated TestPeerToPeer_waitForRemotePort
-Generated TestPeerToPeer_extractBestDHTRouter
+Generated TestPeerToPeer_extractBestDHTRouter -> OK
 Generated TestPeerToPeer_PrepareInterfaces
 Generated TestPeerToPeer_attemptPortForward
 Generated TestPeerToPeer_Init
-Generated TestPeerToPeer_validateMac
-Generated TestPeerToPeer_validateInterfaceName
+Generated TestPeerToPeer_validateMac -> OK
+Generated TestPeerToPeer_validateInterfaceName -> OK
 Generated TestPeerToPeer_setupHandlers
 Generated TestPeerToPeer_RequestIP
 Generated TestPeerToPeer_ReportIP
@@ -163,7 +163,7 @@ Generated TestPeerToPeer_removeStoppedPeers
 Generated TestPeerToPeer_checkProxies
 Generated TestPeerToPeer_PrepareIntroductionMessage
 Generated TestPeerToPeer_WriteToDevice
-Generated TestPeerToPeer_ParseIntroString
+Generated TestPeerToPeer_ParseIntroString -> OK
 Generated TestPeerToPeer_SendTo
 Generated TestPeerToPeer_Close
 package ptp

@@ -243,6 +243,10 @@ func Test_min(t *testing.T) {
 		args args
 		want int
 	}{
+		{"t-1", args{10, 20}, 10},
+		{"t-2", args{20, 10}, 10},
+		{"t-3", args{100, -100}, -100},
+		{"t-4", args{0, 0}, 0},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
