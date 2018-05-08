@@ -53,7 +53,7 @@ func SetMinLogLevelString(level string) error {
 	} else if level == "error" {
 		SetMinLogLevel(Error)
 	} else {
-		Log(Warning, "Unknown log level %s was provided. Supported log levels are:\ntrace\ndebug\ninfo\nwarning\nerror\n", level)
+		Log(Warning, "Unknown log level %s was provided. Supported log levels are: trace, debug, info, warning, error", level)
 		return fmt.Errorf("Could not set provided log level")
 	}
 	Log(Info, "Logging level has switched to %s level", level)

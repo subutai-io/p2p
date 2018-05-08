@@ -72,12 +72,7 @@ func (d *Daemon) SetLog(args *NameValueArg, resp *Response) error {
 			resp.Output = "Logging level has switched to " + args.Value + " level"
 		} else {
 			resp.ExitCode = 1
-			resp.Output = "Unknown log level was specified. Supported log levels is:\n"
-			resp.Output = resp.Output + "TRACE\n"
-			resp.Output = resp.Output + "DEBUG\n"
-			resp.Output = resp.Output + "INFO\n"
-			resp.Output = resp.Output + "WARNING\n"
-			resp.Output = resp.Output + "ERROR\n"
+			resp.Output = fmt.Sprintf("%v", err)
 		}
 	}
 	return nil
