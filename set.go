@@ -67,17 +67,9 @@ func (d *Daemon) SetLog(args *NameValueArg, resp *Response) error {
 	ptp.Log(ptp.Info, "Setting option %s to %s", args.Name, args.Value)
 	resp.ExitCode = 0
 	if args.Name == "log" {
-		resp.Output = "Logging level has switched to " + args.Value + " level"
-		if args.Value == "debug" {
-			ptp.SetMinLogLevel(ptp.Debug)
-		} else if args.Value == "info" {
-			ptp.SetMinLogLevel(ptp.Info)
-		} else if args.Value == "trace" {
-			ptp.SetMinLogLevel(ptp.Trace)
-		} else if args.Value == "warning" {
-			ptp.SetMinLogLevel(ptp.Warning)
-		} else if args.Value == "error" {
-			ptp.SetMinLogLevel(ptp.Error)
+		err := ptp.SetMinLogLevelString(args.Value)
+		if err == nil {
+			resp.Output = "Logging level has switched to " + args.Value + " level"
 		} else {
 			resp.ExitCode = 1
 			resp.Output = "Unknown log level was specified. Supported log levels is:\n"
