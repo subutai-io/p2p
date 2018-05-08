@@ -38,7 +38,9 @@ func SetMinLogLevel(level LogLevel) {
 }
 
 // MinLogLevel returns minimal log level
-func MinLogLevel() LogLevel { return logLevelMin }
+func MinLogLevel() LogLevel {
+	return logLevelMin
+}
 
 // Log writes a log message
 func Log(level LogLevel, format string, v ...interface{}) {

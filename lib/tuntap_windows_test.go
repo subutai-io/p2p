@@ -1,105 +1,74 @@
-package ptp
-
-import (
-	"testing"
-	"net"
-	"os"
-	"reflect"
-)
-
-func TestGetDeviceBase(t *testing.T) {
-	get := GetDeviceBase()
-	if get != "vptp" {
-		t.Error("Error. Return wrong value")
-	}
-}
-
-func TestGetConfigurationTool(t *testing.T) {
-	get := GetConfigurationTool()
-	wait := []string{"/sbin/ip", "/bin/ip", "/usr/bin/ip"}
-	for _, w := range wait {
-		if get == w {
-			return
-		}
-	}
-	t.Error("Error: ", get)
-}
-
-func TestNewTAP(t *testing.T) {
-	get1, err := newTAP("tool", "", "01:02:03:04:05:06", "255.255.255.0", 1)
-	if get1 != nil {
-		t.Error(err)
-	}
-	get2, err2 := newTAP("tool", "192.168.1.1", "-", "255.255.255.0", 1)
-	if get2 != nil {
-		t.Error(err2)
-	}
-}
 /*
+Generated TestGetDeviceBase
+Generated TestGetConfigurationTool
 Generated Test_newTAP
-Generated TestTAPLinux_GetName
-Generated TestTAPLinux_GetHardwareAddress
-Generated TestTAPLinux_GetIP
-Generated TestTAPLinux_GetMask
-Generated TestTAPLinux_GetBasename
-Generated TestTAPLinux_SetName
-Generated TestTAPLinux_SetHardwareAddress
-Generated TestTAPLinux_SetIP
-Generated TestTAPLinux_SetMask
-Generated TestTAPLinux_Init
-Generated TestTAPLinux_Open
-Generated TestTAPLinux_Close
-Generated TestTAPLinux_Configure
-Generated TestTAPLinux_ReadPacket
-Generated TestTAPLinux_WritePacket
-Generated TestTAPLinux_Run
-Generated TestTAPLinux_createInterface
-Generated TestTAPLinux_setMTU
-Generated TestTAPLinux_linkUp
-Generated TestTAPLinux_linkDown
-Generated TestTAPLinux_setIP
-Generated TestTAPLinux_setMac
-Generated TestTAPLinux_IsConfigured
-Generated TestTAPLinux_MarkConfigured
+Generated TestTAPWindows_GetName
+Generated TestTAPWindows_GetHardwareAddress
+Generated TestTAPWindows_GetIP
+Generated TestTAPWindows_GetMask
+Generated TestTAPWindows_GetBasename
+Generated TestTAPWindows_SetName
+Generated TestTAPWindows_SetHardwareAddress
+Generated TestTAPWindows_SetIP
+Generated TestTAPWindows_SetMask
+Generated TestTAPWindows_Init
+Generated TestTAPWindows_Open
+Generated TestTAPWindows_Close
+Generated TestTAPWindows_Configure
+Generated TestTAPWindows_Run
+Generated TestTAPWindows_ReadPacket
+Generated TestTAPWindows_WritePacket
+Generated TestTAPWindows_read
+Generated TestTAPWindows_write
+Generated TestTAPWindows_queryNetworkKey
+Generated TestTAPWindows_queryAdapters
+Generated TestTAPWindows_removeZeroes
+Generated TestTAPWindows_IsConfigured
+Generated TestTAPWindows_MarkConfigured
+Generated Test_tapControlCode
+Generated Test_controlCode
 Generated TestFilterInterface
+*/
+// +build windows
 
 package ptp
 
 import (
 	"net"
-	"os"
 	"reflect"
+	"syscall"
 	"testing"
 )
-*/
 
-/*
 func TestGetDeviceBase(t *testing.T) {
-	get := GetDeviceBase()
-	if get != "vptp" {
-		t.Error("Error. Return wrong value")
+	tests := []struct {
+		name string
+		want string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := GetDeviceBase(); got != tt.want {
+				t.Errorf("GetDeviceBase() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
 func TestGetConfigurationTool(t *testing.T) {
-	get := GetConfigurationTool()
-	wait := []string{"/sbin/ip", "/bin/ip", "/usr/bin/ip"}
-	for _, w := range wait {
-		if get == w {
-			return
-		}
+	tests := []struct {
+		name string
+		want string
+	}{
+		// TODO: Add test cases.
 	}
-	t.Error("Error: ", get)
-}
-
-func TestNewTAP(t *testing.T) {
-	get1, err := newTAP("tool", "", "01:02:03:04:05:06", "255.255.255.0", 1)
-	if get1 != nil {
-		t.Error(err)
-	}
-	get2, err2 := newTAP("tool", "192.168.1.1", "-", "255.255.255.0", 1)
-	if get2 != nil {
-		t.Error(err2)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := GetConfigurationTool(); got != tt.want {
+				t.Errorf("GetConfigurationTool() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
@@ -114,7 +83,7 @@ func Test_newTAP(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *TAPLinux
+		want    *TAPWindows
 		wantErr bool
 	}{
 		// TODO: Add test cases.
@@ -132,17 +101,21 @@ func Test_newTAP(t *testing.T) {
 		})
 	}
 }
-*/
 
-func TestTAPLinux_GetName(t *testing.T) {
+func TestTAPWindows_GetName(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	tests := []struct {
@@ -154,32 +127,42 @@ func TestTAPLinux_GetName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			if got := x.GetName(); got != tt.want {
-				t.Errorf("TAPLinux.GetName() = %v, want %v", got, tt.want)
+			if got := t.GetName(); got != tt.want {
+				t.Errorf("TAPWindows.GetName() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_GetHardwareAddress(t *testing.T) {
+func TestTAPWindows_GetHardwareAddress(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	tests := []struct {
@@ -191,32 +174,42 @@ func TestTAPLinux_GetHardwareAddress(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			if got := x.GetHardwareAddress(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("TAPLinux.GetHardwareAddress() = %v, want %v", got, tt.want)
+			if got := t.GetHardwareAddress(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("TAPWindows.GetHardwareAddress() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_GetIP(t *testing.T) {
+func TestTAPWindows_GetIP(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	tests := []struct {
@@ -228,32 +221,42 @@ func TestTAPLinux_GetIP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			if got := x.GetIP(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("TAPLinux.GetIP() = %v, want %v", got, tt.want)
+			if got := t.GetIP(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("TAPWindows.GetIP() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_GetMask(t *testing.T) {
+func TestTAPWindows_GetMask(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	tests := []struct {
@@ -265,32 +268,42 @@ func TestTAPLinux_GetMask(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			if got := x.GetMask(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("TAPLinux.GetMask() = %v, want %v", got, tt.want)
+			if got := t.GetMask(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("TAPWindows.GetMask() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_GetBasename(t *testing.T) {
+func TestTAPWindows_GetBasename(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	tests := []struct {
@@ -302,32 +315,42 @@ func TestTAPLinux_GetBasename(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			if got := x.GetBasename(); got != tt.want {
-				t.Errorf("TAPLinux.GetBasename() = %v, want %v", got, tt.want)
+			if got := t.GetBasename(); got != tt.want {
+				t.Errorf("TAPWindows.GetBasename() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_SetName(t *testing.T) {
+func TestTAPWindows_SetName(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	type args struct {
@@ -342,30 +365,40 @@ func TestTAPLinux_SetName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			x.SetName(tt.args.name)
+			t.SetName(tt.args.name)
 		})
 	}
 }
 
-func TestTAPLinux_SetHardwareAddress(t *testing.T) {
+func TestTAPWindows_SetHardwareAddress(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	type args struct {
@@ -380,30 +413,40 @@ func TestTAPLinux_SetHardwareAddress(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			x.SetHardwareAddress(tt.args.mac)
+			t.SetHardwareAddress(tt.args.mac)
 		})
 	}
 }
 
-func TestTAPLinux_SetIP(t *testing.T) {
+func TestTAPWindows_SetIP(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	type args struct {
@@ -418,30 +461,40 @@ func TestTAPLinux_SetIP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			x.SetIP(tt.args.ip)
+			t.SetIP(tt.args.ip)
 		})
 	}
 }
 
-func TestTAPLinux_SetMask(t *testing.T) {
+func TestTAPWindows_SetMask(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	type args struct {
@@ -456,30 +509,40 @@ func TestTAPLinux_SetMask(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			x.SetMask(tt.args.mask)
+			t.SetMask(tt.args.mask)
 		})
 	}
 }
 
-func TestTAPLinux_Init(t *testing.T) {
+func TestTAPWindows_Init(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	type args struct {
@@ -495,32 +558,42 @@ func TestTAPLinux_Init(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			if err := x.Init(tt.args.name); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.Init() error = %v, wantErr %v", err, tt.wantErr)
+			if err := t.Init(tt.args.name); (err != nil) != tt.wantErr {
+				t.Errorf("TAPWindows.Init() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_Open(t *testing.T) {
+func TestTAPWindows_Open(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	tests := []struct {
@@ -532,32 +605,42 @@ func TestTAPLinux_Open(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			if err := x.Open(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.Open() error = %v, wantErr %v", err, tt.wantErr)
+			if err := t.Open(); (err != nil) != tt.wantErr {
+				t.Errorf("TAPWindows.Open() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_Close(t *testing.T) {
+func TestTAPWindows_Close(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	tests := []struct {
@@ -569,32 +652,42 @@ func TestTAPLinux_Close(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			if err := x.Close(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.Close() error = %v, wantErr %v", err, tt.wantErr)
+			if err := t.Close(); (err != nil) != tt.wantErr {
+				t.Errorf("TAPWindows.Close() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_Configure(t *testing.T) {
+func TestTAPWindows_Configure(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	tests := []struct {
@@ -606,32 +699,86 @@ func TestTAPLinux_Configure(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			if err := x.Configure(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.Configure() error = %v, wantErr %v", err, tt.wantErr)
+			if err := t.Configure(); (err != nil) != tt.wantErr {
+				t.Errorf("TAPWindows.Configure() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_ReadPacket(t *testing.T) {
+func TestTAPWindows_Run(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
+		Configured bool
+	}
+	tests := []struct {
+		name   string
+		fields fields
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t := &TAPWindows{
+				IP:         tt.fields.IP,
+				Mask:       tt.fields.Mask,
+				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
+				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
+				Tool:       tt.fields.Tool,
+				MTU:        tt.fields.MTU,
+				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
+				Configured: tt.fields.Configured,
+			}
+			t.Run()
+		})
+	}
+}
+
+func TestTAPWindows_ReadPacket(t *testing.T) {
+	type fields struct {
+		IP         net.IP
+		Mask       net.IPMask
+		Mac        net.HardwareAddr
+		MacNotSet  bool
+		Name       string
+		Interface  string
+		Tool       string
+		MTU        int
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	tests := []struct {
@@ -644,41 +791,51 @@ func TestTAPLinux_ReadPacket(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			got, err := x.ReadPacket()
+			got, err := t.ReadPacket()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.ReadPacket() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("TAPWindows.ReadPacket() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("TAPLinux.ReadPacket() = %v, want %v", got, tt.want)
+				t.Errorf("TAPWindows.ReadPacket() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_WritePacket(t *testing.T) {
+func TestTAPWindows_WritePacket(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	type args struct {
-		packet *Packet
+		pkt *Packet
 	}
 	tests := []struct {
 		name    string
@@ -690,288 +847,299 @@ func TestTAPLinux_WritePacket(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			if err := x.WritePacket(tt.args.packet); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.WritePacket() error = %v, wantErr %v", err, tt.wantErr)
+			if err := t.WritePacket(tt.args.pkt); (err != nil) != tt.wantErr {
+				t.Errorf("TAPWindows.WritePacket() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_Run(t *testing.T) {
+func TestTAPWindows_read(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
+	}
+	type args struct {
+		ch chan []byte
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t := &TAPWindows{
+				IP:         tt.fields.IP,
+				Mask:       tt.fields.Mask,
+				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
+				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
+				Tool:       tt.fields.Tool,
+				MTU:        tt.fields.MTU,
+				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
+				Configured: tt.fields.Configured,
+			}
+			if err := t.read(tt.args.ch); (err != nil) != tt.wantErr {
+				t.Errorf("TAPWindows.read() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestTAPWindows_write(t *testing.T) {
+	type fields struct {
+		IP         net.IP
+		Mask       net.IPMask
+		Mac        net.HardwareAddr
+		MacNotSet  bool
+		Name       string
+		Interface  string
+		Tool       string
+		MTU        int
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
+		Configured bool
+	}
+	type args struct {
+		ch chan []byte
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t := &TAPWindows{
+				IP:         tt.fields.IP,
+				Mask:       tt.fields.Mask,
+				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
+				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
+				Tool:       tt.fields.Tool,
+				MTU:        tt.fields.MTU,
+				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
+				Configured: tt.fields.Configured,
+			}
+			if err := t.write(tt.args.ch); (err != nil) != tt.wantErr {
+				t.Errorf("TAPWindows.write() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestTAPWindows_queryNetworkKey(t *testing.T) {
+	type fields struct {
+		IP         net.IP
+		Mask       net.IPMask
+		Mac        net.HardwareAddr
+		MacNotSet  bool
+		Name       string
+		Interface  string
+		Tool       string
+		MTU        int
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
+		Configured bool
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    syscall.Handle
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t := &TAPWindows{
+				IP:         tt.fields.IP,
+				Mask:       tt.fields.Mask,
+				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
+				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
+				Tool:       tt.fields.Tool,
+				MTU:        tt.fields.MTU,
+				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
+				Configured: tt.fields.Configured,
+			}
+			got, err := t.queryNetworkKey()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("TAPWindows.queryNetworkKey() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("TAPWindows.queryNetworkKey() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTAPWindows_queryAdapters(t *testing.T) {
+	type fields struct {
+		IP         net.IP
+		Mask       net.IPMask
+		Mac        net.HardwareAddr
+		MacNotSet  bool
+		Name       string
+		Interface  string
+		Tool       string
+		MTU        int
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
+		Configured bool
+	}
+	type args struct {
+		handle syscall.Handle
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t := &TAPWindows{
+				IP:         tt.fields.IP,
+				Mask:       tt.fields.Mask,
+				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
+				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
+				Tool:       tt.fields.Tool,
+				MTU:        tt.fields.MTU,
+				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
+				Configured: tt.fields.Configured,
+			}
+			if err := t.queryAdapters(tt.args.handle); (err != nil) != tt.wantErr {
+				t.Errorf("TAPWindows.queryAdapters() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestTAPWindows_removeZeroes(t *testing.T) {
+	type fields struct {
+		IP         net.IP
+		Mask       net.IPMask
+		Mac        net.HardwareAddr
+		MacNotSet  bool
+		Name       string
+		Interface  string
+		Tool       string
+		MTU        int
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
+		Configured bool
+	}
+	type args struct {
+		s string
 	}
 	tests := []struct {
 		name   string
 		fields fields
+		args   args
+		want   string
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			x.Run()
-		})
-	}
-}
-
-func TestTAPLinux_createInterface(t *testing.T) {
-	type fields struct {
-		IP         net.IP
-		Mask       net.IPMask
-		Mac        net.HardwareAddr
-		Name       string
-		Tool       string
-		MTU        int
-		file       *os.File
-		Configured bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
-				IP:         tt.fields.IP,
-				Mask:       tt.fields.Mask,
-				Mac:        tt.fields.Mac,
-				Name:       tt.fields.Name,
-				Tool:       tt.fields.Tool,
-				MTU:        tt.fields.MTU,
-				file:       tt.fields.file,
-				Configured: tt.fields.Configured,
-			}
-			if err := x.createInterface(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.createInterface() error = %v, wantErr %v", err, tt.wantErr)
+			if got := t.removeZeroes(tt.args.s); got != tt.want {
+				t.Errorf("TAPWindows.removeZeroes() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_setMTU(t *testing.T) {
+func TestTAPWindows_IsConfigured(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
-		Configured bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
-				IP:         tt.fields.IP,
-				Mask:       tt.fields.Mask,
-				Mac:        tt.fields.Mac,
-				Name:       tt.fields.Name,
-				Tool:       tt.fields.Tool,
-				MTU:        tt.fields.MTU,
-				file:       tt.fields.file,
-				Configured: tt.fields.Configured,
-			}
-			if err := x.setMTU(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.setMTU() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestTAPLinux_linkUp(t *testing.T) {
-	type fields struct {
-		IP         net.IP
-		Mask       net.IPMask
-		Mac        net.HardwareAddr
-		Name       string
-		Tool       string
-		MTU        int
-		file       *os.File
-		Configured bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
-				IP:         tt.fields.IP,
-				Mask:       tt.fields.Mask,
-				Mac:        tt.fields.Mac,
-				Name:       tt.fields.Name,
-				Tool:       tt.fields.Tool,
-				MTU:        tt.fields.MTU,
-				file:       tt.fields.file,
-				Configured: tt.fields.Configured,
-			}
-			if err := x.linkUp(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.linkUp() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestTAPLinux_linkDown(t *testing.T) {
-	type fields struct {
-		IP         net.IP
-		Mask       net.IPMask
-		Mac        net.HardwareAddr
-		Name       string
-		Tool       string
-		MTU        int
-		file       *os.File
-		Configured bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
-				IP:         tt.fields.IP,
-				Mask:       tt.fields.Mask,
-				Mac:        tt.fields.Mac,
-				Name:       tt.fields.Name,
-				Tool:       tt.fields.Tool,
-				MTU:        tt.fields.MTU,
-				file:       tt.fields.file,
-				Configured: tt.fields.Configured,
-			}
-			if err := x.linkDown(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.linkDown() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestTAPLinux_setIP(t *testing.T) {
-	type fields struct {
-		IP         net.IP
-		Mask       net.IPMask
-		Mac        net.HardwareAddr
-		Name       string
-		Tool       string
-		MTU        int
-		file       *os.File
-		Configured bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
-				IP:         tt.fields.IP,
-				Mask:       tt.fields.Mask,
-				Mac:        tt.fields.Mac,
-				Name:       tt.fields.Name,
-				Tool:       tt.fields.Tool,
-				MTU:        tt.fields.MTU,
-				file:       tt.fields.file,
-				Configured: tt.fields.Configured,
-			}
-			if err := x.setIP(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.setIP() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestTAPLinux_setMac(t *testing.T) {
-	type fields struct {
-		IP         net.IP
-		Mask       net.IPMask
-		Mac        net.HardwareAddr
-		Name       string
-		Tool       string
-		MTU        int
-		file       *os.File
-		Configured bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
-				IP:         tt.fields.IP,
-				Mask:       tt.fields.Mask,
-				Mac:        tt.fields.Mac,
-				Name:       tt.fields.Name,
-				Tool:       tt.fields.Tool,
-				MTU:        tt.fields.MTU,
-				file:       tt.fields.file,
-				Configured: tt.fields.Configured,
-			}
-			if err := x.setMac(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.setMac() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestTAPLinux_IsConfigured(t *testing.T) {
-	type fields struct {
-		IP         net.IP
-		Mask       net.IPMask
-		Mac        net.HardwareAddr
-		Name       string
-		Tool       string
-		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	tests := []struct {
@@ -983,32 +1151,42 @@ func TestTAPLinux_IsConfigured(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			if got := x.IsConfigured(); got != tt.want {
-				t.Errorf("TAPLinux.IsConfigured() = %v, want %v", got, tt.want)
+			if got := t.IsConfigured(); got != tt.want {
+				t.Errorf("TAPWindows.IsConfigured() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_MarkConfigured(t *testing.T) {
+func TestTAPWindows_MarkConfigured(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
 		Mac        net.HardwareAddr
+		MacNotSet  bool
 		Name       string
+		Interface  string
 		Tool       string
 		MTU        int
-		file       *os.File
+		file       syscall.Handle
+		Handle     syscall.Handle
+		Rx         chan []byte
+		Tx         chan []byte
 		Configured bool
 	}
 	tests := []struct {
@@ -1019,17 +1197,66 @@ func TestTAPLinux_MarkConfigured(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			x := &TAPLinux{
+			t := &TAPWindows{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
+				MacNotSet:  tt.fields.MacNotSet,
 				Name:       tt.fields.Name,
+				Interface:  tt.fields.Interface,
 				Tool:       tt.fields.Tool,
 				MTU:        tt.fields.MTU,
 				file:       tt.fields.file,
+				Handle:     tt.fields.Handle,
+				Rx:         tt.fields.Rx,
+				Tx:         tt.fields.Tx,
 				Configured: tt.fields.Configured,
 			}
-			x.MarkConfigured()
+			t.MarkConfigured()
+		})
+	}
+}
+
+func Test_tapControlCode(t *testing.T) {
+	type args struct {
+		request uint32
+		method  uint32
+	}
+	tests := []struct {
+		name string
+		args args
+		want uint32
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tapControlCode(tt.args.request, tt.args.method); got != tt.want {
+				t.Errorf("tapControlCode() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_controlCode(t *testing.T) {
+	type args struct {
+		device_type uint32
+		function    uint32
+		method      uint32
+		access      uint32
+	}
+	tests := []struct {
+		name string
+		args args
+		want uint32
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := controlCode(tt.args.device_type, tt.args.function, tt.args.method, tt.args.access); got != tt.want {
+				t.Errorf("controlCode() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
