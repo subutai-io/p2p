@@ -127,15 +127,9 @@ func main() {
 					Value:       "",
 					Destination: &Syslog,
 				},
-				cli.StringFlag{
-					Name:        "log",
-					Usage:       "Log level. Available levels: trace, debug, info, warning, error",
-					Value:       "",
-					Destination: &LogLevel,
-				},
 			},
 			Action: func(c *cli.Context) error {
-				ExecDaemon(RPCPort, DHTRouters, SaveFile, Profiling, Syslog, LogLevel)
+				ExecDaemon(RPCPort, DHTRouters, SaveFile, Profiling, Syslog)
 				return nil
 			},
 		},
@@ -330,7 +324,7 @@ func main() {
 				},
 				cli.StringFlag{
 					Name:        "log",
-					Usage:       "Log level. Available levels: trace, debug, info, warning, error",
+					Usage:       "Log level. Available levels: TRACE, DEBUG, INFO, WARNING, ERROR, FATAL",
 					Value:       "",
 					Destination: &LogLevel,
 				},
