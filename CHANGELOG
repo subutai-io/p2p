@@ -1,5 +1,11 @@
 # Change Log
 
+## [7.0.0] 05/09/2018
+
+* P2P service problems on Windows
+* Improved instance creation time when many instances already exists
+* Fixed a situation when p2p doesn't start keep alive session
+
 ## [6.3.3] 04/30/2018
 
 * Fixed random crash
