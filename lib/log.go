@@ -3,8 +3,6 @@ package ptp
 import (
 	"log"
 	"os"
-	"strings"
-	"fmt"
 )
 
 // LogLevel is a level of the log message
@@ -34,30 +32,9 @@ var stdLoggers = [...]*log.Logger{log.New(os.Stdout, logPrefixes[Trace], logFlag
 	log.New(os.Stdout, logPrefixes[Warning], logFlags[Warning]),
 	log.New(os.Stdout, logPrefixes[Error], logFlags[Error])}
 
-// SetMinLogLevel sets a minimal logging level. Accepts a LogLevel constant for setting
+// SetMinLogLevel sets a minimal logging level
 func SetMinLogLevel(level LogLevel) {
 	logLevelMin = level
-}
-
-// SetMinLogLevel sets a minimal logging level. Accepts a string for setting
-func SetMinLogLevelString(level string) error {
-	level = strings.ToLower(level)
-	if level == "trace" {
-		SetMinLogLevel(Trace)
-	} else if level == "debug" {
-		SetMinLogLevel(Debug)
-	} else if level == "info" {
-		SetMinLogLevel(Info)
-	} else if level == "warning" {
-		SetMinLogLevel(Warning)
-	} else if level == "error" {
-		SetMinLogLevel(Error)
-	} else {
-		Log(Warning, "Unknown log level %s was provided. Supported log levels are: trace, debug, info, warning, error", level)
-		return fmt.Errorf("Could not set provided log level")
-	}
-	Log(Info, "Logging level has switched to %s level", level)
-	return nil
 }
 
 // MinLogLevel returns minimal log level
