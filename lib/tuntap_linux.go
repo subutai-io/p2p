@@ -184,6 +184,7 @@ func (t *TAPLinux) ReadPacket() (*Packet, error) {
 
 	n, err := t.file.Read(buf)
 	if err != nil {
+		Log(Error, "Failed to read packet: %+v", err)
 		return nil, err
 	}
 
