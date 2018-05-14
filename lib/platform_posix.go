@@ -15,8 +15,8 @@ const (
 var syslogLevel = [...]syslog.Priority{syslog.LOG_DEBUG, syslog.LOG_DEBUG, syslog.LOG_INFO, syslog.LOG_WARNING, syslog.LOG_ERR}
 
 // InitPlatform does a platform specific preparation
-func InitPlatform() {
-
+func InitPlatform() error {
+	return nil
 }
 
 // CheckPermissions validates platform specific permissions to run TUNTAP utilities

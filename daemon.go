@@ -40,7 +40,12 @@ type DaemonArgs struct {
 var bootstrap DHTConnection
 
 // ExecDaemon starts P2P daemon
-func ExecDaemon(port int, dht, sFile, profiling, syslog string) {
+func ExecDaemon(port int, dht, sFile, profiling, syslog, logLevel string) {
+	if logLevel == "" {
+		ptp.SetMinLogLevelString(DefaultLog)
+	} else {
+		ptp.SetMinLogLevelString(logLevel)
+	}
 	if validateDHT(dht) != nil {
 		os.Exit(213)
 	}
@@ -50,25 +55,11 @@ func ExecDaemon(port int, dht, sFile, profiling, syslog string) {
 	StartProfiling(profiling)
 	ptp.InitPlatform()
 	ptp.InitErrors()
-	if DefaultLog == "TRACE" {
-		ptp.SetMinLogLevel(ptp.Trace)
-	} else if DefaultLog == "DEBUG" {
-		ptp.SetMinLogLevel(ptp.Debug)
-	} else if DefaultLog == "INFO" {
-		ptp.SetMinLogLevel(ptp.Info)
-	} else if DefaultLog == "WARNING" {
-		ptp.SetMinLogLevel(ptp.Warning)
-	} else if DefaultLog == "ERROR" {
-		ptp.SetMinLogLevel(ptp.Error)
-	}
-
 	if !ptp.CheckPermissions() {
 		os.Exit(1)
 	}
 	StartTime = time.Now()
-
 	ReadyToServe = false
-
 	err := bootstrap.init(dht)
 	if err != nil {
 		ptp.Log(ptp.Error, "Failed to initialize bootstrap node connection")
@@ -96,11 +87,9 @@ func ExecDaemon(port int, dht, sFile, profiling, syslog string) {
 		}
 		OutboundIP = net.ParseIP(bootstrap.ip)
 	}()
-
 	proc := new(Daemon)
 	proc.Initialize(sFile)
 	setupRESTHandlers(port, proc)
-
 	go func() {
 		for !bootstrap.isActive {
 			time.Sleep(100 * time.Millisecond)
@@ -119,12 +108,9 @@ func ExecDaemon(port int, dht, sFile, profiling, syslog string) {
 			}
 		}
 	}()
-
 	ReadyToServe = true
-
 	SignalChannel = make(chan os.Signal, 1)
 	signal.Notify(SignalChannel, os.Interrupt)
-
 	go func() {
 		for {
 			active := 0
@@ -140,7 +126,6 @@ func ExecDaemon(port int, dht, sFile, profiling, syslog string) {
 			time.Sleep(time.Millisecond * 100)
 		}
 	}()
-
 	go func() {
 		for sig := range SignalChannel {
 			fmt.Println("Received signal: ", sig)
