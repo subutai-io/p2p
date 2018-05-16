@@ -40,7 +40,7 @@ type DaemonArgs struct {
 var bootstrap DHTConnection
 
 // ExecDaemon starts P2P daemon
-func ExecDaemon(port int, dht, sFile, profiling, syslog, logLevel string) {
+func ExecDaemon(port int, dht, sFile, profiling, syslog, logLevel string, mtu int) {
 	if logLevel == "" {
 		ptp.SetMinLogLevelString(DefaultLog)
 	} else {
@@ -60,6 +60,8 @@ func ExecDaemon(port int, dht, sFile, profiling, syslog, logLevel string) {
 		os.Exit(1)
 	}
 	StartTime = time.Now()
+
+	ptp.GlobalMTU = mtu
 
 	ReadyToServe = false
 
