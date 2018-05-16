@@ -134,9 +134,15 @@ func main() {
 					Value:       ptp.DefaultMTU,
 					Destination: &MTU,
 				},
+				cli.StringFlag{
+					Name:        "log",
+					Usage:       "Log level. Available levels: trace, debug, info, warning, error",
+					Value:       "",
+					Destination: &LogLevel,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				ExecDaemon(RPCPort, DHTRouters, SaveFile, Profiling, Syslog, MTU)
+				ExecDaemon(RPCPort, DHTRouters, SaveFile, Profiling, Syslog, LogLevel, MTU)
 				return nil
 			},
 		},
@@ -331,7 +337,7 @@ func main() {
 				},
 				cli.StringFlag{
 					Name:        "log",
-					Usage:       "Log level. Available levels: TRACE, DEBUG, INFO, WARNING, ERROR, FATAL",
+					Usage:       "Log level. Available levels: trace, debug, info, warning, error",
 					Value:       "",
 					Destination: &LogLevel,
 				},

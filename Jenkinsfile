@@ -78,7 +78,7 @@ try {
 	
 	/*
 	** Trigger subutai-io/snap build on commit to p2p/dev
-	*/
+
 
 	if (env.BRANCH_NAME == 'dev') {
 		build job: 'snap.subutai-io.pipeline/dev/', propagate: false, wait: false
@@ -87,7 +87,7 @@ try {
 	if (env.BRANCH_NAME == 'master') {
 		build job: 'snap.subutai-io.pipeline/master/', propagate: false, wait: false
 	}
-
+	*/
 	if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 		node() {
 			/* Upload builed p2p artifacts to kurjun */
