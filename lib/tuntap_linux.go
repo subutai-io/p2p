@@ -50,7 +50,7 @@ func newTAP(tool, ip, mac, mask string, mtu int) (*TAPLinux, error) {
 		IP:   nip,
 		Mac:  nmac,
 		Mask: net.IPv4Mask(255, 255, 255, 0), // Unused yet
-		MTU:  DefaultMTU,
+		MTU:  GlobalMTU,
 	}, nil
 }
 
@@ -184,6 +184,7 @@ func (t *TAPLinux) ReadPacket() (*Packet, error) {
 
 	n, err := t.file.Read(buf)
 	if err != nil {
+		Log(Error, "Failed to read packet: %+v", err)
 		return nil, err
 	}
 
