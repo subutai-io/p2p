@@ -80,6 +80,7 @@ func main() {
 		LogLevel       string // Log level
 		RemoveService  bool   // If yes - service will be removed (used with service)
 		InstallService bool   // If yes - service will be installed (used with service)
+		MTU            int    // MTU for p2p interface
 	)
 
 	app := cli.NewApp()
@@ -127,9 +128,15 @@ func main() {
 					Value:       "",
 					Destination: &Syslog,
 				},
+				cli.IntFlag{
+					Name:        "mtu",
+					Usage:       "Specify global MTU value that will be set on p2p interfaces",
+					Value:       ptp.DefaultMTU,
+					Destination: &MTU,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				ExecDaemon(RPCPort, DHTRouters, SaveFile, Profiling, Syslog)
+				ExecDaemon(RPCPort, DHTRouters, SaveFile, Profiling, Syslog, MTU)
 				return nil
 			},
 		},

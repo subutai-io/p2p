@@ -10,6 +10,9 @@ import (
 	upnp "github.com/NebulousLabs/go-upnp"
 )
 
+// GlobalMTU value specified on daemon start
+var GlobalMTU = DefaultMTU
+
 // PeerToPeer - Main structure
 type PeerToPeer struct {
 	Config          Configuration                        // Network interface configuration tool

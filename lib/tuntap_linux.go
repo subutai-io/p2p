@@ -50,7 +50,7 @@ func newTAP(tool, ip, mac, mask string, mtu int) (*TAPLinux, error) {
 		IP:   nip,
 		Mac:  nmac,
 		Mask: net.IPv4Mask(255, 255, 255, 0), // Unused yet
-		MTU:  DefaultMTU,
+		MTU:  GlobalMTU,
 	}, nil
 }
 
