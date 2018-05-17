@@ -11,6 +11,9 @@ import (
 	"os/exec"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
 )
 
 // Constants
@@ -191,6 +194,22 @@ func (t *TAPLinux) ReadPacket() (*Packet, error) {
 	var pkt *Packet
 	pkt = &Packet{Packet: buf[0:n]}
 	pkt.Protocol = int(binary.BigEndian.Uint16(buf[12:14]))
+	flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
+	if flags&flagTruncated != 0 {
+		msg := &icmp.Message{
+			Type: ipv4.ICMPTypeDestinationUnreachable,
+			Body: &icmp.DstUnreach{
+				Data: []byte("HELLO-R-U-THERE"),
+			},
+		}
+		data, err := msg.Marshal(nil)
+		if err != nil {
+			Log(Error, "Failed to marshal ICMP packet")
+			return nil, fmt.Errorf("Failed to marshal ICMP packet")
+		}
+		t.WritePacket(&Packet{pkt.Protocol, data})
+		return nil, nil
+	}
 	return pkt, nil
 }
 

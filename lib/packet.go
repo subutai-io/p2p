@@ -122,16 +122,13 @@ func (p *PeerToPeer) handlePacket(contents []byte, proto int) {
 
 // Handles a IPv4 packet and sends it to it's destination
 func (p *PeerToPeer) handlePacketIPv4(contents []byte, proto int) {
-
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		Log(Error, "Failed to unmarshal IPv4 packet")
 	}
-
 	if f.EtherType != ethernet.EtherTypeIPv4 {
 		return
 	}
-	//msg := CreateNencP2PMessage(p.Crypter, contents, uint16(proto), 1, 1, 1)
 	msg, err := p.CreateMessage(MsgTypeNenc, contents, uint16(proto), true)
 	if err == nil && msg != nil {
 		p.SendTo(f.Destination, msg)
