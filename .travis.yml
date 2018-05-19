@@ -15,6 +15,7 @@ matrix:
       script:
         - make linux
         - make test
+        - make coverage
         - cp bin/p2p /tmp/p2p-packages/linux/debian
         - if [ ! -z "$TRAVIS_TAG" ] ; 
           then (cd /tmp/p2p-packages && ./configure --debian --branch=HEAD) ;
@@ -26,6 +27,8 @@ matrix:
           else (cd /tmp/p2p-packages && ./prepare-deb.sh $TRAVIS_BRANCH /tmp/p2p-packages /tmp/p2p-packages) ;
           fi
         - ls -l /tmp/p2p-packages
+      after_success:
+        - bash <(curl -s https://codecov.io/bash)
       deploy:
         - provider: script
           script: /tmp/p2p-packages/deploy.sh bin/p2p dev

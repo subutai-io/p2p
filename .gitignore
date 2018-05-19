@@ -35,3 +35,5 @@ darwin/root
 # tests
 lib/MarshalBinary*
 *workdir*
+*out
+coverage.txt

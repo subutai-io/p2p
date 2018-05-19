@@ -9,7 +9,6 @@ NAME_PREFIX=p2p
 NAME_BASE=p2p
 SOURCES=instance.go main.go rest.go start.go stop.go show.go set.go status.go debug.go daemon.go dht_connection.go dht_router.go
 
-
 sinclude config.make
 ifdef DHT_ENDPOINTS
 	DHT=$(DHT_ENDPOINTS)
@@ -70,6 +69,12 @@ mrproper:
 test:
 	go test -v ./...
 	go test --bench . ./...
+
+coverage:
+	go test -coverprofile=main.out -covermode=atomic 
+	go test -coverprofile=lib.out -covermode=atomic github.com/subutai-io/p2p/lib
+	cat main.out > coverage.txt
+	cat lib.out >> coverage.txt
 
 release: build
 release:
