@@ -198,6 +198,7 @@ func (t *TAPLinux) ReadPacket() (*Packet, error) {
 	if flags&flagTruncated != 0 {
 		msg := &icmp.Message{
 			Type: ipv4.ICMPTypeDestinationUnreachable,
+			Code: 4,
 			Body: &icmp.DstUnreach{
 				Data: []byte("HELLO-R-U-THERE"),
 			},
