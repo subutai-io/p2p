@@ -13,7 +13,6 @@ import (
 	"unsafe"
 
 	"golang.org/x/net/icmp"
-	"golang.org/x/net/ipv4"
 )
 
 // Constants
@@ -195,21 +194,21 @@ func (t *TAPLinux) ReadPacket() (*Packet, error) {
 	pkt = &Packet{Packet: buf[0:n]}
 	pkt.Protocol = int(binary.BigEndian.Uint16(buf[12:14]))
 	flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
-	if flags&flagTruncated != 0 {
-		msg := &icmp.Message{
-			Type: ipv4.ICMPTypeDestinationUnreachable,
-			Code: 4,
-			Body: &icmp.DstUnreach{
-				Data: []byte("HELLO-R-U-THERE"),
-			},
+	if pkt.Protocol == int(PacketIPv4) && flags&flagDF != 0 {
+		response := &icmp.PacketTooBig{
+			MTU:  DefaultMTU - 50,
+			Data: buf,
 		}
-		data, err := msg.Marshal(nil)
+		output, err := response.Marshal(int(PacketIPv4))
 		if err != nil {
-			Log(Error, "Failed to marshal ICMP packet")
-			return nil, fmt.Errorf("Failed to marshal ICMP packet")
+			Log(Error, "Failed to marshal ICMP: %s", err.Error())
+			return nil, err
 		}
-		t.WritePacket(&Packet{pkt.Protocol, data})
+		t.WritePacket(&Packet{pkt.Protocol, output})
 		return nil, nil
+	}
+	if flags&flagMF != 0 {
+		Log(Trace, "Packet flag: More fragments")
 	}
 	return pkt, nil
 }

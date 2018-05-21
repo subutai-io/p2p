@@ -238,8 +238,6 @@ func (p *ARPPacket) String() string {
 }
 
 // MarshalBinary allocates a byte slice containing the data from a Packet.
-//
-// MarshalBinary never returns an error.
 func (p *ARPPacket) MarshalBinary() ([]byte, error) {
 	// 2 bytes: hardware type
 	// 2 bytes: protocol type

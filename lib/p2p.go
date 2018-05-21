@@ -113,7 +113,9 @@ func (p *PeerToPeer) ListenInterface() {
 			p.Close()
 			break
 		}
-		go p.handlePacket(packet.Packet, packet.Protocol)
+		if packet != nil {
+			go p.handlePacket(packet.Packet, packet.Protocol)
+		}
 	}
 	Log(Debug, "Shutting down interface listener")
 
