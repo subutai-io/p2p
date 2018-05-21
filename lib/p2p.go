@@ -108,12 +108,14 @@ func (p *PeerToPeer) ListenInterface() {
 			break
 		}
 		packet, err := p.Interface.ReadPacket()
-		if err != nil {
+		if err != nil && err != errPacketTooBig {
 			Log(Error, "Reading packet: %s", err)
 			p.Close()
 			break
 		}
-		go p.handlePacket(packet.Packet, packet.Protocol)
+		if packet != nil {
+			go p.handlePacket(packet.Packet, packet.Protocol)
+		}
 	}
 	Log(Debug, "Shutting down interface listener")
 
