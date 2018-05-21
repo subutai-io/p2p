@@ -11,6 +11,8 @@ import (
 	"os/exec"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/net/icmp"
 )
 
 // Constants
@@ -188,9 +190,34 @@ func (t *TAPLinux) ReadPacket() (*Packet, error) {
 		return nil, err
 	}
 
+	return t.handlePacket(buf[0:n])
+}
+
+func (t *TAPLinux) handlePacket(data []byte) (*Packet, error) {
+	length := len(data)
 	var pkt *Packet
-	pkt = &Packet{Packet: buf[0:n]}
-	pkt.Protocol = int(binary.BigEndian.Uint16(buf[12:14]))
+	pkt = &Packet{Packet: data[0:length]}
+	if len(data) < 14 {
+		return nil, errPacketTooSmall
+	}
+	pkt.Protocol = int(binary.BigEndian.Uint16(data[12:14]))
+	flags := int(*(*uint16)(unsafe.Pointer(&data[0])))
+	if pkt.Protocol == int(PacketIPv4) && flags&flagDF != 0 {
+		response := &icmp.PacketTooBig{
+			MTU:  DefaultMTU - 50,
+			Data: data,
+		}
+		output, err := response.Marshal(int(PacketIPv4))
+		if err != nil {
+			Log(Error, "Failed to marshal ICMP: %s", err.Error())
+			return nil, errICMPMarshalFailed
+		}
+		t.WritePacket(&Packet{pkt.Protocol, output})
+		return nil, errPacketTooBig
+	}
+	if flags&flagMF != 0 {
+		Log(Trace, "Packet flag: More fragments")
+	}
 	return pkt, nil
 }
 

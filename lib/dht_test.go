@@ -46,14 +46,12 @@ func TestEncodeRequest(t *testing.T) {
 }
 */
 
-
 import (
-	"testing"
-	"net"
 	"github.com/golang/protobuf/proto"
+	"net"
+	"testing"
 	"time"
 )
-
 
 func TestInit(t *testing.T) {
 	dht := new(DHTClient)
@@ -75,7 +73,7 @@ func TestConnect(t *testing.T) {
 	go func() {
 		errChan := make(chan error)
 		go func() {
-			errChan <- dht.Connect([]net.IP{net.IP("127.0.0.1"), net.IP(nil), net.IP("127.0.0.2")}, []*proxyServer{{Endpoint: &net.UDPAddr{IP: net.IP("192.168.0.1"), Port: 8080,}}})
+			errChan <- dht.Connect([]net.IP{net.IP("127.0.0.1"), net.IP(nil), net.IP("127.0.0.2")}, []*proxyServer{{Endpoint: &net.UDPAddr{IP: net.IP("192.168.0.1"), Port: 8080}}})
 		}()
 		err := <-errChan
 		if err == nil {
@@ -83,7 +81,7 @@ func TestConnect(t *testing.T) {
 		}
 		finish <- true
 	}()
-	breakFirstFor:
+breakFirstFor:
 	for {
 		select {
 		case <-finish:
@@ -92,10 +90,12 @@ func TestConnect(t *testing.T) {
 				defer close(dht.OutgoingData)
 				errChan := make(chan error)
 				go func() {
-					errChan <- dht.Connect([]net.IP{net.IP("127.0.0.1"), net.IP(nil), net.IP("127.0.0.2")}, []*proxyServer{{Endpoint: &net.UDPAddr{IP: net.IP("192.168.0.1"), Port: 8080,}}})
+					errChan <- dht.Connect([]net.IP{net.IP("127.0.0.1"), net.IP(nil), net.IP("127.0.0.2")}, []*proxyServer{{Endpoint: &net.UDPAddr{IP: net.IP("192.168.0.1"), Port: 8080}}})
 				}()
 				time.Sleep(2 * time.Second)
-				dht.Connected = true
+				if !dht.Connected {
+					dht.Connected = true
+				}
 				err := <-errChan
 				if err != nil {
 					t.Fatalf("Failed to connect (2): %v", err)
@@ -105,7 +105,7 @@ func TestConnect(t *testing.T) {
 			break breakFirstFor
 		}
 	}
-	breaKSecondFor:
+breaKSecondFor:
 	for {
 		select {
 		case <-finish:
@@ -114,7 +114,7 @@ func TestConnect(t *testing.T) {
 				defer close(dht.OutgoingData)
 				errChan := make(chan error)
 				go func() {
-					errChan <- dht.Connect([]net.IP{net.IP("127.0.0.1"), net.IP(nil), net.IP("127.0.0.2")}, []*proxyServer{{Endpoint: &net.UDPAddr{IP: net.IP("192.168.0.1"), Port: 8080,}}})
+					errChan <- dht.Connect([]net.IP{net.IP("127.0.0.1"), net.IP(nil), net.IP("127.0.0.2")}, []*proxyServer{{Endpoint: &net.UDPAddr{IP: net.IP("192.168.0.1"), Port: 8080}}})
 				}()
 				err := <-errChan
 				if err == nil {
@@ -125,7 +125,7 @@ func TestConnect(t *testing.T) {
 			break breaKSecondFor
 		}
 	}
-	breaKThirdFor:
+breaKThirdFor:
 	for {
 		select {
 		case <-finish:
@@ -342,7 +342,7 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := []*DHTPacket{}
-		for i := 0; i < 10000 + 1; i++ {
+		for i := 0; i < 10000+1; i++ {
 			item := <-dht.OutgoingData
 			packetBytes, err := proto.Marshal(item)
 			if err != nil {
@@ -391,7 +391,7 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := []*DHTPacket{}
-		for i := 0; i < 10000 + 1; i++ {
+		for i := 0; i < 10000+1; i++ {
 			item := <-dht.OutgoingData
 			packetBytes, err := proto.Marshal(item)
 			if err != nil {
@@ -444,7 +444,7 @@ func TestSend(t *testing.T) {
 			}
 		}()
 		data := []*DHTPacket{}
-		for i := 0; i < 10000 + 1; i++ {
+		for i := 0; i < 10000+1; i++ {
 			item := <-dht.OutgoingData
 			packetBytes, err := proto.Marshal(item)
 			if err != nil {
@@ -590,13 +590,13 @@ func TestSendReportProxy(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Failed to sendState (1): must have returned non-nil but returned nil")
 	}
-	err = dht.sendReportProxy([]*net.UDPAddr{{IP: net.IP("127.0.0.1"), Port: 8080,}})
+	err = dht.sendReportProxy([]*net.UDPAddr{{IP: net.IP("127.0.0.1"), Port: 8080}})
 	if err == nil {
 		t.Fatalf("Failed to sendState (2): must have returned non-nil but returned nil")
 	}
 	dht.OutgoingData = make(chan *DHTPacket, 1)
 	defer close(dht.OutgoingData)
-	err = dht.sendReportProxy([]*net.UDPAddr{{IP: net.IP("127.0.0.1"), Port: 8080,}})
+	err = dht.sendReportProxy([]*net.UDPAddr{{IP: net.IP("127.0.0.1"), Port: 8080}})
 	if err != nil {
 		t.Fatalf("Failed to sendState (3): %v", err)
 	}
