@@ -1,6 +1,9 @@
 package ptp
 
-import "net"
+import (
+	"errors"
+	"net"
+)
 
 const (
 	flagMF      = 0x10
@@ -9,6 +12,12 @@ const (
 	iffTap      = 0x2
 	iffOneQueue = 0x2000
 	iffnopi     = 0x1000
+)
+
+var (
+	errPacketTooBig      = errors.New("Packet exceeds MTU")
+	errICMPMarshalFailed = errors.New("Failed to marshal ICMP")
+	errPacketTooSmall    = errors.New("Packet is too small")
 )
 
 type ifReq struct {

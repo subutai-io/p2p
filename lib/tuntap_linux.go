@@ -4,7 +4,6 @@ package ptp
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -20,12 +19,6 @@ import (
 const (
 	ConfigDir  string = "/usr/local/etc"
 	DefaultMTU int    = 1376
-)
-
-var (
-	errPacketTooBig      = errors.New("Packet exceeds MTU")
-	errICMPMarshalFailed = errors.New("Failed to marshal ICMP")
-	errPacketTooSmall    = errors.New("Packet is too small")
 )
 
 // GetDeviceBase returns a default interface name
