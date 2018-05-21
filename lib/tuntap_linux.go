@@ -4,6 +4,7 @@ package ptp
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -19,6 +20,12 @@ import (
 const (
 	ConfigDir  string = "/usr/local/etc"
 	DefaultMTU int    = 1376
+)
+
+var (
+	errPacketTooBig      = errors.New("Packet exceeds MTU")
+	errICMPMarshalFailed = errors.New("Failed to marshal ICMP")
+	errPacketTooSmall    = errors.New("Packet is too small")
 )
 
 // GetDeviceBase returns a default interface name
@@ -190,22 +197,30 @@ func (t *TAPLinux) ReadPacket() (*Packet, error) {
 		return nil, err
 	}
 
+	return t.handlePacket(buf[0:n])
+}
+
+func (t *TAPLinux) handlePacket(data []byte) (*Packet, error) {
+	length := len(data)
 	var pkt *Packet
-	pkt = &Packet{Packet: buf[0:n]}
-	pkt.Protocol = int(binary.BigEndian.Uint16(buf[12:14]))
-	flags := int(*(*uint16)(unsafe.Pointer(&buf[0])))
+	pkt = &Packet{Packet: data[0:length]}
+	if len(data) < 14 {
+		return nil, errPacketTooSmall
+	}
+	pkt.Protocol = int(binary.BigEndian.Uint16(data[12:14]))
+	flags := int(*(*uint16)(unsafe.Pointer(&data[0])))
 	if pkt.Protocol == int(PacketIPv4) && flags&flagDF != 0 {
 		response := &icmp.PacketTooBig{
 			MTU:  DefaultMTU - 50,
-			Data: buf,
+			Data: data,
 		}
 		output, err := response.Marshal(int(PacketIPv4))
 		if err != nil {
 			Log(Error, "Failed to marshal ICMP: %s", err.Error())
-			return nil, err
+			return nil, errICMPMarshalFailed
 		}
 		t.WritePacket(&Packet{pkt.Protocol, output})
-		return nil, nil
+		return nil, errPacketTooBig
 	}
 	if flags&flagMF != 0 {
 		Log(Trace, "Packet flag: More fragments")
