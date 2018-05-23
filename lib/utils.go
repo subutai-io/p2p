@@ -146,3 +146,26 @@ func min(a, b int) int {
 	}
 	return b
 }
+
+// AppendBytes will add bytes to specified byte slice
+func AppendBytes(data []byte, num int) ([]byte, error) {
+	if num < 0 {
+		panic("num < 0")
+	}
+	initialLength := len(data)
+	appended := 0
+	start := 0
+	if cap(data)-initialLength < num {
+		toAppend := appended
+		if toAppend < num {
+			toAppend = num
+		}
+		appended += toAppend
+		newData := make([]byte, cap(data)+toAppend)
+		copy(newData[start:], data[start:])
+		data = newData[:initialLength]
+	}
+	// Grow the buffer.  We know it'll be under capacity given above.
+	data = data[:initialLength+num]
+	return data[initialLength:], nil
+}
