@@ -197,17 +197,6 @@ func (t *TAPLinux) ReadPacket() (*Packet, error) {
 	return t.handlePacket(buf[0:n])
 }
 
-func ICMPChecksum(b []byte) uint16 {
-	var s uint32
-	for i := 0; i < len(b); i += 2 {
-		s += uint32(b[i+1])<<8 | uint32(b[i])
-	}
-	// add back the carry
-	s = s>>16 + s&0xffff
-	s = s + s>>16
-	return uint16(^s)
-}
-
 func checksum(bytes []byte) uint16 {
 	// Clear checksum bytes
 	bytes[10] = 0
@@ -246,8 +235,6 @@ func (t *TAPLinux) handlePacket(data []byte) (*Packet, error) {
 			return nil, nil
 		}
 
-		Log(Warning, "PACKET %d: %+v", length, header)
-
 		// Don't fragment flag is set. We need to respond with ICMP Destination Unreachable
 		if header.Flags == ipv4.DontFragment {
 			// Extract packet contents as an ethernet frame for later re-use
@@ -262,8 +249,8 @@ func (t *TAPLinux) handlePacket(data []byte) (*Packet, error) {
 				Type: ipv4.ICMPTypeDestinationUnreachable,
 				Code: 4,
 				Body: &icmp.PacketTooBig{
-					MTU:  GlobalMTU - 200,          // Next-hop MTU
-					Data: f.Payload[:header.Len+8], // Original header and 64 bits of payload
+					MTU:  GlobalMTU - 200,    // Next-hop MTU
+					Data: data[14 : 14+20+8], // Original header and 64-bits of datagram
 				},
 			}
 			payloadICMP, err := packetICMP.Marshal(nil)
@@ -275,14 +262,14 @@ func (t *TAPLinux) handlePacket(data []byte) (*Packet, error) {
 			// Build IPv4 Header
 			iph := &ipv4.Header{
 				Version:  4,
-				Len:      28, // Precalculated header length
+				Len:      20, // Precalculated header length
 				TOS:      0,
-				TotalLen: len(payloadICMP),
-				ID:       2,
+				TotalLen: len(payloadICMP) + 20,
+				ID:       25,
 				TTL:      64,
 				Protocol: 1,
 				Dst:      header.Src,
-				//Src:      header.Dst,
+				Src:      header.Dst,
 				Checksum: 0,
 			}
 			ipHeader, err := iph.Marshal()
