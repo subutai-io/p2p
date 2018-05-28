@@ -12,7 +12,7 @@ import (
 
 const (
 	ConfigDir  string = "/usr/local/etc"
-	DefaultMTU int    = 1376
+	DefaultMTU int    = 1500
 )
 
 func GetDeviceBase() string {
