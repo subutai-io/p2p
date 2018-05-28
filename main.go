@@ -81,6 +81,7 @@ func main() {
 		RemoveService  bool   // If yes - service will be removed (used with service)
 		InstallService bool   // If yes - service will be installed (used with service)
 		MTU            int    // MTU for p2p interface
+		ShowMTU        bool   // Show MTU value
 	)
 
 	app := cli.NewApp()
@@ -319,9 +320,14 @@ func main() {
 					Usage:       "In combination with -interfaces this will show all interfaces used by p2p, even those that is already not in use",
 					Destination: &ShowAll,
 				},
+				cli.BoolFlag{
+					Name:        "mtu",
+					Usage:       "Display current MTU value in P2P",
+					Destination: &ShowMTU,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				CommandShow(RPCPort, Infohash, IP, ShowInterfaces, ShowAll, ShowBind)
+				CommandShow(RPCPort, Infohash, IP, ShowInterfaces, ShowAll, ShowBind, ShowMTU)
 				return nil
 			},
 		},
