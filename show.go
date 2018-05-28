@@ -20,10 +20,11 @@ type ShowOutput struct {
 	Code            int    `json:"code"`
 	InterfaceName   string `json:"interface"`
 	Hash            string `json:"hash"`
+	MTU             string `json:"mtu"`
 }
 
 // Show outputs information about P2P instances and interfaces
-func CommandShow(queryPort int, hash, ip string, interfaces, all, bind bool) {
+func CommandShow(queryPort int, hash, ip string, interfaces, all, bind, mtu bool) {
 	req := &request{}
 	if hash != "" {
 		req.Hash = hash
@@ -34,6 +35,7 @@ func CommandShow(queryPort int, hash, ip string, interfaces, all, bind bool) {
 	req.Interfaces = interfaces
 	req.All = all
 	req.Bind = bind
+	req.MTU = mtu
 
 	out, err := sendRequestRaw(queryPort, "show", req)
 	if err != nil {
@@ -95,6 +97,14 @@ func CommandShow(queryPort int, hash, ip string, interfaces, all, bind bool) {
 			os.Exit(0)
 		}
 	}
+	if req.MTU {
+		for _, s := range show {
+			fmt.Println(s.MTU)
+			os.Exit(0)
+		}
+		fmt.Println("Failed to retrieve MTU value")
+		os.Exit(114)
+	}
 
 	for _, m := range show {
 		if m.Code != 0 {
@@ -117,6 +127,7 @@ func (d *Daemon) execRESTShow(w http.ResponseWriter, r *http.Request) {
 		IP:         args.IP,
 		Interfaces: args.Interfaces,
 		Bind:       args.Bind,
+		MTU:        args.MTU,
 		All:        args.All,
 	})
 	if err != nil {
@@ -165,6 +176,8 @@ func (d *Daemon) Show(args *request) ([]byte, error) {
 			return d.showBindInterfaces()
 		}
 		return d.showInterfaces()
+	} else if args.MTU {
+		return d.showMTU()
 	} else {
 		return d.showInstances()
 	}
@@ -268,4 +281,9 @@ func (d *Daemon) showInstances() ([]byte, error) {
 		}
 	}
 	return d.showOutput(out)
+}
+
+func (d *Daemon) showMTU() ([]byte, error) {
+	ptp.Log(ptp.Trace, "Retrieving MTU value: %d", ptp.GlobalMTU)
+	return d.showOutput([]ShowOutput{{MTU: fmt.Sprintf("%d", ptp.GlobalMTU)}})
 }

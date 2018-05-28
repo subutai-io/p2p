@@ -32,7 +32,8 @@ type request struct {
 	Port       int    `json:"port"`
 	Interfaces bool   `json:"interfaces"` // Used for show request
 	All        bool   `json:"all"`        // Used for show request
-	Bind       bool   `json:"bind"`       // User for show request
+	Bind       bool   `json:"bind"`       // Used for show request
+	MTU        bool   `json:"mtu"`        // Used for MTU show request
 }
 
 type RESTResponse struct {
