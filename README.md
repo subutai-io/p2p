@@ -2,6 +2,8 @@ P2P Cloud
 ===================
 
 [![Build Status - master](https://api.travis-ci.org/subutai-io/p2p.png?branch=master)](https://travis-ci.org/subutai-io/p2p) 
+[![Build status](https://ci.appveyor.com/api/projects/status/1qyikpu9x3ecn8ay/branch/master?svg=true)](https://ci.appveyor.com/project/crioto/p2p/branch/master)
+[![codecov](https://codecov.io/gh/subutai-io/p2p/branch/master/graph/badge.svg)](https://codecov.io/gh/subutai-io/p2p)
 [![Go Report Card](https://goreportcard.com/badge/github.com/subutai-io/p2p)](https://goreportcard.com/report/github.com/subutai-io/p2p)
 [![GoDoc](https://godoc.org/github.com/subutai-io/p2p?status.svg)](https://godoc.org/github.com/subutai-io/p2p)
 
