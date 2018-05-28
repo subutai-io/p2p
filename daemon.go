@@ -35,6 +35,7 @@ type DaemonArgs struct {
 	Args       string `json:"args"`
 	Log        string `json:"log"`
 	Bind       bool   `json:"bind"`
+	MTU        bool   `json:"mtu"`
 }
 
 var bootstrap DHTConnection

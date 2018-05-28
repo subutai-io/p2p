@@ -10,7 +10,9 @@ import (
 
 // Different utility functions
 
-// GenerateMAC generates a MAC address for a new interface
+// GenerateMAC will generate a new MAC address
+// Function returns both string representation of MAC and it golang equalient.
+// First octet is always 06
 func GenerateMAC() (string, net.HardwareAddr) {
 	buf := make([]byte, 6)
 	_, err := rand.Read(buf)
@@ -99,27 +101,39 @@ func IsInterfaceLocal(ip net.IP) bool {
 // IP addresses
 func (p *PeerToPeer) FindNetworkAddresses() {
 	Log(Debug, "Looking for available network interfaces")
-	inf, err := net.Interfaces()
+	interfaces, err := net.Interfaces()
 	if err != nil {
 		Log(Error, "Failed to retrieve list of network interfaces")
 		return
 	}
 	p.LocalIPs = p.LocalIPs[:0]
+	p.LocalIPs = p.ParseInterfaces(interfaces)
+	Log(Trace, "%d interfaces were saved", len(p.LocalIPs))
+}
+
+// ParseInterfaces accepts list of network interfaces (net.Interface),
+// parse their addresses, check they CIDRs and cast type.
+// Returns list of IPs
+func (p *PeerToPeer) ParseInterfaces(interfaces []net.Interface) []net.IP {
 	ips := []net.IP{}
 	// We use reserve to collect all multicast interfaces and use them as a fallback
 	// in a case when we don't find any interfaces with outbound traffic enabled
 	reserve := []net.IP{}
-	for _, i := range inf {
+	for _, i := range interfaces {
 		addresses, err := i.Addrs()
-
 		if err != nil {
-			Log(Error, "Failed to retrieve address for interface. %v", err)
+			Log(Error, "Failed to retrieve address for interface: %s", err.Error())
+			continue
+		}
+		if len(addresses) == 0 {
+			Log(Warning, "No IPs assigned to interface %s", i.Name)
 			continue
 		}
 		for _, addr := range addresses {
 			ip, _, err := net.ParseCIDR(addr.String())
 			if err != nil {
 				Log(Error, "Failed to parse CIDR notation: %v", err)
+				continue
 			}
 
 			if ip.IsGlobalUnicast() && p.IsIPv4(ip.String()) {
@@ -132,12 +146,9 @@ func (p *PeerToPeer) FindNetworkAddresses() {
 		}
 	}
 	if len(ips) == 0 {
-		p.LocalIPs = reserve
-	} else {
-		p.LocalIPs = ips
+		return reserve
 	}
-
-	Log(Trace, "%d interfaces were saved", len(p.LocalIPs))
+	return ips
 }
 
 func min(a, b int) int {
@@ -145,27 +156,4 @@ func min(a, b int) int {
 		return a
 	}
 	return b
-}
-
-// AppendBytes will add bytes to specified byte slice
-func AppendBytes(data []byte, num int) ([]byte, error) {
-	if num < 0 {
-		panic("num < 0")
-	}
-	initialLength := len(data)
-	appended := 0
-	start := 0
-	if cap(data)-initialLength < num {
-		toAppend := appended
-		if toAppend < num {
-			toAppend = num
-		}
-		appended += toAppend
-		newData := make([]byte, cap(data)+toAppend)
-		copy(newData[start:], data[start:])
-		data = newData[:initialLength]
-	}
-	// Grow the buffer.  We know it'll be under capacity given above.
-	data = data[:initialLength+num]
-	return data[initialLength:], nil
 }
