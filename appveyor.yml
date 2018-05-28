@@ -19,7 +19,7 @@ install:
   - gpg --list-keys
 #  - secure-file\tools\secure-file -decrypt c:\root\p2p-packages\appveyor\sign.enc -secret %GPG_KEY_SECRET%
 #  - secure-file\tools\secure-file -decrypt c:\root\p2p-packages\appveyor\gpg.enc -secret %GPG_KEY_SECRET%
-  - gpg --import c:\root\p2p-packages\appveyor\gpg
+#  - gpg --import c:\root\p2p-packages\appveyor\gpg
 
 before_build:
   - C:\msys64\usr\bin\bash -lc "$(cygpath ${APPVEYOR_BUILD_FOLDER})/configure --os=windows --branch=%APPVEYOR_REPO_BRANCH%"
