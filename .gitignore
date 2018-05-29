@@ -33,7 +33,7 @@ darwin/flat
 darwin/root
 
 # tests
-lib/MarshalBinary*
+MarshalBinary*
 *workdir*
 *out
 coverage.txt
