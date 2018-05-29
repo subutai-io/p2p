@@ -1,0 +1,26 @@
+#!/usr/bin/make -f
+export DH_VERBOSE=1
+include /usr/share/dpkg/default.mk
+
+BUILDER    := $(shell sed -ne 's,^Maintainer: .[^<]*<\([^>]*\)>,\1,p' debian/control)
+#BUILDPKG   := github.com/subutai-io/p2p/build
+BUILDPKG   := github.com/subutai-io/p2p/app
+VERSION    := $(shell dpkg-parsechangelog | sed -n 's/^Version: //p')
+BUILDID    := $(shell git describe)
+LOG_LEVEL  := DEFAULT_LOG_LEVEL
+BUILDFLAGS := -ldflags\
+  "-X $(BUILDPKG).AppVersion=$(VERSION)\
+   -X $(BUILDPKG).DefaultDHT=DHT_ENDPOINT\
+   -X $(BUILDPKG).BuildID=$(BUILDID)\
+   -X $(BUILDPKG).DefaultLog=$(LOG_LEVEL)"
+
+%:
+	dh $@ --buildsystem=golang --with=golang --with-systemd
+
+override_dh_auto_build:
+	dh_auto_build -- $(BUILDFLAGS) github.com/subutai-io/p2p/app
+
+override_dh_auto_install:
+	dh_auto_install -- --no-source
+	mkdir -p debian/subutai-p2p/etc/default/
+	cp debian/tree/etc/default/* debian/subutai-p2p/etc/default
