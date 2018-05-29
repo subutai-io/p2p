@@ -19,7 +19,7 @@ matrix:
         - make coverage
         - git clone https://github.com/subutai-io/p2p /tmp/p2p-deb 
         - if [ "$TRAVIS_BRANCH" != "master" ] ;
-          then cd /tmp/p2p-deb && git checkout --track origin/${env.BRANCH_NAME} && rm -rf .git* ;
+          then cd /tmp/p2p-deb && git checkout --track origin/$TRAVIS_BRANCH && rm -rf .git* ;
           fi
         - cd /tmp/p2p-deb/app && sed -i 's/quilt/native/' app/debian/source/format
         - cd /tmp/p2p-deb/app && sed -i 's/DHT_ENDPOINT/TEST_DHT_HOST/' app/debian/rules
