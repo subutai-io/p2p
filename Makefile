@@ -29,12 +29,11 @@ ifeq ($(BRANCH),sysnet)
 endif
 
 build: directories
-build: proto
 build: bin/$(APP)
 linux: bin/$(APP)
 windows: bin/$(APP).exe
 macos: bin/$(APP)_osx
-all: proto linux windows macos
+all: linux windows macos
 
 bin/$(APP): $(SOURCES) service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
@@ -69,7 +68,8 @@ mrproper:
 	-rm -f config.make
 
 test:
-	go test -v ./...
+	go test -v github.com/subutai-io/p2p
+	go test -v github.com/subutai-io/p2p/lib
 	go test --bench . ./...
 
 coverage:

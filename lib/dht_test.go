@@ -1,56 +1,12 @@
 package ptp
 
-/*
 import (
- 	"testing"
-)
-
-func TestCompose(t *testing.T) {
- 	var dht DHTClient
- 	t1 := dht.Compose("ping", "00000000-1111-2222-3333-444444444444", "QUERY", "ARGUMENT")
- 	if t1 != "d1:a8:ARGUMENT1:c4:ping1:i36:00000000-1111-2222-3333-4444444444441:p0:1:q5:QUERYe" {
- 		t.Fatalf("dht.Compose failed (1)")
- 	}
- 	t2 := dht.Compose("", "", "", "")
- 	if t2 != "" {
- 		t.Fatalf("dht.Compose failed (2)")
- 	}
-}
-
-func TestExtract(t *testing.T) {
- 	var m = "d1:a0:1:c4:ping1:i36:00000000-1111-2222-3333-4444444444441:p0:1:q1:0e"
- 	var dht DHTClient
- 	result, err := dht.Extract([]byte(m))
- 	if result.ID != "00000000-1111-2222-3333-444444444444" {
- 		t.Fatalf("Failed to extract DHT message")
- 	}
- 	if err != nil {
- 		t.Fatalf("Error during DHT message extraction")
- 	}
-}
-
-func TestEncodeRequest(t *testing.T) {
-	var dht DHTClient
- 	t1 := dht.EncodeRequest(DHTMessage{ID: "00000000-1111-2222-3333-444444444444", Command: "Test1", Query: "Query1", Arguments: "Argument1"})
- 	if t1 != "d1:a9:Argument11:c5:Test11:i36:00000000-1111-2222-3333-4444444444441:p0:1:q6:Query1e" {
- 		t.Fatalf("EncodeRequest failed (1)")
- 	}
- 	t2 := dht.EncodeRequest(DHTMessage{ID: "00000000-1111-2222-3333-444444444444", Command: "Test2", Query: "Query2", Arguments: "Argument2"})
- 	if t2 != "d1:a9:Argument21:c5:Test21:i36:00000000-1111-2222-3333-4444444444441:p0:1:q6:Query2e" {
- 		t.Fatalf("EncodeRequest failed (2)")
- 	}
- 	t3 := dht.EncodeRequest(DHTMessage{ID: "00000000-1111-2222-3333-444444444444", Command: "Test3", Query: "Query3", Arguments: "Argument3"})
- 	if t3 != "d1:a9:Argument31:c5:Test31:i36:00000000-1111-2222-3333-4444444444441:p0:1:q6:Query3e" {
- 		t.Fatalf("EncodeRequest failed (3)")
- 	}
-}
-*/
-
-import (
-	"github.com/golang/protobuf/proto"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/subutai-io/p2p/protocol"
 )
 
 func TestInit(t *testing.T) {
@@ -86,7 +42,7 @@ breakFirstFor:
 		select {
 		case <-finish:
 			go func() {
-				dht.OutgoingData = make(chan *DHTPacket, 1)
+				dht.OutgoingData = make(chan *protocol.DHTPacket, 1)
 				defer close(dht.OutgoingData)
 				errChan := make(chan error)
 				go func() {
@@ -110,7 +66,7 @@ breaKSecondFor:
 		select {
 		case <-finish:
 			go func() {
-				dht.OutgoingData = make(chan *DHTPacket, 1)
+				dht.OutgoingData = make(chan *protocol.DHTPacket, 1)
 				defer close(dht.OutgoingData)
 				errChan := make(chan error)
 				go func() {
@@ -141,9 +97,9 @@ func TestRead(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Failed to read (1): must have returned non-nil but returned nil")
 	}
-	dht.IncomingData = make(chan *DHTPacket)
+	dht.IncomingData = make(chan *protocol.DHTPacket)
 	go func() {
-		dht.IncomingData <- new(DHTPacket)
+		dht.IncomingData <- new(protocol.DHTPacket)
 	}()
 	packet, err := dht.read()
 	close(dht.IncomingData)
@@ -154,7 +110,7 @@ func TestRead(t *testing.T) {
 		t.Fatalf("Failed to read (3): must have returned non-nil packet but returned nil packet")
 	}
 	packet = nil
-	dht.IncomingData = make(chan *DHTPacket)
+	dht.IncomingData = make(chan *protocol.DHTPacket)
 	go func() {
 		dht.IncomingData <- packet
 	}()
@@ -171,19 +127,19 @@ func TestRead(t *testing.T) {
 func TestSend(t *testing.T) {
 	{
 		dht := new(DHTClient)
-		dht.IncomingData = make(chan *DHTPacket)
-		dht.OutgoingData = make(chan *DHTPacket)
+		dht.IncomingData = make(chan *protocol.DHTPacket)
+		dht.OutgoingData = make(chan *protocol.DHTPacket)
 		dht.Close()
-		err := dht.send(&DHTPacket{})
+		err := dht.send(&protocol.DHTPacket{})
 		if err == nil {
 			t.Fatalf("Failed to send (1): must have returned non-nil but returned nil: %v", err)
 		}
 	}
 	{
 		dht := new(DHTClient)
-		dht.OutgoingData = make(chan *DHTPacket)
-		p1 := &DHTPacket{
-			Type: DHTPacketType_Connect,
+		dht.OutgoingData = make(chan *protocol.DHTPacket)
+		p1 := &protocol.DHTPacket{
+			Type: protocol.DHTPacketType_Connect,
 		}
 		lenArguments := len(p1.Arguments)
 		lenProxies := len(p1.Proxies)
@@ -198,7 +154,7 @@ func TestSend(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send (3): failed to marshal data (1): %v", err)
 		}
-		packet := &DHTPacket{}
+		packet := &protocol.DHTPacket{}
 		err = proto.Unmarshal(packetBytes, packet)
 		if err != nil {
 			t.Fatalf("Failed to send (4): failed to unmarshal data (1): %v", err)
@@ -216,9 +172,9 @@ func TestSend(t *testing.T) {
 	}
 	{
 		dht := new(DHTClient)
-		dht.OutgoingData = make(chan *DHTPacket)
-		p1 := &DHTPacket{
-			Type:      DHTPacketType_Connect,
+		dht.OutgoingData = make(chan *protocol.DHTPacket)
+		p1 := &protocol.DHTPacket{
+			Type:      protocol.DHTPacketType_Connect,
 			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
 		}
 		lenArguments := len(p1.Arguments)
@@ -234,7 +190,7 @@ func TestSend(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send (9): failed to marshal data (2): %v", err)
 		}
-		packet := &DHTPacket{}
+		packet := &protocol.DHTPacket{}
 		err = proto.Unmarshal(packetBytes, packet)
 		if err != nil {
 			t.Fatalf("Failed to send (10): failed to unmarshal data (2): %v", err)
@@ -252,9 +208,9 @@ func TestSend(t *testing.T) {
 	}
 	{
 		dht := new(DHTClient)
-		dht.OutgoingData = make(chan *DHTPacket)
-		p1 := &DHTPacket{
-			Type:    DHTPacketType_Connect,
+		dht.OutgoingData = make(chan *protocol.DHTPacket)
+		p1 := &protocol.DHTPacket{
+			Type:    protocol.DHTPacketType_Connect,
 			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
 		lenArguments := len(p1.Arguments)
@@ -270,7 +226,7 @@ func TestSend(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send (15): failed to marshal data (3): %v", err)
 		}
-		packet := &DHTPacket{}
+		packet := &protocol.DHTPacket{}
 		err = proto.Unmarshal(packetBytes, packet)
 		if err != nil {
 			t.Fatalf("Failed to send (16): failed to unmarshal data (3): %v", err)
@@ -288,9 +244,9 @@ func TestSend(t *testing.T) {
 	}
 	{
 		dht := new(DHTClient)
-		dht.OutgoingData = make(chan *DHTPacket)
-		p1 := &DHTPacket{
-			Type:      DHTPacketType_Connect,
+		dht.OutgoingData = make(chan *protocol.DHTPacket)
+		p1 := &protocol.DHTPacket{
+			Type:      protocol.DHTPacketType_Connect,
 			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
 			Proxies:   []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
@@ -307,7 +263,7 @@ func TestSend(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send (21): failed to marshal data (4): %v", err)
 		}
-		packet := &DHTPacket{}
+		packet := &protocol.DHTPacket{}
 		err = proto.Unmarshal(packetBytes, packet)
 		if err != nil {
 			t.Fatalf("Failed to send (22): failed to unmarshal data (4): %v", err)
@@ -325,9 +281,9 @@ func TestSend(t *testing.T) {
 	}
 	{
 		dht := new(DHTClient)
-		dht.OutgoingData = make(chan *DHTPacket)
-		p1 := &DHTPacket{
-			Type:      DHTPacketType_Connect,
+		dht.OutgoingData = make(chan *protocol.DHTPacket)
+		p1 := &protocol.DHTPacket{
+			Type:      protocol.DHTPacketType_Connect,
 			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
 		}
 		for i := 0; i < 100000; i++ {
@@ -341,14 +297,14 @@ func TestSend(t *testing.T) {
 				t.Fatalf("Failed to send (26): could not send packet")
 			}
 		}()
-		data := []*DHTPacket{}
+		data := []*protocol.DHTPacket{}
 		for i := 0; i < 10000+1; i++ {
 			item := <-dht.OutgoingData
 			packetBytes, err := proto.Marshal(item)
 			if err != nil {
 				t.Fatalf("Failed to send (27): failed to marshal data (5): %v", err)
 			}
-			packet := &DHTPacket{}
+			packet := &protocol.DHTPacket{}
 			err = proto.Unmarshal(packetBytes, packet)
 			if err != nil {
 				t.Fatalf("Failed to send (28): failed to unmarshal data (5): %v", err)
@@ -374,9 +330,9 @@ func TestSend(t *testing.T) {
 	}
 	{
 		dht := new(DHTClient)
-		dht.OutgoingData = make(chan *DHTPacket)
-		p1 := &DHTPacket{
-			Type:    DHTPacketType_Connect,
+		dht.OutgoingData = make(chan *protocol.DHTPacket)
+		p1 := &protocol.DHTPacket{
+			Type:    protocol.DHTPacketType_Connect,
 			Proxies: []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
 		for i := 0; i < 100000; i++ {
@@ -390,14 +346,14 @@ func TestSend(t *testing.T) {
 				t.Fatalf("Failed to send (32): could not send packet")
 			}
 		}()
-		data := []*DHTPacket{}
+		data := []*protocol.DHTPacket{}
 		for i := 0; i < 10000+1; i++ {
 			item := <-dht.OutgoingData
 			packetBytes, err := proto.Marshal(item)
 			if err != nil {
 				t.Fatalf("Failed to send (33): failed to marshal data (6): %v", err)
 			}
-			packet := &DHTPacket{}
+			packet := &protocol.DHTPacket{}
 			err = proto.Unmarshal(packetBytes, packet)
 			if err != nil {
 				t.Fatalf("Failed to send (34): failed to unmarshal data (6): %v", err)
@@ -423,9 +379,9 @@ func TestSend(t *testing.T) {
 	}
 	{
 		dht := new(DHTClient)
-		dht.OutgoingData = make(chan *DHTPacket)
-		p1 := &DHTPacket{
-			Type:      DHTPacketType_Connect,
+		dht.OutgoingData = make(chan *protocol.DHTPacket)
+		p1 := &protocol.DHTPacket{
+			Type:      protocol.DHTPacketType_Connect,
 			Arguments: []string{"ARGUMENT_1", "ARGUMENT_2", "ARGUMENT_3", "ARGUMENT_4", "ARGUMENT_5", "ARGUMENT_6"},
 			Proxies:   []string{"PROXY_1", "PROXY_2", "PROXY_3", "PROXY_4", "PROXY_5", "PROXY_6"},
 		}
@@ -443,14 +399,14 @@ func TestSend(t *testing.T) {
 				t.Fatalf("Failed to send (38): could not send packet")
 			}
 		}()
-		data := []*DHTPacket{}
+		data := []*protocol.DHTPacket{}
 		for i := 0; i < 10000+1; i++ {
 			item := <-dht.OutgoingData
 			packetBytes, err := proto.Marshal(item)
 			if err != nil {
 				t.Fatalf("Failed to send (39): failed to marshal data (7): %v", err)
 			}
-			packet := &DHTPacket{}
+			packet := &protocol.DHTPacket{}
 			err = proto.Unmarshal(packetBytes, packet)
 			if err != nil {
 				t.Fatalf("Failed to send (40): failed to unmarshal data (7): %v", err)
@@ -488,7 +444,7 @@ func TestSendFind(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Failed to sendFind (2): must have returned non-nil but returned nil")
 	}
-	dht.OutgoingData = make(chan *DHTPacket, 1)
+	dht.OutgoingData = make(chan *protocol.DHTPacket, 1)
 	defer close(dht.OutgoingData)
 	err = dht.sendFind()
 	if err != nil {
@@ -506,7 +462,7 @@ func TestSendNode(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Failed to sendNode (2): must have returned non-nil but returned nil")
 	}
-	dht.OutgoingData = make(chan *DHTPacket, 1)
+	dht.OutgoingData = make(chan *protocol.DHTPacket, 1)
 	defer close(dht.OutgoingData)
 	err = dht.sendNode("123456789012345678901234567890123456", []net.IP{net.IP("192.168.0.1"), net.IP(nil), net.IP("192.168.0.1")})
 	if err != nil {
@@ -524,7 +480,7 @@ func TestSendState(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Failed to sendState (2): must have returned non-nil but returned nil")
 	}
-	dht.OutgoingData = make(chan *DHTPacket, 1)
+	dht.OutgoingData = make(chan *protocol.DHTPacket, 1)
 	defer close(dht.OutgoingData)
 	err = dht.sendState("123456789012345678901234567890123456", "1")
 	if err != nil {
@@ -538,13 +494,13 @@ func TestSendDHCP(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Failed to sendDHCP (1): must have returned non-nil but returned nil")
 	}
-	dht.OutgoingData = make(chan *DHTPacket, 1)
+	dht.OutgoingData = make(chan *protocol.DHTPacket, 1)
 	err = dht.sendDHCP(nil, nil)
 	close(dht.OutgoingData)
 	if err != nil {
 		t.Fatalf("Failed to sendDHCP (2): %v", err)
 	}
-	dht.OutgoingData = make(chan *DHTPacket, 1)
+	dht.OutgoingData = make(chan *protocol.DHTPacket, 1)
 	defer close(dht.OutgoingData)
 	err = dht.sendDHCP(nil, new(net.IPNet))
 	if err != nil {
@@ -558,7 +514,7 @@ func TestSendProxy(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Failed to sendProxy (1): must have returned non-nil but returned nil")
 	}
-	dht.OutgoingData = make(chan *DHTPacket, 1)
+	dht.OutgoingData = make(chan *protocol.DHTPacket, 1)
 	defer close(dht.OutgoingData)
 	err = dht.sendProxy()
 	if err != nil {
@@ -576,7 +532,7 @@ func TestSendRequestProxy(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Failed to sendState (2): must have returned non-nil but returned nil")
 	}
-	dht.OutgoingData = make(chan *DHTPacket, 1)
+	dht.OutgoingData = make(chan *protocol.DHTPacket, 1)
 	defer close(dht.OutgoingData)
 	err = dht.sendRequestProxy("123456789012345678901234567890123456")
 	if err != nil {
@@ -594,7 +550,7 @@ func TestSendReportProxy(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Failed to sendState (2): must have returned non-nil but returned nil")
 	}
-	dht.OutgoingData = make(chan *DHTPacket, 1)
+	dht.OutgoingData = make(chan *protocol.DHTPacket, 1)
 	defer close(dht.OutgoingData)
 	err = dht.sendReportProxy([]*net.UDPAddr{{IP: net.IP("127.0.0.1"), Port: 8080}})
 	if err != nil {

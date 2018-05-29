@@ -5,6 +5,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	ptp "github.com/subutai-io/p2p/lib"
+	"github.com/subutai-io/p2p/protocol"
 )
 
 func TestRouteData(t *testing.T) {
@@ -17,13 +18,13 @@ func TestRouteData(t *testing.T) {
 		i++
 	}
 
-	data := []ptp.DHTPacket{
-		ptp.DHTPacket{},
-		ptp.DHTPacket{
-			Type: ptp.DHTPacketType_Ping,
+	data := []protocol.DHTPacket{
+		protocol.DHTPacket{},
+		protocol.DHTPacket{
+			Type: protocol.DHTPacketType_Ping,
 		},
-		ptp.DHTPacket{
-			Type:      ptp.DHTPacketType_Ping,
+		protocol.DHTPacket{
+			Type:      protocol.DHTPacketType_Ping,
 			Arguments: dataArr,
 		},
 	}
