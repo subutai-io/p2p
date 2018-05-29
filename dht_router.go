@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	ptp "github.com/subutai-io/p2p/lib"
+	"github.com/subutai-io/p2p/protocol"
 )
 
 // DHTRouter represents a connection to a router
@@ -21,7 +22,7 @@ type DHTRouter struct {
 	fails       int          // Number of connection fails
 	tx          uint64
 	rx          uint64
-	data        chan *ptp.DHTPacket
+	data        chan *protocol.DHTPacket
 	lastContact time.Time
 }
 
@@ -75,7 +76,7 @@ func (dht *DHTRouter) handleData(data []byte) {
 }
 
 func (dht *DHTRouter) routeData(data []byte) {
-	packet := &ptp.DHTPacket{}
+	packet := &protocol.DHTPacket{}
 	err := proto.Unmarshal(data, packet)
 	ptp.Log(ptp.Trace, "DHTPacket size: [%d]", len(data))
 	ptp.Log(ptp.Trace, "DHTPacket contains: %+v --- %+v", bytes.NewBuffer(data).String(), packet)
@@ -84,7 +85,7 @@ func (dht *DHTRouter) routeData(data []byte) {
 		return
 	}
 	ptp.Log(ptp.Trace, "Received DHT packet: %+v", packet)
-	if packet.Type == ptp.DHTPacketType_Ping && dht.handshaked == false {
+	if packet.Type == protocol.DHTPacketType_Ping && dht.handshaked == false {
 		supported := false
 		for _, v := range ptp.SupportedVersion {
 			if v == packet.Version {
@@ -175,8 +176,8 @@ func (dht *DHTRouter) sendRaw(data []byte) (int, error) {
 
 func (dht *DHTRouter) ping() error {
 	ptp.Log(ptp.Trace, "Sending ping to dht %s", dht.addr.String())
-	packet := &ptp.DHTPacket{
-		Type:    ptp.DHTPacketType_Ping,
+	packet := &protocol.DHTPacket{
+		Type:    protocol.DHTPacketType_Ping,
 		Query:   "req",
 		Version: ptp.PacketVersion,
 	}
