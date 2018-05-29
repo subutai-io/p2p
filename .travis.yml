@@ -20,8 +20,8 @@ matrix:
         - sed -i 's/quilt/native/' app/debian/source/format
         - sed -i 's/DHT_ENDPOINT/TEST_DHT_HOST/' app/debian/rules
         - sed -i 's/DEFAULT_LOG_LEVEL/DEBUG/' app/debian/rules
-        - cd app && dch -v '7.0.1' -D stable 'Test build for 7.0.1' 1>/dev/null 2>/dev/null
-        - cd app && dpkg-buildpackage -rfakeroot
+        - cd app && dch -v '7.0.1' -D stable 'Test build for 7.0.1' 1>/dev/null 2>/dev/null && cd ..
+        - cd app && dpkg-buildpackage -rfakeroot && cd ..
         - ls -l
         - cp bin/p2p /tmp/p2p-packages/linux/debian
         - if [ ! -z "$TRAVIS_TAG" ] ; 
