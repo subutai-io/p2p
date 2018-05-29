@@ -17,11 +17,15 @@ matrix:
         - make linux
         - make test
         - make coverage
-        - sed -i 's/quilt/native/' app/debian/source/format
-        - sed -i 's/DHT_ENDPOINT/TEST_DHT_HOST/' app/debian/rules
-        - sed -i 's/DEFAULT_LOG_LEVEL/DEBUG/' app/debian/rules
-        - cd app && dch -v '7.0.1' -D stable 'Test build for 7.0.1' 1>/dev/null 2>/dev/null && cd ..
-        - cd app && dpkg-buildpackage -rfakeroot && cd ..
+        - git clone https://github.com/subutai-io/p2p /tmp/p2p-deb 
+        - if [ "$TRAVIS_BRANCH" != "master" ] ;
+          then cd /tmp/p2p-deb && git checkout --track origin/${env.BRANCH_NAME} && rm -rf .git* ;
+          fi
+        - cd /tmp/p2p-deb/app && sed -i 's/quilt/native/' app/debian/source/format
+        - cd /tmp/p2p-deb/app && sed -i 's/DHT_ENDPOINT/TEST_DHT_HOST/' app/debian/rules
+        - cd /tmp/p2p-deb/app && sed -i 's/DEFAULT_LOG_LEVEL/DEBUG/' app/debian/rules
+        - cd /tmp/p2p-deb/app && dch -v '7.0.1' -D stable 'Test build for 7.0.1' 1>/dev/null 2>/dev/null
+        - cd /tmp/p2p-dev/app && dpkg-buildpackage -rfakeroot
         - ls -l
         - cp bin/p2p /tmp/p2p-packages/linux/debian
         - if [ ! -z "$TRAVIS_TAG" ] ; 
