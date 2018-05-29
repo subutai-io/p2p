@@ -18,7 +18,7 @@ matrix:
         - make test
         - make coverage
         - git clone https://github.com/subutai-io/p2p /tmp/p2p-deb 
-        - echo "Branch: $TRAVIS_BRANCH"
+        - echo "Branch: ${TRAVIS_BRANCH}"
         - if [ "$TRAVIS_BRANCH" != "master" ] ;
           then cd /tmp/p2p-deb && git checkout --track origin/$TRAVIS_BRANCH && rm -rf .git* ;
           fi
