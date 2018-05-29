@@ -18,7 +18,7 @@ BUILDFLAGS := -ldflags\
 	dh $@ --buildsystem=golang --with=golang --with-systemd
 
 override_dh_auto_build:
-	dh_auto_build -- $(BUILDFLAGS)
+	dh_auto_build -- $(BUILDFLAGS) github.com/subutai-io/p2p/app
 
 override_dh_auto_install:
 	dh_auto_install -- --no-source
