@@ -17,6 +17,7 @@ install:
   - git clone --depth 1 https://github.com/subutai-io/devops.git c:\root\devops
   - curl -fsSLk https://eu0.cdn.subutai.io:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o c:\root\p2p-packages\tap-windows-9.21.2.exe
   - gpg --list-keys
+  - go get github.com/urfave/cli
 #  - secure-file\tools\secure-file -decrypt c:\root\p2p-packages\appveyor\sign.enc -secret %GPG_KEY_SECRET%
 #  - secure-file\tools\secure-file -decrypt c:\root\p2p-packages\appveyor\gpg.enc -secret %GPG_KEY_SECRET%
 #  - gpg --import c:\root\p2p-packages\appveyor\gpg
