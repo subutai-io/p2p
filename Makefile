@@ -29,11 +29,12 @@ ifeq ($(BRANCH),sysnet)
 endif
 
 build: directories
+build: proto
 build: bin/$(APP)
 linux: bin/$(APP)
 windows: bin/$(APP).exe
 macos: bin/$(APP)_osx
-all: linux windows macos
+all: proto linux windows macos
 
 bin/$(APP): $(SOURCES) service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
@@ -60,6 +61,7 @@ clean:
 	-rm -f $(NAME_PREFIX).exe
 	-rm -f $(NAME_PREFIX)-$(OS)*
 	-rm -rf debian/extra-code/*
+	-rm protocol/*.go
 
 mrproper: clean
 mrproper:
@@ -97,3 +99,6 @@ snapcraft: $(SOURCES) service_posix.go
 	$(CC) get -d
 	$(CC) get -u github.com/golang/protobuf/proto
 	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.DefaultDHT=$(SNAPDHT) -X main.BuildID=$(BUILD) -X main.DefaultLog=$(LOG_LEVEL)" -o $(APP) -v $^
+
+proto:
+	protoc --go_out=import_path=protocol:. protocol/dht.proto
