@@ -72,7 +72,6 @@ clean:
 	-rm -f $(NAME_PREFIX).exe
 	-rm -f $(NAME_PREFIX)-$(OS)*
 	-rm -rf debian/extra-code/*
-	-rm protocol/*.go
 
 mrproper: clean
 mrproper:

@@ -4,7 +4,7 @@ include /usr/share/dpkg/default.mk
 
 BUILDER    := $(shell sed -ne 's,^Maintainer: .[^<]*<\([^>]*\)>,\1,p' debian/control)
 #BUILDPKG   := github.com/subutai-io/p2p/build
-BUILDPKG   := main
+BUILDPKG   := github.com/subutai-io/p2p/app
 VERSION    := $(shell dpkg-parsechangelog | sed -n 's/^Version: //p')
 BUILDID    := $(shell git describe)
 LOG_LEVEL  := DEFAULT_LOG_LEVEL
