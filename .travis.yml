@@ -20,7 +20,7 @@ matrix:
         - git clone https://github.com/subutai-io/p2p /tmp/p2p-deb 
         - echo $TRAVIS_BRANCH
         - if [ "$TRAVIS_BRANCH" != "master" ] ;
-          then cd /tmp/p2p-deb && git checkout --track origin/dir-refactor && rm -rf .git* ;
+          then cd /tmp/p2p-deb && git checkout --track origin/dir-refactor && rm -rf .git* && cd $TRAVIS_BUILD_DIR && git checkout --track origin/dir-refactor && rm -rf .git* ;
           fi
         - cd /tmp/p2p-deb/app && sed -i 's/quilt/native/' debian/source/format
         - cd /tmp/p2p-deb/app && sed -i 's/DHT_ENDPOINT/TEST_DHT_HOST/' debian/rules
