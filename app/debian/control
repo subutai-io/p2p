@@ -2,7 +2,7 @@ Source: subutai-p2p
 Section: utils
 Priority: optional
 Maintainer: Aron Xu <happyaron.xu@gmail.com>
-Build-Depends: debhelper (>= 10), dh-golang, dh-systemd, golang-any
+Build-Depends: debhelper (>= 10), dh-golang, dh-systemd
 #Build-Depends: debhelper (>= 10), dh-golang, dh-systemd, golang-any, golang-goprotobuf-dev,
 #               golang-github-ccding-go-stun-dev, golang-github-nebulouslabs-go-upnp-dev,
 #               golang-github-urfave-cli-dev,golang-github-nebulouslabs-fastrand-dev,
