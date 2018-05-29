@@ -1,3 +1,0 @@
-# This is an environment file for Subutai P2P daemon
-# Default location is: /etc/default/p2p-service
-P2P_MTU=1500

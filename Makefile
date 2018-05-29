@@ -7,7 +7,19 @@ ARCH=$(shell uname -m)
 BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
 NAME_PREFIX=p2p
 NAME_BASE=p2p
-SOURCES=instance.go main.go rest.go start.go stop.go show.go set.go status.go debug.go daemon.go dht_connection.go dht_router.go
+APP_DIR=app
+SOURCES=$(APP_DIR)/instance.go \
+		$(APP_DIR)/main.go \
+		$(APP_DIR)/rest.go \
+		$(APP_DIR)/start.go \
+		$(APP_DIR)/stop.go \
+		$(APP_DIR)/show.go \
+		$(APP_DIR)/set.go \
+		$(APP_DIR)/status.go \
+		$(APP_DIR)/debug.go \
+		$(APP_DIR)/daemon.go \
+		$(APP_DIR)/dht_connection.go \
+		$(APP_DIR)/dht_router.go
 
 sinclude config.make
 ifdef DHT_ENDPOINTS
@@ -35,15 +47,15 @@ windows: bin/$(APP).exe
 macos: bin/$(APP)_osx
 all: linux windows macos
 
-bin/$(APP): $(SOURCES) service_posix.go
+bin/$(APP): $(SOURCES) $(APP_DIR)/service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	GOOS=linux $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD) -X main.DefaultLog=$(LOG_LEVEL)" -o $@ -v $^
 
-bin/$(APP).exe: $(SOURCES) service_windows.go
+bin/$(APP).exe: $(SOURCES) $(APP_DIR)/service_windows.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	GOOS=windows $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD) -X main.DefaultLog=$(LOG_LEVEL)" -o $@ -v $^
 	
-bin/$(APP)_osx: $(SOURCES) service_posix.go
+bin/$(APP)_osx: $(SOURCES) $(APP_DIR)/service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	GOOS=darwin $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.DefaultDHT=$(DHT) -X main.BuildID=$(BUILD) -X main.DefaultLog=$(LOG_LEVEL)" -o $@ -v $^
 
@@ -67,14 +79,11 @@ mrproper:
 	-rm -f config.make
 
 test:
-	go test -v ./...
+	go test -v github.com/subutai-io/p2p
 	go test --bench . ./...
 
 coverage:
-	go test -coverprofile=main.out -covermode=atomic 
-	go test -coverprofile=lib.out -covermode=atomic github.com/subutai-io/p2p/lib
-	cat main.out > coverage.txt
-	cat lib.out >> coverage.txt
+	go test -coverprofile=coverage.txt -covermode=atomic 
 
 release: build
 release:
@@ -97,3 +106,6 @@ snapcraft: $(SOURCES) service_posix.go
 	$(CC) get -d
 	$(CC) get -u github.com/golang/protobuf/proto
 	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.DefaultDHT=$(SNAPDHT) -X main.BuildID=$(BUILD) -X main.DefaultLog=$(LOG_LEVEL)" -o $(APP) -v $^
+
+proto:
+	protoc --go_out=import_path=protocol:. protocol/dht.proto
