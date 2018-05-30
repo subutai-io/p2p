@@ -41,7 +41,7 @@ func GetConfigurationTool() string {
 	return path
 }
 
-func newTAP(tool, ip, mac, mask string, mtu int) (*TAPLinux, error) {
+func newTAP(tool, ip, mac, mask string, mtu int, pmtu bool) (*TAPLinux, error) {
 	Log(Debug, "Acquiring TAP interface [Linux]")
 	nip := net.ParseIP(ip)
 	if nip == nil {
@@ -57,6 +57,7 @@ func newTAP(tool, ip, mac, mask string, mtu int) (*TAPLinux, error) {
 		Mac:  nmac,
 		Mask: net.IPv4Mask(255, 255, 255, 0), // Unused yet
 		MTU:  GlobalMTU,
+		PMTU: pmtu,
 	}, nil
 }
 
@@ -70,6 +71,7 @@ type TAPLinux struct {
 	MTU        int              // MTU value
 	file       *os.File         // Interface descriptor
 	Configured bool
+	PMTU       bool // Enables/Disbles PMTU
 }
 
 // GetName returns a name of interface
@@ -227,6 +229,10 @@ func (t *TAPLinux) handlePacket(data []byte) (*Packet, error) {
 	}
 	pkt := &Packet{Packet: data[0:length]}
 	pkt.Protocol = int(binary.BigEndian.Uint16(data[12:14]))
+
+	if !t.IsPMTUEnabled() {
+		return pkt, nil
+	}
 
 	if pkt.Protocol == int(PacketIPv4) && length > GlobalMTU-150 {
 		header, err := ipv4.ParseHeader(data[14:])
@@ -400,6 +406,18 @@ func (t *TAPLinux) IsConfigured() bool {
 
 func (t *TAPLinux) MarkConfigured() {
 	t.Configured = true
+}
+
+func (t *TAPLinux) EnablePMTU() {
+	t.PMTU = true
+}
+
+func (t *TAPLinux) DisablePMTU() {
+	t.PMTU = false
+}
+
+func (t *TAPLinux) IsPMTUEnabled() bool {
+	return t.PMTU
 }
 
 // FilterInterface will return true if this interface needs to be filtered out

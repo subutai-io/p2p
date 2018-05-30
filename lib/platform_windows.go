@@ -15,7 +15,6 @@ import (
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/eventlog"
 	"golang.org/x/sys/windows/svc/mgr"
-
 )
 
 // Windows Platform specific constants
@@ -28,13 +27,13 @@ const (
 )
 
 var (
-	errorTAPIsNotInstalled			= errors.New("TAP-Windows 9.2x is not installed")
-	errorFailedToRemoveInterfaces		= errors.New("Failed to remove TAP interfaces")
-	errorFailedToCreateInterface		= errors.New("Failed to create interface")
-	errorObjectCreationFailed		= errors.New("Failed to create TAP object")
-	errorFailedToRetrieveNetworkKey		= errors.New("Failed to retrieve network key from registry")
-	errorFailedToQueryInterface		= errors.New("Failed to query network interface")
-	errorPreconfigurationFailed		= errors.New("Interface pre-configuration failed")
+	errorTAPIsNotInstalled          = errors.New("TAP-Windows 9.2x is not installed")
+	errorFailedToRemoveInterfaces   = errors.New("Failed to remove TAP interfaces")
+	errorFailedToCreateInterface    = errors.New("Failed to create interface")
+	errorObjectCreationFailed       = errors.New("Failed to create TAP object")
+	errorFailedToRetrieveNetworkKey = errors.New("Failed to retrieve network key from registry")
+	errorFailedToQueryInterface     = errors.New("Failed to query network interface")
+	errorPreconfigurationFailed     = errors.New("Interface pre-configuration failed")
 )
 
 // InitPlatform initializes Windows platform-specific parameters
@@ -59,7 +58,7 @@ func InitPlatform() error {
 		}
 	}
 
-	tap, err := newTAP(GetConfigurationTool(), "127.0.0.1", "00:00:00:00:00:00", "255.255.255.0", DefaultMTU)
+	tap, err := newTAP(GetConfigurationTool(), "127.0.0.1", "00:00:00:00:00:00", "255.255.255.0", DefaultMTU, UsePMTU)
 	if err != nil {
 		Log(Error, "Failed to create TAP object: %s", err)
 		return errorObjectCreationFailed

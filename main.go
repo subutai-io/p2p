@@ -11,10 +11,18 @@ import (
 	"github.com/urfave/cli"
 )
 
+// These variables must be customized at build time
+
 // AppVersion is a Version of P2P
 var AppVersion = "Unknown"
+
+// BuildID usually holds output of `git describe`
 var BuildID = "Unknown"
+
+// DefaultDHT will point to production DHT server
 var DefaultDHT = "eu0.cdn.subutai.io:6881"
+
+// DefaultLog is used when it was not specified during build
 var DefaultLog = "INFO"
 
 // InterfaceNames - List of all interfaces names that was used by p2p historically. These interfaces may not present in the system anymore
@@ -82,6 +90,7 @@ func main() {
 		InstallService bool   // If yes - service will be installed (used with service)
 		MTU            int    // MTU for p2p interface
 		ShowMTU        bool   // Show MTU value
+		PMTU           bool   // Whether or not PMTU capabilities should be used
 	)
 
 	app := cli.NewApp()
@@ -89,10 +98,13 @@ func main() {
 	app.Version = AppVersion
 	app.Authors = []cli.Author{
 		cli.Author{
-			Name: "Subutai.io",
+			Name: "subutai.io",
 		},
 	}
-	app.Copyright = "Copyright 2017 Subutai.io"
+	app.Description = "Subutai P2P creates private mesh network used by PeerOS. Visit https://subutai.io for more information. " +
+		"To get help visit our Slack at https://slack.subutai.io/ or create an issue on GitHub: https://github.com/subutai-io/p2p"
+	app.Usage = "Subutai P2P daemon/client application"
+	app.Copyright = "Copyright 2018 Subutai.io"
 
 	app.Commands = []cli.Command{
 		{
@@ -141,9 +153,14 @@ func main() {
 					Value:       "",
 					Destination: &LogLevel,
 				},
+				cli.BoolFlag{
+					Name:        "pmtu",
+					Usage:       "When specified - enables PMTU capabilities",
+					Destination: &PMTU,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				ExecDaemon(RPCPort, DHTRouters, SaveFile, Profiling, Syslog, LogLevel, MTU)
+				ExecDaemon(RPCPort, DHTRouters, SaveFile, Profiling, Syslog, LogLevel, MTU, PMTU)
 				return nil
 			},
 		},
