@@ -98,10 +98,13 @@ func main() {
 	app.Version = AppVersion
 	app.Authors = []cli.Author{
 		cli.Author{
-			Name: "Subutai.io",
+			Name: "subutai.io",
 		},
 	}
-	app.Copyright = "Copyright 2017 Subutai.io"
+	app.Description = "Subutai P2P creates private mesh network used by PeerOS. Visit https://subutai.io for more information. " +
+		"To get help visit our Slack at https://slack.subutai.io/ or create an issue on GitHub: https://github.com/subutai-io/p2p"
+	app.Usage = "Subutai P2P daemon/client application"
+	app.Copyright = "Copyright 2018 Subutai.io"
 
 	app.Commands = []cli.Command{
 		{
