@@ -30,7 +30,7 @@ func GetConfigurationTool() string {
 	return path
 }
 
-func newTAP(tool, ip, mac, mask string, mtu int) (*TAPDarwin, error) {
+func newTAP(tool, ip, mac, mask string, mtu int, pmtu bool) (*TAPDarwin, error) {
 	Log(Info, "Acquiring TAP interface [Darwin]")
 	nip := net.ParseIP(ip)
 	if nip == nil {
@@ -46,6 +46,7 @@ func newTAP(tool, ip, mac, mask string, mtu int) (*TAPDarwin, error) {
 		Mac:  nmac,
 		Mask: net.IPv4Mask(255, 255, 255, 0), // Unused yet
 		MTU:  DefaultMTU,
+		PMTU: pmtu,
 	}, nil
 }
 
@@ -59,6 +60,7 @@ type TAPDarwin struct {
 	MTU        int              // MTU value
 	file       *os.File         // Interface descriptor
 	Configured bool
+	PMTU       bool
 }
 
 // GetName returns a name of interface
@@ -189,6 +191,18 @@ func (t *TAPDarwin) IsConfigured() bool {
 
 func (t *TAPDarwin) MarkConfigured() {
 	t.Configured = true
+}
+
+func (t *TAPDarwin) EnablePMTU() {
+	t.PMTU = true
+}
+
+func (t *TAPDarwin) DisablePMTU() {
+	t.PMTU = false
+}
+
+func (t *TAPDarwin) IsPMTUEnabled() bool {
+	return t.PMTU
 }
 
 // FilterInterface will return true if this interface needs to be filtered out

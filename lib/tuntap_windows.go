@@ -59,7 +59,7 @@ func GetConfigurationTool() string {
 	return path
 }
 
-func newTAP(tool, ip, mac, mask string, mtu int) (*TAPWindows, error) {
+func newTAP(tool, ip, mac, mask string, mtu int, pmtu bool) (*TAPWindows, error) {
 	Log(Debug, "Acquiring TAP interface [Windows]")
 	nip := net.ParseIP(ip)
 	if nip == nil {
@@ -76,6 +76,7 @@ func newTAP(tool, ip, mac, mask string, mtu int) (*TAPWindows, error) {
 		Mask:      net.IPv4Mask(255, 255, 255, 0), // Unused yet
 		MTU:       DefaultMTU,
 		MacNotSet: true,
+		PMTU:      pmtu,
 	}, nil
 }
 
@@ -94,6 +95,7 @@ type TAPWindows struct {
 	Rx         chan []byte
 	Tx         chan []byte
 	Configured bool
+	PMTU       bool
 }
 
 // GetName returns a name of interface
@@ -428,6 +430,18 @@ func (t *TAPWindows) IsConfigured() bool {
 
 func (t *TAPWindows) MarkConfigured() {
 	t.Configured = true
+}
+
+func (t *TAPWindows) EnablePMTU() {
+	t.PMTU = true
+}
+
+func (t *TAPWindows) DisablePMTU() {
+	t.PMTU = false
+}
+
+func (t *TAPWindows) IsPMTUEnabled() bool {
+	return t.PMTU
 }
 
 func tapControlCode(request, method uint32) uint32 {

@@ -13,6 +13,8 @@ import (
 // GlobalMTU value specified on daemon start
 var GlobalMTU = DefaultMTU
 
+var UsePMTU = false
+
 // PeerToPeer - Main structure
 type PeerToPeer struct {
 	Config          Configuration                        // Network interface configuration tool
@@ -33,6 +35,7 @@ type PeerToPeer struct {
 	HolePunching    sync.Mutex                           // Mutex for hole punching sync
 	ProxyManager    *ProxyManager                        // Proxy manager
 	outboundIP      net.IP                               // Outbound IP
+	UsePMTU         bool                                 // Whether PMTU capabilities are enabled or not
 }
 
 // PeerHandshake holds handshake information received from peer
@@ -141,7 +144,7 @@ func (p *PeerToPeer) IsDeviceExists(name string) bool {
 
 // GenerateDeviceName method will generate device name if none were specified at startup
 func (p *PeerToPeer) GenerateDeviceName(i int) string {
-	tap, _ := newTAP("", "127.0.0.1", "00:00:00:00:00:00", "", 0)
+	tap, _ := newTAP("", "127.0.0.1", "00:00:00:00:00:00", "", 0, p.UsePMTU)
 	var devName = tap.GetBasename() + fmt.Sprintf("%d", i)
 	if p.IsDeviceExists(devName) {
 		return p.GenerateDeviceName(i + 1)
@@ -172,7 +175,7 @@ func New(argIP, argMac, argDev, argDirect, argHash, argKeyfile, argKey, argTTL, 
 	p.outboundIP = outboundIP
 	p.Init()
 	var err error
-	p.Interface, err = newTAP(GetConfigurationTool(), "127.0.0.1", "00:00:00:00:00:00", "", DefaultMTU)
+	p.Interface, err = newTAP(GetConfigurationTool(), "127.0.0.1", "00:00:00:00:00:00", "", DefaultMTU, UsePMTU)
 	if err != nil {
 		Log(Error, "Failed to create TAP object: %s", err)
 		return nil
