@@ -73,10 +73,7 @@ test:
 	go test --bench . ./...
 
 coverage:
-	go test -coverprofile=main.out -covermode=atomic 
-	go test -coverprofile=lib.out -covermode=atomic github.com/subutai-io/p2p/lib
-	cat main.out > coverage.txt
-	cat lib.out >> coverage.txt
+	go test -coverprofile=coverage.txt -covermode=atomic github.com/subutai-io/p2p/lib
 
 release: build
 release:
