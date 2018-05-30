@@ -39,9 +39,10 @@ type DaemonArgs struct {
 }
 
 var bootstrap DHTConnection
+var UsePMTU bool
 
 // ExecDaemon starts P2P daemon
-func ExecDaemon(port int, dht, sFile, profiling, syslog, logLevel string, mtu int) {
+func ExecDaemon(port int, dht, sFile, profiling, syslog, logLevel string, mtu int, pmtu bool) {
 	if logLevel == "" {
 		ptp.SetMinLogLevelString(DefaultLog)
 	} else {
@@ -56,6 +57,7 @@ func ExecDaemon(port int, dht, sFile, profiling, syslog, logLevel string, mtu in
 	StartProfiling(profiling)
 	ptp.InitPlatform()
 	ptp.InitErrors()
+	ptp.UsePMTU = pmtu
 
 	if !ptp.CheckPermissions() {
 		os.Exit(1)

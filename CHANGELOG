@@ -7,6 +7,7 @@
 * `show` command now accepts `--mtu` option to display current MTU VALUE
 * Debian package now delivers /etc/default/subutai-p2p file with default P2P MTU VALUE
 * Default P2P MTU value was changed to 1500 from 1376
+* PMTU can be enabled by specifying `--pmtu` option for daemon command
 
 ## [7.0.0] 05/09/2018
 

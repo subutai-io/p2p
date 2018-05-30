@@ -52,4 +52,7 @@ type TAP interface {
 	Run()
 	IsConfigured() bool
 	MarkConfigured()
+	EnablePMTU()
+	DisablePMTU()
+	IsPMTUEnabled() bool
 }

@@ -26,11 +26,11 @@ func TestGetConfigurationTool(t *testing.T) {
 }
 
 func TestNewTAP(t *testing.T) {
-	get1, err := newTAP("tool", "", "01:02:03:04:05:06", "255.255.255.0", 1)
+	get1, err := newTAP("tool", "", "01:02:03:04:05:06", "255.255.255.0", 1, false)
 	if get1 != nil {
 		t.Error(err)
 	}
-	get2, err2 := newTAP("tool", "192.168.1.1", "-", "255.255.255.0", 1)
+	get2, err2 := newTAP("tool", "192.168.1.1", "-", "255.255.255.0", 1, false)
 	if get2 != nil {
 		t.Error(err2)
 	}

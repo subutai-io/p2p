@@ -60,6 +60,7 @@ clean:
 	-rm -f $(NAME_PREFIX).exe
 	-rm -f $(NAME_PREFIX)-$(OS)*
 	-rm -rf debian/extra-code/*
+	-rm protocol/*.go
 
 mrproper: clean
 mrproper:
@@ -67,14 +68,12 @@ mrproper:
 	-rm -f config.make
 
 test:
-	go test -v ./...
+	go test -v github.com/subutai-io/p2p
+	go test -v github.com/subutai-io/p2p/lib
 	go test --bench . ./...
 
 coverage:
-	go test -coverprofile=main.out -covermode=atomic 
-	go test -coverprofile=lib.out -covermode=atomic github.com/subutai-io/p2p/lib
-	cat main.out > coverage.txt
-	cat lib.out >> coverage.txt
+	go test -coverprofile=coverage.txt -covermode=atomic github.com/subutai-io/p2p/lib
 
 release: build
 release:
@@ -97,3 +96,6 @@ snapcraft: $(SOURCES) service_posix.go
 	$(CC) get -d
 	$(CC) get -u github.com/golang/protobuf/proto
 	$(CC) build -ldflags="-r /apps/subutai/current/lib -w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.DefaultDHT=$(SNAPDHT) -X main.BuildID=$(BUILD) -X main.DefaultLog=$(LOG_LEVEL)" -o $(APP) -v $^
+
+proto:
+	protoc --go_out=import_path=protocol:. protocol/dht.proto

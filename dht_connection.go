@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	ptp "github.com/subutai-io/p2p/lib"
+	"github.com/subutai-io/p2p/protocol"
 )
 
 // DHT Errors
@@ -19,19 +20,19 @@ var (
 
 // DHTConnection to a DHT bootstrap node
 type DHTConnection struct {
-	routers     []*DHTRouter            // Routers
-	routersList string                  // Comma-separated list of routers
-	lock        sync.Mutex              // Mutex for register/unregister
-	instances   map[string]*P2PInstance // Instances
-	registered  []string                // List of registered swarm IDs
-	incoming    chan *ptp.DHTPacket     // Packets received by routers
-	ip          string                  // Our outbound IP
-	isActive    bool                    // Whether DHT connection is active or not
+	routers     []*DHTRouter             // Routers
+	routersList string                   // Comma-separated list of routers
+	lock        sync.Mutex               // Mutex for register/unregister
+	instances   map[string]*P2PInstance  // Instances
+	registered  []string                 // List of registered swarm IDs
+	incoming    chan *protocol.DHTPacket // Packets received by routers
+	ip          string                   // Our outbound IP
+	isActive    bool                     // Whether DHT connection is active or not
 }
 
 func (dht *DHTConnection) init(routersSrc string) error {
 	ptp.Log(ptp.Info, "Initializing connection to a bootstrap nodes")
-	dht.incoming = make(chan *ptp.DHTPacket)
+	dht.incoming = make(chan *protocol.DHTPacket)
 	routers := strings.Split(routersSrc, ",")
 	if len(routers) == 0 {
 		return ErrorNoRouters
@@ -79,8 +80,8 @@ func (dht *DHTConnection) registerInstance(hash string, inst *P2PInstance) error
 	}
 	dht.instances[hash] = inst
 	dht.registered = append(dht.registered, hash)
-	inst.PTP.Dht.IncomingData = make(chan *ptp.DHTPacket)
-	inst.PTP.Dht.OutgoingData = make(chan *ptp.DHTPacket)
+	inst.PTP.Dht.IncomingData = make(chan *protocol.DHTPacket)
+	inst.PTP.Dht.OutgoingData = make(chan *protocol.DHTPacket)
 	go func() {
 		for {
 			packet := <-inst.PTP.Dht.OutgoingData
@@ -94,7 +95,7 @@ func (dht *DHTConnection) registerInstance(hash string, inst *P2PInstance) error
 	return nil
 }
 
-func (dht *DHTConnection) send(packet *ptp.DHTPacket) {
+func (dht *DHTConnection) send(packet *protocol.DHTPacket) {
 	if packet == nil {
 		return
 	}
@@ -126,7 +127,7 @@ func (dht *DHTConnection) run() {
 		}
 		ptp.Log(ptp.Trace, "Routing DHT Packet %+v", packet)
 		// Ping should always provide us with outbound IP value
-		if packet.Type == ptp.DHTPacketType_Ping && packet.Data != "" {
+		if packet.Type == protocol.DHTPacketType_Ping && packet.Data != "" {
 			dht.ip = packet.Data
 			continue
 		}
