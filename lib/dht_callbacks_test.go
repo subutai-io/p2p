@@ -2,11 +2,13 @@ package ptp
 
 import (
 	"testing"
+
+	"github.com/subutai-io/p2p/protocol"
 )
 
 func TestPacketConnect(t *testing.T) {
 	ptp := new(PeerToPeer)
-	pct := new(DHTPacket)
+	pct := new(protocol.DHTPacket)
 	id := "12345"
 	pct.Id = id
 	err := ptp.packetConnect(pct)
@@ -17,7 +19,7 @@ func TestPacketConnect(t *testing.T) {
 
 func TestPacketError(t *testing.T) {
 	ptp := new(PeerToPeer)
-	pct := new(DHTPacket)
+	pct := new(protocol.DHTPacket)
 	data1 := ""
 	pct.Data = data1
 	err := ptp.packetError(pct)
