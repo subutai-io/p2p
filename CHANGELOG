@@ -1,6 +1,6 @@
 # Change Log
 
-## [7.0.1] 05/28/2018
+## [7.0.1] 06/06/2018
 
 * Implemented support for PMTU
 * `daemon` command now accepts `--mtu <VALUE>` to specify MTU of p2p interfaces 
