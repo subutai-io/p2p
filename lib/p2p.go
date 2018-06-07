@@ -579,7 +579,7 @@ func (p *PeerToPeer) ParseIntroString(intro string) (*PeerHandshake, error) {
 
 // SendTo sends a p2p packet by MAC address
 func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
-	endpoint, _, err := p.Peers.GetEndpointAndProxy(dst.String())
+	endpoint, err := p.Peers.GetEndpoint(dst.String())
 	if err == nil && endpoint != nil {
 		size, err := p.UDPSocket.SendMessage(msg, endpoint)
 		return size, err
