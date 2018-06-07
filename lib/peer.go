@@ -334,6 +334,9 @@ func (np *NetworkPeer) sortEndpoints(ptpc *PeerToPeer) ([]*PeerEndpoint, []*Peer
 		// Check if it's proxy
 		isProxy := false
 		for _, proxy := range np.Proxies {
+			if ep == nil || ep.Addr == nil {
+				continue
+			}
 			if proxy.String() == ep.Addr.String() {
 				isProxy = true
 				break

@@ -1,5 +1,9 @@
 # Change Log
 
+## [7.0.2] 06/07/2018
+
+* Fixed crash in endpoints sorter
+
 ## [7.0.1] 06/06/2018
 
 * Implemented support for PMTU
