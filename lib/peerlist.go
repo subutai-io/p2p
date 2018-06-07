@@ -147,7 +147,7 @@ func (l *PeerList) RunPeer(id string, p *PeerToPeer) {
 	Log(Info, "Running peer %s", id)
 	l.lock.RLock()
 	defer l.lock.RUnlock()
-	if !l.peers[id].Running {
+	if !l.peers[id].IsRunning() {
 		go l.peers[id].Run(p)
 	} else {
 		Log(Info, "Peer %s is already running", id)

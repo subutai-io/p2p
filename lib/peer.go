@@ -502,6 +502,7 @@ func (np *NetworkPeer) syncWithRemoteState(ptpc *PeerToPeer) {
 	}
 }
 
+// BumpEndpoint will update LastContact and LastPing of specified peer to current time
 func (np *NetworkPeer) BumpEndpoint(epAddr string) {
 	np.Lock.Lock()
 	defer np.Lock.Unlock()
@@ -511,4 +512,11 @@ func (np *NetworkPeer) BumpEndpoint(epAddr string) {
 			ep.LastPing = time.Now()
 		}
 	}
+}
+
+// IsRunning will return bool variable
+func (np *NetworkPeer) IsRunning() bool {
+	np.Lock.Lock()
+	defer np.Lock.Unlock()
+	return np.Running
 }

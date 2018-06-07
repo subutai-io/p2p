@@ -2,6 +2,7 @@ package ptp
 
 import (
 	"reflect"
+	"sync"
 	"testing"
 )
 
@@ -74,5 +75,49 @@ func TestGetPeer(t *testing.T) {
 	get2 := l.GetPeer("-1")
 	if get2 != nil {
 		t.Error("Error")
+	}
+}
+
+func TestPeerList_GetID(t *testing.T) {
+	type fields struct {
+		peers      map[string]*NetworkPeer
+		tableIPID  map[string]string
+		tableMacID map[string]string
+		lock       sync.RWMutex
+	}
+	type args struct {
+		ip string
+	}
+
+	data := make(map[string]string)
+	data["127.0.0.1"] = "test_id"
+
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{"t1", fields{tableIPID: data}, args{"127.0.0.1"}, "test_id", false},
+		{"t1", fields{tableIPID: data}, args{"127.0.0.2"}, "", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := &PeerList{
+				peers:      tt.fields.peers,
+				tableIPID:  tt.fields.tableIPID,
+				tableMacID: tt.fields.tableMacID,
+				lock:       tt.fields.lock,
+			}
+			got, err := l.GetID(tt.args.ip)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("PeerList.GetID() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("PeerList.GetID() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
