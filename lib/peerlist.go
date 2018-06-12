@@ -111,18 +111,18 @@ func (l *PeerList) GetPeer(id string) *NetworkPeer {
 	return nil
 }
 
-// GetEndpointAndProxy returns endpoint address and proxy id
-func (l *PeerList) GetEndpointAndProxy(mac string) (*net.UDPAddr, uint16, error) {
+// GetEndpoint returns endpoint address and proxy id
+func (l *PeerList) GetEndpoint(mac string) (*net.UDPAddr, error) {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 	id, exists := l.tableMacID[mac]
 	if exists {
 		peer, exists := l.peers[id]
 		if exists && peer.Endpoint != nil {
-			return peer.Endpoint, uint16(0), nil
+			return peer.Endpoint, nil
 		}
 	}
-	return nil, 0, fmt.Errorf("Specified hardware address was not found in table")
+	return nil, fmt.Errorf("Specified hardware address was not found in table")
 }
 
 // GetID returns ID by specified IP

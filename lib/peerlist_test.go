@@ -1,6 +1,7 @@
 package ptp
 
 import (
+	"net"
 	"reflect"
 	"sync"
 	"testing"
@@ -117,6 +118,71 @@ func TestPeerList_GetID(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("PeerList.GetID() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPeerList_GetEndpoint(t *testing.T) {
+	type fields struct {
+		peers      map[string]*NetworkPeer
+		tableIPID  map[string]string
+		tableMacID map[string]string
+		lock       sync.RWMutex
+	}
+	type args struct {
+		mac string
+	}
+
+	pl := new(PeerList)
+	pl.Init()
+	data := make(map[string]string)
+	peers := make(map[string]*NetworkPeer)
+	data["00:01:02:03:04:05"] = "id0"
+	data["01:01:02:03:04:05"] = "id1"
+	data["02:01:02:03:04:05"] = "id2"
+	data["03:01:02:03:04:05"] = "id3"
+	p1 := new(NetworkPeer)
+	p1.Endpoint, _ = net.ResolveUDPAddr("udp4", "127.0.0.1:2000")
+	p2 := new(NetworkPeer)
+	p2.Endpoint, _ = net.ResolveUDPAddr("udp4", "127.0.0.1:2001")
+	p3 := new(NetworkPeer)
+	p3.Endpoint, _ = net.ResolveUDPAddr("udp4", "127.0.0.1:2002")
+	p4 := new(NetworkPeer)
+	p4.Endpoint, _ = net.ResolveUDPAddr("udp4", "127.0.0.1:2003")
+	peers["id0"] = p1
+	peers["id1"] = p2
+	peers["id2"] = p3
+	peers["id3"] = p4
+
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    *net.UDPAddr
+		wantErr bool
+	}{
+		{"GetEndpoint", fields{peers: peers, tableMacID: data}, args{"00:01:02:03:04:05"}, p1.Endpoint, false},
+		{"GetEndpoint", fields{peers: peers, tableMacID: data}, args{"01:01:02:03:04:05"}, p2.Endpoint, false},
+		{"GetEndpoint", fields{peers: peers, tableMacID: data}, args{"02:01:02:03:04:05"}, p3.Endpoint, false},
+		{"GetEndpoint", fields{peers: peers, tableMacID: data}, args{"03:01:02:03:04:05"}, p4.Endpoint, false},
+		{"GetEndpoint/Failing", fields{peers: peers, tableMacID: data}, args{"04:01:02:03:04:05"}, nil, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := &PeerList{
+				peers:      tt.fields.peers,
+				tableIPID:  tt.fields.tableIPID,
+				tableMacID: tt.fields.tableMacID,
+				lock:       tt.fields.lock,
+			}
+			got, err := l.GetEndpoint(tt.args.mac)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("PeerList.GetEndpoint() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("PeerList.GetEndpoint() = %v, want %v", got, tt.want)
 			}
 		})
 	}
