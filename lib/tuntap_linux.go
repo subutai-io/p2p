@@ -420,6 +420,10 @@ func (t *TAPLinux) IsPMTUEnabled() bool {
 	return t.PMTU
 }
 
+func (t *TAPLinux) IsBroken() bool {
+	return false
+}
+
 // FilterInterface will return true if this interface needs to be filtered out
 func FilterInterface(infName, infIP string) bool {
 	if len(infIP) > 4 && infIP[0:3] == "172" {
