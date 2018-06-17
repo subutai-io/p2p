@@ -474,6 +474,10 @@ func (p *PeerToPeer) Run() {
 			initialRequestSent = true
 			p.Dht.sendFind()
 		}
+		if p.Interface.IsBroken() {
+			Log(Info, "TAP interface is broken. Shutting down instance %s", p.Hash)
+			p.Close()
+		}
 	}
 	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)
 }
