@@ -216,7 +216,7 @@ try {
 			notifyBuildDetails = "\nFailed on Stage - Build package"
 			sh """
 			cd p2p
-			dpkg-buildpackage -rfakeroot
+			dpkg-buildpackage -rfakeroot -us -uc
 			cd ${CWD} || exit 1
 			for i in *.deb; do
 				echo '\$i:';
