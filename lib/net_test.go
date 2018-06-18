@@ -392,6 +392,9 @@ func TestNetwork_GetPort(t *testing.T) {
 	}
 	addr1, _ := net.ResolveUDPAddr("udp4", "127.0.0.1:2555")
 	conn, _ := net.ListenUDP("udp4", addr1)
+	if conn != nil {
+		defer conn.Close()
+	}
 	tests := []struct {
 		name   string
 		fields fields
@@ -640,7 +643,10 @@ func TestNetwork_Stop(t *testing.T) {
 		disposed   bool
 	}
 	addr, _ := net.ResolveUDPAddr("udp4", "127.0.0.1:2555")
-	conn, _ := net.ListenUDP("udp4", addr)
+	conn, err := net.ListenUDP("udp4", addr)
+	if err != nil {
+		t.Errorf("Failed to start connection: %v", err)
+	}
 	// if conn != nil {
 	// 	defer conn.Close()
 	// }
