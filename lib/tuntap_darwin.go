@@ -205,6 +205,10 @@ func (t *TAPDarwin) IsPMTUEnabled() bool {
 	return t.PMTU
 }
 
+func (t *TAPDarwin) IsBroken() bool {
+	return false
+}
+
 // FilterInterface will return true if this interface needs to be filtered out
 func FilterInterface(infName, infIP string) bool {
 	Log(Info, "ping -t 1 -c 1 -S %s ptest.subutai.io", infIP)

@@ -10,6 +10,7 @@ import (
 	"net"
 	"os/exec"
 	"syscall"
+	"time"
 	"unicode/utf16"
 
 	"golang.org/x/sys/windows"
@@ -96,6 +97,7 @@ type TAPWindows struct {
 	Tx         chan []byte
 	Configured bool
 	PMTU       bool
+	Broken     bool // Whether or not TAP interface is broken
 }
 
 // GetName returns a name of interface
@@ -246,17 +248,34 @@ func (t *TAPWindows) Configure() error {
 
 // Run will start read/write goroutines
 func (t *TAPWindows) Run() {
+	t.Broken = false
 	Log(Info, "Listening for TAP interface")
 	t.Rx = make(chan []byte, 1500)
 	t.Tx = make(chan []byte, 1500)
+	// Start reader
 	go func() {
 		if err := t.read(t.Rx); err != nil {
 			Log(Error, "Failed to read packet: %v", err)
 		}
 	}()
+	// Start writer
 	go func() {
 		if err := t.write(t.Tx); err != nil {
 			Log(Error, "Failed ro write packet: %v", err)
+		}
+	}()
+	// Start TUNTAP interface checker
+	go func() {
+		started := time.Now()
+		for {
+			if time.Since(started) > time.Duration(time.Second*3) {
+				started = time.Now()
+				if t.checkInterfaces() != nil {
+					t.Broken = true
+					return
+				}
+			}
+			time.Sleep(time.Millisecond * 100)
 		}
 	}()
 }
@@ -442,6 +461,52 @@ func (t *TAPWindows) DisablePMTU() {
 
 func (t *TAPWindows) IsPMTUEnabled() bool {
 	return t.PMTU
+}
+
+func (t *TAPWindows) checkInterfaces() error {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		Log(Error, "Failed to check interfaces: %s", err.Error())
+		return err
+	}
+	found := false
+	for _, inf := range interfaces {
+		addrs, err := inf.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, a := range addrs {
+			ip, _, err := net.ParseCIDR(a.String())
+			if err != nil {
+				continue
+			}
+			if ip.String() == t.IP.String() {
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		Log(Info, "Interface got deconfigured: %s %s", t.Name, t.IP.String())
+		return fmt.Errorf("Interface got deconfigured: %s %s", t.Name, t.IP.String())
+	}
+	return nil
+}
+
+func (t *TAPWindows) restoreInterface() error {
+	Log(Info, "Restoring network interface: %s %s", t.Name, t.IP.String())
+
+	err := t.Configure()
+	if err != nil {
+		Log(Error, "Failed to configure interface: %s", err.Error())
+	}
+
+	return nil
+}
+
+// IsBroken returns true if current TAP interface got deconfigured
+func (t *TAPWindows) IsBroken() bool {
+	return t.Broken
 }
 
 func tapControlCode(request, method uint32) uint32 {
