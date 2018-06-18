@@ -334,6 +334,9 @@ func (np *NetworkPeer) sortEndpoints(ptpc *PeerToPeer) ([]*PeerEndpoint, []*Peer
 		// Check if it's proxy
 		isProxy := false
 		for _, proxy := range np.Proxies {
+			if ep == nil || ep.Addr == nil {
+				continue
+			}
 			if proxy.String() == ep.Addr.String() {
 				isProxy = true
 				break
@@ -499,6 +502,7 @@ func (np *NetworkPeer) syncWithRemoteState(ptpc *PeerToPeer) {
 	}
 }
 
+// BumpEndpoint will update LastContact and LastPing of specified peer to current time
 func (np *NetworkPeer) BumpEndpoint(epAddr string) {
 	np.Lock.Lock()
 	defer np.Lock.Unlock()
@@ -508,4 +512,11 @@ func (np *NetworkPeer) BumpEndpoint(epAddr string) {
 			ep.LastPing = time.Now()
 		}
 	}
+}
+
+// IsRunning will return bool variable
+func (np *NetworkPeer) IsRunning() bool {
+	np.Lock.Lock()
+	defer np.Lock.Unlock()
+	return np.Running
 }

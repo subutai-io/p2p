@@ -55,4 +55,5 @@ type TAP interface {
 	EnablePMTU()
 	DisablePMTU()
 	IsPMTUEnabled() bool
+	IsBroken() bool
 }
