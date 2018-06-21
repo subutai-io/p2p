@@ -74,71 +74,20 @@ func ExecDaemon(port int, dht, sFile, profiling, syslog, logLevel string, mtu in
 		os.Exit(152)
 	}
 	go bootstrap.run()
-	go func() {
-		for _, r := range bootstrap.routers {
-			if r != nil {
-				go r.run()
-				go r.keepAlive()
-			}
-		}
-		for !bootstrap.isActive {
-			for _, r := range bootstrap.routers {
-				if r.running && r.handshaked {
-					bootstrap.isActive = true
-					break
-				}
-			}
-			time.Sleep(time.Millisecond * 100)
-		}
-		for bootstrap.ip == "" {
-			time.Sleep(time.Millisecond * 100)
-		}
-		OutboundIP = net.ParseIP(bootstrap.ip)
-	}()
+	go waitOutboundIP()
 
 	proc := new(Daemon)
 	proc.Initialize(sFile)
 	setupRESTHandlers(port, proc)
 
-	go func() {
-		for !bootstrap.isActive {
-			time.Sleep(100 * time.Millisecond)
-		}
-		if sFile != "" {
-			ptp.Log(ptp.Info, "Restore file provided")
-			// Try to restore from provided file
-			instances, err := proc.Instances.loadInstances(proc.SaveFile)
-			if err != nil {
-				ptp.Log(ptp.Error, "Failed to load instances: %v", err)
-			} else {
-				ptp.Log(ptp.Info, "%d instances were loaded from file", len(instances))
-				for _, inst := range instances {
-					proc.run(&inst, new(Response))
-				}
-			}
-		}
-	}()
+	go restoreInstances(proc)
 
 	ReadyToServe = true
 
 	SignalChannel = make(chan os.Signal, 1)
 	signal.Notify(SignalChannel, os.Interrupt)
 
-	go func() {
-		for {
-			active := 0
-			for _, r := range bootstrap.routers {
-				if !r.stop {
-					active++
-				}
-			}
-			if active == 0 {
-				ptp.Log(ptp.Info, "No active bootstrap nodes")
-				os.Exit(0)
-			}
-			time.Sleep(time.Millisecond * 100)
-		}
-	}()
+	go waitActiveBootstrap()
 
 	go func() {
 		for sig := range SignalChannel {
@@ -147,7 +96,80 @@ func ExecDaemon(port int, dht, sFile, profiling, syslog, logLevel string, mtu in
 			os.Exit(0)
 		}
 	}()
-	select {}
+
+	// main loop
+	for {
+		for id, inst := range proc.Instances.get() {
+			if inst == nil || inst.PTP == nil {
+				continue
+			}
+			if inst.PTP.ReadyToStop {
+				err := proc.Stop(&DaemonArgs{Hash: id}, &Response{})
+				if err != nil {
+					ptp.Log(ptp.Error, "Failed to stop instance: %s", err)
+				}
+			}
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
+	//select {}
+}
+
+func waitOutboundIP() {
+	for _, r := range bootstrap.routers {
+		if r != nil {
+			go r.run()
+			go r.keepAlive()
+		}
+	}
+	for !bootstrap.isActive {
+		for _, r := range bootstrap.routers {
+			if r.running && r.handshaked {
+				bootstrap.isActive = true
+				break
+			}
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
+	for bootstrap.ip == "" {
+		time.Sleep(time.Millisecond * 100)
+	}
+	OutboundIP = net.ParseIP(bootstrap.ip)
+}
+
+func waitActiveBootstrap() {
+	for {
+		active := 0
+		for _, r := range bootstrap.routers {
+			if !r.stop {
+				active++
+			}
+		}
+		if active == 0 {
+			ptp.Log(ptp.Info, "No active bootstrap nodes")
+			os.Exit(0)
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
+}
+
+func restoreInstances(daemon *Daemon) {
+	for !bootstrap.isActive {
+		time.Sleep(100 * time.Millisecond)
+	}
+	if daemon.SaveFile != "" {
+		ptp.Log(ptp.Info, "Restore file provided")
+		// Try to restore from provided file
+		instances, err := daemon.Instances.loadInstances(daemon.SaveFile)
+		if err != nil {
+			ptp.Log(ptp.Error, "Failed to load instances: %v", err)
+		} else {
+			ptp.Log(ptp.Info, "%d instances were loaded from file", len(instances))
+			for _, inst := range instances {
+				daemon.run(&inst, new(Response))
+			}
+		}
+	}
 }
 
 func validateDHT(dht string) error {
