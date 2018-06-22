@@ -14,7 +14,7 @@ import (
 type P2PService struct{}
 
 func (m *P2PService) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
-	go ExecDaemon(52523, DefaultDHT, "", "", "", DefaultLog, ptp.DefaultMTU, ptp.UsePMTU)
+	go ExecDaemon(52523, TargetURL, "", "", "", DefaultLog, ptp.DefaultMTU, ptp.UsePMTU)
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPauseAndContinue
 	//	changes <- svc.Status{State: svc.StartPending}
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}

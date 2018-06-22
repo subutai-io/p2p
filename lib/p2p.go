@@ -29,13 +29,13 @@ type PeerToPeer struct {
 	PacketHandlers  map[PacketType]PacketHandlerCallback // Callbacks for packets received by TAP interface
 	PeersLock       sync.Mutex                           // Lock for peers map
 	Hash            string                               // Infohash for this instance
-	Routers         string                               // Comma-separated list of Bootstrap nodes
-	Interface       TAP                                  // TAP Interface
-	Peers           *PeerList                            // Known peers
-	HolePunching    sync.Mutex                           // Mutex for hole punching sync
-	ProxyManager    *ProxyManager                        // Proxy manager
-	outboundIP      net.IP                               // Outbound IP
-	UsePMTU         bool                                 // Whether PMTU capabilities are enabled or not
+	//Routers         map[int]string                       // Comma-separated list of Bootstrap nodes
+	Interface    TAP           // TAP Interface
+	Peers        *PeerList     // Known peers
+	HolePunching sync.Mutex    // Mutex for hole punching sync
+	ProxyManager *ProxyManager // Proxy manager
+	outboundIP   net.IP        // Outbound IP
+	UsePMTU      bool          // Whether PMTU capabilities are enabled or not
 }
 
 // PeerHandshake holds handshake information received from peer
@@ -166,12 +166,12 @@ func (p *PeerToPeer) IsIPv4(ip string) bool {
 }
 
 // New is an entry point of a P2P library.
-func New(argIP, argMac, argDev, argDirect, argHash, argKeyfile, argKey, argTTL, argLog string, fwd bool, port int, ignoreIPs []string, outboundIP net.IP, routers string) *PeerToPeer {
-	Log(Debug, "Starting new P2P Instance: %s", argHash)
-	Log(Debug, "IP: %s", argIP)
-	Log(Debug, "Mac: %s", argMac)
+// This function will return new PeerToPeer object which later
+// should be configured and started using Run() method
+func New(mac, hash, keyfile, key, ttl, target string, fwd bool, port int, outboundIP net.IP) *PeerToPeer {
+	Log(Debug, "Starting new P2P Instance: %s", hash)
+	Log(Debug, "Mac: %s", mac)
 	p := new(PeerToPeer)
-	p.Routers = routers
 	p.outboundIP = outboundIP
 	p.Init()
 	var err error
@@ -180,23 +180,23 @@ func New(argIP, argMac, argDev, argDirect, argHash, argKeyfile, argKey, argTTL, 
 		Log(Error, "Failed to create TAP object: %s", err)
 		return nil
 	}
-	p.Interface.SetHardwareAddress(p.validateMac(argMac))
+	p.Interface.SetHardwareAddress(p.validateMac(mac))
 	p.FindNetworkAddresses()
 
 	if fwd {
 		p.ForwardMode = true
 	}
 
-	if argKeyfile != "" {
-		p.Crypter.ReadKeysFromFile(argKeyfile)
+	if keyfile != "" {
+		p.Crypter.ReadKeysFromFile(keyfile)
 	}
-	if argKey != "" {
+	if key != "" {
 		// Override key from file
-		if argTTL == "" {
-			argTTL = "default"
+		if ttl == "" {
+			ttl = "default"
 		}
 		var newKey CryptoKey
-		newKey = p.Crypter.EnrichKeyValues(newKey, argKey, argTTL)
+		newKey = p.Crypter.EnrichKeyValues(newKey, key, ttl)
 		p.Crypter.Keys = append(p.Crypter.Keys, newKey)
 		p.Crypter.ActiveKey = p.Crypter.Keys[0]
 		p.Crypter.Active = true
@@ -208,14 +208,14 @@ func New(argIP, argMac, argDev, argDirect, argHash, argKeyfile, argKey, argTTL, 
 		Log(Debug, "No AES key were provided. Traffic encryption is disabled")
 	}
 
-	p.Hash = argHash
+	p.Hash = hash
 
 	p.setupHandlers()
 
 	p.UDPSocket = new(Network)
 	p.UDPSocket.Init("", port)
 	go p.UDPSocket.Listen(p.HandleP2PMessage)
-	go p.UDPSocket.KeepAlive(p.extractBestDHTRouter())
+	go p.UDPSocket.KeepAlive(target)
 	p.waitForRemotePort()
 
 	// Create new DHT Client, configure it and initialize
@@ -275,23 +275,6 @@ func (p *PeerToPeer) waitForRemotePort() {
 		return
 	}
 	Log(Warning, "Remote port received: %d", p.UDPSocket.remotePort)
-}
-
-func (p *PeerToPeer) extractBestDHTRouter() *net.UDPAddr {
-	Log(Debug, "Routers: %s", p.Routers)
-	routers := strings.Split(p.Routers, ",")
-	if len(routers) == 0 {
-		return nil
-	}
-	router := strings.Split(routers[0], ":")
-	if len(router) != 2 {
-		return nil
-	}
-	addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", router[0], 6882))
-	if err != nil {
-		return nil
-	}
-	return addr
 }
 
 // PrepareInterfaces will assign IPs to interfaces

@@ -1,5 +1,14 @@
 # Change Log
 
+## [7.1.0] 06/22/2018
+
+* Removed snapcraft support from Makefile
+* Removed hardcoded bootstrap node address 
+* Added support for SRV lookup
+* Bootstrap now uses SRV lookup
+* --dht flag is now obsolete for `start` command
+* Code cleanup: removed unused/obsolete variables and functions
+
 ## [7.0.2] 06/07/2018
 
 * Fixed crash in endpoints sorter

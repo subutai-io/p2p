@@ -99,16 +99,17 @@ func IsInterfaceLocal(ip net.IP) bool {
 
 // FindNetworkAddresses method lists interfaces available in the system and retrieves their
 // IP addresses
-func (p *PeerToPeer) FindNetworkAddresses() {
+func (p *PeerToPeer) FindNetworkAddresses() error {
 	Log(Debug, "Looking for available network interfaces")
 	interfaces, err := net.Interfaces()
 	if err != nil {
-		Log(Error, "Failed to retrieve list of network interfaces")
-		return
+		Log(Error, "Failed to retrieve list of network interfaces: %s", err.Error())
+		return fmt.Errorf("Failed to retrieve list of network interfaces: %s", err.Error())
 	}
 	p.LocalIPs = p.LocalIPs[:0]
 	p.LocalIPs = p.ParseInterfaces(interfaces)
 	Log(Trace, "%d interfaces were saved", len(p.LocalIPs))
+	return nil
 }
 
 // ParseInterfaces accepts list of network interfaces (net.Interface),
@@ -156,4 +157,23 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// SrvLookup will search for specified service under provided domain
+// and return a map of net.Addr sorted by priority
+func SrvLookup(name, proto, domain string) (map[int]string, error) {
+	cname, addrs, err := net.LookupSRV(name, proto, domain)
+	if err != nil {
+		return nil, err
+	}
+	Log(Debug, "SRV lookup for name cname: %s addrs: %+v", cname, addrs)
+	result := make(map[int]string)
+	i := 0
+	for _, addr := range addrs {
+		Log(Trace, "Lookup result: %s:%d", addr.Target, addr.Port)
+		result[i] = fmt.Sprintf("%s:%d", addr.Target, addr.Port)
+		i++
+	}
+
+	return result, nil
 }

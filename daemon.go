@@ -42,14 +42,14 @@ var bootstrap DHTConnection
 var UsePMTU bool
 
 // ExecDaemon starts P2P daemon
-func ExecDaemon(port int, dht, sFile, profiling, syslog, logLevel string, mtu int, pmtu bool) {
+func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel string, mtu int, pmtu bool) {
 	if logLevel == "" {
 		ptp.SetMinLogLevelString(DefaultLog)
 	} else {
 		ptp.SetMinLogLevelString(logLevel)
 	}
-	if validateDHT(dht) != nil {
-		os.Exit(213)
+	if targetURL == "" {
+		targetURL = "subutai.io"
 	}
 	if syslog != "" {
 		ptp.SetSyslogSocket(syslog)
@@ -68,7 +68,7 @@ func ExecDaemon(port int, dht, sFile, profiling, syslog, logLevel string, mtu in
 
 	ReadyToServe = false
 
-	err := bootstrap.init(dht)
+	err := bootstrap.init(targetURL)
 	if err != nil {
 		ptp.Log(ptp.Error, "Failed to initialize bootstrap node connection")
 		os.Exit(152)
