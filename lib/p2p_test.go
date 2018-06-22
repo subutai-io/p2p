@@ -1,7 +1,6 @@
 package ptp
 
 import (
-	"bytes"
 	"net"
 	"reflect"
 	"runtime"
@@ -55,25 +54,6 @@ func TestIsIPv4(t *testing.T) {
 	get3 := ptp.IsIPv4(ip3)
 	if get3 != wait3 {
 		t.Errorf("Error: wait %v, get %v", wait3, get3)
-	}
-}
-
-func TestExtractBestDHTRouters(t *testing.T) {
-	ptp := new(PeerToPeer)
-	wait, err := net.ResolveUDPAddr("udp4", "192.168.11.5:6882")
-	if err != nil {
-		t.Error("error")
-	}
-	ptp.Routers = ""
-	get := ptp.extractBestDHTRouter()
-	if get != nil {
-		t.Error("Length of ptp routers is nil")
-	}
-	ptp.Routers = "192.168.11.5:24,192.168.22.1:22"
-	get2 := ptp.extractBestDHTRouter()
-
-	if bytes.EqualFold(get2.IP, wait.IP) && get2.Port != wait.Port && get2.Zone != wait.Zone {
-		t.Errorf("Error.Wait %v, get %v", wait, get2)
 	}
 }
 

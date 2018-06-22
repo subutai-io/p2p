@@ -169,18 +169,32 @@ func (uc *Network) Init(host string, port int) error {
 
 // KeepAlive will send keep alive packet periodically to keep
 // UDP port bind
-// TODO: Remove log message
-func (uc *Network) KeepAlive(addr *net.UDPAddr) error {
+func (uc *Network) KeepAlive(target string) error {
 	if uc.conn == nil {
 		return fmt.Errorf("Nil Connection")
 	}
-	if addr == nil {
-		Log(Error, "Can't start keep alive session: address is nil")
-		return fmt.Errorf("Can't start keep alive session: address is nil")
+
+	addresses, err := SrvLookup(target, "udp", "subutai.io")
+	if err != nil {
+		return fmt.Errorf("Failed to lookup address for keep alive session: %s", err.Error())
 	}
+	if len(addresses) == 0 {
+		return fmt.Errorf("No suitable address for keep alive")
+	}
+
+	firstAddr, e := addresses[0]
+	if !e {
+		return fmt.Errorf("Failed to retrieve keep alive address at index 0")
+	}
+
+	addr, err := net.ResolveUDPAddr("udp4", firstAddr)
+	if err != nil {
+		return fmt.Errorf("Failed to resolve UDP addr for keep alive session: %s", err.Error())
+	}
+
 	data := []byte{0x0D, 0x0A}
 	keepAlive := time.Now()
-	Log(Info, "Started keep alive session with %s", addr)
+	Log(Debug, "Started keep alive session with %s", addr)
 	i := 0
 	for i < 20 {
 		uc.SendRawBytes(data, addr)
