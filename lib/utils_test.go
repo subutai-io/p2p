@@ -25,12 +25,6 @@ func TestGenerateMac(t *testing.T) {
 	}
 }
 
-// func TestFindNetworkAddresses(t *testing.T) {
-// 	ptp := new(PeerToPeer)
-// 	ptp.FindNetworkAddresses()
-// 	// fmt.Printf("%+v\n", ptp.LocalIPs)
-// }
-
 func TestGenerateToken(t *testing.T) {
 	tests := []struct {
 		name string
@@ -128,60 +122,6 @@ func TestIsInterfaceLocal(t *testing.T) {
 	}
 }
 
-func TestPeerToPeer_FindNetworkAddresses(t *testing.T) {
-	type fields struct {
-		Config          Configuration
-		UDPSocket       *Network
-		LocalIPs        []net.IP
-		Dht             *DHTClient
-		Crypter         Crypto
-		Shutdown        bool
-		ForwardMode     bool
-		ReadyToStop     bool
-		MessageHandlers map[uint16]MessageHandler
-		PacketHandlers  map[PacketType]PacketHandlerCallback
-		PeersLock       sync.Mutex
-		Hash            string
-		Routers         string
-		Interface       TAP
-		Peers           *PeerList
-		HolePunching    sync.Mutex
-		ProxyManager    *ProxyManager
-		outboundIP      net.IP
-	}
-	tests := []struct {
-		name   string
-		fields fields
-	}{
-	// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &PeerToPeer{
-				Config:          tt.fields.Config,
-				UDPSocket:       tt.fields.UDPSocket,
-				LocalIPs:        tt.fields.LocalIPs,
-				Dht:             tt.fields.Dht,
-				Crypter:         tt.fields.Crypter,
-				Shutdown:        tt.fields.Shutdown,
-				ForwardMode:     tt.fields.ForwardMode,
-				ReadyToStop:     tt.fields.ReadyToStop,
-				MessageHandlers: tt.fields.MessageHandlers,
-				PacketHandlers:  tt.fields.PacketHandlers,
-				PeersLock:       tt.fields.PeersLock,
-				Hash:            tt.fields.Hash,
-				Routers:         tt.fields.Routers,
-				Interface:       tt.fields.Interface,
-				Peers:           tt.fields.Peers,
-				HolePunching:    tt.fields.HolePunching,
-				ProxyManager:    tt.fields.ProxyManager,
-				outboundIP:      tt.fields.outboundIP,
-			}
-			p.FindNetworkAddresses()
-		})
-	}
-}
-
 func Test_min(t *testing.T) {
 	type args struct {
 		a int
@@ -205,7 +145,40 @@ func Test_min(t *testing.T) {
 	}
 }
 
-func TestPeerToPeer_ParseInterfaces(t *testing.T) {
+func TestSrvLookup(t *testing.T) {
+	type args struct {
+		name   string
+		proto  string
+		domain string
+	}
+	res := make(map[int]string)
+	res[0] = "eu0.cdn.subutai.io.:6881"
+	tests := []struct {
+		name    string
+		args    args
+		want    map[int]string
+		wantErr bool
+	}{
+		{"Wrong name", args{"boogie", "tcp", "subutai.io"}, nil, true},
+		{"Wrong protocol", args{"dht", "boogie", "subutai.io"}, nil, true},
+		{"Wrong domain", args{"dht", "tcp", "subutai.subutai"}, nil, true},
+		{"Positive result", args{"dht", "tcp", "subutai.io"}, res, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := SrvLookup(tt.args.name, tt.args.proto, tt.args.domain)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SrvLookup() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SrvLookup() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPeerToPeer_FindNetworkAddresses(t *testing.T) {
 	type fields struct {
 		Config          Configuration
 		UDPSocket       *Network
@@ -219,33 +192,19 @@ func TestPeerToPeer_ParseInterfaces(t *testing.T) {
 		PacketHandlers  map[PacketType]PacketHandlerCallback
 		PeersLock       sync.Mutex
 		Hash            string
-		Routers         string
 		Interface       TAP
 		Peers           *PeerList
 		HolePunching    sync.Mutex
 		ProxyManager    *ProxyManager
 		outboundIP      net.IP
+		UsePMTU         bool
 	}
-	type args struct {
-		interfaces []net.Interface
-	}
-
-	// hw1, _ := net.ParseMAC("06:01:02:03:04:05")
-
-	// inf1 := net.Interface{
-	// 	Index:        0,
-	// 	MTU:          0,
-	// 	Name:         "",
-	// 	HardwareAddr: hw1,
-	// }
-
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   []net.IP
+		name    string
+		fields  fields
+		wantErr bool
 	}{
-	//{"t1", fields{}, args{[]net.Interface{inf1}}, nil},
+		{"Passing", fields{}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -262,15 +221,15 @@ func TestPeerToPeer_ParseInterfaces(t *testing.T) {
 				PacketHandlers:  tt.fields.PacketHandlers,
 				PeersLock:       tt.fields.PeersLock,
 				Hash:            tt.fields.Hash,
-				Routers:         tt.fields.Routers,
 				Interface:       tt.fields.Interface,
 				Peers:           tt.fields.Peers,
 				HolePunching:    tt.fields.HolePunching,
 				ProxyManager:    tt.fields.ProxyManager,
 				outboundIP:      tt.fields.outboundIP,
+				UsePMTU:         tt.fields.UsePMTU,
 			}
-			if got := p.ParseInterfaces(tt.args.interfaces); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PeerToPeer.ParseInterfaces() = %v, want %v", got, tt.want)
+			if err := p.FindNetworkAddresses(); (err != nil) != tt.wantErr {
+				t.Errorf("PeerToPeer.FindNetworkAddresses() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
