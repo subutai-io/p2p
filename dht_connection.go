@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strings"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
@@ -20,8 +19,8 @@ var (
 
 // DHTConnection to a DHT bootstrap node
 type DHTConnection struct {
-	routers     []*DHTRouter             // Routers
-	routersList string                   // Comma-separated list of routers
+	routers     []*DHTRouter             // Bootstrap nodes
+	routersList map[int]string           // List of bootstrap nodes received from SRV lookup
 	lock        sync.Mutex               // Mutex for register/unregister
 	instances   map[string]*P2PInstance  // Instances
 	registered  []string                 // List of registered swarm IDs
@@ -30,14 +29,19 @@ type DHTConnection struct {
 	isActive    bool                     // Whether DHT connection is active or not
 }
 
-func (dht *DHTConnection) init(routersSrc string) error {
+func (dht *DHTConnection) init(target string) error {
 	ptp.Log(ptp.Info, "Initializing connection to a bootstrap nodes")
 	dht.incoming = make(chan *protocol.DHTPacket)
-	routers := strings.Split(routersSrc, ",")
-	if len(routers) == 0 {
+	var err error
+	dht.routersList, err = ptp.SrvLookup(target, "tcp", "subutai.io")
+	if err != nil {
+		ptp.Log(ptp.Error, "Failed to get bootstrap nodes: %s", err.Error)
+		dht.routersList = make(map[int]string)
+	}
+	if len(dht.routersList) == 0 {
 		return ErrorNoRouters
 	}
-	for _, r := range routers {
+	for _, r := range dht.routersList {
 		if r == "" {
 			continue
 		}
@@ -52,7 +56,6 @@ func (dht *DHTConnection) init(routersSrc string) error {
 		router.data = dht.incoming
 		dht.routers = append(dht.routers, router)
 	}
-	dht.routersList = routersSrc
 	dht.instances = make(map[string]*P2PInstance)
 	return nil
 }

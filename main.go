@@ -19,8 +19,8 @@ var AppVersion = "Unknown"
 // BuildID usually holds output of `git describe`
 var BuildID = "Unknown"
 
-// DefaultDHT will point to production DHT server
-var DefaultDHT = "eu0.cdn.subutai.io:6881"
+// TargetURL will point p2p to specified service under default domain for SRV lookup
+var TargetURL = "dht"
 
 // DefaultLog is used when it was not specified during build
 var DefaultLog = "INFO"
@@ -75,7 +75,6 @@ func main() {
 		IP             string // IP address of local p2p interface
 		Mac            string // Hardware address of p2p interface
 		InterfaceName  string // Name of p2p interface
-		DHTRouters     string // Comma-separated list of DHT routers
 		Keyfile        string // Path to a file with crypto key
 		Key            string // AES key
 		Until          string // Until date this key will be active in Unix timestamp
@@ -118,10 +117,10 @@ func main() {
 					Destination: &RPCPort,
 				},
 				cli.StringFlag{
-					Name:        "dht",
+					Name:        "target",
 					Usage:       "Comma-separated list of endpoints",
-					Value:       DefaultDHT,
-					Destination: &DHTRouters,
+					Value:       TargetURL,
+					Destination: &TargetURL,
 				},
 				cli.StringFlag{
 					Name:        "save",
@@ -160,7 +159,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				ExecDaemon(RPCPort, DHTRouters, SaveFile, Profiling, Syslog, LogLevel, MTU, PMTU)
+				ExecDaemon(RPCPort, TargetURL, SaveFile, Profiling, Syslog, LogLevel, MTU, PMTU)
 				return nil
 			},
 		},
@@ -225,12 +224,12 @@ func main() {
 					Value:       "",
 					Destination: &InterfaceName,
 				},
-				cli.StringFlag{
-					Name:        "dht",
-					Usage:       "[Deprecated] Comman-separated list of DHT bootstrap nodes",
-					Value:       "",
-					Destination: &DHTRouters,
-				},
+				// cli.StringFlag{
+				// 	Name:        "dht",
+				// 	Usage:       "[Deprecated] Comman-separated list of DHT bootstrap nodes",
+				// 	Value:       "",
+				// 	Destination: &DHTRouters,
+				// },
 				cli.StringFlag{
 					Name:        "keyfile",
 					Usage:       "Path to a file containing crypto-key",

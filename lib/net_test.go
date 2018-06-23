@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"net"
 	"reflect"
-	"sync"
 	"testing"
 )
 
@@ -159,78 +158,6 @@ func TestP2PMessageFromBytes(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("P2PMessageFromBytes() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestPeerToPeer_CreateMessage(t *testing.T) {
-	type fields struct {
-		Config          Configuration
-		UDPSocket       *Network
-		LocalIPs        []net.IP
-		Dht             *DHTClient
-		Crypter         Crypto
-		Shutdown        bool
-		ForwardMode     bool
-		ReadyToStop     bool
-		MessageHandlers map[uint16]MessageHandler
-		PacketHandlers  map[PacketType]PacketHandlerCallback
-		PeersLock       sync.Mutex
-		Hash            string
-		Routers         string
-		Interface       TAP
-		Peers           *PeerList
-		HolePunching    sync.Mutex
-		ProxyManager    *ProxyManager
-		outboundIP      net.IP
-		UsePMTU         bool
-	}
-	type args struct {
-		msgType MsgType
-		payload []byte
-		proto   uint16
-		encrypt bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    *P2PMessage
-		wantErr bool
-	}{
-	// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &PeerToPeer{
-				Config:          tt.fields.Config,
-				UDPSocket:       tt.fields.UDPSocket,
-				LocalIPs:        tt.fields.LocalIPs,
-				Dht:             tt.fields.Dht,
-				Crypter:         tt.fields.Crypter,
-				Shutdown:        tt.fields.Shutdown,
-				ForwardMode:     tt.fields.ForwardMode,
-				ReadyToStop:     tt.fields.ReadyToStop,
-				MessageHandlers: tt.fields.MessageHandlers,
-				PacketHandlers:  tt.fields.PacketHandlers,
-				PeersLock:       tt.fields.PeersLock,
-				Hash:            tt.fields.Hash,
-				Routers:         tt.fields.Routers,
-				Interface:       tt.fields.Interface,
-				Peers:           tt.fields.Peers,
-				HolePunching:    tt.fields.HolePunching,
-				ProxyManager:    tt.fields.ProxyManager,
-				outboundIP:      tt.fields.outboundIP,
-				UsePMTU:         tt.fields.UsePMTU,
-			}
-			got, err := p.CreateMessage(tt.args.msgType, tt.args.payload, tt.args.proto, tt.args.encrypt)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("PeerToPeer.CreateMessage() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PeerToPeer.CreateMessage() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -578,55 +505,6 @@ func TestNetwork_Listen(t *testing.T) {
 			}
 			if err := uc.Listen(tt.args.receivedCallback); (err != nil) != tt.wantErr {
 				t.Errorf("Network.Listen() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestNetwork_KeepAlive(t *testing.T) {
-	type fields struct {
-		host       string
-		port       int
-		remotePort int
-		addr       *net.UDPAddr
-		conn       *net.UDPConn
-		inBuffer   [4096]byte
-		disposed   bool
-	}
-	type args struct {
-		addr *net.UDPAddr
-	}
-	addr, _ := net.ResolveUDPAddr("udp4", "127.0.0.1")
-	addr2, _ := net.ResolveUDPAddr("udp4", "127.0.0.1:2555")
-	conn, err := net.ListenUDP("udp4", addr)
-	if err == nil {
-		defer conn.Close()
-	} else {
-		t.Errorf("%s\n", err)
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		{"conn nil", fields{}, args{}, true},
-		{"addr nil", fields{conn: conn}, args{}, true},
-		{"addr ok", fields{conn: conn, disposed: true}, args{addr2}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			uc := &Network{
-				host:       tt.fields.host,
-				port:       tt.fields.port,
-				remotePort: tt.fields.remotePort,
-				addr:       tt.fields.addr,
-				conn:       tt.fields.conn,
-				inBuffer:   tt.fields.inBuffer,
-				disposed:   tt.fields.disposed,
-			}
-			if err := uc.KeepAlive(tt.args.addr); (err != nil) != tt.wantErr {
-				t.Errorf("Network.KeepAlive() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

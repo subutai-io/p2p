@@ -28,6 +28,7 @@ gopath=
 branch=
 dht=""
 argOS=""
+targetURL="subutai.io"
 
 while [ $# -ge 1 ]; do
     case "$1" in
@@ -91,14 +92,14 @@ echo "Building $name_base"
 
 if [ "$dht" == "" ]; then
     echo "Determining DHT address"
-    if [ "$branch" == "HEAD" ]; then
-        dht="eu0.cdn.subutai.io:6881"
+    if [ "$branch" == "dev" ]; then
+        dht="devdht"
     elif [ "$branch" == "master" ]; then
-        dht="eu0.mastercdn.subutai.io:6881"
+        dht="masterdht"
     elif [ "$branch" == "sysnet" ]; then
-        dht="eu0.sysnetcdn.subutai.io:6881"
+        dht="sysnetdht"
     else
-        dht="eu0.devcdn.subutai.io:6881"
+        dht="dht"
     fi
     echo "DHT is set to $dht"
 else
