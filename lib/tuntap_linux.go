@@ -429,6 +429,11 @@ func FilterInterface(infName, infIP string) bool {
 	if len(infIP) > 4 && infIP[0:3] == "172" {
 		return true
 	}
+	for _, ip := range ActiveInterfaces {
+		if ip.String() == infIP {
+			return true
+		}
+	}
 	Log(Trace, "ping -4 -w 1 -c 1 -I %s ptest.subutai.io", infName)
 	ping := exec.Command("ping", "-4", "-w", "1", "-c", "1", "-I", infName, "ptest.subutai.io")
 	if ping.Run() != nil {
