@@ -304,11 +304,11 @@ try {
 				echo cd /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
 				echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p.exe -o /c/tmp/p2p-packaging/p2p.exe >> c:\\tmp\\p2p-win.do
 				echo curl -fsSLk https://eu0.cdn.subutai.io:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o /c/tmp/p2p-packaging/tap-windows-9.21.2.exe >> c:\\tmp\\p2p-win.do
+				echo sed -i -e "s/{VERSION_PLACEHOLDER}/${global_version}/g" /c/tmp/p2p-packaging/windows/P2PInstaller/P2PInstaller.vdproj > >> c:\\tmp\\p2p-win.do
 
 				echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi > c:\\tmp\\p2p-win-upload.do
 
-				echo sed -i -e "s/{VERSION_PLACEHOLDER}/${global_version}/g" /c/tmp/p2p-packaging/windows/P2PInstaller/P2PInstaller.vdproj > c:\\tmp\\p2p-pack.bat
-				echo call "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\Common7\\Tools\\VsDevCmd.bat" >> c:\\tmp\\p2p-pack.bat
+				echo call "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\Common7\\Tools\\VsDevCmd.bat" > c:\\tmp\\p2p-pack.bat
 				echo signtool.exe sign /tr http://timestamp.comodoca.com/authenticode /f "c:\\users\\tray\\od.p12" /p testpassword "c:\\tmp\\p2p-packaging\\p2p.exe" >> c:\\tmp\\p2p-pack.bat
 				echo devenv.com c:\\tmp\\p2p-packaging\\windows\\win.sln /Rebuild Release >> c:\\tmp\\p2p-pack.bat
 				echo signtool.exe sign /tr http://timestamp.comodoca.com/authenticode /f "c:\\users\\tray\\od.p12" /p testpassword "c:\\tmp\\p2p-packaging\\windows\\P2PInstaller\\Release\\P2PInstaller.msi" >> c:\\tmp\\p2p-pack.bat
