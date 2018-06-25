@@ -149,7 +149,7 @@ func main() {
 				cli.StringFlag{
 					Name:        "log",
 					Usage:       "Log level. Available levels: trace, debug, info, warning, error",
-					Value:       "",
+					Value:       "info",
 					Destination: &LogLevel,
 				},
 				cli.BoolFlag{

@@ -7,28 +7,34 @@ dhtHost = ""
 gitcmd = ""
 p2p_log_level = "INFO"
 global_version = "1.0.0"
+dhtSrv = "dht"
 
 switch (env.BRANCH_NAME) {
 	case ~/master/: 
 		cdnHost = "mastercdn.subutai.io"; 
 		dhtHost = "eu0.mastercdn.subutai.io:6881"
+		dhtSrv = "masterdht"
 		p2p_log_level = "DEBUG"
 		break;
 	case ~/dev/:
 		cdnHost = "devcdn.subutai.io";
 		dhtHost = "eu0.devcdn.subutai.io:6881";
+		dhtSrv = "devdht"
         gitcmd = "git checkout -B dev && git pull origin dev"
+
 		p2p_log_level = "DEBUG"
         break;
 	case ~/sysnet/:
 		cdnHost = "sysnetcdn.subutai.io";
 		dhtHost = "eu0.sysnetcdn.subutai.io:6881";
+		dhtSrv = "sysnetdht"
         gitcmd = "git checkout -B sysnet && git pull origin sysnet "
 		p2p_log_level = "TRACE"
         break;
 	default: 
 		cdnHost = "cdn.subutai.io";
 		dhtHost = "eu0.cdn.subutai.io:6881"
+		dhtSrv = "dht"
 		break;
 }
 
@@ -67,7 +73,7 @@ try {
 			export GOBIN=${workspace}/${goenvDir}/bin
 			go get
 			go get golang.org/x/sys/windows
-			./configure --dht=${dhtHost} --branch=${env.BRANCH_NAME}
+			./configure --dht=${dhtSrv} --branch=${env.BRANCH_NAME}
 			make all
 		"""
 
