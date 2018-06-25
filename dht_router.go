@@ -31,6 +31,8 @@ type DHTRouter struct {
 func (dht *DHTRouter) run() {
 	dht.running = false
 	dht.handshaked = false
+	dht.version = "Unknown"
+	dht.packetVersion = "Unknown"
 
 	for !dht.stop {
 		for !dht.running {
