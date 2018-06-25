@@ -519,5 +519,20 @@ func controlCode(device_type, function, method, access uint32) uint32 {
 
 // FilterInterface will return true if this interface needs to be filtered out
 func FilterInterface(infName, infIP string) bool {
+	if len(infIP) > 4 && infIP[0:3] == "172" {
+		return true
+	}
+	for _, ip := range ActiveInterfaces {
+		if ip.String() == infIP {
+			return true
+		}
+	}
+
+	Log(Trace, "ping -4 -w 1000 -n 1 -S %s ptest.subutai.io", infIP)
+	ping := exec.Command("ping", "-4", "-w", "1000", "-n", "1", "-S", infIP, "ptest.subutai.io")
+	if ping.Run() != nil {
+		Log(Debug, "Filtered %s %s", infName, infIP)
+		return true
+	}
 	return false
 }

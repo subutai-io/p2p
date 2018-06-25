@@ -211,12 +211,19 @@ func (t *TAPDarwin) IsBroken() bool {
 
 // FilterInterface will return true if this interface needs to be filtered out
 func FilterInterface(infName, infIP string) bool {
-	Log(Info, "ping -t 1 -c 1 -S %s ptest.subutai.io", infIP)
-	ping := exec.Command("ping", "-t", "1", "-c", "1", "-S", infIP, "ptest.subutai.io")
-	if ping.Run() != nil {
-		Log(Info, "Filtered %s %s", infName, infIP)
+	if len(infIP) > 4 && infIP[0:3] == "172" {
 		return true
 	}
-	Log(Info, "Added %s %s", infName, infIP)
+	for _, ip := range ActiveInterfaces {
+		if ip.String() == infIP {
+			return true
+		}
+	}
+	Log(Trace, "ping -t 1 -c 1 -S %s ptest.subutai.io", infIP)
+	ping := exec.Command("ping", "-t", "1", "-c", "1", "-S", infIP, "ptest.subutai.io")
+	if ping.Run() != nil {
+		Log(Debug, "Filtered %s %s", infName, infIP)
+		return true
+	}
 	return false
 }

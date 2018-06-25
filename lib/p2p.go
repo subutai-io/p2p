@@ -29,13 +29,12 @@ type PeerToPeer struct {
 	PacketHandlers  map[PacketType]PacketHandlerCallback // Callbacks for packets received by TAP interface
 	PeersLock       sync.Mutex                           // Lock for peers map
 	Hash            string                               // Infohash for this instance
-	//Routers         map[int]string                       // Comma-separated list of Bootstrap nodes
-	Interface    TAP           // TAP Interface
-	Peers        *PeerList     // Known peers
-	HolePunching sync.Mutex    // Mutex for hole punching sync
-	ProxyManager *ProxyManager // Proxy manager
-	outboundIP   net.IP        // Outbound IP
-	UsePMTU      bool          // Whether PMTU capabilities are enabled or not
+	Interface       TAP                                  // TAP Interface
+	Peers           *PeerList                            // Known peers
+	HolePunching    sync.Mutex                           // Mutex for hole punching sync
+	ProxyManager    *ProxyManager                        // Proxy manager
+	outboundIP      net.IP                               // Outbound IP
+	UsePMTU         bool                                 // Whether PMTU capabilities are enabled or not
 }
 
 // PeerHandshake holds handshake information received from peer
