@@ -13,17 +13,19 @@ import (
 
 // DHTRouter represents a connection to a router
 type DHTRouter struct {
-	conn        *net.TCPConn // TCP connection to a bootsrap node
-	addr        *net.TCPAddr // TCP address of a bootstrap node
-	router      string       // Address of a bootstrap node
-	running     bool         // Whether router is running or not
-	handshaked  bool         // Whether handshake has been completed or not
-	stop        bool         // Whether service should be terminated
-	fails       int          // Number of connection fails
-	tx          uint64
-	rx          uint64
-	data        chan *protocol.DHTPacket
-	lastContact time.Time
+	conn          *net.TCPConn             // TCP connection to a bootsrap node
+	addr          *net.TCPAddr             // TCP address of a bootstrap node
+	router        string                   // Address of a bootstrap node
+	running       bool                     // Whether router is running or not
+	handshaked    bool                     // Whether handshake has been completed or not
+	stop          bool                     // Whether service should be terminated
+	fails         int                      // Number of connection fails
+	tx            uint64                   // Transferred bytes
+	rx            uint64                   // Received bytes
+	data          chan *protocol.DHTPacket // Payload channel
+	lastContact   time.Time                // Last communication
+	packetVersion string                   // Version of packet on DHT
+	version       string                   // Version of DHT
 }
 
 func (dht *DHTRouter) run() {
@@ -101,6 +103,10 @@ func (dht *DHTRouter) routeData(data []byte) {
 		} else {
 			dht.handshaked = true
 			ptp.Log(ptp.Info, "Connected to a bootstrap node: %s [%s]", dht.addr.String(), packet.Data)
+			dht.packetVersion = fmt.Sprintf("%d", packet.Version)
+			if packet.Extra != "" {
+				dht.version = packet.Extra
+			}
 			dht.data <- packet
 			return
 		}

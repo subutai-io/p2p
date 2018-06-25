@@ -70,16 +70,12 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 	resp.Output += fmt.Sprintf("Bootstrap nodes information:\n")
 	for _, node := range bootstrap.routers {
 		if node != nil {
-			resp.Output += fmt.Sprintf("  %s Rx: %d Tx: %d\n", node.addr.String(), node.rx, node.tx)
+			resp.Output += fmt.Sprintf("  %s Rx: %d Tx: %d Version: %s Packet version: %s\n", node.addr.String(), node.rx, node.tx, node.version, node.packetVersion)
 		}
 	}
 	resp.Output += fmt.Sprintf("Instances information:\n")
 	instances := p.Instances.get()
 	for _, inst := range instances {
-		resp.Output += fmt.Sprintf("Bootstrap nodes:\n")
-		for _, conn := range inst.PTP.Dht.Connections {
-			resp.Output += fmt.Sprintf("\t%s\n", conn.RemoteAddr().String())
-		}
 		resp.Output += fmt.Sprintf("Hash: %s\n", inst.ID)
 		resp.Output += fmt.Sprintf("ID: %s\n", inst.PTP.Dht.ID)
 		resp.Output += fmt.Sprintf("UDP Port: %d\n", inst.PTP.UDPSocket.GetPort())
