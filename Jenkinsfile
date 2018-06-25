@@ -6,6 +6,7 @@ cdnHost = ""
 dhtHost = ""
 gitcmd = ""
 p2p_log_level = "INFO"
+global_version = "1.0.0"
 
 switch (env.BRANCH_NAME) {
 	case ~/master/: 
@@ -203,6 +204,7 @@ try {
 					cat ${CWD}/p2p/VERSION | tr -d '\n'
 					""", returnStdout: true)
 			def p2p_version = "${plain_version}+${date}"
+			global_version = plain_version
 
 			sh """
 			cd ${CWD}/p2p
@@ -309,6 +311,8 @@ try {
 				echo signtool.exe sign /tr http://timestamp.comodoca.com/authenticode /f "c:\\users\\tray\\od.p12" /p testpassword "c:\\tmp\\p2p-packaging\\p2p.exe" >> c:\\tmp\\p2p-pack.bat
 				echo devenv.com c:\\tmp\\p2p-packaging\\windows\\win.sln /Rebuild Release >> c:\\tmp\\p2p-pack.bat
 				echo signtool.exe sign /tr http://timestamp.comodoca.com/authenticode /f "c:\\users\\tray\\od.p12" /p testpassword "c:\\tmp\\p2p-packaging\\windows\\P2PInstaller\\Release\\P2PInstaller.msi" >> c:\\tmp\\p2p-pack.bat
+			
+				sed -i -e "s/{VERSION_PLACEHOLDER}/${global_version}/g" /c/tmp/p2p-packaging/windows/P2PInstaller/P2PInstaller.vdproj
 			"""
 
 			notifyBuildDetails = "\nFailed on stage - Deploying DevOps"
