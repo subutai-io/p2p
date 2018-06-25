@@ -35,7 +35,7 @@ func (dht *DHTConnection) init(target string) error {
 	var err error
 	dht.routersList, err = ptp.SrvLookup(target, "tcp", "subutai.io")
 	if err != nil {
-		ptp.Log(ptp.Error, "Failed to get bootstrap nodes: %s", err.Error)
+		ptp.Log(ptp.Error, "Failed to get bootstrap nodes: %s", err.Error())
 		dht.routersList = make(map[int]string)
 	}
 	if len(dht.routersList) == 0 {
