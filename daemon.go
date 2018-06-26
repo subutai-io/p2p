@@ -43,6 +43,7 @@ var UsePMTU bool
 
 // ExecDaemon starts P2P daemon
 func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel string, mtu int, pmtu bool) {
+	ptp.Log(ptp.Info, "Initializing P2P Daemon")
 	if logLevel == "" {
 		ptp.SetMinLogLevelString(DefaultLog)
 	} else {
@@ -68,11 +69,10 @@ func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel string, 
 
 	ReadyToServe = false
 
-	err := bootstrap.init(targetURL)
-	if err != nil {
-		ptp.Log(ptp.Error, "Failed to initialize bootstrap node connection")
-		os.Exit(152)
+	for bootstrap.init(targetURL) != nil {
+		time.Sleep(time.Millisecond * 100)
 	}
+
 	go bootstrap.run()
 	go waitOutboundIP()
 
