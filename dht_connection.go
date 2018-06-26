@@ -30,12 +30,12 @@ type DHTConnection struct {
 }
 
 func (dht *DHTConnection) init(target string) error {
-	ptp.Log(ptp.Info, "Initializing connection to a bootstrap nodes")
+	ptp.Log(ptp.Debug, "Initializing connection to a bootstrap nodes")
 	dht.incoming = make(chan *protocol.DHTPacket)
 	var err error
 	dht.routersList, err = ptp.SrvLookup(target, "tcp", "subutai.io")
 	if err != nil {
-		ptp.Log(ptp.Error, "Failed to get bootstrap nodes: %s", err.Error())
+		ptp.Log(ptp.Debug, "Failed to get bootstrap nodes: %s", err.Error())
 		dht.routersList = make(map[int]string)
 	}
 	if len(dht.routersList) == 0 {
