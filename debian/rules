@@ -10,7 +10,7 @@ BUILDID    := $(shell git describe)
 LOG_LEVEL  := DEFAULT_LOG_LEVEL
 BUILDFLAGS := -ldflags\
   "-X $(BUILDPKG).AppVersion=$(VERSION)\
-   -X $(BUILDPKG).DefaultDHT=DHT_ENDPOINT\
+   -X $(BUILDPKG).TargetURL=DHT_ENDPOINT\
    -X $(BUILDPKG).BuildID=$(BUILDID)\
    -X $(BUILDPKG).DefaultLog=$(LOG_LEVEL)"
 
