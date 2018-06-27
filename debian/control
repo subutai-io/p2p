@@ -11,7 +11,7 @@ Build-Depends: debhelper (>= 10),
                golang-github-mdlayher-ethernet-dev,
                golang-github-nebulouslabs-fastrand-dev,
                golang-github-nebulouslabs-go-upnp-dev,
-               golang-github-urfave-cli-dev,
+               golang-github-urfave-cli-dev (>= 1.20.0~),
                golang-github-wayn3h0-go-uuid-dev,
                golang-goprotobuf-dev
 Standards-Version: 4.1.3
