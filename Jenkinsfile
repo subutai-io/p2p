@@ -96,7 +96,7 @@ try {
 	}
 	*/
 	if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
-		node(deb) {
+		node("deb") {
 			/* Upload builed p2p artifacts to kurjun */
 			deleteDir()
 
