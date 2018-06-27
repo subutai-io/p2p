@@ -41,7 +41,7 @@ switch (env.BRANCH_NAME) {
 try {
 	notifyBuild('STARTED')
 
-	node() {
+	node("deb") {
 		String goenvDir = ".goenv"
 		deleteDir()
 
