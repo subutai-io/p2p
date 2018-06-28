@@ -95,7 +95,6 @@ try {
 		build job: 'snap.subutai-io.pipeline/master/', propagate: false, wait: false
 	}
 	*/
-	if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 		node("deb") {
 			/* Upload builed p2p artifacts to kurjun */
 			deleteDir()
@@ -331,7 +330,6 @@ try {
 			notifyBuildDetails = "\nFailed on stage - Uploading Windows package"
 			bat "c:\\tmp\\p2p-win-upload.do"
 		}
-	}
 
 } catch (e) { 
 	currentBuild.result = "FAILED"
