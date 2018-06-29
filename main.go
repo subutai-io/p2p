@@ -159,9 +159,9 @@ func main() {
 					Destination: &PMTU,
 				},
 				cli.StringFlag{
-					Name: "srv",
-					Usage: "Specify DHT SRV lookup entry. Supported: dht, devdht, masterdht"
-					Value: "",
+					Name:        "srv",
+					Usage:       "Specify DHT SRV lookup entry. Supported: dht, devdht, masterdht",
+					Value:       "",
 					Destination: &SRVEntry,
 				},
 			},
