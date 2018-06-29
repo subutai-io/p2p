@@ -465,6 +465,7 @@ func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
 			return fmt.Errorf("Endpoint already exists")
 		}
 	}
+	np.RoutingRequired = true
 	np.EndpointsHeap = append(np.EndpointsHeap, &PeerEndpoint{Addr: addr, LastContact: time.Now()})
 	return nil
 }
