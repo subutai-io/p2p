@@ -43,12 +43,12 @@ type NetworkPeer struct {
 	handlers           map[PeerState]StateHandlerCallback // List of callbacks for different peer states
 	Running            bool                               // Whether peer is running or not
 	EndpointsHeap      []*PeerEndpoint                    // List of all endpoints
-	// EndpointsActive    []PeerEndpoint                     // List of active endpoints
-	Lock               sync.RWMutex // Mutex for endpoints operations
-	punchingInProgress bool         // Whether or not UDP hole punching is running
-	LastFind           time.Time    // Moment when we got this peer from DHT
-	LastPunch          time.Time    // Last time we run hole punch
-	Stat               PeerStats    // Peer statistics
+	Lock               sync.RWMutex                       // Mutex for endpoints operations
+	punchingInProgress bool                               // Whether or not UDP hole punching is running
+	LastFind           time.Time                          // Moment when we got this peer from DHT
+	LastPunch          time.Time                          // Last time we run hole punch
+	Stat               PeerStats                          // Peer statistics
+	RoutingRequired    bool                               // Whether or not routing is required
 }
 
 func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
@@ -83,6 +83,7 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 	}
 	np.Running = true
 	np.ConnectionAttempts = 0
+	np.RoutingRequired = false
 
 	np.handlers = make(map[PeerState]StateHandlerCallback)
 	np.handlers[PeerStateInit] = np.stateInit
@@ -240,6 +241,7 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) {
 
 	np.punchingInProgress = true
 	round := 0
+	np.RoutingRequired = true
 	for round < 10 {
 		for _, ep := range eps {
 			if np.isEndpointActive(ep) {
@@ -329,14 +331,17 @@ func (np *NetworkPeer) sortEndpoints(ptpc *PeerToPeer) ([]*PeerEndpoint, []*Peer
 	proxies := []*PeerEndpoint{}
 	for _, ep := range np.EndpointsHeap {
 		if time.Since(ep.LastContact) > time.Duration(time.Second*10) {
+			np.RoutingRequired = true
 			continue
 		}
+
+		if ep == nil || ep.Addr == nil {
+			continue
+		}
+
 		// Check if it's proxy
 		isProxy := false
 		for _, proxy := range np.Proxies {
-			if ep == nil || ep.Addr == nil {
-				continue
-			}
 			if proxy.String() == ep.Addr.String() {
 				isProxy = true
 				break
@@ -392,26 +397,37 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 	stat := PeerStats{}
 	locals, internet, proxies := np.sortEndpoints(ptpc)
 
-	np.Lock.Lock()
-	np.EndpointsHeap = np.EndpointsHeap[:0]
-	np.EndpointsHeap = append(np.EndpointsHeap, locals...)
-	np.EndpointsHeap = append(np.EndpointsHeap, internet...)
-	np.EndpointsHeap = append(np.EndpointsHeap, proxies...)
-	np.Lock.Unlock()
+	if np.RoutingRequired {
+		np.RoutingRequired = false
+		np.Lock.Lock()
+		np.EndpointsHeap = np.EndpointsHeap[:0]
+		np.EndpointsHeap = append(np.EndpointsHeap, locals...)
+		np.EndpointsHeap = append(np.EndpointsHeap, internet...)
+		np.EndpointsHeap = append(np.EndpointsHeap, proxies...)
+		np.Lock.Unlock()
 
-	stat.localNum = len(locals)
-	stat.internetNum = len(internet)
-	stat.proxyNum = len(proxies)
-	np.Stat = stat
+		stat.localNum = len(locals)
+		stat.internetNum = len(internet)
+		stat.proxyNum = len(proxies)
+		np.Stat = stat
 
-	if len(np.EndpointsHeap) > 0 {
-		np.Endpoint = np.EndpointsHeap[0].Addr
-		np.ConnectionAttempts = 0
-	} else {
-		Log(Debug, "No active endpoints. Disconnecting peer %s", np.ID)
-		np.Endpoint = nil
-		np.SetState(PeerStateDisconnect, ptpc)
+		if len(np.EndpointsHeap) > 0 {
+			np.Endpoint = np.EndpointsHeap[0].Addr
+			np.ConnectionAttempts = 0
+		} else {
+			Log(Debug, "No active endpoints. Disconnecting peer %s", np.ID)
+			np.Endpoint = nil
+			np.SetState(PeerStateDisconnect, ptpc)
+		}
+		return nil
 	}
+
+	for _, proxy := range proxies {
+		if proxy.Addr.String() == np.Endpoint.String() {
+			np.RoutingRequired = true
+		}
+	}
+
 	return nil
 }
 
@@ -459,6 +475,7 @@ func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
 			return fmt.Errorf("Endpoint already exists")
 		}
 	}
+	np.RoutingRequired = true
 	np.EndpointsHeap = append(np.EndpointsHeap, &PeerEndpoint{Addr: addr, LastContact: time.Now()})
 	return nil
 }

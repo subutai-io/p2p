@@ -90,6 +90,7 @@ func main() {
 		MTU            int    // MTU for p2p interface
 		ShowMTU        bool   // Show MTU value
 		PMTU           bool   // Whether or not PMTU capabilities should be used
+		SRVEntry       string // SRV Entry for service lookup
 	)
 
 	app := cli.NewApp()
@@ -157,9 +158,18 @@ func main() {
 					Usage:       "When specified - enables PMTU capabilities",
 					Destination: &PMTU,
 				},
+				cli.StringFlag{
+					Name:        "srv",
+					Usage:       "Specify DHT SRV lookup entry. Supported: dht, devdht, masterdht",
+					Value:       "",
+					Destination: &SRVEntry,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				ExecDaemon(RPCPort, TargetURL, SaveFile, Profiling, Syslog, LogLevel, MTU, PMTU)
+				if SRVEntry == "" {
+					SRVEntry = TargetURL
+				}
+				ExecDaemon(RPCPort, SRVEntry, SaveFile, Profiling, Syslog, LogLevel, MTU, PMTU)
 				return nil
 			},
 		},
