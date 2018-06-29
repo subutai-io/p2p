@@ -557,3 +557,190 @@ func TestSendReportProxy(t *testing.T) {
 		t.Fatalf("Failed to sendState (3): %v", err)
 	}
 }
+
+func TestDHTClient_WaitID(t *testing.T) {
+	type fields struct {
+		Routers           string
+		NetworkHash       string
+		ID                string
+		FailedRouters     []string
+		Connections       []*net.TCPConn
+		LocalPort         int
+		RemotePort        int
+		Forwarders        []Forwarder
+		TCPCallbacks      map[protocol.DHTPacketType]dhtCallback
+		Mode              OperatingMode
+		IPList            []net.IP
+		IP                net.IP
+		Network           *net.IPNet
+		Connected         bool
+		LastUpdate        time.Time
+		OutboundIP        net.IP
+		ListenerIsRunning bool
+		IncomingData      chan *protocol.DHTPacket
+		OutgoingData      chan *protocol.DHTPacket
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{"Failing case", fields{}, true},
+		{"Failing case", fields{ID: "123456789012345678901234567890123456"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dht := &DHTClient{
+				Routers:           tt.fields.Routers,
+				NetworkHash:       tt.fields.NetworkHash,
+				ID:                tt.fields.ID,
+				FailedRouters:     tt.fields.FailedRouters,
+				Connections:       tt.fields.Connections,
+				LocalPort:         tt.fields.LocalPort,
+				RemotePort:        tt.fields.RemotePort,
+				Forwarders:        tt.fields.Forwarders,
+				TCPCallbacks:      tt.fields.TCPCallbacks,
+				Mode:              tt.fields.Mode,
+				IPList:            tt.fields.IPList,
+				IP:                tt.fields.IP,
+				Network:           tt.fields.Network,
+				Connected:         tt.fields.Connected,
+				LastUpdate:        tt.fields.LastUpdate,
+				OutboundIP:        tt.fields.OutboundIP,
+				ListenerIsRunning: tt.fields.ListenerIsRunning,
+				IncomingData:      tt.fields.IncomingData,
+				OutgoingData:      tt.fields.OutgoingData,
+			}
+			if err := dht.WaitID(); (err != nil) != tt.wantErr {
+				t.Errorf("DHTClient.WaitID() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestDHTClient_RegisterProxy(t *testing.T) {
+	type fields struct {
+		Routers           string
+		NetworkHash       string
+		ID                string
+		FailedRouters     []string
+		Connections       []*net.TCPConn
+		LocalPort         int
+		RemotePort        int
+		Forwarders        []Forwarder
+		TCPCallbacks      map[protocol.DHTPacketType]dhtCallback
+		Mode              OperatingMode
+		IPList            []net.IP
+		IP                net.IP
+		Network           *net.IPNet
+		Connected         bool
+		LastUpdate        time.Time
+		OutboundIP        net.IP
+		ListenerIsRunning bool
+		IncomingData      chan *protocol.DHTPacket
+		OutgoingData      chan *protocol.DHTPacket
+	}
+	type args struct {
+		ip   net.IP
+		port int
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{"t1", fields{}, args{}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dht := &DHTClient{
+				Routers:           tt.fields.Routers,
+				NetworkHash:       tt.fields.NetworkHash,
+				ID:                tt.fields.ID,
+				FailedRouters:     tt.fields.FailedRouters,
+				Connections:       tt.fields.Connections,
+				LocalPort:         tt.fields.LocalPort,
+				RemotePort:        tt.fields.RemotePort,
+				Forwarders:        tt.fields.Forwarders,
+				TCPCallbacks:      tt.fields.TCPCallbacks,
+				Mode:              tt.fields.Mode,
+				IPList:            tt.fields.IPList,
+				IP:                tt.fields.IP,
+				Network:           tt.fields.Network,
+				Connected:         tt.fields.Connected,
+				LastUpdate:        tt.fields.LastUpdate,
+				OutboundIP:        tt.fields.OutboundIP,
+				ListenerIsRunning: tt.fields.ListenerIsRunning,
+				IncomingData:      tt.fields.IncomingData,
+				OutgoingData:      tt.fields.OutgoingData,
+			}
+			if err := dht.RegisterProxy(tt.args.ip, tt.args.port); (err != nil) != tt.wantErr {
+				t.Errorf("DHTClient.RegisterProxy() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestDHTClient_ReportLoad(t *testing.T) {
+	type fields struct {
+		Routers           string
+		NetworkHash       string
+		ID                string
+		FailedRouters     []string
+		Connections       []*net.TCPConn
+		LocalPort         int
+		RemotePort        int
+		Forwarders        []Forwarder
+		TCPCallbacks      map[protocol.DHTPacketType]dhtCallback
+		Mode              OperatingMode
+		IPList            []net.IP
+		IP                net.IP
+		Network           *net.IPNet
+		Connected         bool
+		LastUpdate        time.Time
+		OutboundIP        net.IP
+		ListenerIsRunning bool
+		IncomingData      chan *protocol.DHTPacket
+		OutgoingData      chan *protocol.DHTPacket
+	}
+	type args struct {
+		clientsNum int
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{"t1", fields{}, args{}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dht := &DHTClient{
+				Routers:           tt.fields.Routers,
+				NetworkHash:       tt.fields.NetworkHash,
+				ID:                tt.fields.ID,
+				FailedRouters:     tt.fields.FailedRouters,
+				Connections:       tt.fields.Connections,
+				LocalPort:         tt.fields.LocalPort,
+				RemotePort:        tt.fields.RemotePort,
+				Forwarders:        tt.fields.Forwarders,
+				TCPCallbacks:      tt.fields.TCPCallbacks,
+				Mode:              tt.fields.Mode,
+				IPList:            tt.fields.IPList,
+				IP:                tt.fields.IP,
+				Network:           tt.fields.Network,
+				Connected:         tt.fields.Connected,
+				LastUpdate:        tt.fields.LastUpdate,
+				OutboundIP:        tt.fields.OutboundIP,
+				ListenerIsRunning: tt.fields.ListenerIsRunning,
+				IncomingData:      tt.fields.IncomingData,
+				OutgoingData:      tt.fields.OutgoingData,
+			}
+			if err := dht.ReportLoad(tt.args.clientsNum); (err != nil) != tt.wantErr {
+				t.Errorf("DHTClient.ReportLoad() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
