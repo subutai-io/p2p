@@ -74,6 +74,8 @@ func TestStateConnected(t *testing.T) {
 	if err3 != nil && np.State != PeerStateInit {
 		t.Error("Error. Remote peer can't to reconnect")
 	}
+	np.RoutingRequired = true
+	np.stateConnected(ptp)
 }
 
 func TestStateDisconnect(t *testing.T) {
