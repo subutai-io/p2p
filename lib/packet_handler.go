@@ -76,6 +76,14 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 // HandleXpeerPingMessage receives a cross-peer ping message
 func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 
+	if msg == nil {
+		return
+	}
+
+	if srcAddr == nil {
+		return
+	}
+
 	if len(msg.Data) < 38 {
 		return
 	}
