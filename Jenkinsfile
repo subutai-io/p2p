@@ -41,7 +41,7 @@ switch (env.BRANCH_NAME) {
 try {
 	notifyBuild('STARTED')
 
-	node() {
+	node("deb") {
 		String goenvDir = ".goenv"
 		deleteDir()
 
@@ -96,7 +96,7 @@ try {
 	}
 	*/
 	if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
-		node() {
+		node("deb") {
 			/* Upload builed p2p artifacts to kurjun */
 			deleteDir()
 
