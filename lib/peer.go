@@ -391,39 +391,47 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 	for len(np.EndpointsHeap) == 0 {
 		return nil
 	}
-	np.RoutingRequired = false
 
 	stat := PeerStats{}
 	locals, internet, proxies := np.sortEndpoints(ptpc)
 
-	np.Lock.Lock()
-	np.EndpointsHeap = np.EndpointsHeap[:0]
-	np.EndpointsHeap = append(np.EndpointsHeap, locals...)
-	np.EndpointsHeap = append(np.EndpointsHeap, internet...)
-	np.EndpointsHeap = append(np.EndpointsHeap, proxies...)
-	np.Lock.Unlock()
+	if np.RoutingRequired {
+		np.RoutingRequired = false
+		np.Lock.Lock()
+		np.EndpointsHeap = np.EndpointsHeap[:0]
+		np.EndpointsHeap = append(np.EndpointsHeap, locals...)
+		np.EndpointsHeap = append(np.EndpointsHeap, internet...)
+		np.EndpointsHeap = append(np.EndpointsHeap, proxies...)
+		np.Lock.Unlock()
 
-	stat.localNum = len(locals)
-	stat.internetNum = len(internet)
-	stat.proxyNum = len(proxies)
-	np.Stat = stat
+		stat.localNum = len(locals)
+		stat.internetNum = len(internet)
+		stat.proxyNum = len(proxies)
+		np.Stat = stat
 
-	if len(np.EndpointsHeap) > 0 {
-		np.Endpoint = np.EndpointsHeap[0].Addr
-		np.ConnectionAttempts = 0
-	} else {
-		Log(Debug, "No active endpoints. Disconnecting peer %s", np.ID)
-		np.Endpoint = nil
-		np.SetState(PeerStateDisconnect, ptpc)
+		if len(np.EndpointsHeap) > 0 {
+			np.Endpoint = np.EndpointsHeap[0].Addr
+			np.ConnectionAttempts = 0
+		} else {
+			Log(Debug, "No active endpoints. Disconnecting peer %s", np.ID)
+			np.Endpoint = nil
+			np.SetState(PeerStateDisconnect, ptpc)
+		}
+		return nil
 	}
+
+	for _, proxy := range proxies {
+		if proxy.Addr.String() == np.Endpoint.String() {
+			np.RoutingRequired = true
+		}
+	}
+
 	return nil
 }
 
 // stateConnected is executed when connection was established and peer is operating normally
 func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
-	if np.RoutingRequired {
-		np.route(ptpc)
-	}
+	np.route(ptpc)
 	if np.State != PeerStateConnected {
 		return nil
 	}
