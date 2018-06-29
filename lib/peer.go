@@ -43,12 +43,12 @@ type NetworkPeer struct {
 	handlers           map[PeerState]StateHandlerCallback // List of callbacks for different peer states
 	Running            bool                               // Whether peer is running or not
 	EndpointsHeap      []*PeerEndpoint                    // List of all endpoints
-	// EndpointsActive    []PeerEndpoint                     // List of active endpoints
-	Lock               sync.RWMutex // Mutex for endpoints operations
-	punchingInProgress bool         // Whether or not UDP hole punching is running
-	LastFind           time.Time    // Moment when we got this peer from DHT
-	LastPunch          time.Time    // Last time we run hole punch
-	Stat               PeerStats    // Peer statistics
+	Lock               sync.RWMutex                       // Mutex for endpoints operations
+	punchingInProgress bool                               // Whether or not UDP hole punching is running
+	LastFind           time.Time                          // Moment when we got this peer from DHT
+	LastPunch          time.Time                          // Last time we run hole punch
+	Stat               PeerStats                          // Peer statistics
+	RoutingRequired    bool                               // Whether or not routing is required
 }
 
 func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
@@ -83,6 +83,7 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 	}
 	np.Running = true
 	np.ConnectionAttempts = 0
+	np.RoutingRequired = false
 
 	np.handlers = make(map[PeerState]StateHandlerCallback)
 	np.handlers[PeerStateInit] = np.stateInit
@@ -240,6 +241,7 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) {
 
 	np.punchingInProgress = true
 	round := 0
+	np.RoutingRequired = true
 	for round < 10 {
 		for _, ep := range eps {
 			if np.isEndpointActive(ep) {
@@ -329,6 +331,7 @@ func (np *NetworkPeer) sortEndpoints(ptpc *PeerToPeer) ([]*PeerEndpoint, []*Peer
 	proxies := []*PeerEndpoint{}
 	for _, ep := range np.EndpointsHeap {
 		if time.Since(ep.LastContact) > time.Duration(time.Second*10) {
+			np.RoutingRequired = true
 			continue
 		}
 		// Check if it's proxy
@@ -388,6 +391,7 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 	for len(np.EndpointsHeap) == 0 {
 		return nil
 	}
+	np.RoutingRequired = false
 
 	stat := PeerStats{}
 	locals, internet, proxies := np.sortEndpoints(ptpc)
@@ -417,7 +421,9 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 
 // stateConnected is executed when connection was established and peer is operating normally
 func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
-	np.route(ptpc)
+	if np.RoutingRequired {
+		np.route(ptpc)
+	}
 	if np.State != PeerStateConnected {
 		return nil
 	}
