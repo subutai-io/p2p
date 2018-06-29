@@ -163,6 +163,11 @@ func TestNetworkPeer_sortEndpoints(t *testing.T) {
 		LastPing:    time.Now(),
 	}
 
+	ep6 := &PeerEndpoint{
+		LastContact: time.Now(),
+		LastPing:    time.Now(),
+	}
+
 	r1 := []*PeerEndpoint{ep1, ep2, ep3}
 
 	r2 := []*PeerEndpoint{
@@ -196,6 +201,8 @@ func TestNetworkPeer_sortEndpoints(t *testing.T) {
 		{"t2", fields{EndpointsHeap: r1}, args{}, r1, []*PeerEndpoint{}, []*PeerEndpoint{}},
 		{"t3", fields{EndpointsHeap: r2}, args{}, r2_2, []*PeerEndpoint{}, []*PeerEndpoint{}},
 		{"t4", fields{EndpointsHeap: r3}, args{}, []*PeerEndpoint{}, r3, []*PeerEndpoint{}},
+		{"t5", fields{EndpointsHeap: r1, Proxies: []*net.UDPAddr{la1, la2, la3}}, args{}, []*PeerEndpoint{}, []*PeerEndpoint{}, r1},
+		{"t6", fields{EndpointsHeap: []*PeerEndpoint{ep6}}, args{}, []*PeerEndpoint{}, []*PeerEndpoint{}, []*PeerEndpoint{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
