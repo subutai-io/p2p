@@ -53,8 +53,11 @@ func Test_isPrivateIP(t *testing.T) {
 	}{
 		{"Empty IP", args{}, false, true},
 		{"10.x subnet", args{net.ParseIP("10.12.13.14")}, true, false},
-		{"10.x subnet", args{net.ParseIP("172.16.17.18")}, true, false},
-		{"10.x subnet", args{net.ParseIP("192.168.0.1")}, true, false},
+		{"10.x subnet", args{net.ParseIP("10.0.0.1")}, true, false},
+		{"172.16.x subnet", args{net.ParseIP("172.16.17.18")}, true, false},
+		{"172.16.x subnet", args{net.ParseIP("172.16.0.1")}, true, false},
+		{"192.168.x subnet", args{net.ParseIP("192.168.0.1")}, true, false},
+		{"192.168.x subnet", args{net.ParseIP("192.168.1.1")}, true, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

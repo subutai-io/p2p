@@ -215,7 +215,7 @@ try {
 			sh """
 			cd ${CWD}/p2p
 			sed -i 's/quilt/native/' debian/source/format
-			sed -i 's/DHT_ENDPOINT/${dhtHost}/' debian/rules
+			sed -i 's/DHT_ENDPOINT/${dhtSrv}/' debian/rules
 			sed -i 's/DEFAULT_LOG_LEVEL/${p2p_log_level}/' debian/rules
 			dch -v '${p2p_version}' -D stable 'Test build for ${p2p_version}' 1>/dev/null 2>/dev/null
 			"""

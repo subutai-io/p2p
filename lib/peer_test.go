@@ -45,6 +45,7 @@ func TestRun(t *testing.T) {
 	if !true {
 		t.Error("Error. Can't stop peer")
 	}
+
 }
 
 func TestStateInit(t *testing.T) {
@@ -74,6 +75,8 @@ func TestStateConnected(t *testing.T) {
 	if err3 != nil && np.State != PeerStateInit {
 		t.Error("Error. Remote peer can't to reconnect")
 	}
+	np.RoutingRequired = true
+	np.stateConnected(ptp)
 }
 
 func TestStateDisconnect(t *testing.T) {
@@ -122,6 +125,65 @@ func TestNetworkPeer_sortEndpoints(t *testing.T) {
 	type args struct {
 		ptpc *PeerToPeer
 	}
+
+	la1, _ := net.ResolveUDPAddr("udp4", "192.168.0.1:1234")
+	la2, _ := net.ResolveUDPAddr("udp4", "10.0.0.1:1234")
+	la3, _ := net.ResolveUDPAddr("udp4", "172.16.0.1:1234")
+
+	ra1, _ := net.ResolveUDPAddr("udp4", "1.1.1.1:2345")
+	ra2, _ := net.ResolveUDPAddr("udp4", "2.2.2.2:2345")
+
+	ep1 := &PeerEndpoint{
+		Addr:        la1,
+		LastContact: time.Now(),
+		LastPing:    time.Now(),
+	}
+
+	ep2 := &PeerEndpoint{
+		Addr:        la2,
+		LastContact: time.Now(),
+		LastPing:    time.Now(),
+	}
+
+	ep3 := &PeerEndpoint{
+		Addr:        la3,
+		LastContact: time.Now(),
+		LastPing:    time.Now(),
+	}
+
+	ep4 := &PeerEndpoint{
+		Addr:        ra1,
+		LastContact: time.Now(),
+		LastPing:    time.Now(),
+	}
+
+	ep5 := &PeerEndpoint{
+		Addr:        ra2,
+		LastContact: time.Now(),
+		LastPing:    time.Now(),
+	}
+
+	r1 := []*PeerEndpoint{ep1, ep2, ep3}
+
+	r2 := []*PeerEndpoint{
+		&PeerEndpoint{
+			Addr:        la1,
+			LastContact: time.Unix(1, 1),
+			LastPing:    time.Now(),
+		},
+		ep2, ep3,
+	}
+
+	r2_2 := []*PeerEndpoint{
+		ep2, ep3,
+	}
+
+	r3 := []*PeerEndpoint{
+		ep4, ep5,
+	}
+
+	// all := r1
+
 	tests := []struct {
 		name   string
 		fields fields
@@ -131,6 +193,9 @@ func TestNetworkPeer_sortEndpoints(t *testing.T) {
 		want2  []*PeerEndpoint
 	}{
 		{"t1", fields{}, args{}, []*PeerEndpoint{}, []*PeerEndpoint{}, []*PeerEndpoint{}},
+		{"t2", fields{EndpointsHeap: r1}, args{}, r1, []*PeerEndpoint{}, []*PeerEndpoint{}},
+		{"t3", fields{EndpointsHeap: r2}, args{}, r2_2, []*PeerEndpoint{}, []*PeerEndpoint{}},
+		{"t4", fields{EndpointsHeap: r3}, args{}, []*PeerEndpoint{}, r3, []*PeerEndpoint{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
