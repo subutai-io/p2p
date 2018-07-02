@@ -422,7 +422,16 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 		return nil
 	}
 
+	if np.Endpoint == nil {
+		np.RoutingRequired = true
+		return nil
+	}
+
+	// If current active endpoint is a proxy we will force routing
 	for _, proxy := range proxies {
+		if proxy == nil || proxy.Addr == nil {
+			continue
+		}
 		if proxy.Addr.String() == np.Endpoint.String() {
 			np.RoutingRequired = true
 		}

@@ -41,6 +41,9 @@ func TestPeerToPeer_HandleXpeerPingMessage(t *testing.T) {
 	pl.Init()
 	pl.Update("123456789012345678901234567890123456", &NetworkPeer{ID: "123456789012345678901234567890123456"})
 
+	proxy := new(ProxyManager)
+	proxy.init()
+
 	tests := []struct {
 		name   string
 		fields fields
@@ -48,9 +51,9 @@ func TestPeerToPeer_HandleXpeerPingMessage(t *testing.T) {
 	}{
 		{"t1", fields{}, args{}},
 		{"t1", fields{}, args{msg: msg}},
-		{"t1", fields{}, args{msg: msg, srcAddr: srcAddr}},
-		{"t1", fields{}, args{msg: msg2, srcAddr: srcAddr}},
-		{"t1", fields{Peers: pl}, args{msg: msg3, srcAddr: srcAddr}},
+		{"t1", fields{Peers: pl}, args{msg: msg, srcAddr: srcAddr}},
+		{"t1", fields{Peers: pl}, args{msg: msg2, srcAddr: srcAddr}},
+		{"t1", fields{Peers: pl, ProxyManager: proxy}, args{msg: msg3, srcAddr: srcAddr}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
