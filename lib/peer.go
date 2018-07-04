@@ -211,7 +211,7 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 	Log(Debug, "Connecting to %s", np.ID)
 
 	started := time.Now()
-	go np.punchUDPHole(ptpc)
+	np.punchUDPHole(ptpc)
 
 	for time.Since(started) < time.Duration(time.Millisecond*30000) {
 		if len(np.EndpointsHeap) > 0 {
