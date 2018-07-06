@@ -64,6 +64,10 @@ test:
 coverage:
 	go test -coverprofile=coverage.txt -covermode=atomic github.com/subutai-io/p2p/lib
 
+htmlcover:
+	go test -coverprofile=/tmp/coverage.out github.com/subutai-io/p2p/lib
+	go tool cover -html=/tmp/coverage.out
+
 release: build
 release:
 	-mv $(APP) $(APP)-$(OS)-$(ARCH)-$(VERSION)
