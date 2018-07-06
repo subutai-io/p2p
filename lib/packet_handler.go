@@ -84,12 +84,14 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 		return
 	}
 
-	if len(msg.Data) < 38 {
+	if len(msg.Data) < 1 {
 		return
 	}
-
 	query := string(msg.Data)[:1]
 	if query == "q" {
+		if len(msg.Data) < 37 {
+			return
+		}
 		id := string(msg.Data)[1:37]
 		endpoint := string(msg.Data)[37:]
 		response := append([]byte("r"), []byte(endpoint)...)

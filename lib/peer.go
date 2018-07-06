@@ -211,7 +211,7 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 	Log(Debug, "Connecting to %s", np.ID)
 
 	started := time.Now()
-	go np.punchUDPHole(ptpc)
+	np.punchUDPHole(ptpc)
 
 	for time.Since(started) < time.Duration(time.Millisecond*30000) {
 		if len(np.EndpointsHeap) > 0 {
@@ -422,7 +422,16 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 		return nil
 	}
 
+	if np.Endpoint == nil {
+		np.RoutingRequired = true
+		return nil
+	}
+
+	// If current active endpoint is a proxy we will force routing
 	for _, proxy := range proxies {
+		if proxy == nil || proxy.Addr == nil {
+			continue
+		}
 		if proxy.Addr.String() == np.Endpoint.String() {
 			np.RoutingRequired = true
 		}
