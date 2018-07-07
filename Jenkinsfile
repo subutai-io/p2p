@@ -214,7 +214,7 @@ try {
 			global_version = plain_version
 
 			product_code = sh (script: """
-					cat /proc/sys/kernel/random/uuid | awk '{print toupper($0)}' | tr -d '\n'
+					cat /proc/sys/kernel/random/uuid | awk '{print toupper(\$0)}' | tr -d '\n'
 					""", returnStdout: true)
 
 			sh """
