@@ -8,6 +8,7 @@
 * Bootstrap now uses SRV lookup
 * --dht flag is now obsolete for `start` command
 * Code cleanup: removed unused/obsolete variables and functions
+* Fixed bug with internal ping packet flood
 
 ## [7.0.2] 06/07/2018
 
