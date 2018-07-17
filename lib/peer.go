@@ -330,7 +330,7 @@ func (np *NetworkPeer) sortEndpoints(ptpc *PeerToPeer) ([]*PeerEndpoint, []*Peer
 	internet := []*PeerEndpoint{}
 	proxies := []*PeerEndpoint{}
 	for _, ep := range np.EndpointsHeap {
-		if time.Since(ep.LastContact) > time.Duration(time.Second*10) {
+		if time.Since(ep.LastContact) > EndpointTimeout {
 			np.RoutingRequired = true
 			continue
 		}
@@ -493,15 +493,17 @@ func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
 // if ping timeout has been passed
 func (np *NetworkPeer) pingEndpoints(ptpc *PeerToPeer) {
 	np.Lock.RLock()
-	for _, ep := range np.EndpointsHeap {
-		if time.Since(ep.LastPing) > time.Duration(time.Millisecond*3000) {
-			ep.LastPing = time.Now()
+	for i, ep := range np.EndpointsHeap {
+		if time.Since(ep.LastPing) > EndpointPingInterval {
+			np.EndpointsHeap[i].LastPing = time.Now()
 			payload := append([]byte("q"+ptpc.Dht.ID), []byte(ep.Addr.String())...)
 			msg, err := ptpc.CreateMessage(MsgTypeXpeerPing, payload, 0, true)
 			if err != nil {
 				continue
 			}
+			Log(Trace, "Sending ping to endpoint: %s", ep.Addr.String())
 			ptpc.UDPSocket.SendMessage(msg, ep.Addr)
+			time.Sleep(time.Millisecond * 50)
 		}
 	}
 	np.Lock.RUnlock()
