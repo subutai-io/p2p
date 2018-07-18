@@ -80,6 +80,6 @@ const (
 	PeerPingTimeout       time.Duration = time.Second * 1
 	WaitProxyTimeout      time.Duration = time.Second * 5
 	HandshakeProxyTimeout time.Duration = time.Second * 3
-	EndpointPingInterval  time.Duration = time.Millisecond * 20000
-	EndpointTimeout       time.Duration = time.Millisecond * 50000 // Must be greater than EndpointPingInterval
+	EndpointPingInterval  time.Duration = time.Millisecond * 7000
+	EndpointTimeout       time.Duration = time.Millisecond * 15000 // Must be greater than EndpointPingInterval
 )

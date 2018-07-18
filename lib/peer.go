@@ -17,6 +17,7 @@ type PeerEndpoint struct {
 	Addr        *net.UDPAddr
 	LastContact time.Time
 	LastPing    time.Time
+	broken      bool
 }
 
 // PeerStats represents different peer statistics
