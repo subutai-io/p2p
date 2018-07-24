@@ -1,14 +1,19 @@
 # Change Log
 
-## [7.1.0] 06/22/2018
+## [7.1.0] 07/24/2018
 
-* Removed snapcraft support from Makefile
-* Removed hardcoded bootstrap node address 
-* Added support for SRV lookup
+* Fixed bug with internal ping packet flood
+* Fixed bug with deconfiguration of TAP interfaces after sleep on Windows (#894)
+* Fixed problem with unexpected daemon shutdown when internet connection get lost (#1004)
+* Fixed problem with p2p hanging on peer during envionment creation when many environments already exist (#914)
+* Added support for SRV lookup (#997)
+* Added DHT version number into `p2p debug` output (#1005)
 * Bootstrap now uses SRV lookup
 * --dht flag is now obsolete for `start` command
 * Code cleanup: removed unused/obsolete variables and functions
-* Fixed bug with internal ping packet flood
+* Removed snapcraft support from Makefile
+* Removed hardcoded bootstrap node address 
+* MSI package: P2P version in application list will now match app version (#949)
 
 ## [7.0.2] 06/07/2018
 
