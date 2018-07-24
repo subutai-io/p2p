@@ -1,6 +1,6 @@
 # Change Log
 
-## [7.1.0] 06/22/2018
+## [7.1.0] 07/24/2018
 
 * Fixed bug with internal ping packet flood
 * Fixed bug with deconfiguration of TAP interfaces after sleep on Windows (#894)
