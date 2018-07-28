@@ -244,40 +244,47 @@ try {
 			touch uploading_agent
 			scp uploading_agent subutai*.deb dak@deb.subutai.io:incoming/${env.BRANCH_NAME}/
 			ssh dak@deb.subutai.io sh /var/reprepro/scripts/scan-incoming.sh ${env.BRANCH_NAME} agent
+			mv subutai*.deb subutai-p2p-${env.BRANCH_NAME}.deb
 			"""
-
+     
+            sh """
+			set -x
+			rm -rf /tmp/p2p-packaging
+			git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
+			./upload.sh debian ${env.BRANCH_NAME} ${CWD}/subutai-p2p-${env.BRANCH_NAME}.deb
+			"""
 		}
 
 		if (env.BRANCH_NAME == 'master') {
-			node("debian") {
-				notifyBuild('INFO', "Packaging P2P for Debian")
-				stage("Packaging for Debian")
-				notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
+			// node("debian") {
+			// 	notifyBuild('INFO', "Packaging P2P for Debian")
+			// 	stage("Packaging for Debian")
+			// 	notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
 
-				sh """
-					set -x
-					rm -rf /tmp/p2p-packaging
-					git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
-					cd /tmp/p2p-packaging
-					${gitcmd}
-					wget --no-check-certificate https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p -O /tmp/p2p-packaging/linux/debian/p2p
-					chmod +x /tmp/p2p-packaging/linux/debian/p2p
-					./configure --debian --branch=${env.BRANCH_NAME}
-					cd linux
-					debuild -B -d
-				"""
+			// 	sh """
+			// 		set -x
+			// 		rm -rf /tmp/p2p-packaging
+			// 		git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
+			// 		cd /tmp/p2p-packaging
+			// 		${gitcmd}
+			// 		wget --no-check-certificate https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p -O /tmp/p2p-packaging/linux/debian/p2p
+			// 		chmod +x /tmp/p2p-packaging/linux/debian/p2p
+			// 		./configure --debian --branch=${env.BRANCH_NAME}
+			// 		cd linux
+			// 		debuild -B -d
+			// 	"""
 
-				notifyBuildDetails = "\nFailed on stage - Uploading Debian Package"
+			// 	notifyBuildDetails = "\nFailed on stage - Uploading Debian Package"
 
-				String debfile = sh (script: """
-					set +x
-					ls /tmp/p2p-packaging | grep .deb | tr -d '\n'
-					""", returnStdout: true)
+			// 	String debfile = sh (script: """
+			// 		set +x
+			// 		ls /tmp/p2p-packaging | grep .deb | tr -d '\n'
+			// 		""", returnStdout: true)
 
-				sh """
-					/tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} /tmp/p2p-packaging/${debfile}
-				"""
-			}
+			// 	sh """
+			// 		/tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} /tmp/p2p-packaging/${debfile}
+			// 	"""
+			// }
 			
 			node("mac") {
 				notifyBuild('INFO', "Packaging P2P for Darwin")
