@@ -244,7 +244,6 @@ try {
 			touch uploading_agent
 			scp uploading_agent subutai*.deb dak@deb.subutai.io:incoming/${env.BRANCH_NAME}/
 			ssh dak@deb.subutai.io sh /var/reprepro/scripts/scan-incoming.sh ${env.BRANCH_NAME} agent
-			mv subutai*.deb subutai-p2p-${env.BRANCH_NAME}.deb
 			"""
      
             sh """
@@ -252,7 +251,9 @@ try {
 			rm -rf /tmp/p2p-packaging
 			git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
 			cd /tmp/p2p-packaging/
-			./upload.sh debian ${env.BRANCH_NAME} ${CWD}/subutai-p2p-${env.BRANCH_NAME}.deb
+			${gitcmd}
+			cp ${CWD}/subutai*.deb . 
+			./upload.sh debian ${env.BRANCH_NAME} subutai*.deb
 			"""
 		}
 
