@@ -6,6 +6,7 @@ Type=simple
 EnvironmentFile=-/etc/default/subutai-p2p
 ExecStart=/usr/bin/p2p daemon -save /var/lib/subutai/data/p2p.save -syslog 127.0.0.1:1514 --mtu=${P2P_MTU}
 Restart=always
+OnFailure=subutai-cop.service
 
 [Install]
 WantedBy=multi-user.target
