@@ -7,6 +7,7 @@ dhtHost = ""
 gitcmd = ""
 p2p_log_level = "INFO"
 global_version = "1.0.0"
+product_code = "101366BA-A375-46C1-8871-C46D29EE7C70"
 dhtSrv = "dht"
 
 switch (env.BRANCH_NAME) {
@@ -212,6 +213,10 @@ try {
 			def p2p_version = "${plain_version}+${date}"
 			global_version = plain_version
 
+			product_code = sh (script: """
+					cat /proc/sys/kernel/random/uuid | awk '{print toupper(\$0)}' | tr -d '\n'
+					""", returnStdout: true)
+
 			sh """
 			cd ${CWD}/p2p
 			sed -i 's/quilt/native/' debian/source/format
@@ -240,42 +245,20 @@ try {
 			scp uploading_agent subutai*.deb dak@debup.subutai.io:incoming/${env.BRANCH_NAME}/
 			ssh dak@debup.subutai.io sh /var/reprepro/scripts/scan-incoming.sh ${env.BRANCH_NAME} agent
 			"""
-
+     
+            sh """
+			set -x
+			rm -rf /tmp/p2p-packaging
+			git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
+			cd /tmp/p2p-packaging/
+			${gitcmd}
+			cp ${CWD}/subutai*.deb . 
+			./upload.sh debian ${env.BRANCH_NAME} subutai*.deb
+			"""
 		}
 
 		if (env.BRANCH_NAME == 'master') {
-			node("debian") {
-				notifyBuild('INFO', "Packaging P2P for Debian")
-				stage("Packaging for Debian")
-				notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
-
-				sh """
-					set -x
-					rm -rf /tmp/p2p-packaging
-					git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
-					cd /tmp/p2p-packaging
-					${gitcmd}
-					wget --no-check-certificate https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p -O /tmp/p2p-packaging/linux/debian/p2p
-					chmod +x /tmp/p2p-packaging/linux/debian/p2p
-					./configure --debian --branch=${env.BRANCH_NAME}
-					cd linux
-					debuild -B -d
-				"""
-
-				notifyBuildDetails = "\nFailed on stage - Uploading Debian Package"
-
-				String debfile = sh (script: """
-					set +x
-					ls /tmp/p2p-packaging | grep .deb | tr -d '\n'
-					""", returnStdout: true)
-
-				sh """
-					/tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} /tmp/p2p-packaging/${debfile}
-				"""
-			}
-			
-			/* Due to broken mac
-			
+	
 			node("mac") {
 				notifyBuild('INFO', "Packaging P2P for Darwin")
 				stage("Packaging for Darwin")
@@ -297,7 +280,6 @@ try {
 					/tmp/p2p-packaging/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
 				"""
 			}
-			*/
 		} // If branch == master
 
 		node("windows") {
@@ -314,6 +296,7 @@ try {
 				echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p.exe -o /c/tmp/p2p-packaging/p2p.exe >> c:\\tmp\\p2p-win.do
 				echo curl -fsSLk https://eu0.cdn.subutai.io:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o /c/tmp/p2p-packaging/tap-windows-9.21.2.exe >> c:\\tmp\\p2p-win.do
 				echo sed -i -e "s/{VERSION_PLACEHOLDER}/${global_version}/g" /c/tmp/p2p-packaging/windows/P2PInstaller/P2PInstaller.vdproj >> c:\\tmp\\p2p-win.do
+				echo sed -i -e "s/PRODUCT_CODE_PLACEHOLDER/${product_code}/g" /c/tmp/p2p-packaging/windows/P2PInstaller/P2PInstaller.vdproj >> c:\\tmp\\p2p-win.do
 
 				echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi > c:\\tmp\\p2p-win-upload.do
 
