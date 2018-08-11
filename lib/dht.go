@@ -5,8 +5,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/subutai-io/p2p/protocol"
-	"github.com/wayn3h0/go-uuid"
 )
 
 // OperatingMode - Mode in which DHT client is operating
@@ -330,7 +330,7 @@ func (dht *DHTClient) WaitID() error {
 
 // RegisterProxy will register current node as a proxy on bootstrap node
 func (dht *DHTClient) RegisterProxy(ip net.IP, port int) error {
-	id, err := uuid.NewTimeBased()
+	id, err := uuid.NewUUID()
 	if err != nil {
 		return fmt.Errorf("Failed to generate ID: %s", err)
 	}
