@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	uuid "github.com/wayn3h0/go-uuid"
+	"github.com/google/uuid"
 )
 
 // Different utility functions
@@ -36,7 +36,7 @@ func GenerateMAC() (string, net.HardwareAddr) {
 // we will replace Token with received ID
 func GenerateToken() string {
 	result := ""
-	id, err := uuid.NewTimeBased()
+	id, err := uuid.NewUUID()
 	if err != nil {
 		Log(Error, "Failed to generate token for peer")
 		return result
