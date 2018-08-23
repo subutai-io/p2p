@@ -82,6 +82,7 @@ try {
 		stash includes: 'bin/p2p', name: 'p2p'
 		stash includes: 'bin/p2p.exe', name: 'p2p.exe'
 		stash includes: 'bin/p2p_osx', name: 'p2p_osx'
+		stash includes: 'upload-ipfs.sh', name: 'upload-ipfs.sh'
 	}
 	
 	/*
@@ -132,6 +133,7 @@ try {
 					""", returnStdout: true)
 				sh """
 					set +x
+					./upload-ipfs.sh ${env.BRANCH_NAME} Linux
 					curl -s -k -H "token: ${token}" -Ffile=@bin/p2p -Fversion=${p2pVersion} ${url}/raw/upload
 				"""
 				/* delete old p2p */
@@ -153,6 +155,7 @@ try {
 				""", returnStdout: true)
 			sh """
 				set +x
+				./upload-ipfs.sh ${env.BRANCH_NAME} MSYS_NT-10.0
 				curl -s -k -H "token: ${token}" -Ffile=@bin/p2p.exe -Fversion=${p2pVersion} ${url}/raw/upload
 			"""
 			/* delete old p2p.exe */
@@ -173,6 +176,7 @@ try {
 					""", returnStdout: true)
 				sh """
 					set +x
+					./upload-ipfs.sh ${env.BRANCH_NAME} Darwin
 					curl -s -k -H "token: ${token}" -Ffile=@bin/p2p_osx -Fversion=${p2pVersion} ${url}/raw/upload
 				"""
 				/* delete old p2p */
@@ -253,6 +257,7 @@ try {
 			cd /tmp/p2p-packaging/
 			${gitcmd}
 			cp ${CWD}/subutai*.deb . 
+			./upload-ipfs.sh ${env.BRANCH_NAME}
 			./upload.sh debian ${env.BRANCH_NAME} subutai*.deb
 			"""
 		}
@@ -277,6 +282,7 @@ try {
 				notifyBuildDetails = "\nFailed on stage - Uploading Darwin Package"
 
 				sh """
+					/tmp/p2p-packaging/./upload-ipfs.sh ${env.BRANCH_NAME}
 					/tmp/p2p-packaging/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
 				"""
 			}
@@ -298,7 +304,8 @@ try {
 				echo sed -i -e "s/{VERSION_PLACEHOLDER}/${global_version}/g" /c/tmp/p2p-packaging/windows/P2PInstaller/P2PInstaller.vdproj >> c:\\tmp\\p2p-win.do
 				echo sed -i -e "s/PRODUCT_CODE_PLACEHOLDER/${product_code}/g" /c/tmp/p2p-packaging/windows/P2PInstaller/P2PInstaller.vdproj >> c:\\tmp\\p2p-win.do
 
-				echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi > c:\\tmp\\p2p-win-upload.do
+				echo /c/tmp/p2p-packaging/upload-ipfs.sh ${env.BRANCH_NAME} > c:\\tmp\\p2p-win-upload.do
+				echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi >> c:\\tmp\\p2p-win-upload.do
 
 				echo call "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\Common7\\Tools\\VsDevCmd.bat" > c:\\tmp\\p2p-pack.bat
 				echo signtool.exe sign /tr http://timestamp.comodoca.com/authenticode /f "c:\\users\\tray\\od.p12" /p testpassword "c:\\tmp\\p2p-packaging\\p2p.exe" >> c:\\tmp\\p2p-pack.bat
