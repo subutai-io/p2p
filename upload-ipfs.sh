@@ -1,5 +1,4 @@
 BRANCH=$1
-VERSION=$(cat version)
 OS=$2
 PKGNAME=""
 BINNAME=""
@@ -54,7 +53,7 @@ case $OS in
         ;;
     Darwin)
         BASENAME="p2p_osx"
-        BIN_EXT="_osx""
+        BIN_EXT="_osx"
         ;;
 esac
 
