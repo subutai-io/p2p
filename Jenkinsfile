@@ -121,6 +121,7 @@ try {
 
 			/* upload p2p */
 			unstash 'p2p'
+			unstash 'upload-ipfs.sh'
 			/* get p2p version */
 			String p2pVersion = sh (script: """
 				set +x
