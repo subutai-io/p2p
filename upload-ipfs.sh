@@ -1,11 +1,5 @@
 BRANCH=$1
 OS=$2
-PKGNAME=""
-BINNAME=""
-FILE=""
-URL=""
-PKG_EXT=""
-BINARY_EXT=""
 
 upload_ipfs (){
     filename=$1
