@@ -127,7 +127,7 @@ try {
 				set +x
 				./bin/p2p -v | cut -d " " -f 3 | tr -d '\n'
 				""", returnStdout: true)
-			if (env.BRANCH_NAME == 'master') {
+			if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 				String responseP2P = sh (script: """
 					set +x
 					curl -s -k ${url}/raw/info?name=p2p
@@ -170,7 +170,7 @@ try {
 
 			/* upload p2p_osx */
 			unstash 'p2p_osx'
-			if (env.BRANCH_NAME == 'master') {
+			if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 				String responseP2Posx = sh (script: """
 					set +x
 					curl -s -k ${url}/raw/info?name=p2p_osx
@@ -263,7 +263,7 @@ try {
 			"""
 		}
 
-		if (env.BRANCH_NAME == 'master') {
+		if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 	
 			node("mac") {
 				notifyBuild('INFO', "Packaging P2P for Darwin")
