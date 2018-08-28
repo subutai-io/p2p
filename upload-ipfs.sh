@@ -6,7 +6,6 @@ upload_ipfs (){
     user="jenkins@optimal-dynamics.com"
     fingerprint="877B586E74F170BC4CF6ECABB971E2AC63D23DC9"
     cdnHost=$2
-    echo $filename
     extract_id()
         {
             id_src=$(echo $json | grep "id")
@@ -26,12 +25,14 @@ upload_ipfs (){
     echo "Token obtained $token"
 
     echo "Uploading file..."
-    curl -sk -H "token: ${token}" -Ffile=@$filename -Ftoken=${token} -X POST "${cdnHost}/rest/v1/cdn/uploadRaw"
+    upl_msg="$(curl -sk -H "token: ${token}" -Ffile=@$filename -Ftoken=${token} -X POST "https://${cdnHost}/rest/v1/cdn/uploadRaw")"
+    echo "$upl_msg"
 
     echo "Removing previous"
-    if [[ -z "$id" ]]; then
-        echo "File not found"
-    else curl -k -s -X DELETE "$cdnHost/rest/v1/cdn/raw?token=${token}&id=$id"
+    echo $Upload
+    if [[ -n "$id" ]] && [[ $upl_msg != "An object with id: $id is exist in Bazaar. Increase the file version." ]]
+    then
+        curl -k -s -X DELETE "https://$cdnHost/rest/v1/cdn/raw?token=${token}&id=$id"
     fi
     echo -e "\\nCompleted"
 }
