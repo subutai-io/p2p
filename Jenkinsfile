@@ -82,6 +82,7 @@ try {
 		stash includes: 'bin/p2p', name: 'p2p'
 		stash includes: 'bin/p2p.exe', name: 'p2p.exe'
 		stash includes: 'bin/p2p_osx', name: 'p2p_osx'
+		stash includes: 'upload-ipfs.sh', name: 'upload-ipfs.sh'
 	}
 	
 	/*
@@ -120,18 +121,20 @@ try {
 
 			/* upload p2p */
 			unstash 'p2p'
+			unstash 'upload-ipfs.sh'
 			/* get p2p version */
 			String p2pVersion = sh (script: """
 				set +x
 				./bin/p2p -v | cut -d " " -f 3 | tr -d '\n'
 				""", returnStdout: true)
-			if (env.BRANCH_NAME == 'master') {
+			if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 				String responseP2P = sh (script: """
 					set +x
 					curl -s -k ${url}/raw/info?name=p2p
 					""", returnStdout: true)
 				sh """
 					set +x
+					./upload-ipfs.sh ${env.BRANCH_NAME} Linux
 					curl -s -k -H "token: ${token}" -Ffile=@bin/p2p -Fversion=${p2pVersion} ${url}/raw/upload
 				"""
 				/* delete old p2p */
@@ -153,6 +156,7 @@ try {
 				""", returnStdout: true)
 			sh """
 				set +x
+				./upload-ipfs.sh ${env.BRANCH_NAME} MSYS_NT-10.0
 				curl -s -k -H "token: ${token}" -Ffile=@bin/p2p.exe -Fversion=${p2pVersion} ${url}/raw/upload
 			"""
 			/* delete old p2p.exe */
@@ -166,13 +170,14 @@ try {
 
 			/* upload p2p_osx */
 			unstash 'p2p_osx'
-			if (env.BRANCH_NAME == 'master') {
+			if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 				String responseP2Posx = sh (script: """
 					set +x
 					curl -s -k ${url}/raw/info?name=p2p_osx
 					""", returnStdout: true)
 				sh """
 					set +x
+					./upload-ipfs.sh ${env.BRANCH_NAME} Darwin
 					curl -s -k -H "token: ${token}" -Ffile=@bin/p2p_osx -Fversion=${p2pVersion} ${url}/raw/upload
 				"""
 				/* delete old p2p */
@@ -242,43 +247,24 @@ try {
 			sh """
 			cd ${CWD}
 			touch uploading_agent
-			scp uploading_agent subutai*.deb dak@deb.subutai.io:incoming/${env.BRANCH_NAME}/
-			ssh dak@deb.subutai.io sh /var/reprepro/scripts/scan-incoming.sh ${env.BRANCH_NAME} agent
+			scp uploading_agent subutai*.deb dak@debup.subutai.io:incoming/${env.BRANCH_NAME}/
+			ssh dak@debup.subutai.io sh /var/reprepro/scripts/scan-incoming.sh ${env.BRANCH_NAME} agent
 			"""
-
+     
+            sh """
+			set -x
+			rm -rf /tmp/p2p-packaging
+			git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
+			cd /tmp/p2p-packaging/
+			${gitcmd}
+			cp ${CWD}/subutai*.deb . 
+			./upload-ipfs.sh ${env.BRANCH_NAME}
+			./upload.sh debian ${env.BRANCH_NAME} subutai*.deb
+			"""
 		}
 
-		if (env.BRANCH_NAME == 'master') {
-			node("debian") {
-				notifyBuild('INFO', "Packaging P2P for Debian")
-				stage("Packaging for Debian")
-				notifyBuildDetails = "\nFailed on stage - Starting Debian Packaging"
-
-				sh """
-					set -x
-					rm -rf /tmp/p2p-packaging
-					git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
-					cd /tmp/p2p-packaging
-					${gitcmd}
-					wget --no-check-certificate https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p -O /tmp/p2p-packaging/linux/debian/p2p
-					chmod +x /tmp/p2p-packaging/linux/debian/p2p
-					./configure --debian --branch=${env.BRANCH_NAME}
-					cd linux
-					debuild -B -d
-				"""
-
-				notifyBuildDetails = "\nFailed on stage - Uploading Debian Package"
-
-				String debfile = sh (script: """
-					set +x
-					ls /tmp/p2p-packaging | grep .deb | tr -d '\n'
-					""", returnStdout: true)
-
-				sh """
-					/tmp/p2p-packaging/upload.sh debian ${env.BRANCH_NAME} /tmp/p2p-packaging/${debfile}
-				"""
-			}
-			
+		if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
+	
 			node("mac") {
 				notifyBuild('INFO', "Packaging P2P for Darwin")
 				stage("Packaging for Darwin")
@@ -297,6 +283,7 @@ try {
 				notifyBuildDetails = "\nFailed on stage - Uploading Darwin Package"
 
 				sh """
+					/tmp/p2p-packaging/./upload-ipfs.sh ${env.BRANCH_NAME}
 					/tmp/p2p-packaging/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
 				"""
 			}
@@ -313,12 +300,14 @@ try {
 				echo rm -rf /c/tmp/p2p-packaging > c:\\tmp\\p2p-win.do
 				echo git clone git@github.com:optdyn/p2p-packaging.git /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
 				echo cd /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
+				echo git checkout ${env.BRANCH_NAME} >> c:\\tmp\\p2p-win.do
 				echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p.exe -o /c/tmp/p2p-packaging/p2p.exe >> c:\\tmp\\p2p-win.do
 				echo curl -fsSLk https://eu0.cdn.subutai.io:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o /c/tmp/p2p-packaging/tap-windows-9.21.2.exe >> c:\\tmp\\p2p-win.do
 				echo sed -i -e "s/{VERSION_PLACEHOLDER}/${global_version}/g" /c/tmp/p2p-packaging/windows/P2PInstaller/P2PInstaller.vdproj >> c:\\tmp\\p2p-win.do
 				echo sed -i -e "s/PRODUCT_CODE_PLACEHOLDER/${product_code}/g" /c/tmp/p2p-packaging/windows/P2PInstaller/P2PInstaller.vdproj >> c:\\tmp\\p2p-win.do
 
 				echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi > c:\\tmp\\p2p-win-upload.do
+				echo /c/tmp/p2p-packaging/upload-ipfs.sh ${env.BRANCH_NAME} >> c:\\tmp\\p2p-win-upload.do
 
 				echo call "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\Common7\\Tools\\VsDevCmd.bat" > c:\\tmp\\p2p-pack.bat
 				echo signtool.exe sign /tr http://timestamp.comodoca.com/authenticode /f "c:\\users\\tray\\od.p12" /p testpassword "c:\\tmp\\p2p-packaging\\p2p.exe" >> c:\\tmp\\p2p-pack.bat
