@@ -41,28 +41,31 @@ case $OS in
     Linux)
         BASENAME="p2p"
         BIN_EXT=""
+        BIN_DIR="/p2p/debian/subutai-p2p/usr/bin"
         ;;
     MSYS_NT-10.0)
         BASENAME="p2p.exe"
         BIN_EXT=".exe"
+        BIN_DIR="bin"
         ;;
     Darwin)
         BASENAME="p2p_osx"
         BIN_EXT="_osx"
+        BIN_DIR="bin"
         ;;
 esac
 
 case $BRANCH in
     dev)
         BINNAME="p2p-dev$BIN_EXT"
-        cd bin
+        cd $BIN_DIR
 	    cp $BASENAME $BINNAME
         IPFSURL=https://devbazaar.subutai.io
         upload_ipfs $BINNAME $IPFSURL
         ;;
     master)
         BINNAME="p2p-master$BIN_EXT"
-        cd bin
+        cd $BIN_DIR
 	    cp $BASENAME $BINNAME
         IPFSURL=https://masterbazaar.subutai.io
         upload_ipfs $BINNAME $IPFSURL
@@ -71,7 +74,7 @@ case $BRANCH in
         BINNAME="p2p$BIN_EXT"
         if [ $OS = Linux ] || [$OS = MSYS_NT-10.0 ]
         then
-        cd bin
+        cd $BIN_DIR
 	    cp $BASENAME $BINNAME
         IPFSURL=https://bazaar.subutai.io
         upload_ipfs $BINNAME $IPFSURL
@@ -81,7 +84,7 @@ case $BRANCH in
         BINNAME="subutai-p2p$PKG_EXT"
         if [ $OS = Linux ] || [$OS = MSYS_NT-10.0 ]
         then
-        cd bin
+        cd $BIN_DIR
 	    cp $BASENAME $BINNAME
         IPFSURL=https://bazaar.subutai.io
         upload_ipfs $BINNAME $IPFSURL
