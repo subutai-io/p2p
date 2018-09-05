@@ -41,7 +41,7 @@ case $OS in
     Linux)
         BASENAME="p2p"
         BIN_EXT=""
-        BIN_DIR="/p2p/debian/subutai-p2p/usr/bin"
+        BIN_DIR="p2p/debian/subutai-p2p/usr/bin"
         ;;
     MSYS_NT-10.0)
         BASENAME="p2p.exe"
