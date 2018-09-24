@@ -129,7 +129,9 @@ type Network struct {
 func (uc *Network) Stop() error {
 	uc.disposed = true
 	if uc.conn != nil {
-		return uc.conn.Close()
+		err := uc.conn.Close()
+		uc.conn = nil
+		return err
 	}
 	return fmt.Errorf("Nil Connection")
 }
