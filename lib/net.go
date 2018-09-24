@@ -125,11 +125,13 @@ type Network struct {
 	disposed   bool
 }
 
-// Stop will terminate packet reader
-func (uc *Network) Stop() error {
+// Close will terminate packet reader
+func (uc *Network) Close() error {
 	uc.disposed = true
 	if uc.conn != nil {
-		return uc.conn.Close()
+		err := uc.conn.Close()
+		uc.conn = nil
+		return err
 	}
 	return fmt.Errorf("Nil Connection")
 }
