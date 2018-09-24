@@ -602,7 +602,7 @@ func (p *PeerToPeer) Close() error {
 	if err != nil {
 		Log(Error, "Failed to stop DHT: %s", err)
 	}
-	p.UDPSocket.Stop()
+	p.UDPSocket.Close()
 
 	if p.Interface != nil {
 		err := p.Interface.Close()
