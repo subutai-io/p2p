@@ -94,7 +94,7 @@ func TestP2PMessageHeader_Serialize(t *testing.T) {
 		fields fields
 		want   []byte
 	}{
-	// TODO: Add test cases.
+		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -122,7 +122,7 @@ func TestP2PMessage_Serialize(t *testing.T) {
 		fields fields
 		want   []byte
 	}{
-	// TODO: Add test cases.
+		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -147,7 +147,7 @@ func TestP2PMessageFromBytes(t *testing.T) {
 		want    *P2PMessage
 		wantErr bool
 	}{
-	// TODO: Add test cases.
+		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -547,7 +547,7 @@ func TestNetwork_Stop(t *testing.T) {
 				inBuffer:   tt.fields.inBuffer,
 				disposed:   tt.fields.disposed,
 			}
-			if err := uc.Stop(); (err != nil) != tt.wantErr {
+			if err := uc.Close(); (err != nil) != tt.wantErr {
 				t.Errorf("Network.Stop() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

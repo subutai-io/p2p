@@ -12,28 +12,18 @@ dhtSrv = "dht"
 
 switch (env.BRANCH_NAME) {
 	case ~/master/: 
-		cdnHost = "mastercdn.subutai.io"; 
 		dhtHost = "eu0.mastercdn.subutai.io:6881"
 		dhtSrv = "masterdht"
 		p2p_log_level = "DEBUG"
 		break;
 	case ~/dev/:
-		cdnHost = "devcdn.subutai.io";
 		dhtHost = "eu0.devcdn.subutai.io:6881";
 		dhtSrv = "devdht"
         gitcmd = "git checkout -B dev && git pull origin dev"
 
 		p2p_log_level = "DEBUG"
         break;
-	case ~/sysnet/:
-		cdnHost = "sysnetcdn.subutai.io";
-		dhtHost = "eu0.sysnetcdn.subutai.io:6881";
-		dhtSrv = "sysnetdht"
-        gitcmd = "git checkout -B sysnet && git pull origin sysnet "
-		p2p_log_level = "TRACE"
-        break;
 	default: 
-		cdnHost = "cdn.subutai.io";
 		dhtHost = "eu0.cdn.subutai.io:6881"
 		dhtSrv = "dht"
 		break;
@@ -79,7 +69,6 @@ try {
 		"""
 
 		/* stash p2p binary to use it in next node() */
-		stash includes: 'bin/p2p', name: 'p2p'
 		stash includes: 'bin/p2p.exe', name: 'p2p.exe'
 		stash includes: 'bin/p2p_osx', name: 'p2p_osx'
 		stash includes: 'upload-ipfs.sh', name: 'upload-ipfs.sh'
@@ -99,95 +88,24 @@ try {
 	*/
 	if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 		node("deb") {
-			/* Upload builed p2p artifacts to kurjun */
+			/* Upload builed p2p artifacts to CDN */
 			deleteDir()
 
-			stage("Upload p2p binaries to kurjun")
+			stage("Upload p2p binaries to CDN")
 			/* Get subutai binary from stage and push it to same branch of subos repo
 			*/
-			notifyBuildDetails = "\nFailed on Stage - Upload p2p binaries to kurjun"
-
-			/* cdn auth creadentials */
-			String url = "https://${cdnHost}:8338/kurjun/rest"
-			String user = "jenkins"
-			def authID = sh (script: """
-				set +x
-				curl -s -k ${url}/auth/token?user=${user} | gpg --clearsign --no-tty
-				""", returnStdout: true)
-			def token = sh (script: """
-				set +x
-				curl -s -k -Fmessage=\"${authID}\" -Fuser=${user} ${url}/auth/token
-				""", returnStdout: true)
+			notifyBuildDetails = "\nFailed on Stage - Upload p2p binaries to CDN"
 
 			/* upload p2p */
-			unstash 'p2p'
-			unstash 'upload-ipfs.sh'
-			/* get p2p version */
-			String p2pVersion = sh (script: """
-				set +x
-				./bin/p2p -v | cut -d " " -f 3 | tr -d '\n'
-				""", returnStdout: true)
-			if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
-				String responseP2P = sh (script: """
-					set +x
-					curl -s -k ${url}/raw/info?name=p2p
-					""", returnStdout: true)
-				sh """
-					set +x
-					./upload-ipfs.sh ${env.BRANCH_NAME} Linux
-					curl -s -k -H "token: ${token}" -Ffile=@bin/p2p -Fversion=${p2pVersion} ${url}/raw/upload
-				"""
-				/* delete old p2p */
-				
-				if (responseP2P != "Not found") {
-					def jsonp2p = jsonParse(responseP2P)
-					sh """
-						set +x
-						curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2p[0]["id"]}'&'token=${token}
-					"""
-				}
-			}
-
-			/* upload p2p.exe */
 			unstash 'p2p.exe'
-			String responseP2Pexe = sh (script: """
-				set +x
-				curl -s -k ${url}/raw/info?name=p2p.exe
-				""", returnStdout: true)
-			sh """
-				set +x
-				./upload-ipfs.sh ${env.BRANCH_NAME} MSYS_NT-10.0
-				curl -s -k -H "token: ${token}" -Ffile=@bin/p2p.exe -Fversion=${p2pVersion} ${url}/raw/upload
-			"""
-			/* delete old p2p.exe */
-			if (responseP2Pexe != "Not found") {
-				def jsonp2pexe = jsonParse(responseP2Pexe)
-				sh """
-					set +x
-					curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2pexe[0]["id"]}'&'token=${token}
-				"""
-			}
-
-			/* upload p2p_osx */
 			unstash 'p2p_osx'
+			unstash 'upload-ipfs.sh'
 			if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
-				String responseP2Posx = sh (script: """
-					set +x
-					curl -s -k ${url}/raw/info?name=p2p_osx
-					""", returnStdout: true)
 				sh """
 					set +x
+					./upload-ipfs.sh ${env.BRANCH_NAME} MSYS_NT-10.0
 					./upload-ipfs.sh ${env.BRANCH_NAME} Darwin
-					curl -s -k -H "token: ${token}" -Ffile=@bin/p2p_osx -Fversion=${p2pVersion} ${url}/raw/upload
 				"""
-				/* delete old p2p */
-				if (responseP2Posx != "Not found") {
-					def jsonp2posx = jsonParse(responseP2Posx)
-					sh """
-						set +x
-						curl -s -k -X DELETE ${url}/raw/delete?id=${jsonp2posx[0]["id"]}'&'token=${token}
-					"""
-				}
 			}
 		}
 
@@ -246,6 +164,7 @@ try {
 			notifyBuildDetails = "\nFailed on Stage - Upload"
 			sh """
 			cd ${CWD}
+			./upload-ipfs.sh ${env.BRANCH_NAME} Linux
 			touch uploading_agent
 			scp uploading_agent subutai*.deb dak@debup.subutai.io:incoming/${env.BRANCH_NAME}/
 			ssh dak@debup.subutai.io sh /var/reprepro/scripts/scan-incoming.sh ${env.BRANCH_NAME} agent
@@ -259,7 +178,6 @@ try {
 			${gitcmd}
 			cp ${CWD}/subutai*.deb . 
 			./upload-ipfs.sh ${env.BRANCH_NAME}
-			./upload.sh debian ${env.BRANCH_NAME} subutai*.deb
 			"""
 		}
 
@@ -275,7 +193,7 @@ try {
 					rm -rf /tmp/p2p-packaging
 					git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
 					cd /tmp/p2p-packaging
-					curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p_osx -o /tmp/p2p-packaging/darwin/p2p_osx
+					curl -fsSLk 'https://${env.BRANCH_NAME}bazaar.subutai.io/rest/v1/cdn/raw?name=p2p-${env.BRANCH_NAME}_osx&download&latest' -o /tmp/p2p-packaging/darwin/p2p_osx
 					chmod +x /tmp/p2p-packaging/darwin/p2p_osx
 					/tmp/p2p-packaging/darwin/pack.sh /tmp/p2p-packaging/darwin/p2p_osx ${env.BRANCH_NAME}
 				"""
@@ -284,7 +202,6 @@ try {
 
 				sh """
 					/tmp/p2p-packaging/./upload-ipfs.sh ${env.BRANCH_NAME}
-					/tmp/p2p-packaging/upload.sh darwin ${env.BRANCH_NAME} /tmp/p2p-packaging/darwin/p2p.pkg
 				"""
 			}
 		} // If branch == master
@@ -301,12 +218,11 @@ try {
 				echo git clone git@github.com:optdyn/p2p-packaging.git /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
 				echo cd /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
 				echo git checkout ${env.BRANCH_NAME} >> c:\\tmp\\p2p-win.do
-				echo curl -fsSLk https://eu0.${env.BRANCH_NAME}cdn.subutai.io:8338/kurjun/rest/raw/get?name=p2p.exe -o /c/tmp/p2p-packaging/p2p.exe >> c:\\tmp\\p2p-win.do
+				echo curl -fsSLk "https://${env.BRANCH_NAME}bazaar.subutai.io/rest/v1/cdn/raw?name=p2p-${env.BRANCH_NAME}.exe&download&latest" -o /c/tmp/p2p-packaging/p2p.exe >> c:\\tmp\\p2p-win.do
 				echo curl -fsSLk https://eu0.cdn.subutai.io:8338/kurjun/rest/raw/get?name=tap-windows-9.21.2.exe -o /c/tmp/p2p-packaging/tap-windows-9.21.2.exe >> c:\\tmp\\p2p-win.do
 				echo sed -i -e "s/{VERSION_PLACEHOLDER}/${global_version}/g" /c/tmp/p2p-packaging/windows/P2PInstaller/P2PInstaller.vdproj >> c:\\tmp\\p2p-win.do
 				echo sed -i -e "s/PRODUCT_CODE_PLACEHOLDER/${product_code}/g" /c/tmp/p2p-packaging/windows/P2PInstaller/P2PInstaller.vdproj >> c:\\tmp\\p2p-win.do
 
-				echo /c/tmp/p2p-packaging/upload.sh windows ${env.BRANCH_NAME} /c/tmp/p2p-packaging/windows/P2PInstaller/Release/P2PInstaller.msi > c:\\tmp\\p2p-win-upload.do
 				echo /c/tmp/p2p-packaging/upload-ipfs.sh ${env.BRANCH_NAME} >> c:\\tmp\\p2p-win-upload.do
 
 				echo call "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\Common7\\Tools\\VsDevCmd.bat" > c:\\tmp\\p2p-pack.bat

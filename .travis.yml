@@ -29,27 +29,27 @@ matrix:
         - ls -l /tmp/p2p-packages
       after_success:
         - bash <(curl -s https://codecov.io/bash)
-      deploy:
-        - provider: script
-          script: /tmp/p2p-packages/deploy.sh bin/p2p dev
-          skip_cleanup: true
-          on:
-            branch: dev
-        - provider: script
-          script: /tmp/p2p-packages/deploy.sh /tmp/p2p-packages/subutai-p2p-dev.deb dev
-          skip_cleanup: true
-          on:
-            branch: dev
-        - provider: script
-          script: /tmp/p2p-packages/deploy.sh bin/p2p master
-          skip_cleanup: true
-          on:
-            branch: master
-        - provider: script
-          script: /tmp/p2p-packages/deploy.sh bin/p2p HEAD
-          skip_cleanup: true
-          on:
-            tags: true
+#      deploy:
+#        - provider: script
+#          script: /tmp/p2p-packages/deploy.sh bin/p2p dev
+#          skip_cleanup: true
+#          on:
+#            branch: dev
+#        - provider: script
+#          script: /tmp/p2p-packages/deploy.sh /tmp/p2p-packages/subutai-p2p-dev.deb dev
+#          skip_cleanup: true
+#          on:
+#            branch: dev
+#        - provider: script
+#          script: /tmp/p2p-packages/deploy.sh bin/p2p master
+#          skip_cleanup: true
+#          on:
+#            branch: master
+#        - provider: script
+#          script: /tmp/p2p-packages/deploy.sh bin/p2p HEAD
+#          skip_cleanup: true
+#          on:
+#            tags: true
             
     - os: osx
       before_install:
@@ -64,27 +64,27 @@ matrix:
           then (mv /tmp/p2p-packages/darwin/p2p.pkg /tmp/subutai-p2p.pkg) ; 
           else (mv /tmp/p2p-packages/darwin/p2p.pkg /tmp/subutai-p2p-$TRAVIS_BRANCH.pkg) ;
           fi
-      deploy:
-        - provider: script
-          script: /tmp/p2p-packages/deploy.sh bin/p2p_osx dev
-          skip_cleanup: true
-          on:
-            branch: dev
-        - provider: script
-          script: /tmp/p2p-packages/deploy.sh /tmp/subutai-p2p-dev.pkg dev
-          skip_cleanup: true
-          on:
-            branch: dev
-        - provider: script
-          script: /tmp/p2p-packages/deploy.sh bin/p2p_osx master
-          skip_cleanup: true
-          on:
-            branch: master
-        - provider: script
-          script: /tmp/p2p-packages/deploy.sh bin/p2p_osx HEAD
-          skip_cleanup: true
-          on:
-            tags: true
+#      deploy:
+#        - provider: script
+#          script: /tmp/p2p-packages/deploy.sh bin/p2p_osx dev
+#          skip_cleanup: true
+#          on:
+#            branch: dev
+#        - provider: script
+#          script: /tmp/p2p-packages/deploy.sh /tmp/subutai-p2p-dev.pkg dev
+#          skip_cleanup: true
+#          on:
+#            branch: dev
+#        - provider: script
+#          script: /tmp/p2p-packages/deploy.sh bin/p2p_osx master
+#          skip_cleanup: true
+#          on:
+#            branch: master
+#        - provider: script
+#          script: /tmp/p2p-packages/deploy.sh bin/p2p_osx HEAD
+#          skip_cleanup: true
+#          on:
+#            tags: true
 
 branches:
   only:
