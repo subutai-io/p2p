@@ -155,7 +155,7 @@ func TestSrvLookup(t *testing.T) {
 		domain string
 	}
 	res := make(map[int]string)
-	res[0] = "eu0.cdn.subutai.io.:6881"
+	res[0] = "prod-bazaar-eu-1.s.optdyn.com.:6881"
 	tests := []struct {
 		name    string
 		args    args
