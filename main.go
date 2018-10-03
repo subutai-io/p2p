@@ -435,6 +435,14 @@ func main() {
 				return nil
 			},
 		},
+		{
+			Name:  "version",
+			Usage: "Display version number",
+			Action: func(c *cli.Context) error {
+				fmt.Println(AppVersion)
+				return nil
+			},
+		},
 	}
 	app.Run(os.Args)
 }
