@@ -1,5 +1,9 @@
 # Change Log
 
+## [8.0.1] 10/08/2018
+
+* Implemented multiple attempts to retrieve IP over dynamic IP allocation
+
 ## [8.0.0] 10/03/2018
 
 * Switched to Google UUID implementation (#1057)
