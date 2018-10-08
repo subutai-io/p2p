@@ -383,12 +383,19 @@ func (p *PeerToPeer) setupHandlers() {
 func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 	Log(Debug, "Requesting IP from Bootstrap node")
 	requestedAt := time.Now()
-	interval := time.Duration(3 * time.Second)
+	interval := time.Duration(2 * time.Second)
+	attempt := 0
 	p.Dht.sendDHCP(nil, nil)
 	for p.Dht.IP == nil && p.Dht.Network == nil {
 		if time.Since(requestedAt) > interval {
-			//p.StopInstance()
-			return nil, nil, fmt.Errorf("No IP were received. Swarm is empty")
+			if attempt >= 3 {
+				return nil, nil, fmt.Errorf("No IP were received. Swarm is empty")
+			} else {
+				Log(Info, "IP wasn't received. Requesting again: attempt %d/3", (attempt + 1))
+				attempt++
+				p.Dht.sendDHCP(nil, nil)
+				requestedAt = time.Now()
+			}
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
