@@ -16,18 +16,18 @@ func CommandStart(restPort int, ip, hash, mac, dev, keyfile, key, ttl string, fw
 	args := &DaemonArgs{}
 	args.IP = ip
 	if hash == "" {
-		fmt.Printf("Hash cannot be empty. Please start new instances with -hash VALUE argument\n")
+		fmt.Fprintln(os.Stderr, "Hash cannot be empty. Please start new instances with -hash VALUE argument")
 		os.Exit(12)
 	}
 	if strings.Index(hash, "~") != -1 {
-		fmt.Printf("Hash cannot contain the ~. Please start new instances with hash value that doesn't contain it.\n")
+		fmt.Fprintln(os.Stderr, "Hash cannot contain the ~. Please start new instances with hash value that doesn't contain it")
 		os.Exit(17)
 	}
 	args.Hash = hash
 	if mac != "" {
 		_, err := net.ParseMAC(mac)
 		if err != nil {
-			fmt.Printf("Invalid MAC address provided\n")
+			fmt.Fprintln(os.Stderr, "Invalid MAC address provided")
 			os.Exit(13)
 		}
 	}
@@ -41,11 +41,15 @@ func CommandStart(restPort int, ip, hash, mac, dev, keyfile, key, ttl string, fw
 
 	out, err := sendRequest(restPort, "start", args)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
-	fmt.Println(out.Message)
+	if out.Code > 0 {
+		fmt.Fprintln(os.Stderr, out.Message)
+	} else {
+		fmt.Println(out.Message)
+	}
 	os.Exit(out.Code)
 }
 

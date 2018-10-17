@@ -52,7 +52,7 @@ func CommandShow(queryPort int, hash, ip string, interfaces, all, bind, mtu bool
 	show := []ShowOutput{}
 	err = json.Unmarshal(out, &show)
 	if err != nil {
-		fmt.Printf("Failed to unmarshal JSON. Error %s\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to unmarshal JSON. Error %s\n", err)
 		os.Exit(99)
 	}
 
@@ -60,7 +60,7 @@ func CommandShow(queryPort int, hash, ip string, interfaces, all, bind, mtu bool
 		if req.IP != "" {
 			for _, m := range show {
 				if m.Code != 0 {
-					fmt.Println(m.Error)
+					fmt.Fprintln(os.Stderr, m.Error)
 				} else {
 					fmt.Println(m.Text)
 				}
@@ -102,13 +102,13 @@ func CommandShow(queryPort int, hash, ip string, interfaces, all, bind, mtu bool
 			fmt.Println(s.MTU)
 			os.Exit(0)
 		}
-		fmt.Println("Failed to retrieve MTU value")
+		fmt.Fprintln(os.Stderr, "Failed to retrieve MTU value")
 		os.Exit(114)
 	}
 
 	for _, m := range show {
 		if m.Code != 0 {
-			fmt.Println(m.Error)
+			fmt.Fprintln(os.Stderr, m.Error)
 			os.Exit(m.Code)
 		}
 		fmt.Printf("%s\t%s\t%s\n", m.HardwareAddress, m.IP, m.Hash)

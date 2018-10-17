@@ -26,7 +26,7 @@ func CommandStop(rpcPort int, hash, dev string) {
 	}
 	out, err := sendRequest(rpcPort, "stop", args)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
