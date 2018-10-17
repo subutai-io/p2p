@@ -15,7 +15,7 @@ import (
 func CommandDebug(restPort int) {
 	out, err := sendRequest(restPort, "debug", &DaemonArgs{})
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 

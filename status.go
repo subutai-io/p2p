@@ -31,18 +31,19 @@ type statusPeer struct {
 func CommandStatus(restPort int, hash string) {
 	out, err := sendRequestRaw(restPort, "status", &request{Hash: hash})
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
 	response := new(statusResponse)
 	err = json.Unmarshal(out, response)
 	if err != nil {
-		fmt.Printf("Failed to unmarshal status response: %s", err)
+		fmt.Fprintf(os.Stderr, "Failed to unmarshal status response: %s", err)
 		os.Exit(125)
 	}
 
 	if response.Code != 0 {
+		fmt.Fprintln(os.Stderr, "Failed to execute `status` command")
 		os.Exit(response.Code)
 	}
 
