@@ -112,7 +112,6 @@ func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel string, 
 		}
 		time.Sleep(time.Millisecond * 100)
 	}
-	//select {}
 }
 
 func waitOutboundIP() {

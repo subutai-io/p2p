@@ -13,7 +13,7 @@ import (
 func CommandSet(rpcPort int, log, hash, keyfile, key, ttl string) {
 	out, err := sendRequest(rpcPort, "set", &DaemonArgs{Log: log, Keyfile: keyfile, Key: key, TTL: ttl})
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
