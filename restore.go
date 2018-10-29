@@ -81,11 +81,12 @@ func (r *Restore) save() error {
 // load will read save file and unmarshal saved entries
 func (r *Restore) load() error {
 	r.lock.Lock()
-	defer r.lock.Unlock()
 	data, err := ioutil.ReadFile(r.filepath)
 	if err != nil {
+		r.lock.Unlock()
 		return err
 	}
+	r.lock.Unlock()
 	data = bytes.Trim(data, "\x00") // TODO: add more security to this
 	if string(data[0]) == "-" || string(data[0]) == "[" {
 		r.decode(data)
