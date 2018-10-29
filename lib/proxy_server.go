@@ -57,5 +57,6 @@ func (p *proxyServer) Measure(n *Network) {
 		Log(Error, "Failed to create latency measurement packet: %s", err.Error())
 		return
 	}
+	Log(Trace, "Measuring latency with proxy %s", p.Addr.String())
 	n.SendMessage(msg, p.Addr)
 }
