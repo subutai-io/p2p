@@ -29,6 +29,7 @@ const (
 	MsgTypeProxy             = 8  // Information about proxy (forwarder)
 	MsgTypeBadTun            = 9  // Notifies about dead tunnel
 	MsgTypeConf              = 10 // Confirmation
+	MsgTypeLatency           = 11 // Latency measurement
 )
 
 // List of commands used in DHT

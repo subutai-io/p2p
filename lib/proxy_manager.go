@@ -67,9 +67,7 @@ func (p *ProxyManager) new(endpoint *net.UDPAddr) error {
 		return fmt.Errorf("Proxy %s already exists", endpoint.String())
 	}
 	proxy := new(proxyServer)
-	proxy.Addr = endpoint
-	proxy.Status = proxyConnecting
-	proxy.Created = time.Now()
+	proxy.Init(endpoint)
 	p.operate(OperateUpdate, endpoint.String(), proxy)
 	return nil
 }
@@ -126,19 +124,40 @@ func (p *ProxyManager) activate(id string, endpoint *net.UDPAddr) bool {
 	return false
 }
 
-type proxyServer struct {
-	Addr       *net.UDPAddr // Address of the proxy
-	Endpoint   *net.UDPAddr // Endpoint provided by proxy
-	Status     proxyStatus  // Current proxy status
-	LastUpdate time.Time    // Last ping
-	Created    time.Time    // Creation timestamp
+func (p *ProxyManager) setLatency(l time.Duration, addr *net.UDPAddr) error {
+	proxies := p.get()
+	for id, proxy := range proxies {
+		if proxy.Addr.String() == addr.String() {
+			proxy.Latency = l
+			proxy.LastLatencyQuery = time.Now()
+			proxy.MeasureInProgress = false
+			Log(Trace, "Proxy %s is now on latency %d", addr.String(), NanoToMilliseconds(l.Nanoseconds()))
+			p.operate(OperateUpdate, id, proxy)
+			break
+		}
+	}
+
+	return nil
 }
 
-// Close will stop proxy
-func (p *proxyServer) Close() error {
-	Log(Info, "Stopping proxy %s, Endpoint: %s", p.Addr.String(), p.Endpoint.String())
-	p.Addr = nil
-	p.Endpoint = nil
-	p.Status = proxyDisconnected
-	return nil
+// getBestProxy will return best proxy server based on latency
+func (p *ProxyManager) getBestProxy() *proxyServer {
+	var bp *proxyServer
+	var min int64 = 0
+	for _, proxy := range p.get() {
+		if proxy.Status != proxyActive {
+			continue
+		}
+		if min == 0 {
+			min = proxy.Latency.Nanoseconds()
+			bp = proxy
+			continue
+		}
+		if min > proxy.Latency.Nanoseconds() {
+			bp = proxy
+			min = proxy.Latency.Nanoseconds()
+			continue
+		}
+	}
+	return bp
 }

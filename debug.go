@@ -94,7 +94,7 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 			if proxy.Addr == nil || proxy.Endpoint == nil {
 				continue
 			}
-			resp.Output += fmt.Sprintf("%s/%d ", proxy.Addr.String(), proxy.Endpoint.Port)
+			resp.Output += fmt.Sprintf("%s/%d [%d] ", proxy.Addr.String(), proxy.Endpoint.Port, ptp.NanoToMilliseconds(proxy.Latency.Nanoseconds()))
 		}
 		resp.Output += "\n"
 		resp.Output += fmt.Sprintf("Peers:\n")
