@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -176,4 +177,9 @@ func SrvLookup(name, proto, domain string) (map[int]string, error) {
 	}
 
 	return result, nil
+}
+
+// NanoToMilliseconds will convert nanoseconds to milliseconds
+func NanoToMilliseconds(nano int64) int64 {
+	return nano / int64(time.Millisecond)
 }

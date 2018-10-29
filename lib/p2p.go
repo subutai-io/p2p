@@ -365,6 +365,7 @@ func (p *PeerToPeer) setupHandlers() {
 	p.MessageHandlers[MsgTypeIntro] = p.HandleIntroMessage
 	p.MessageHandlers[MsgTypeIntroReq] = p.HandleIntroRequestMessage
 	p.MessageHandlers[MsgTypeProxy] = p.HandleProxyMessage
+	p.MessageHandlers[MsgTypeLatency] = p.HandleLatency
 
 	// Register packet handlers
 	p.PacketHandlers = make(map[PacketType]PacketHandlerCallback)
