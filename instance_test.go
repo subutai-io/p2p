@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"runtime"
-	"testing"
 	"os"
+	"reflect"
+	"runtime"
+	"sync"
+	"testing"
 )
 
 func TestOperate(t *testing.T) {
@@ -382,5 +384,125 @@ func TestExecute(t *testing.T) {
 	err := daemon.Execute(args, resp)
 	if err != nil {
 		t.Errorf("Failed to execute (1): %v", err)
+	}
+}
+
+func TestInstanceList_encode(t *testing.T) {
+	type fields struct {
+		instances map[string]*P2PInstance
+		lock      sync.RWMutex
+	}
+
+	i1 := &P2PInstance{
+		Args: RunArgs{
+			IP:      "127.0.0.1",
+			Mac:     "00:01:02:03:04:05",
+			Dev:     "dev1",
+			Hash:    "hash1",
+			Keyfile: "kf",
+			Key:     "securitykey",
+			TTL:     "128",
+			//LastSuccess: time.Unix(0, 0),
+		},
+	}
+
+	i1t := `- ip: 127.0.0.1
+  mac: "00:01:02:03:04:05"
+  dev: dev1
+  hash: hash1
+  keyfile: kf
+  key: securitykey
+  ttl: "128"
+  last_success: 0001-01-01T00:00:00Z
+`
+
+	f1 := fields{
+		instances: make(map[string]*P2PInstance),
+	}
+
+	f1.instances[i1.Args.Hash] = i1
+
+	tests := []struct {
+		name    string
+		fields  fields
+		want    []byte
+		wantErr bool
+	}{
+		{"empty", fields{}, nil, false},
+		{"one instance", f1, []byte(i1t), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &InstanceList{
+				instances: tt.fields.instances,
+				lock:      tt.fields.lock,
+			}
+			got, err := p.encode()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("InstanceList.encode() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("InstanceList.encode() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInstanceList_decode(t *testing.T) {
+	type fields struct {
+		instances map[string]*P2PInstance
+		lock      sync.RWMutex
+	}
+	type args struct {
+		data []byte
+	}
+
+	i1t := `- ip: 127.0.0.1
+  mac: "00:01:02:03:04:05"
+  dev: dev1
+  hash: hash1
+  keyfile: kf
+  key: securitykey
+  ttl: "128"
+  last_success: 0001-01-01T00:00:00Z
+`
+	i1 := RunArgs{
+		IP:      "127.0.0.1",
+		Mac:     "00:01:02:03:04:05",
+		Dev:     "dev1",
+		Hash:    "hash1",
+		Keyfile: "kf",
+		Key:     "securitykey",
+		TTL:     "128",
+		//LastSuccess: time.Unix(0, 0),
+	}
+
+	want := []RunArgs{i1}
+
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []RunArgs
+		wantErr bool
+	}{
+		{"t1", fields{}, args{[]byte(i1t)}, want, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &InstanceList{
+				instances: tt.fields.instances,
+				lock:      tt.fields.lock,
+			}
+			got, err := p.decode(tt.args.data)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("InstanceList.decode() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("InstanceList.decode() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

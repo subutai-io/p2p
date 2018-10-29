@@ -77,7 +77,7 @@ func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel string, 
 	go waitOutboundIP()
 
 	proc := new(Daemon)
-	proc.Initialize(sFile)
+	proc.init(sFile)
 	setupRESTHandlers(port, proc)
 
 	go restoreInstances(proc)
@@ -156,18 +156,45 @@ func restoreInstances(daemon *Daemon) {
 	for !bootstrap.isActive {
 		time.Sleep(100 * time.Millisecond)
 	}
-	if daemon.SaveFile != "" {
-		ptp.Log(ptp.Info, "Restore file provided")
-		// Try to restore from provided file
-		instances, err := daemon.Instances.loadInstances(daemon.SaveFile)
+	if daemon.Restore != nil && daemon.Restore.isActive() {
+		ptp.Log(ptp.Info, "Restore subsystem initialized")
+
+		// loading from restore file
+		err := daemon.Restore.load()
 		if err != nil {
-			ptp.Log(ptp.Error, "Failed to load instances: %v", err)
-		} else {
-			ptp.Log(ptp.Info, "%d instances were loaded from file", len(instances))
-			for _, inst := range instances {
-				daemon.run(&inst, new(Response))
+			ptp.Log(ptp.Error, "Failed to restore from file")
+			return
+		}
+
+		entries := daemon.Restore.get()
+		if len(entries) == 0 {
+			return
+		}
+
+		ptp.Log(ptp.Info, "Attempt to restore %d instances", len(entries))
+
+		restored := 0
+
+		for _, e := range entries {
+			err := daemon.run(&RunArgs{
+				IP:      e.IP,
+				Mac:     e.Mac,
+				Dev:     e.Dev,
+				Hash:    e.Hash,
+				Keyfile: e.Keyfile,
+				Key:     e.Key,
+				TTL:     e.TTL,
+			}, new(Response))
+			if err != nil {
+				ptp.Log(ptp.Error, "Failed to start instance %s during restore: %s", e.Hash, err.Error())
+				continue
+			} else {
+				restored++
+				daemon.Restore.bumpInstance(e.Hash)
 			}
 		}
+		daemon.Restore.save()
+		ptp.Log(ptp.Info, "Restored %d of %d instances", restored, len(entries))
 	}
 }
 

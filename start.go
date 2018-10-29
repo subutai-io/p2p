@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	ptp "github.com/subutai-io/p2p/lib"
 )
@@ -75,7 +76,7 @@ func (d *Daemon) execRESTStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response := new(Response)
-	d.run(&RunArgs{
+	err = d.run(&RunArgs{
 		IP:      args.IP,
 		Mac:     args.Mac,
 		Dev:     args.Dev,
@@ -87,6 +88,23 @@ func (d *Daemon) execRESTStart(w http.ResponseWriter, r *http.Request) {
 		Fwd:     args.Fwd,
 		Port:    args.Port,
 	}, response)
+
+	ls, _ := time.Unix(0, 0).MarshalText()
+
+	// We add new save entry. If save entry already exists with
+	// hash specified, we will just update it's last success information
+	if d.Restore.addEntry(saveEntry{
+		IP:          args.IP,
+		Mac:         args.Mac,
+		Dev:         args.Dev,
+		Hash:        args.Hash,
+		Keyfile:     args.Keyfile,
+		Key:         args.Key,
+		TTL:         args.TTL,
+		LastSuccess: string(ls),
+	}) != nil {
+		d.Restore.bumpInstance(args.Hash)
+	}
 	resp, err := getResponse(response.ExitCode, response.Output)
 	if err != nil {
 		ptp.Log(ptp.Error, "Internal error: %s", err)
@@ -193,13 +211,11 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 
 		usedIPs = append(usedIPs, newInst.PTP.Interface.GetIP().String())
 		ptp.Log(ptp.Info, "Instance created")
+		newInst.Args.LastSuccess = time.Now()
 		d.Instances.update(args.Hash, newInst)
 
 		go newInst.PTP.Run()
-		if d.SaveFile != "" {
-			resp.Output = resp.Output + "Saving instance into file"
-			d.Instances.saveInstances(d.SaveFile)
-		}
+		resp.Output = resp.Output + "Instance created: " + args.Hash + "\n"
 	} else {
 		resp.Output = resp.Output + "Hash already in use\n"
 	}

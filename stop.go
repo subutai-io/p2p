@@ -82,7 +82,17 @@ func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
 			resp.Output = "Shutting down " + args.Hash
 			inst.PTP.Close()
 			p.Instances.delete(args.Hash)
-			p.Instances.saveInstances(p.SaveFile)
+			if p.Restore.isActive() {
+				err := p.Restore.removeEntry(args.Hash)
+				if err != nil {
+					ptp.Log(ptp.Error, err.Error())
+				} else {
+					err := p.Restore.save()
+					if err != nil {
+						ptp.Log(ptp.Error, "Failed to save dump: %s", err.Error())
+					}
+				}
+			}
 			k := 0
 			for k, i := range usedIPs {
 				if i != ip {
