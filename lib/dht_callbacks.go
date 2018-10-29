@@ -49,7 +49,6 @@ func (p *PeerToPeer) packetConnect(packet *protocol.DHTPacket) error {
 }
 
 func (p *PeerToPeer) packetDHCP(packet *protocol.DHTPacket) error {
-	Log(Info, "Received DHCP packet")
 	if packet.Data != "" && packet.Extra != "" {
 		ip, network, err := net.ParseCIDR(fmt.Sprintf("%s/%s", packet.Data, packet.Extra))
 		if err != nil {

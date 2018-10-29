@@ -1,4 +1,5 @@
 // +build darwin
+
 package ptp
 
 import (
