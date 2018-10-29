@@ -508,6 +508,7 @@ func (p *PeerToPeer) checkProxies() {
 	for _, proxy := range proxies {
 		if proxy.Endpoint != nil && proxy.Status == proxyActive {
 			list = append(list, proxy.Endpoint)
+			proxy.Measure(p.UDPSocket)
 		}
 	}
 	if p.ProxyManager.hasChanges && len(list) > 0 {
