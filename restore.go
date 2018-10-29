@@ -147,7 +147,7 @@ func (r *Restore) bumpInstance(hash string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("Can't update last success date for the instance: %s")
+	return fmt.Errorf("Can't update last success date for the instance: %s", hash)
 }
 
 func (r *Restore) disableStaleInstances(inst *P2PInstance) error {
@@ -256,7 +256,7 @@ func (r *Restore) decodeInstances(data []byte) error {
 // get will return slice of entries
 func (r *Restore) get() []saveEntry {
 	r.lock.Lock()
-	defer r.lock.Lock()
+	defer r.lock.Unlock()
 	return r.entries
 }
 
