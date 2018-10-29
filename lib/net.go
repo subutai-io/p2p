@@ -77,7 +77,6 @@ func P2PMessageFromBytes(bytes []byte) (*P2PMessage, error) {
 	if res.Header == nil {
 		return nil, nil
 	}
-	// Log(Trace, "--- P2PMessageHeaderFromBytes Length : %d, SerLen : %d", res.Header.Length, res.Header.SerializedLen)
 	if res.Header.Magic != MagicCookie {
 		return nil, errors.New("magic cookie not presented")
 	}
