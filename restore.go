@@ -88,6 +88,9 @@ func (r *Restore) load() error {
 	}
 	r.lock.Unlock()
 	data = bytes.Trim(data, "\x00") // TODO: add more security to this
+	if len(data) == 0 {
+		return nil
+	}
 	if string(data[0]) == "-" || string(data[0]) == "[" {
 		r.decode(data)
 		return nil
@@ -205,6 +208,9 @@ func (r *Restore) decode(data []byte) error {
 // decodeInstances is an obsolet variant of instances unmarshal
 // TODO: Remove in version 10
 func (r *Restore) decodeInstances(data []byte) error {
+	if len(data) == 0 {
+		return nil
+	}
 	var args []saveEntry
 	b := bytes.Buffer{}
 	b.Write(data)
@@ -241,14 +247,15 @@ func (r *Restore) decodeInstances(data []byte) error {
 			// 	item.Fwd = true
 			// }
 			//item.Port, err = strconv.Atoi(string(blocksOfArguments[9]))
-			if err != nil {
-				return fmt.Errorf("Couldn't decode the Port: %v", err)
-			}
+			// if err != nil {
+			// 	return fmt.Errorf("Couldn't decode the Port: %v", err)
+			// }
 			args = append(args, item)
 		}
 	}
 
 	r.lock.Lock()
+	ptp.Log(ptp.Info, "Decoded %d entries from the old format", len(args))
 	r.entries = args
 	r.lock.Unlock()
 	return nil
