@@ -139,3 +139,25 @@ func (p *ProxyManager) setLatency(l time.Duration, addr *net.UDPAddr) error {
 
 	return nil
 }
+
+// getBestProxy will return best proxy server based on latency
+func (p *ProxyManager) getBestProxy() *proxyServer {
+	var bp *proxyServer
+	var min int64 = 0
+	for _, proxy := range p.get() {
+		if proxy.Status != proxyActive {
+			continue
+		}
+		if min == 0 {
+			min = proxy.Latency.Nanoseconds()
+			bp = proxy
+			continue
+		}
+		if min > proxy.Latency.Nanoseconds() {
+			bp = proxy
+			min = proxy.Latency.Nanoseconds()
+			continue
+		}
+	}
+	return bp
+}
