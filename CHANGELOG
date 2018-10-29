@@ -2,6 +2,7 @@
 
 ## [8.0.2] 10/25/2018
 
+* Added reconnect timeout for failing DHT connections (#1114)
 * Refactored save/restore sybsysten (#1106)
 * Save dump now uses YAML (#1105)
 * Output to stderr instead of stdout on non-zero exit code (#1102)
