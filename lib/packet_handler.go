@@ -260,3 +260,23 @@ func (p *PeerToPeer) HandleProxyMessage(msg *P2PMessage, srcAddr *net.UDPAddr) {
 func (p *PeerToPeer) HandleBadTun(msg *P2PMessage, srcAddr *net.UDPAddr) {
 
 }
+
+// HandleLatency will handle latency respones from another peer/proxy
+func (p *PeerToPeer) HandleLatency(msg *P2PMessage, srcAddr *net.UDPAddr) {
+	Log(Trace, "Latency response from %s", srcAddr.String())
+
+	ts := time.Time{}
+	err := ts.UnmarshalBinary(msg.Data)
+	if err != nil {
+		Log(Error, "Failed to unmarshal latency packet from %s: %s", srcAddr.String(), err.Error())
+		return
+	}
+
+	latency := time.Since(ts)
+
+	// Lookup where this packet comes from
+	if p.ProxyManager.setLatency(latency, srcAddr) == nil {
+		return
+	}
+
+}
