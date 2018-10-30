@@ -59,7 +59,7 @@ func (r *Restore) init(filepath string) error {
 // save will write dump of entries into a save file
 func (r *Restore) save() error {
 	r.lock.Lock()
-	file, err := os.OpenFile(r.filepath, os.O_CREATE|os.O_RDWR, 0700)
+	file, err := os.OpenFile(r.filepath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0700)
 	if err != nil {
 		r.lock.Unlock()
 		return err
