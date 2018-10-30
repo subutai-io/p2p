@@ -2,6 +2,7 @@
 
 ## [8.1.0] 10/29/2018
 
+* Implemented latency measurement for peers (#445)
 * Implemented latency measurement for proxies (#907)
 * Added reconnect timeout for failing DHT connections (#1114)
 * Refactored save/restore sybsysten (#1106)

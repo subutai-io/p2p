@@ -32,6 +32,23 @@ const (
 	MsgTypeLatency           = 11 // Latency measurement
 )
 
+// Network Constants
+const (
+	MagicCookie uint16 = 0xabcd
+	HeaderSize  int    = 10
+)
+
+// Network Variables
+
+// LatencyProxyHeader used as a header of proxy request
+var LatencyProxyHeader = []byte{0xfa, 0xca, 0x13, 0x15}
+
+// LatencyRequestHeader used as a header when sending latency request
+var LatencyRequestHeader = []byte{0xde, 0xad, 0xde, 0xda}
+
+// LatencyResponseHeader used as a header when sending latency response
+var LatencyResponseHeader = []byte{0xad, 0xde, 0xad, 0xde}
+
 // List of commands used in DHT
 const (
 	DhtCmdConn        string = "conn"
@@ -76,11 +93,13 @@ const (
 
 // Timeouts and retries
 const (
-	DHTMaxRetries         int           = 10
-	DHCPMaxRetries        int           = 10
-	PeerPingTimeout       time.Duration = time.Second * 1
-	WaitProxyTimeout      time.Duration = time.Second * 5
-	HandshakeProxyTimeout time.Duration = time.Second * 3
-	EndpointPingInterval  time.Duration = time.Millisecond * 7000
-	EndpointTimeout       time.Duration = time.Millisecond * 15000 // Must be greater than EndpointPingInterval
+	DHTMaxRetries                  int           = 10
+	DHCPMaxRetries                 int           = 10
+	PeerPingTimeout                time.Duration = time.Second * 1
+	WaitProxyTimeout               time.Duration = time.Second * 5
+	HandshakeProxyTimeout          time.Duration = time.Second * 3
+	EndpointPingInterval           time.Duration = time.Millisecond * 7000
+	EndpointTimeout                time.Duration = time.Millisecond * 15000 // Must be greater than EndpointPingInterval
+	ProxyLatencyRequestInterval    time.Duration = time.Second * 15         // How often we should update latency with proxies
+	EndpointLatencyRequestInterval time.Duration = time.Second * 15         // How often we should update latency with endpoints
 )

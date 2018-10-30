@@ -115,7 +115,7 @@ func TestNetworkPeer_sortEndpoints(t *testing.T) {
 		ConnectionAttempts uint8
 		handlers           map[PeerState]StateHandlerCallback
 		Running            bool
-		EndpointsHeap      []*PeerEndpoint
+		EndpointsHeap      []*Endpoint
 		Lock               sync.RWMutex
 		punchingInProgress bool
 		LastFind           time.Time
@@ -133,45 +133,45 @@ func TestNetworkPeer_sortEndpoints(t *testing.T) {
 	ra1, _ := net.ResolveUDPAddr("udp4", "1.1.1.1:2345")
 	ra2, _ := net.ResolveUDPAddr("udp4", "2.2.2.2:2345")
 
-	ep1 := &PeerEndpoint{
+	ep1 := &Endpoint{
 		Addr:        la1,
 		LastContact: time.Now(),
 		LastPing:    time.Now(),
 	}
 
-	ep2 := &PeerEndpoint{
+	ep2 := &Endpoint{
 		Addr:        la2,
 		LastContact: time.Now(),
 		LastPing:    time.Now(),
 	}
 
-	ep3 := &PeerEndpoint{
+	ep3 := &Endpoint{
 		Addr:        la3,
 		LastContact: time.Now(),
 		LastPing:    time.Now(),
 	}
 
-	ep4 := &PeerEndpoint{
+	ep4 := &Endpoint{
 		Addr:        ra1,
 		LastContact: time.Now(),
 		LastPing:    time.Now(),
 	}
 
-	ep5 := &PeerEndpoint{
+	ep5 := &Endpoint{
 		Addr:        ra2,
 		LastContact: time.Now(),
 		LastPing:    time.Now(),
 	}
 
-	ep6 := &PeerEndpoint{
+	ep6 := &Endpoint{
 		LastContact: time.Now(),
 		LastPing:    time.Now(),
 	}
 
-	r1 := []*PeerEndpoint{ep1, ep2, ep3}
+	r1 := []*Endpoint{ep1, ep2, ep3}
 
-	r2 := []*PeerEndpoint{
-		&PeerEndpoint{
+	r2 := []*Endpoint{
+		&Endpoint{
 			Addr:        la1,
 			LastContact: time.Unix(1, 1),
 			LastPing:    time.Now(),
@@ -179,11 +179,11 @@ func TestNetworkPeer_sortEndpoints(t *testing.T) {
 		ep2, ep3,
 	}
 
-	r2_2 := []*PeerEndpoint{
+	r2_2 := []*Endpoint{
 		ep2, ep3,
 	}
 
-	r3 := []*PeerEndpoint{
+	r3 := []*Endpoint{
 		ep4, ep5,
 	}
 
@@ -193,16 +193,16 @@ func TestNetworkPeer_sortEndpoints(t *testing.T) {
 		name   string
 		fields fields
 		args   args
-		want   []*PeerEndpoint
-		want1  []*PeerEndpoint
-		want2  []*PeerEndpoint
+		want   []*Endpoint
+		want1  []*Endpoint
+		want2  []*Endpoint
 	}{
-		{"t1", fields{}, args{}, []*PeerEndpoint{}, []*PeerEndpoint{}, []*PeerEndpoint{}},
-		{"t2", fields{EndpointsHeap: r1}, args{}, r1, []*PeerEndpoint{}, []*PeerEndpoint{}},
-		{"t3", fields{EndpointsHeap: r2}, args{}, r2_2, []*PeerEndpoint{}, []*PeerEndpoint{}},
-		{"t4", fields{EndpointsHeap: r3}, args{}, []*PeerEndpoint{}, r3, []*PeerEndpoint{}},
-		{"t5", fields{EndpointsHeap: r1, Proxies: []*net.UDPAddr{la1, la2, la3}}, args{}, []*PeerEndpoint{}, []*PeerEndpoint{}, r1},
-		{"t6", fields{EndpointsHeap: []*PeerEndpoint{ep6}}, args{}, []*PeerEndpoint{}, []*PeerEndpoint{}, []*PeerEndpoint{}},
+		{"t1", fields{}, args{}, []*Endpoint{}, []*Endpoint{}, []*Endpoint{}},
+		{"t2", fields{EndpointsHeap: r1}, args{}, r1, []*Endpoint{}, []*Endpoint{}},
+		{"t3", fields{EndpointsHeap: r2}, args{}, r2_2, []*Endpoint{}, []*Endpoint{}},
+		{"t4", fields{EndpointsHeap: r3}, args{}, []*Endpoint{}, r3, []*Endpoint{}},
+		{"t5", fields{EndpointsHeap: r1, Proxies: []*net.UDPAddr{la1, la2, la3}}, args{}, []*Endpoint{}, []*Endpoint{}, r1},
+		{"t6", fields{EndpointsHeap: []*Endpoint{ep6}}, args{}, []*Endpoint{}, []*Endpoint{}, []*Endpoint{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

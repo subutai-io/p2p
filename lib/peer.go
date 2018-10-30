@@ -11,15 +11,6 @@ import (
 // StateHandlerCallback is a peer method callback executed by peer state
 type StateHandlerCallback func(ptpc *PeerToPeer) error
 
-// PeerEndpoint reprsents a UDP address endpoint that instance
-// may use for connection with a peer
-type PeerEndpoint struct {
-	Addr        *net.UDPAddr
-	LastContact time.Time
-	LastPing    time.Time
-	broken      bool
-}
-
 // PeerStats represents different peer statistics
 type PeerStats struct {
 	localNum    int // Number of local network connections
@@ -43,7 +34,7 @@ type NetworkPeer struct {
 	ConnectionAttempts uint8                              // How many times we tried to connect
 	handlers           map[PeerState]StateHandlerCallback // List of callbacks for different peer states
 	Running            bool                               // Whether peer is running or not
-	EndpointsHeap      []*PeerEndpoint                    // List of all endpoints
+	EndpointsHeap      []*Endpoint                        // List of all endpoints
 	Lock               sync.RWMutex                       // Mutex for endpoints operations
 	punchingInProgress bool                               // Whether or not UDP hole punching is running
 	LastFind           time.Time                          // Moment when we got this peer from DHT
@@ -325,11 +316,11 @@ func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
 	return nil
 }
 
-func (np *NetworkPeer) sortEndpoints(ptpc *PeerToPeer) ([]*PeerEndpoint, []*PeerEndpoint, []*PeerEndpoint) {
+func (np *NetworkPeer) sortEndpoints(ptpc *PeerToPeer) ([]*Endpoint, []*Endpoint, []*Endpoint) {
 	np.Lock.RLock()
-	locals := []*PeerEndpoint{}
-	internet := []*PeerEndpoint{}
-	proxies := []*PeerEndpoint{}
+	locals := []*Endpoint{}
+	internet := []*Endpoint{}
+	proxies := []*Endpoint{}
 	for _, ep := range np.EndpointsHeap {
 		if time.Since(ep.LastContact) > EndpointTimeout {
 			np.RoutingRequired = true
@@ -486,7 +477,8 @@ func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
 		}
 	}
 	np.RoutingRequired = true
-	np.EndpointsHeap = append(np.EndpointsHeap, &PeerEndpoint{Addr: addr, LastContact: time.Now()})
+	newEndpoint := &Endpoint{Addr: addr, LastContact: time.Now(), LastLatencyQuery: time.Unix(0, 0)}
+	np.EndpointsHeap = append(np.EndpointsHeap, newEndpoint)
 	return nil
 }
 
