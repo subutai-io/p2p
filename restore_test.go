@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"sync"
@@ -49,13 +50,42 @@ func TestRestore_save(t *testing.T) {
 		lock     sync.RWMutex
 		active   bool
 	}
+
+	e1 := saveEntry{
+		IP:      "10.10.10.1",
+		Hash:    "test1",
+		Enabled: true,
+	}
+	e2 := saveEntry{
+		IP:      "10.11.12.13",
+		Hash:    "test2",
+		Enabled: true,
+	}
+
+	me := []saveEntry{}
+	i := 0
+	for i < 1000 {
+		en := saveEntry{
+			IP:      "10.10.10.5",
+			Hash:    "test-hash-" + fmt.Sprintf("%d", i),
+			Enabled: true,
+		}
+		me = append(me, en)
+		i++
+	}
+
 	tests := []struct {
 		name    string
 		fields  fields
 		wantErr bool
 	}{
 		{"Bad filename", fields{filepath: "/"}, true},
-		{"Normal filename", fields{filepath: "/tmp/t2"}, false},
+		{"Normal filename, No data", fields{filepath: "/tmp/t2"}, false},
+		{"Single entry", fields{filepath: "/tmp/t3", entries: []saveEntry{e1}}, false},
+		{"Two entries", fields{filepath: "/tmp/t4", entries: []saveEntry{e1, e2}}, false},
+		{"Thousand entries", fields{filepath: "/tmp/t5", entries: me}, false},
+		{"Single entry after 1000", fields{filepath: "/tmp/t5", entries: []saveEntry{e1}}, false},
+		{"Thousand entries2", fields{filepath: "/tmp/t6", entries: me}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -93,6 +123,8 @@ func TestRestore_load(t *testing.T) {
 	f3.Write([]byte("10.132.190.1~~p2p8~swarm-5565bd8c-d570-4fc8-bf39-eca47b918585~~~630a05b329266ac8a69adfe7d2d87003~1540794362~0~0|||10.243.26.1~~p2p4~swarm-9de835d3-eae8-49c3-9d61-1e65767618d9~~~3ea66ea049506bc018d33f82ec3b3cce~1527854837~0~0|||10.54.31.1~~p2p2~swarm-f98003ee-27c4-41ef-bc29-b6a1da5d779b~~~998e37ba12867e1dc6d074f0d3313ea9~1540710496~0~0|||10.36.162.2~~p2p6~swarm-ef0e47f8-6821-44e0-b821-ce909d661c4e~~~be2833276389bc76528cb8b227b50db5~1540750940~0~0|||10.205.196.1~~p2p9~swarm-2777bdf0-ede6-4c0d-b352-a3c474e7d7e0~~~48bd3833d2fad84e374b98c2e7c9f6ef~1539596713~0~0|||10.159.190.1~~p2p7~swarm-2120b53e-cd49-4eef-8927-24273686f3ab~~~0c46bd9eec679d4b97d26cb8a90d15b3~1539600413~0~0"))
 	f3.Close()
 
+	TestRestore_save(t)
+
 	tests := []struct {
 		name    string
 		fields  fields
@@ -102,6 +134,7 @@ func TestRestore_load(t *testing.T) {
 		{"Normal file", fields{filepath: "/tmp/restore-load-test1"}, false},
 		{"Empty file", fields{filepath: "/tmp/restore-load-test2"}, false},
 		{"Old format", fields{filepath: "/tmp/restore-load-test3"}, false},
+		{"From save test", fields{filepath: "/tmp/t6"}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
