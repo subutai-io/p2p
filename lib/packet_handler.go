@@ -1,6 +1,9 @@
 package ptp
 
 import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
 	"net"
 	"time"
 )
@@ -265,18 +268,92 @@ func (p *PeerToPeer) HandleBadTun(msg *P2PMessage, srcAddr *net.UDPAddr) {
 func (p *PeerToPeer) HandleLatency(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	Log(Trace, "Latency response from %s", srcAddr.String())
 
-	ts := time.Time{}
-	err := ts.UnmarshalBinary(msg.Data)
-	if err != nil {
-		Log(Error, "Failed to unmarshal latency packet from %s: %s", srcAddr.String(), err.Error())
+	if bytes.Equal(msg.Data[:4], LatencyProxyHeader) {
+		// This is a response from proxy
+
+		if len(msg.Data) < 12 {
+			Log(Error, "Broken latency proxy packet: too small [%d]", len(msg.Data))
+			return
+		}
+
+		ts := time.Time{}
+		err := ts.UnmarshalBinary(msg.Data[4:])
+		if err != nil {
+			Log(Error, "Failed to unmarshal latency packet from %s: %s", srcAddr.String(), err.Error())
+			return
+		}
+		latency := time.Since(ts)
+
+		if p.ProxyManager.setLatency(latency, srcAddr) != nil {
+			Log(Error, "Couldn't set latency for proxy: %s", srcAddr)
+		}
+		return
+	} else if bytes.Equal(msg.Data[:4], LatencyRequestHeader) {
+		// This is a request of latency from endpoint
+
+		if len(msg.Data) < 52 {
+			Log(Error, "Broken latency request packet: too small [%d]", len(msg.Data))
+			return
+		}
+
+		// Find this peer
+		peerId := string(msg.Data[10:46])
+		peer := p.Peers.GetPeer(peerId)
+		if peer == nil {
+			Log(Trace, "Received latency request from unknown peers: %s [Origin: %s]", peerId, srcAddr.String())
+			return
+		}
+		if peer.Endpoint == nil {
+			Log(Trace, "Received latency request from not integrated peer %s [Origin: %s]", peerId, srcAddr.String())
+			return
+		}
+
+		Log(Trace, "Latency request from %s", srcAddr.String())
+		response, err := CreateMessageStatic(MsgTypeLatency, append(LatencyResponseHeader, msg.Data[4:]...))
+		if err != nil {
+			Log(Error, "Failed to create latency response for %s: %s", srcAddr.String(), err.Error())
+			return
+		}
+
+		p.UDPSocket.SendMessage(response, peer.Endpoint)
+		return
+	} else if bytes.Equal(msg.Data[:4], LatencyResponseHeader) {
+		// This is a response of latency from endpoint
+
+		if len(msg.Data) < 52 {
+			Log(Error, "Broken latency response packet: too small [%d]", len(msg.Data))
+			return
+		}
+
+		// Extract IP and Port
+		ipfield := msg.Data[4:10]
+
+		ip := net.IP{ipfield[0], ipfield[1], ipfield[2], ipfield[3]}
+		port := binary.BigEndian.Uint16(ipfield[4:6])
+		addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", ip.String(), port))
+		if err != nil {
+			Log(Error, "Received malformed latency packet: address is broken: %s", err.Error())
+			return
+		}
+
+		ts := time.Time{}
+		err = ts.UnmarshalBinary(msg.Data[46:])
+		if err != nil {
+			Log(Error, "Failed to unmarshal latency packet from %s: %s", srcAddr.String(), err.Error())
+			return
+		}
+		latency := time.Since(ts)
+
+		for _, peer := range p.Peers.Get() {
+			for i, ep := range peer.EndpointsHeap {
+				if ep.Addr.String() == addr.String() {
+					peer.EndpointsHeap[i].Latency = latency
+					return
+				}
+			}
+		}
+		Log(Error, "Can't set latency value for endpoint %s: Peer or endpoint wasn't found", addr.String())
 		return
 	}
-
-	latency := time.Since(ts)
-
-	// Lookup where this packet comes from
-	if p.ProxyManager.setLatency(latency, srcAddr) == nil {
-		return
-	}
-
+	Log(Error, "Malformed Latency packet from %s", srcAddr.String())
 }
