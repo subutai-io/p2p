@@ -52,9 +52,11 @@ func (p *proxyServer) Measure(n *Network) {
 
 	p.MeasureInProgress = true
 	ts, _ := time.Now().MarshalBinary()
-	msg, err := CreateMessageStatic(MsgTypeLatency, ts)
+	msg, err := CreateMessageStatic(MsgTypeLatency, append(LatencyProxyHeader, ts...))
 	if err != nil {
-		Log(Error, "Failed to create latency measurement packet: %s", err.Error())
+		Log(Error, "Failed to create latency measurement packet for proxy: %s", err.Error())
+		p.LastLatencyQuery = time.Now()
+		p.MeasureInProgress = false
 		return
 	}
 	Log(Trace, "Measuring latency with proxy %s", p.Addr.String())

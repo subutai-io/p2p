@@ -459,6 +459,7 @@ func (p *PeerToPeer) Run() {
 		p.removeStoppedPeers()
 		p.checkLastDHTUpdate()
 		p.checkProxies()
+		p.checkPeers()
 		time.Sleep(100 * time.Millisecond)
 		if !initialRequestSent && time.Since(started) > time.Duration(time.Millisecond*5000) {
 			initialRequestSent = true
@@ -514,6 +515,14 @@ func (p *PeerToPeer) checkProxies() {
 	if p.ProxyManager.hasChanges && len(list) > 0 {
 		p.ProxyManager.hasChanges = false
 		p.Dht.sendReportProxy(list)
+	}
+}
+
+func (p *PeerToPeer) checkPeers() {
+	for _, peer := range p.Peers.Get() {
+		for _, e := range peer.EndpointsHeap {
+			e.Measure(p.UDPSocket)
+		}
 	}
 }
 

@@ -1,6 +1,7 @@
 package ptp
 
 import (
+	"bytes"
 	"net"
 	"time"
 )
@@ -266,17 +267,42 @@ func (p *PeerToPeer) HandleLatency(msg *P2PMessage, srcAddr *net.UDPAddr) {
 	Log(Trace, "Latency response from %s", srcAddr.String())
 
 	ts := time.Time{}
-	err := ts.UnmarshalBinary(msg.Data)
+	err := ts.UnmarshalBinary(msg.Data[4:])
 	if err != nil {
 		Log(Error, "Failed to unmarshal latency packet from %s: %s", srcAddr.String(), err.Error())
 		return
 	}
-
 	latency := time.Since(ts)
 
-	// Lookup where this packet comes from
-	if p.ProxyManager.setLatency(latency, srcAddr) == nil {
+	if bytes.Equal(msg.Data[:4], LatencyProxyHeader) {
+		// This is a response from proxy
+		if p.ProxyManager.setLatency(latency, srcAddr) == nil {
+			Log(Error, "Couldn't set latency for proxy: %s", srcAddr)
+		}
+		return
+	} else if bytes.Equal(msg.Data[:4], LatencyRequestHeader) {
+		// This is a request of latency from endpoint
+		response, err := CreateMessageStatic(MsgTypeLatency, append(LatencyResponseHeader, msg.Data[4:]...))
+		if err != nil {
+			Log(Error, "Failed to create latency response for %s: %s", srcAddr.String(), err.Error())
+			return
+		}
+		p.UDPSocket.SendMessage(response, srcAddr)
+		return
+	} else if bytes.Equal(msg.Data[:4], LatencyResponseHeader) {
+		// This is a response of latency from endpoint
+		for _, peer := range p.Peers.Get() {
+			for i, ep := range peer.EndpointsHeap {
+				if ep.Addr == srcAddr {
+					peer.EndpointsHeap[i].Latency = latency
+					peer.EndpointsHeap[i].LastLatencyQuery = time.Now()
+					peer.EndpointsHeap[i].MeasureInProgress = false
+					return
+				}
+			}
+		}
+		Log(Error, "Can't set latency value for endpoint %s: Peer or endpoint wasn't found", srcAddr.String())
 		return
 	}
-
+	Log(Error, "Malformed Latency packet from %s", srcAddr.String())
 }

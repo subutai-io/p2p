@@ -32,6 +32,23 @@ const (
 	MsgTypeLatency           = 11 // Latency measurement
 )
 
+// Network Constants
+const (
+	MagicCookie uint16 = 0xabcd
+	HeaderSize  int    = 10
+)
+
+// Network Variables
+
+// LatencyProxyHeader used as a header of proxy request
+var LatencyProxyHeader = []byte{0xfa, 0xca, 0x13, 0x15}
+
+// LatencyRequestHeader used as a header when sending latency request
+var LatencyRequestHeader = []byte{0xde, 0xad, 0xde, 0xda}
+
+// LatencyResponseHeader used as a header when sending latency response
+var LatencyResponseHeader = []byte{0xad, 0xde, 0xad, 0xde}
+
 // List of commands used in DHT
 const (
 	DhtCmdConn        string = "conn"
