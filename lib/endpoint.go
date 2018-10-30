@@ -2,7 +2,6 @@ package ptp
 
 import (
 	"encoding/binary"
-	"fmt"
 	"net"
 	"time"
 )
@@ -54,8 +53,6 @@ func (e *Endpoint) addrToBytes() []byte {
 		return nil
 	}
 
-	fmt.Println(e.Addr.String())
-
 	// 4 bytes of IP and 2 bytes of port
 	ipfield := make([]byte, 6)
 
@@ -68,7 +65,5 @@ func (e *Endpoint) addrToBytes() []byte {
 	// Data extract
 	// net.IP{ipfield[0], ipfield[1], ipfield[2], ipfield[3]}
 	// binary.BigEndian.Uint16(ipfield[4:6])
-
-	fmt.Println(ipfield)
 	return ipfield
 }

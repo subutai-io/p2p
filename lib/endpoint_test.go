@@ -47,13 +47,12 @@ func TestEndpoint_addrToBytes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := &Endpoint{
-				Addr:              tt.fields.Addr,
-				LastContact:       tt.fields.LastContact,
-				LastPing:          tt.fields.LastPing,
-				broken:            tt.fields.broken,
-				Latency:           tt.fields.Latency,
-				LastLatencyQuery:  tt.fields.LastLatencyQuery,
-				MeasureInProgress: tt.fields.MeasureInProgress,
+				Addr:             tt.fields.Addr,
+				LastContact:      tt.fields.LastContact,
+				LastPing:         tt.fields.LastPing,
+				broken:           tt.fields.broken,
+				Latency:          tt.fields.Latency,
+				LastLatencyQuery: tt.fields.LastLatencyQuery,
 			}
 			if got := e.addrToBytes(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Endpoint.addrToBytes() = %v, want %v", got, tt.want)
