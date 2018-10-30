@@ -93,11 +93,13 @@ const (
 
 // Timeouts and retries
 const (
-	DHTMaxRetries         int           = 10
-	DHCPMaxRetries        int           = 10
-	PeerPingTimeout       time.Duration = time.Second * 1
-	WaitProxyTimeout      time.Duration = time.Second * 5
-	HandshakeProxyTimeout time.Duration = time.Second * 3
-	EndpointPingInterval  time.Duration = time.Millisecond * 7000
-	EndpointTimeout       time.Duration = time.Millisecond * 15000 // Must be greater than EndpointPingInterval
+	DHTMaxRetries                  int           = 10
+	DHCPMaxRetries                 int           = 10
+	PeerPingTimeout                time.Duration = time.Second * 1
+	WaitProxyTimeout               time.Duration = time.Second * 5
+	HandshakeProxyTimeout          time.Duration = time.Second * 3
+	EndpointPingInterval           time.Duration = time.Millisecond * 7000
+	EndpointTimeout                time.Duration = time.Millisecond * 15000 // Must be greater than EndpointPingInterval
+	ProxyLatencyRequestInterval    time.Duration = time.Second * 15         // How often we should update latency with proxies
+	EndpointLatencyRequestInterval time.Duration = time.Second * 15         // How often we should update latency with endpoints
 )

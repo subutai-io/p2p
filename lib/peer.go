@@ -477,7 +477,8 @@ func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
 		}
 	}
 	np.RoutingRequired = true
-	np.EndpointsHeap = append(np.EndpointsHeap, &Endpoint{Addr: addr, LastContact: time.Now()})
+	newEndpoint := &Endpoint{Addr: addr, LastContact: time.Now(), LastLatencyQuery: time.Unix(0, 0)}
+	np.EndpointsHeap = append(np.EndpointsHeap, newEndpoint)
 	return nil
 }
 

@@ -42,7 +42,7 @@ func (p *proxyServer) Measure(n *Network) {
 		return
 	}
 
-	if time.Since(p.LastLatencyQuery) < time.Duration(time.Second*15) {
+	if time.Since(p.LastLatencyQuery) < ProxyLatencyRequestInterval {
 		return
 	}
 

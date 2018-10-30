@@ -519,9 +519,18 @@ func (p *PeerToPeer) checkProxies() {
 }
 
 func (p *PeerToPeer) checkPeers() {
+	if len(p.Dht.ID) != 36 {
+		return
+	}
+	if p.Peers == nil {
+		return
+	}
 	for _, peer := range p.Peers.Get() {
 		for _, e := range peer.EndpointsHeap {
-			e.Measure(p.UDPSocket)
+			if e == nil {
+				continue
+			}
+			e.Measure(p.UDPSocket, p.Dht.ID)
 		}
 	}
 }
