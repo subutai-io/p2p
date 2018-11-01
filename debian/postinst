@@ -2,6 +2,7 @@
 
 systemctl disable p2p.service
 systemctl stop p2p.service
+systemctl unmask subutai-p2p.service
 systemctl restart subutai-p2p.service
 
 exit 0
