@@ -205,7 +205,10 @@ func restoreInstances(daemon *Daemon) {
 				daemon.Restore.bumpInstance(e.Hash)
 			}
 		}
-		daemon.Restore.save()
+		err = daemon.Restore.save()
+		if err != nil {
+			ptp.Log(ptp.Error, "Failed to save restore file")
+		}
 		ptp.Log(ptp.Info, "Restored %d of %d instances", restored, len(entries))
 	}
 }
