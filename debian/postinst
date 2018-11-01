@@ -1,7 +1,11 @@
 #!/bin/sh
 
-systemctl disable p2p.service
-systemctl stop p2p.service
+systemctl status p2p.service >/dev/null 2>/dev/null
+if [ $? -eq 0 ]; then
+  systemctl stop p2p.service
+  systemctl disable p2p.service
+fi
+systemctl unmask subutai-p2p.service
 systemctl restart subutai-p2p.service
 
 exit 0

@@ -92,7 +92,7 @@ func (d *Daemon) execRESTStart(w http.ResponseWriter, r *http.Request) {
 	ls, _ := time.Unix(0, 0).MarshalText()
 
 	// We add new save entry. If save entry already exists with
-	// hash specified, we will just update it's last success information
+	// hash specified, we will just update it's last success timestamp
 	if d.Restore.addEntry(saveEntry{
 		IP:          args.IP,
 		Mac:         args.Mac,
@@ -102,8 +102,13 @@ func (d *Daemon) execRESTStart(w http.ResponseWriter, r *http.Request) {
 		Key:         args.Key,
 		TTL:         args.TTL,
 		LastSuccess: string(ls),
+		Enabled:     true,
 	}) != nil {
 		d.Restore.bumpInstance(args.Hash)
+	}
+	err = d.Restore.save()
+	if err != nil {
+		ptp.Log(ptp.Error, "Failed to save instance information: %s", err.Error())
 	}
 	resp, err := getResponse(response.ExitCode, response.Output)
 	if err != nil {
@@ -217,6 +222,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		go newInst.PTP.Run()
 		resp.Output = resp.Output + "Instance created: " + args.Hash + "\n"
 	} else {
+		resp.ExitCode = 119
 		resp.Output = resp.Output + "Hash already in use\n"
 	}
 	return nil

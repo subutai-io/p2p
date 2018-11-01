@@ -69,6 +69,7 @@ func (r *Restore) save() error {
 		r.lock.Unlock()
 		return err
 	}
+	ptp.Log(ptp.Info, "Saving instances")
 	_, err = file.Write(data)
 	if err != nil {
 		r.lock.Unlock()
@@ -148,6 +149,7 @@ func (r *Restore) bumpInstance(hash string) error {
 		if e.Hash == hash {
 			ls, _ := time.Now().MarshalText()
 			r.entries[i].LastSuccess = string(ls)
+			r.entries[i].Enabled = true
 			return nil
 		}
 	}
