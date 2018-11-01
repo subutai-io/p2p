@@ -217,6 +217,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		go newInst.PTP.Run()
 		resp.Output = resp.Output + "Instance created: " + args.Hash + "\n"
 	} else {
+		resp.ExitCode = 119
 		resp.Output = resp.Output + "Hash already in use\n"
 	}
 	return nil
