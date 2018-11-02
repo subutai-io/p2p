@@ -75,6 +75,8 @@ func (d *Daemon) execRESTStart(w http.ResponseWriter, r *http.Request) {
 	if handleMarshalError(err, w) != nil {
 		return
 	}
+
+	ptp.Log(ptp.Debug, "Executing start command: %+v", args)
 	response := new(Response)
 	err = d.run(&RunArgs{
 		IP:      args.IP,
