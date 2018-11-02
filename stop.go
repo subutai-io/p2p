@@ -55,6 +55,7 @@ func (d *Daemon) execRESTStop(w http.ResponseWriter, r *http.Request) {
 	if handleMarshalError(err, w) != nil {
 		return
 	}
+	ptp.Log(ptp.Debug, "Executing stop command: %+v", args)
 	response := new(Response)
 	d.Stop(&DaemonArgs{
 		Hash: args.Hash,
