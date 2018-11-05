@@ -411,6 +411,10 @@ func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 
 // ReportIP will send IP specified at service start to DHCP-like service
 func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask, error) {
+	if p.Dht == nil {
+		return nil, nil, fmt.Errorf("nil dht")
+	}
+
 	Log(Debug, "Reporting IP to bootstranp node: %s", ipAddress)
 	ip, ipnet, err := net.ParseCIDR(ipAddress)
 	if err != nil {

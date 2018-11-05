@@ -30,7 +30,16 @@ func (l *PeerList) Init() {
 	l.tableMacID = make(map[string]string)
 }
 
-func (l *PeerList) operate(action ListOperation, id string, peer *NetworkPeer) {
+func (l *PeerList) operate(action ListOperation, id string, peer *NetworkPeer) error {
+	if l.peers == nil {
+		return fmt.Errorf("peers is nil - not initialized")
+	}
+	if l.tableIPID == nil {
+		return fmt.Errorf("IP-ID table is nil - not initialized")
+	}
+	if l.tableMacID == nil {
+		return fmt.Errorf("Mac-ID table is nil - not initialized")
+	}
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	if action == OperateUpdate {
@@ -44,15 +53,17 @@ func (l *PeerList) operate(action ListOperation, id string, peer *NetworkPeer) {
 			mac = peer.PeerHW.String()
 		}
 		l.updateTables(id, ip, mac)
+		return nil
 	} else if action == OperateDelete {
 		peer, exists := l.peers[id]
 		if !exists {
-			return
+			return fmt.Errorf("can't delete peer: entry doesn't exists")
 		}
 		l.deleteTables(peer.PeerLocalIP.String(), peer.PeerHW.String())
 		delete(l.peers, id)
-		return
+		return nil
 	}
+	return nil
 }
 
 func (l *PeerList) updateTables(id, ip, mac string) {
