@@ -58,6 +58,9 @@ func (r *Restore) init(filepath string) error {
 
 // save will write dump of entries into a save file
 func (r *Restore) save() error {
+	if r.filepath == "" {
+		return nil
+	}
 	r.lock.Lock()
 	file, err := os.OpenFile(r.filepath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0700)
 	if err != nil {
@@ -81,6 +84,9 @@ func (r *Restore) save() error {
 
 // load will read save file and unmarshal saved entries
 func (r *Restore) load() error {
+	if r.filepath == "" {
+		return nil
+	}
 	r.lock.Lock()
 	data, err := ioutil.ReadFile(r.filepath)
 	if err != nil {
