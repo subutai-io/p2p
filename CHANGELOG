@@ -1,6 +1,6 @@
 # Change Log
 
-## [8.1.0] 10/29/2018
+## [8.1.0] 11/05/2018
 
 * Implemented latency measurement for peers (#445)
 * Implemented latency measurement for proxies (#907)
