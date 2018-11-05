@@ -12,6 +12,10 @@ import (
 type dhtCallback func(*protocol.DHTPacket) error
 
 func (p *PeerToPeer) setupTCPCallbacks() {
+	if p.Dht == nil {
+		Log(Error, "Can't setup TCP callbacks: DHT is nil")
+		return
+	}
 	p.Dht.TCPCallbacks = make(map[protocol.DHTPacketType]dhtCallback)
 	p.Dht.TCPCallbacks[protocol.DHTPacketType_BadProxy] = p.packetBadProxy
 	p.Dht.TCPCallbacks[protocol.DHTPacketType_Connect] = p.packetConnect
@@ -39,6 +43,12 @@ func (p *PeerToPeer) packetBadProxy(packet *protocol.DHTPacket) error {
 
 // Handshake response should be handled here.
 func (p *PeerToPeer) packetConnect(packet *protocol.DHTPacket) error {
+	if p.Dht == nil {
+		return fmt.Errorf("nil dht")
+	}
+	if packet == nil {
+		return fmt.Errorf("nil packet")
+	}
 	if len(packet.Id) != 36 {
 		return fmt.Errorf("Received malformed ID")
 	}
@@ -49,6 +59,12 @@ func (p *PeerToPeer) packetConnect(packet *protocol.DHTPacket) error {
 }
 
 func (p *PeerToPeer) packetDHCP(packet *protocol.DHTPacket) error {
+	if p.Dht == nil {
+		return fmt.Errorf("nil dht")
+	}
+	if packet == nil {
+		return fmt.Errorf("nil packet")
+	}
 	if packet.Data != "" && packet.Extra != "" {
 		ip, network, err := net.ParseCIDR(fmt.Sprintf("%s/%s", packet.Data, packet.Extra))
 		if err != nil {
@@ -63,6 +79,9 @@ func (p *PeerToPeer) packetDHCP(packet *protocol.DHTPacket) error {
 }
 
 func (p *PeerToPeer) packetError(packet *protocol.DHTPacket) error {
+	if packet == nil {
+		return fmt.Errorf("nil packet")
+	}
 	lvl := LogLevel(Trace)
 	if packet.Data == "" {
 		lvl = Error
@@ -76,13 +95,22 @@ func (p *PeerToPeer) packetError(packet *protocol.DHTPacket) error {
 }
 
 func (p *PeerToPeer) packetFind(packet *protocol.DHTPacket) error {
+	if packet == nil {
+		return fmt.Errorf("nil packet")
+	}
+	if p.Dht == nil {
+		return fmt.Errorf("nil dht")
+	}
 	if len(packet.Arguments) == 0 {
 		Log(Warning, "Received empty peer list")
 		return nil
 	}
 	if packet.Data == p.Dht.ID {
-		Log(Debug, "Skipping self")
+		Log(Debug, "Skipping self [%s = %s]", packet.Data, p.Dht.ID)
 		return nil
+	}
+	if p.Peers == nil {
+		return fmt.Errorf("nil peer list")
 	}
 
 	Log(Debug, "Received `find`: %+v", packet)
