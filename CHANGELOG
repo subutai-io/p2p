@@ -5,10 +5,10 @@
 * Implemented latency measurement for peers (#445)
 * Implemented latency measurement for proxies (#907)
 * Added reconnect timeout for failing DHT connections (#1114)
-* Refactored save/restore sybsysten (#1106)
-* Save dump now uses YAML (#1105)
+* Refactored save/restore sybsystem (#1106)
+* Dump file now uses YAML (#1105)
 * Output to stderr instead of stdout on non-zero exit code (#1102)
-* Fixed non-zero exit code on failed start attempt (#1132)
+* Fixed non-zero exit code on failed start attempts (#1132)
 
 ## [8.0.1] 10/09/2018
 
