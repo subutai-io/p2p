@@ -738,6 +738,36 @@ func TestPeerToPeer_packetProxy(t *testing.T) {
 	type args struct {
 		packet *protocol.DHTPacket
 	}
+
+	n1 := new(Network)
+	n1.Init("127.0.0.1", 1234)
+
+	pm1 := new(ProxyManager)
+	pm1.init()
+
+	f1 := fields{
+		UDPSocket:    n1,
+		ProxyManager: pm1,
+	}
+
+	f2 := fields{
+		UDPSocket:    n1,
+		ProxyManager: pm1,
+		Dht:          &DHTClient{},
+	}
+
+	p1 := &protocol.DHTPacket{
+		Proxies: []string{"s:b"},
+	}
+
+	p2 := &protocol.DHTPacket{
+		Proxies: []string{"127.0.0.1:1111", "127.0.0.1:1111"},
+	}
+
+	p3 := &protocol.DHTPacket{
+		Proxies: []string{"127.0.0.1:1111"},
+	}
+
 	tests := []struct {
 		name    string
 		fields  fields
@@ -745,6 +775,12 @@ func TestPeerToPeer_packetProxy(t *testing.T) {
 		wantErr bool
 	}{
 		{"nil packet", fields{}, args{}, true},
+		{"nil socket", fields{}, args{new(protocol.DHTPacket)}, true},
+		{"nil proxy manager", fields{UDPSocket: new(Network)}, args{new(protocol.DHTPacket)}, true},
+		{"nil dht", f1, args{new(protocol.DHTPacket)}, true},
+		{"bad proxy addr", f2, args{p1}, false},
+		{"two same proxies", f2, args{p2}, false},
+		{"new proxy", f2, args{p3}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -799,13 +835,38 @@ func TestPeerToPeer_packetRequestProxy(t *testing.T) {
 	type args struct {
 		packet *protocol.DHTPacket
 	}
+
+	p1 := &protocol.DHTPacket{
+		Proxies: []string{"b:a"},
+	}
+
+	p2 := &protocol.DHTPacket{
+		Proxies: []string{"127.0.0.1:1234"},
+	}
+
+	p3 := &protocol.DHTPacket{
+		Proxies: []string{"127.0.0.1:1234"},
+		Data:    "test-peer",
+	}
+
+	pl1 := new(PeerList)
+	pl1.Init()
+	pl1.peers["test-peer"] = &NetworkPeer{}
+
+	f1 := fields{
+		Peers: pl1,
+	}
+
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil peer list", fields{}, args{}, true},
+		{"bad proxy addr", fields{Peers: new(PeerList)}, args{p1}, false},
+		{"non existing peer", f1, args{p2}, false},
+		{"existing peer", f1, args{p3}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -866,7 +927,7 @@ func TestPeerToPeer_packetReportProxy(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"empty test", fields{}, args{}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -927,7 +988,9 @@ func TestPeerToPeer_packetRegisterProxy(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil packet", fields{}, args{}, true},
+		{"ok", fields{}, args{&protocol.DHTPacket{Data: "OK"}}, false},
+		{"not ok", fields{}, args{&protocol.DHTPacket{Data: "!ok"}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -988,7 +1051,7 @@ func TestPeerToPeer_packetReportLoad(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"empty test", fields{}, args{}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1043,13 +1106,54 @@ func TestPeerToPeer_packetState(t *testing.T) {
 	type args struct {
 		packet *protocol.DHTPacket
 	}
+
+	pl1 := new(PeerList)
+	pl1.Init()
+
+	pl2 := new(PeerList)
+	pl2.Init()
+	pl2.peers["123e4567-e89b-12d3-a456-426655440000"] = &NetworkPeer{}
+
+	f1 := fields{
+		Peers: pl1,
+	}
+
+	f2 := fields{
+		Peers: pl2,
+	}
+
+	p1 := &protocol.DHTPacket{
+		Data: "short",
+	}
+
+	p2 := &protocol.DHTPacket{
+		Data:  "123e4567-e89b-12d3-a456-426655440000",
+		Extra: "",
+	}
+
+	p3 := &protocol.DHTPacket{
+		Data:  "123e4567-e89b-12d3-a456-426655440000",
+		Extra: "error",
+	}
+
+	p4 := &protocol.DHTPacket{
+		Data:  "123e4567-e89b-12d3-a456-426655440000",
+		Extra: "4",
+	}
+
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil packet", fields{}, args{}, true},
+		{"nil peer list", fields{}, args{new(protocol.DHTPacket)}, true},
+		{"short data", f1, args{p1}, true},
+		{"empty extra", f1, args{p2}, true},
+		{"broken extra", f1, args{p3}, true},
+		{"peer not exists", f1, args{p4}, false},
+		{"peer exists", f2, args{p4}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1110,7 +1214,7 @@ func TestPeerToPeer_packetStop(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"empty test", fields{}, args{}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1165,13 +1269,35 @@ func TestPeerToPeer_packetUnknown(t *testing.T) {
 	type args struct {
 		packet *protocol.DHTPacket
 	}
+
+	p1 := &protocol.DHTPacket{
+		Data: "DHCP",
+	}
+
+	p2 := &protocol.DHTPacket{
+		Data: "Anything, but DHCP",
+	}
+
+	pm1 := new(ProxyManager)
+	pm1.init()
+
+	dht := new(DHTClient)
+	dht.Init("")
+
+	inf, _ := newTAP("", "192.168.0.1", "00:11:22:33:44:55", "", 1500, false)
+
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil packet", fields{}, args{}, true},
+		{"nil dht", fields{}, args{p1}, true},
+		{"nil proxy manager", fields{Dht: dht}, args{p1}, true},
+		{"nil interface", fields{Dht: dht, ProxyManager: pm1}, args{p1}, true},
+		{"normal data", fields{Dht: dht, ProxyManager: pm1, Interface: inf}, args{p1}, false},
+		{"refuse data", fields{Dht: dht, ProxyManager: pm1, Interface: inf}, args{p2}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1232,7 +1358,9 @@ func TestPeerToPeer_packetUnsupported(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil packet", fields{}, args{}, true},
+		{"nil dht", fields{}, args{new(protocol.DHTPacket)}, true},
+		{"passing", fields{Dht: new(DHTClient)}, args{new(protocol.DHTPacket)}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

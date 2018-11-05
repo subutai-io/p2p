@@ -286,7 +286,10 @@ func (p *PeerToPeer) packetProxy(packet *protocol.DHTPacket) error {
 		return fmt.Errorf("nil socket")
 	}
 	if p.ProxyManager == nil {
-		return fmt.Errorf("nil packet manager")
+		return fmt.Errorf("nil proxy manager")
+	}
+	if p.Dht == nil {
+		return fmt.Errorf("nil dht")
 	}
 	Log(Debug, "Received list of proxies")
 	for _, proxy := range packet.Proxies {
@@ -308,6 +311,9 @@ func (p *PeerToPeer) packetProxy(packet *protocol.DHTPacket) error {
 
 // packetRequestProxy received when we was requesting proxy to connect to some peer
 func (p *PeerToPeer) packetRequestProxy(packet *protocol.DHTPacket) error {
+	if p.Peers == nil {
+		return fmt.Errorf("nil peer list")
+	}
 	list := []*net.UDPAddr{}
 	for _, proxy := range packet.Proxies {
 		addr, err := net.ResolveUDPAddr("udp4", proxy)
@@ -317,16 +323,6 @@ func (p *PeerToPeer) packetRequestProxy(packet *protocol.DHTPacket) error {
 		}
 		list = append(list, addr)
 	}
-
-	// peers := p.Peers.Get()
-	// for _, proxy := range list {
-	// 	for _, existingPeer := range peers {
-	// 		if existingPeer.Endpoint.String() == proxy.String() && existingPeer.ID != packet.Data {
-	// 			existingPeer.SetState(PeerStateDisconnect, p)
-	// 			Log(Info, "Peer %s was associated with address %s. Disconnecting", existingPeer.ID, proxy.String())
-	// 		}
-	// 	}
-	// }
 
 	peer := p.Peers.GetPeer(packet.Data)
 	if peer != nil {
@@ -341,6 +337,9 @@ func (p *PeerToPeer) packetReportProxy(packet *protocol.DHTPacket) error {
 }
 
 func (p *PeerToPeer) packetRegisterProxy(packet *protocol.DHTPacket) error {
+	if packet == nil {
+		return fmt.Errorf("nil packet")
+	}
 	if packet.Data == "OK" {
 		Log(Info, "Proxy registration confirmed")
 	}
@@ -352,6 +351,12 @@ func (p *PeerToPeer) packetReportLoad(packet *protocol.DHTPacket) error {
 }
 
 func (p *PeerToPeer) packetState(packet *protocol.DHTPacket) error {
+	if packet == nil {
+		return fmt.Errorf("nil packet")
+	}
+	if p.Peers == nil {
+		return fmt.Errorf("nil peer list")
+	}
 	if len(packet.Data) != 36 {
 		return fmt.Errorf("Receied state packet for unknown/broken ID")
 	}
@@ -380,6 +385,18 @@ func (p *PeerToPeer) packetStop(packet *protocol.DHTPacket) error {
 }
 
 func (p *PeerToPeer) packetUnknown(packet *protocol.DHTPacket) error {
+	if packet == nil {
+		return fmt.Errorf("nil packet")
+	}
+	if p.Dht == nil {
+		return fmt.Errorf("nil dht")
+	}
+	if p.ProxyManager == nil {
+		return fmt.Errorf("nil proxy manager")
+	}
+	if p.Interface == nil {
+		return fmt.Errorf("nil interface")
+	}
 	Log(Debug, "Received unknown packet")
 	p.FindNetworkAddresses()
 	if len(packet.Data) > 0 && packet.Data == "DHCP" {
@@ -392,6 +409,12 @@ func (p *PeerToPeer) packetUnknown(packet *protocol.DHTPacket) error {
 }
 
 func (p *PeerToPeer) packetUnsupported(packet *protocol.DHTPacket) error {
+	if packet == nil {
+		return fmt.Errorf("nil packet")
+	}
+	if p.Dht == nil {
+		return fmt.Errorf("nil dht")
+	}
 	Log(Error, "Bootstap node doesn't support our version. Shutting down")
 	return p.Dht.Close()
 }
