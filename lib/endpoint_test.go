@@ -39,6 +39,7 @@ func TestEndpoint_addrToBytes(t *testing.T) {
 		fields fields
 		want   []byte
 	}{
+		{"nil addr", fields{}, nil},
 		{"Testing 127.0.0.1:1111", fields{Addr: a1}, r1},
 		{"Testing 0.0.0.0:0000", fields{Addr: a2}, r2},
 		{"Testing 255.255.255.255:65535", fields{Addr: a3}, r3},
@@ -74,12 +75,18 @@ func TestEndpoint_Measure(t *testing.T) {
 		n  *Network
 		id string
 	}
+	addr, _ := net.ResolveUDPAddr("udp4", "127.0.0.1:1234")
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{"Broken EP", fields{broken: true}, args{}},
+		{"nil addr", fields{}, args{}},
+		{"nil network", fields{Addr: new(net.UDPAddr)}, args{}},
+		{"time not passed", fields{Addr: new(net.UDPAddr), LastLatencyQuery: time.Now()}, args{new(Network), ""}},
+		{"address bytes is nil", fields{Addr: new(net.UDPAddr), LastLatencyQuery: time.Unix(0, 0)}, args{new(Network), ""}},
+		{"proper addr", fields{Addr: addr, LastLatencyQuery: time.Unix(0, 0)}, args{new(Network), ""}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

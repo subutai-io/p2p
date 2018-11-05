@@ -250,6 +250,11 @@ func (r *Restore) decodeInstances(data []byte) error {
 			item.Keyfile = string(blocksOfArguments[5])
 			item.Key = string(blocksOfArguments[6])
 			item.TTL = string(blocksOfArguments[7])
+
+			// Force this env to be nor marked as failed
+			item.Enabled = true
+			ls, _ := time.Now().MarshalText()
+			item.LastSuccess = string(ls)
 			//item.Fwd = false
 			// if string(blocksOfArguments[8]) == "1" {
 			// 	item.Fwd = true
