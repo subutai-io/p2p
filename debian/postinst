@@ -7,5 +7,6 @@ if [ $? -eq 0 ]; then
 fi
 systemctl unmask subutai-p2p.service
 systemctl restart subutai-p2p.service
+systemctl enable subutai-p2p.service
 
 exit 0
