@@ -8,6 +8,7 @@
 * Refactored save/restore sybsysten (#1106)
 * Save dump now uses YAML (#1105)
 * Output to stderr instead of stdout on non-zero exit code (#1102)
+* Fixed non-zero exit code on failed start attempt (#1132)
 
 ## [8.0.1] 10/09/2018
 
