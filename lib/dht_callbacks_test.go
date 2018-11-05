@@ -351,13 +351,36 @@ func TestPeerToPeer_packetFind(t *testing.T) {
 
 	pl1 := new(PeerList)
 	pl1.Init()
-	pl1.Update("testid", new(NetworkPeer))
-	pl1.Update("testid2", &NetworkPeer{
+	pl1.peers["testid"] = &NetworkPeer{
+		Proxies: []*net.UDPAddr{knownIP, knownIP},
+	}
+	pl1.peers["testid2"] = &NetworkPeer{
 		KnownIPs: []*net.UDPAddr{knownIP},
-	})
+		Proxies:  []*net.UDPAddr{knownIP},
+	}
 
 	lip0 := []net.IP{}
 	lip0 = append(lip0, net.ParseIP("192.168.1.2"))
+
+	proxy1 := []string{"b:p"}
+	proxy2 := []string{"192.168.0.1:1234", "192.168.0.1:1234"}
+	proxy3 := []string{"192.168.1.2:3456"}
+
+	proxyServer := new(proxyServer)
+	proxyServer.Endpoint = knownIP
+	proxyServer.Addr = knownIP
+
+	pm1 := new(ProxyManager)
+	pm2 := new(ProxyManager)
+	pm2.init()
+	pm2.proxies[knownIP.String()] = proxyServer
+
+	f1 := fields{}
+	f2 := fields{Dht: tdht}
+	f3 := fields{Dht: tdht, Peers: pl0}
+	f4 := fields{Dht: tdht, Peers: pl0, ProxyManager: pm1}
+	f5 := fields{Dht: tdht, Peers: pl1, LocalIPs: lip0, ProxyManager: pm1}
+	f6 := fields{Dht: tdht, Peers: pl1, LocalIPs: lip0, ProxyManager: pm2}
 
 	type args struct {
 		packet *protocol.DHTPacket
@@ -368,14 +391,26 @@ func TestPeerToPeer_packetFind(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"nil packet", fields{}, args{}, true},
-		{"nil dht", fields{}, args{new(protocol.DHTPacket)}, true},
-		{"empty peer list", fields{Dht: tdht}, args{new(protocol.DHTPacket)}, false},
-		{"skip self", fields{Dht: tdht}, args{&protocol.DHTPacket{Data: tdht.ID, Arguments: []string{"arg1"}}}, false},
-		{"nil peer list", fields{Dht: tdht}, args{&protocol.DHTPacket{Data: "ttt", Arguments: []string{"arg1"}}}, true},
-		{"new peer>bad ip", fields{Dht: tdht, Peers: pl0}, args{&protocol.DHTPacket{Data: "ttt", Arguments: []string{"arg1"}}}, false},
-		{"new peer>known ip", fields{Dht: tdht, Peers: pl1}, args{&protocol.DHTPacket{Data: "ttt", Arguments: []string{knownIP.String(), knownIP.String()}}}, false},
-		{"new peer>local ip", fields{Dht: tdht, Peers: pl1, LocalIPs: lip0}, args{&protocol.DHTPacket{Data: "ttt", Arguments: []string{knownIP.String()}}}, false},
+		{"nil packet", f1, args{}, true},
+		{"nil dht", f1, args{new(protocol.DHTPacket)}, true},
+		{"empty peer list", f2, args{new(protocol.DHTPacket)}, false},
+		{"skip self", f2, args{&protocol.DHTPacket{Data: tdht.ID, Arguments: []string{"arg1"}, Extra: "skip"}}, false},
+		{"nil peer list", f2, args{&protocol.DHTPacket{Data: "ttt", Arguments: []string{"arg1"}, Extra: "skip"}}, true},
+		{"nil proxy manager", f3, args{&protocol.DHTPacket{Data: "ttt", Arguments: []string{"arg1"}, Extra: "skip"}}, true},
+		{"new peer>bad ip", f4, args{&protocol.DHTPacket{Data: "ttt", Arguments: []string{"arg1"}, Extra: "skip"}}, false},
+		{"new peer>known ip", f4, args{&protocol.DHTPacket{Data: "ttt", Arguments: []string{knownIP.String(), knownIP.String()}, Extra: "skip"}}, false},
+		{"new peer>local ip", f5, args{&protocol.DHTPacket{Data: "ttt", Arguments: []string{knownIP.String()}, Extra: "skip"}}, false},
+		{"new peer>bad proxy", f5, args{&protocol.DHTPacket{Data: "ttt", Arguments: []string{knownIP.String()}, Extra: "skip", Proxies: proxy1}}, false},
+		{"new peer>existing proxy", f5, args{&protocol.DHTPacket{Data: "ttt", Arguments: []string{knownIP.String()}, Extra: "skip", Proxies: proxy2}}, false},
+		{"new peer>own proxy", f6, args{&protocol.DHTPacket{Data: "ttt", Arguments: []string{knownIP.String()}, Extra: "skip", Proxies: proxy3}}, false},
+		{"existing peer>empty ip", f5, args{&protocol.DHTPacket{Data: "testid2", Arguments: []string{""}, Extra: "skip"}}, false},
+		{"existing peer>bad ip", f5, args{&protocol.DHTPacket{Data: "testid2", Arguments: []string{"arg1"}, Extra: "skip"}}, false},
+		{"existing peer>known ip", f5, args{&protocol.DHTPacket{Data: "testid2", Arguments: []string{knownIP.String(), knownIP.String()}, Extra: "skip"}}, false},
+		{"existing peer>local ip", f5, args{&protocol.DHTPacket{Data: "testid2", Arguments: []string{knownIP.String()}, Extra: "skip"}}, false},
+		{"existing peer>empty proxy", f5, args{&protocol.DHTPacket{Data: "testid2", Arguments: []string{knownIP.String()}, Extra: "skip", Proxies: []string{""}}}, false},
+		{"existing peer>bad proxy", f5, args{&protocol.DHTPacket{Data: "testid2", Arguments: []string{knownIP.String()}, Extra: "skip", Proxies: proxy1}}, false},
+		{"existing peer>existing proxy", f5, args{&protocol.DHTPacket{Data: "testid2", Arguments: []string{knownIP.String()}, Extra: "skip", Proxies: proxy2}}, false},
+		{"existing peer>own proxy", f6, args{&protocol.DHTPacket{Data: "testid2", Arguments: []string{knownIP.String()}, Extra: "skip", Proxies: proxy3}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -436,7 +471,7 @@ func TestPeerToPeer_packetForward(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"empty test", fields{}, args{}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -491,13 +526,42 @@ func TestPeerToPeer_packetNode(t *testing.T) {
 	type args struct {
 		packet *protocol.DHTPacket
 	}
+
+	p1 := &protocol.DHTPacket{}
+	p2 := &protocol.DHTPacket{
+		Data:      "unknown-id",
+		Arguments: []string{""},
+	}
+	p3 := &protocol.DHTPacket{
+		Data:      "test-id-1",
+		Arguments: []string{""},
+	}
+	p4 := &protocol.DHTPacket{
+		Data:      "test-id-1",
+		Arguments: []string{"b/p"},
+	}
+	p5 := &protocol.DHTPacket{
+		Data:      "test-id-1",
+		Arguments: []string{"192.168.0.1:1234"},
+	}
+
+	pl1 := new(PeerList)
+	pl1.Init()
+	pl1.peers["test-id-1"] = new(NetworkPeer)
+
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil packet", fields{}, args{}, true},
+		{"nil peer list", fields{}, args{p1}, true},
+		{"empty arguments", fields{Peers: new(PeerList)}, args{p1}, true},
+		{"unknown peer", fields{Peers: pl1}, args{p2}, true},
+		{"empty addr", fields{Peers: pl1}, args{p3}, false},
+		{"bad addr", fields{Peers: pl1}, args{p4}, false},
+		{"passing test", fields{Peers: pl1}, args{p5}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -558,7 +622,7 @@ func TestPeerToPeer_packetNotify(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"empty test", fields{}, args{}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -619,7 +683,7 @@ func TestPeerToPeer_packetPing(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"empty test", fields{}, args{}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -680,7 +744,7 @@ func TestPeerToPeer_packetProxy(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil packet", fields{}, args{}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

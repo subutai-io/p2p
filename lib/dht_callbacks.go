@@ -112,6 +112,9 @@ func (p *PeerToPeer) packetFind(packet *protocol.DHTPacket) error {
 	if p.Peers == nil {
 		return fmt.Errorf("nil peer list")
 	}
+	if p.ProxyManager == nil {
+		return fmt.Errorf("nil proxy manager")
+	}
 
 	Log(Debug, "Received `find`: %+v", packet)
 	peer := p.Peers.GetPeer(packet.Data)
@@ -168,11 +171,14 @@ func (p *PeerToPeer) packetFind(packet *protocol.DHTPacket) error {
 				Log(Debug, "Adding proxy: %s", addr.String())
 			}
 		}
-		peer.SetState(PeerStateInit, p)
-		peer.LastFind = time.Now()
-		p.Peers.Update(peer.ID, peer)
-		p.Peers.RunPeer(peer.ID, p)
+		if packet.GetExtra() != "skip" {
+			peer.SetState(PeerStateInit, p)
+			peer.LastFind = time.Now()
+			p.Peers.Update(peer.ID, peer)
+			p.Peers.RunPeer(peer.ID, p)
+		}
 	} else {
+		// This is an existing peer
 		peer.LastFind = time.Now()
 
 		ips := []*net.UDPAddr{}
@@ -228,6 +234,13 @@ func (p *PeerToPeer) packetForward(packet *protocol.DHTPacket) error {
 }
 
 func (p *PeerToPeer) packetNode(packet *protocol.DHTPacket) error {
+	if packet == nil {
+		return fmt.Errorf("nil packet")
+	}
+
+	if p.Peers == nil {
+		return fmt.Errorf("nil peer list")
+	}
 
 	if len(packet.Arguments) == 0 {
 		return fmt.Errorf("Empty IP's list")
@@ -266,6 +279,15 @@ func (p *PeerToPeer) packetPing(packet *protocol.DHTPacket) error {
 }
 
 func (p *PeerToPeer) packetProxy(packet *protocol.DHTPacket) error {
+	if packet == nil {
+		return fmt.Errorf("nil packet")
+	}
+	if p.UDPSocket == nil {
+		return fmt.Errorf("nil socket")
+	}
+	if p.ProxyManager == nil {
+		return fmt.Errorf("nil packet manager")
+	}
 	Log(Debug, "Received list of proxies")
 	for _, proxy := range packet.Proxies {
 		proxyAddr, err := net.ResolveUDPAddr("udp4", proxy)
