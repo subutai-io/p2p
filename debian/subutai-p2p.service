@@ -9,4 +9,4 @@ ExecStart=/usr/bin/p2p daemon -save /var/lib/subutai/data/p2p.save -syslog 127.0
 Restart=always
 
 [Install]
-    WantedBy=multi-user.target
+WantedBy=multi-user.target
