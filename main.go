@@ -234,12 +234,6 @@ func main() {
 					Value:       "",
 					Destination: &InterfaceName,
 				},
-				// cli.StringFlag{
-				// 	Name:        "dht",
-				// 	Usage:       "[Deprecated] Comman-separated list of DHT bootstrap nodes",
-				// 	Value:       "",
-				// 	Destination: &DHTRouters,
-				// },
 				cli.StringFlag{
 					Name:        "keyfile",
 					Usage:       "Path to a file containing crypto-key",
@@ -391,9 +385,15 @@ func main() {
 					Value:       "",
 					Destination: &Infohash,
 				},
+				cli.StringFlag{
+					Name:        "ip",
+					Usage:       "Modify IP address of interface with specified hash",
+					Value:       "",
+					Destination: &IP,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				CommandSet(RPCPort, LogLevel, Infohash, "", Key, Until)
+				CommandSet(RPCPort, LogLevel, Infohash, "", Key, Until, IP)
 				return nil
 			},
 		},
