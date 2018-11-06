@@ -183,7 +183,6 @@ func TestSrvLookup(t *testing.T) {
 
 func TestPeerToPeer_FindNetworkAddresses(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -212,7 +211,6 @@ func TestPeerToPeer_FindNetworkAddresses(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,

@@ -11,11 +11,6 @@ import (
 	"os/exec"
 )
 
-const (
-	ConfigDir  string = "/usr/local/etc"
-	DefaultMTU int    = 1500
-)
-
 func GetDeviceBase() string {
 	return "tun"
 }

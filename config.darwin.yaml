@@ -1,0 +1,3 @@
+iptool: /sbin/ifconfig
+pmtu: false
+mtu: 1500
