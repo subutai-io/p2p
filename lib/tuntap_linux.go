@@ -61,6 +61,10 @@ func newTAP(tool, ip, mac, mask string, mtu int, pmtu bool) (*TAPLinux, error) {
 	}, nil
 }
 
+func newEmptyTAP() *TAPLinux {
+	return &TAPLinux{}
+}
+
 // TAPLinux is an interface for TAP device on Linux platform
 type TAPLinux struct {
 	IP         net.IP           // IP
@@ -121,6 +125,9 @@ func (t *TAPLinux) SetMask(mask net.IPMask) {
 
 // Init will initialize TAP interface creation process
 func (t *TAPLinux) Init(name string) error {
+	if name == "" {
+		return fmt.Errorf("Failed to configure interface: empty name")
+	}
 	t.Name = name
 	return nil
 }
