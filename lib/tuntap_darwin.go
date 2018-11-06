@@ -51,6 +51,10 @@ func newTAP(tool, ip, mac, mask string, mtu int, pmtu bool) (*TAPDarwin, error) 
 	}, nil
 }
 
+func newEmptyTAP() *TAPDarwin {
+	return &TAPDarwin{}
+}
+
 // TAPDarwin is an interface for TAP device on Linux platform
 type TAPDarwin struct {
 	IP         net.IP           // IP
@@ -111,6 +115,9 @@ func (t *TAPDarwin) SetMask(mask net.IPMask) {
 
 // Init will initialize TAP interface creation process
 func (t *TAPDarwin) Init(name string) error {
+	if name == "" {
+		return fmt.Errorf("Failed to configure interface: empty name")
+	}
 	t.Name = name
 	return nil
 }

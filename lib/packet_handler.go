@@ -216,7 +216,10 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 		//p.Dht.sendFind()
 		return
 	}
-	response := p.PrepareIntroductionMessage(p.Dht.ID, string(msg.Data[36:]))
+	response, err := p.PrepareIntroductionMessage(p.Dht.ID, string(msg.Data[36:]))
+	if err != nil {
+		Log(Error, "Failed to prepare intro message: %s", err.Error())
+	}
 	eps := []*net.UDPAddr{}
 	eps = append(eps, peer.KnownIPs...)
 	eps = append(eps, peer.Proxies...)
