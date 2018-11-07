@@ -8,29 +8,6 @@ import (
 	"time"
 )
 
-func TestSetState(t *testing.T) {
-	np := new(NetworkPeer)
-	ptpc := new(PeerToPeer)
-	states := [...]int{
-		int(PeerStateInit),
-		int(PeerStateRequestedIP),
-		int(PeerStateRequestingProxy),
-		int(PeerStateWaitingForProxy),
-		int(PeerStateWaitingToConnect),
-		int(PeerStateConnecting),
-		int(PeerStateConnected),
-		int(PeerStateDisconnect),
-		int(PeerStateStop),
-		int(PeerStateCooldown),
-	}
-	for i := 0; i < len(states); i++ {
-		np.SetState(PeerState(states[i]), ptpc)
-		if np.State != PeerState(states[i]) {
-			t.Errorf("wait: %d; get: %d", states[i], np.State)
-		}
-	}
-}
-
 func TestRun(t *testing.T) {
 	np := new(NetworkPeer)
 	ptp := new(PeerToPeer)
@@ -237,6 +214,80 @@ func TestNetworkPeer_sortEndpoints(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got2, tt.want2) {
 				t.Errorf("NetworkPeer.sortEndpoints() got2 = %v, want %v", got2, tt.want2)
+			}
+		})
+	}
+}
+
+func TestNetworkPeer_SetState(t *testing.T) {
+	type fields struct {
+		ID                 string
+		Endpoint           *net.UDPAddr
+		KnownIPs           []*net.UDPAddr
+		Proxies            []*net.UDPAddr
+		PeerLocalIP        net.IP
+		PeerHW             net.HardwareAddr
+		State              PeerState
+		RemoteState        PeerState
+		LastContact        time.Time
+		PingCount          uint8
+		LastError          string
+		ConnectionAttempts uint8
+		handlers           map[PeerState]StateHandlerCallback
+		Running            bool
+		EndpointsHeap      []*Endpoint
+		Lock               sync.RWMutex
+		punchingInProgress bool
+		LastFind           time.Time
+		LastPunch          time.Time
+		Stat               PeerStats
+		RoutingRequired    bool
+	}
+	type args struct {
+		state PeerState
+		ptpc  *PeerToPeer
+	}
+
+	ptp0 := new(PeerToPeer)
+	ptp0.Dht = new(DHTClient)
+
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{"nil ptp", fields{}, args{}, true},
+		{"nil dht", fields{}, args{ptpc: new(PeerToPeer)}, true},
+		{"new state", fields{State: PeerStateConnected}, args{ptpc: ptp0, state: PeerStateDisconnect}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			np := &NetworkPeer{
+				ID:                 tt.fields.ID,
+				Endpoint:           tt.fields.Endpoint,
+				KnownIPs:           tt.fields.KnownIPs,
+				Proxies:            tt.fields.Proxies,
+				PeerLocalIP:        tt.fields.PeerLocalIP,
+				PeerHW:             tt.fields.PeerHW,
+				State:              tt.fields.State,
+				RemoteState:        tt.fields.RemoteState,
+				LastContact:        tt.fields.LastContact,
+				PingCount:          tt.fields.PingCount,
+				LastError:          tt.fields.LastError,
+				ConnectionAttempts: tt.fields.ConnectionAttempts,
+				handlers:           tt.fields.handlers,
+				Running:            tt.fields.Running,
+				EndpointsHeap:      tt.fields.EndpointsHeap,
+				Lock:               tt.fields.Lock,
+				punchingInProgress: tt.fields.punchingInProgress,
+				LastFind:           tt.fields.LastFind,
+				LastPunch:          tt.fields.LastPunch,
+				Stat:               tt.fields.Stat,
+				RoutingRequired:    tt.fields.RoutingRequired,
+			}
+			if err := np.SetState(tt.args.state, tt.args.ptpc); (err != nil) != tt.wantErr {
+				t.Errorf("NetworkPeer.SetState() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

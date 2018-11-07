@@ -91,6 +91,7 @@ func main() {
 		ShowMTU        bool   // Show MTU value
 		PMTU           bool   // Whether or not PMTU capabilities should be used
 		SRVEntry       string // SRV Entry for service lookup
+		ConfigFile     string // Path to configuration YAML file
 	)
 
 	app := cli.NewApp()
@@ -164,12 +165,18 @@ func main() {
 					Value:       "",
 					Destination: &SRVEntry,
 				},
+				cli.StringFlag{
+					Name:        "config",
+					Usage:       "Path to configuration file",
+					Value:       "",
+					Destination: &ConfigFile,
+				},
 			},
 			Action: func(c *cli.Context) error {
 				if SRVEntry == "" {
 					SRVEntry = TargetURL
 				}
-				ExecDaemon(RPCPort, SRVEntry, SaveFile, Profiling, Syslog, LogLevel, MTU, PMTU)
+				ExecDaemon(RPCPort, SRVEntry, SaveFile, Profiling, Syslog, LogLevel, ConfigFile, MTU, PMTU)
 				return nil
 			},
 		},

@@ -102,14 +102,20 @@ func InitPlatform() error {
 }
 
 // CheckPermissions return true if started as root/administrator
-// TODO: Implement on Windows
-func CheckPermissions() bool {
-	_, err := os.Open("\\\\.\\PHYSICALDRIVE0")
-	if err != nil {
+func HavePrivileges(level int) bool {
+	if level != 0 {
 		Log(Error, "P2P cannot run in daemon mode without Administrator privileges")
 		return false
 	}
 	return true
+}
+
+func GetPrivilegesLevel() int {
+	_, err := os.Open("\\\\.\\PHYSICALDRIVE0")
+	if err != nil {
+		return 1
+	}
+	return 0
 }
 
 // Syslog provides additional logging to the syslog server

@@ -133,11 +133,11 @@ func (p *ProxyManager) setLatency(l time.Duration, addr *net.UDPAddr) error {
 			proxy.MeasureInProgress = false
 			Log(Trace, "Proxy %s is now on latency %d", addr.String(), NanoToMilliseconds(l.Nanoseconds()))
 			p.operate(OperateUpdate, id, proxy)
-			break
+			return nil
 		}
 	}
 
-	return nil
+	return fmt.Errorf("latency set failed: proxy not found: %s", addr.String())
 }
 
 // getBestProxy will return best proxy server based on latency

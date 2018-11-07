@@ -53,12 +53,19 @@ func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
 }
 
 // SetState modify local state of peer
-func (np *NetworkPeer) SetState(state PeerState, ptpc *PeerToPeer) {
+func (np *NetworkPeer) SetState(state PeerState, ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
+	if ptpc.Dht == nil {
+		return fmt.Errorf("nil dht")
+	}
 	if state != np.State {
 		Log(Debug, "Peer %s changed state from %s to %s", np.ID, StringifyState(np.State), StringifyState(state))
 	}
 	np.State = state
 	np.reportState(ptpc)
+	return nil
 }
 
 // NetworkPeerState represents a state for remote peers
