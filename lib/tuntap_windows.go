@@ -18,8 +18,6 @@ import (
 
 // Windows platform specific constants
 const (
-	ConfigDir        string         = "C:\\ProgramData\\Subutai\\etc"
-	DefaultMTU       int            = 1500
 	NetworkKey       string         = "SYSTEM\\CurrentControlSet\\Control\\Network\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
 	AdapterKey       string         = "SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
 	NoMoreItems      syscall.Errno  = 259
