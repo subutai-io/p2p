@@ -9,7 +9,6 @@ import (
 
 func TestPeerToPeer_AssignInterface(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -73,7 +72,6 @@ func TestPeerToPeer_AssignInterface(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -101,7 +99,6 @@ func TestPeerToPeer_AssignInterface(t *testing.T) {
 
 func TestPeerToPeer_ListenInterface(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -130,7 +127,6 @@ func TestPeerToPeer_ListenInterface(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -158,7 +154,6 @@ func TestPeerToPeer_ListenInterface(t *testing.T) {
 
 func TestPeerToPeer_IsDeviceExists(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -191,7 +186,6 @@ func TestPeerToPeer_IsDeviceExists(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -219,7 +213,6 @@ func TestPeerToPeer_IsDeviceExists(t *testing.T) {
 
 func TestPeerToPeer_GenerateDeviceName(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -252,7 +245,6 @@ func TestPeerToPeer_GenerateDeviceName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -280,7 +272,6 @@ func TestPeerToPeer_GenerateDeviceName(t *testing.T) {
 
 func TestPeerToPeer_IsIPv4(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -313,7 +304,6 @@ func TestPeerToPeer_IsIPv4(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -369,7 +359,6 @@ func TestNew(t *testing.T) {
 
 func TestPeerToPeer_ReadDHT(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -398,7 +387,6 @@ func TestPeerToPeer_ReadDHT(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -426,7 +414,6 @@ func TestPeerToPeer_ReadDHT(t *testing.T) {
 
 func TestPeerToPeer_waitForRemotePort(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -455,7 +442,7 @@ func TestPeerToPeer_waitForRemotePort(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -483,7 +470,6 @@ func TestPeerToPeer_waitForRemotePort(t *testing.T) {
 
 func TestPeerToPeer_PrepareInterfaces(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -517,7 +503,7 @@ func TestPeerToPeer_PrepareInterfaces(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -545,7 +531,6 @@ func TestPeerToPeer_PrepareInterfaces(t *testing.T) {
 
 func TestPeerToPeer_attemptPortForward(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -579,7 +564,7 @@ func TestPeerToPeer_attemptPortForward(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -607,7 +592,6 @@ func TestPeerToPeer_attemptPortForward(t *testing.T) {
 
 func TestPeerToPeer_Init(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -636,7 +620,7 @@ func TestPeerToPeer_Init(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -664,7 +648,6 @@ func TestPeerToPeer_Init(t *testing.T) {
 
 func TestPeerToPeer_validateMac(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -697,7 +680,7 @@ func TestPeerToPeer_validateMac(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -725,7 +708,6 @@ func TestPeerToPeer_validateMac(t *testing.T) {
 
 func TestPeerToPeer_validateInterfaceName(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -759,7 +741,7 @@ func TestPeerToPeer_validateInterfaceName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -792,7 +774,6 @@ func TestPeerToPeer_validateInterfaceName(t *testing.T) {
 
 func TestPeerToPeer_setupHandlers(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -821,7 +802,7 @@ func TestPeerToPeer_setupHandlers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -849,7 +830,6 @@ func TestPeerToPeer_setupHandlers(t *testing.T) {
 
 func TestPeerToPeer_RequestIP(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -885,7 +865,7 @@ func TestPeerToPeer_RequestIP(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -921,7 +901,6 @@ func TestPeerToPeer_RequestIP(t *testing.T) {
 
 func TestPeerToPeer_ReportIP(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -958,7 +937,7 @@ func TestPeerToPeer_ReportIP(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -994,7 +973,6 @@ func TestPeerToPeer_ReportIP(t *testing.T) {
 
 func TestPeerToPeer_Run(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -1023,7 +1001,7 @@ func TestPeerToPeer_Run(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -1051,7 +1029,6 @@ func TestPeerToPeer_Run(t *testing.T) {
 
 func TestPeerToPeer_checkLastDHTUpdate(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -1080,7 +1057,7 @@ func TestPeerToPeer_checkLastDHTUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -1108,7 +1085,6 @@ func TestPeerToPeer_checkLastDHTUpdate(t *testing.T) {
 
 func TestPeerToPeer_removeStoppedPeers(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -1137,7 +1113,7 @@ func TestPeerToPeer_removeStoppedPeers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -1165,7 +1141,6 @@ func TestPeerToPeer_removeStoppedPeers(t *testing.T) {
 
 func TestPeerToPeer_checkProxies(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -1194,7 +1169,7 @@ func TestPeerToPeer_checkProxies(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -1222,7 +1197,6 @@ func TestPeerToPeer_checkProxies(t *testing.T) {
 
 func TestPeerToPeer_checkPeers(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -1251,7 +1225,7 @@ func TestPeerToPeer_checkPeers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -1279,7 +1253,6 @@ func TestPeerToPeer_checkPeers(t *testing.T) {
 
 func TestPeerToPeer_PrepareIntroductionMessage(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -1314,7 +1287,7 @@ func TestPeerToPeer_PrepareIntroductionMessage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -1347,7 +1320,6 @@ func TestPeerToPeer_PrepareIntroductionMessage(t *testing.T) {
 
 func TestPeerToPeer_WriteToDevice(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -1382,7 +1354,7 @@ func TestPeerToPeer_WriteToDevice(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -1410,7 +1382,6 @@ func TestPeerToPeer_WriteToDevice(t *testing.T) {
 
 func TestPeerToPeer_ParseIntroString(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -1444,7 +1415,7 @@ func TestPeerToPeer_ParseIntroString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -1477,7 +1448,6 @@ func TestPeerToPeer_ParseIntroString(t *testing.T) {
 
 func TestPeerToPeer_SendTo(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -1512,7 +1482,7 @@ func TestPeerToPeer_SendTo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,
@@ -1545,7 +1515,6 @@ func TestPeerToPeer_SendTo(t *testing.T) {
 
 func TestPeerToPeer_Close(t *testing.T) {
 	type fields struct {
-		Config          Configuration
 		UDPSocket       *Network
 		LocalIPs        []net.IP
 		Dht             *DHTClient
@@ -1574,7 +1543,7 @@ func TestPeerToPeer_Close(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PeerToPeer{
-				Config:          tt.fields.Config,
+
 				UDPSocket:       tt.fields.UDPSocket,
 				LocalIPs:        tt.fields.LocalIPs,
 				Dht:             tt.fields.Dht,

@@ -17,7 +17,7 @@ var UsePMTU = false
 
 // PeerToPeer - Main structure
 type PeerToPeer struct {
-	Config          Configuration                        // Network interface configuration tool
+	//Config          Configuration                        // Network interface configuration tool
 	UDPSocket       *Network                             // Peer-to-peer interconnection socket
 	LocalIPs        []net.IP                             // List of IPs available in the system
 	Dht             *DHTClient                           // DHT Client
@@ -70,11 +70,11 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	}
 
 	// Extract necessary information from config file
-	err = p.Config.Read()
-	if err != nil {
-		Log(Error, "Failed to extract information from config file: %v", err)
-		return err
-	}
+	// err = p.Config.Read()
+	// if err != nil {
+	// 	Log(Error, "Failed to extract information from config file: %v", err)
+	// 	return err
+	// }
 
 	err = p.Interface.Open()
 	if err != nil {

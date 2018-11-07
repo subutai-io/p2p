@@ -1,0 +1,5 @@
+iptool: netsh.exe
+taptool: C:\\Program Files\\TAP-Windows\\bin\\tapinstall.exe
+inf_file: C:\\Program Files\\TAP-Windows\\driver\\OemVista.inf
+pmtu: false
+mtu: 1500

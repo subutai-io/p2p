@@ -18,13 +18,6 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
-// Constants
-const (
-	ConfigDir string = "/usr/local/etc"
-	//DefaultMTU int    = 1376
-	DefaultMTU int = 1500
-)
-
 // GetDeviceBase returns a default interface name
 func GetDeviceBase() string {
 	return "vptp"
