@@ -18,6 +18,8 @@ var (
 	errBadDHTEndpoint   = errors.New("Endpoint have wrong format")
 )
 
+// DaemonArgs arguments used by daemon to manipulate
+// p2p behaviour
 type DaemonArgs struct {
 	IP         string `json:"ip"`
 	Mac        string `json:"mac"`
@@ -42,7 +44,7 @@ var bootstrap DHTConnection
 var UsePMTU bool
 
 // ExecDaemon starts P2P daemon
-func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel string, mtu int, pmtu bool) {
+func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel, configFile string, mtu int, pmtu bool) {
 	ptp.Log(ptp.Info, "Initializing P2P Daemon")
 	if logLevel == "" {
 		ptp.SetMinLogLevelString(DefaultLog)
@@ -60,7 +62,7 @@ func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel string, 
 	ptp.InitErrors()
 	ptp.UsePMTU = pmtu
 
-	if !ptp.CheckPermissions() {
+	if !ptp.HavePrivileges(ptp.GetPrivilegesLevel()) {
 		os.Exit(1)
 	}
 	StartTime = time.Now()

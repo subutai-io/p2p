@@ -216,7 +216,7 @@ func (uc *Network) GetPort() int {
 }
 
 // UDPReceivedCallback is executed when message is received
-type UDPReceivedCallback func(count int, src_addr *net.UDPAddr, err error, buff []byte)
+type UDPReceivedCallback func(count int, src_addr *net.UDPAddr, err error, buff []byte) error
 
 // Listen is a main listener of a network traffic
 func (uc *Network) Listen(receivedCallback UDPReceivedCallback) error {
