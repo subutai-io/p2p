@@ -40,8 +40,8 @@ func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error
 			return fmt.Errorf("Failed to decrypt message: %s", decErr)
 		}
 		msg.Data = msg.Data[:msg.Header.Length]
-
 	}
+
 	callback, exists := p.MessageHandlers[msg.Header.Type]
 	if exists {
 		return callback(msg, srcAddr)
@@ -411,9 +411,9 @@ func (p *PeerToPeer) HandleLatency(msg *P2PMessage, srcAddr *net.UDPAddr) error 
 		ip := net.IP{ipfield[0], ipfield[1], ipfield[2], ipfield[3]}
 		port := binary.BigEndian.Uint16(ipfield[4:6])
 		addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", ip.String(), port))
-		if err != nil {
-			Log(Error, "Received malformed latency packet: address is broken: %s", err.Error())
-			return fmt.Errorf("malformed latency packet: broken address %s", err.Error())
+		if err != nil || addr.String() == "255.255.255.255:65535" || addr.String() == "0.0.0.0:0" {
+			Log(Error, "Received malformed latency packet: address is broken")
+			return fmt.Errorf("malformed latency packet: broken address")
 		}
 
 		ts := time.Time{}
