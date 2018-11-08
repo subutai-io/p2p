@@ -91,6 +91,7 @@ func main() {
 		ShowMTU        bool   // Show MTU value
 		PMTU           bool   // Whether or not PMTU capabilities should be used
 		SRVEntry       string // SRV Entry for service lookup
+		ConfigFile     string // Path to configuration YAML file
 	)
 
 	app := cli.NewApp()
@@ -164,12 +165,18 @@ func main() {
 					Value:       "",
 					Destination: &SRVEntry,
 				},
+				cli.StringFlag{
+					Name:        "config",
+					Usage:       "Path to configuration file",
+					Value:       "",
+					Destination: &ConfigFile,
+				},
 			},
 			Action: func(c *cli.Context) error {
 				if SRVEntry == "" {
 					SRVEntry = TargetURL
 				}
-				ExecDaemon(RPCPort, SRVEntry, SaveFile, Profiling, Syslog, LogLevel, MTU, PMTU)
+				ExecDaemon(RPCPort, SRVEntry, SaveFile, Profiling, Syslog, LogLevel, ConfigFile, MTU, PMTU)
 				return nil
 			},
 		},
@@ -234,12 +241,6 @@ func main() {
 					Value:       "",
 					Destination: &InterfaceName,
 				},
-				// cli.StringFlag{
-				// 	Name:        "dht",
-				// 	Usage:       "[Deprecated] Comman-separated list of DHT bootstrap nodes",
-				// 	Value:       "",
-				// 	Destination: &DHTRouters,
-				// },
 				cli.StringFlag{
 					Name:        "keyfile",
 					Usage:       "Path to a file containing crypto-key",
@@ -391,9 +392,15 @@ func main() {
 					Value:       "",
 					Destination: &Infohash,
 				},
+				cli.StringFlag{
+					Name:        "ip",
+					Usage:       "Modify IP address of interface with specified hash",
+					Value:       "",
+					Destination: &IP,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				CommandSet(RPCPort, LogLevel, Infohash, "", Key, Until)
+				CommandSet(RPCPort, LogLevel, Infohash, "", Key, Until, IP)
 				return nil
 			},
 		},

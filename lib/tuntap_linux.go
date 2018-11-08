@@ -18,13 +18,6 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
-// Constants
-const (
-	ConfigDir string = "/usr/local/etc"
-	//DefaultMTU int    = 1376
-	DefaultMTU int = 1500
-)
-
 // GetDeviceBase returns a default interface name
 func GetDeviceBase() string {
 	return "vptp"
@@ -59,6 +52,10 @@ func newTAP(tool, ip, mac, mask string, mtu int, pmtu bool) (*TAPLinux, error) {
 		MTU:  GlobalMTU,
 		PMTU: pmtu,
 	}, nil
+}
+
+func newEmptyTAP() *TAPLinux {
+	return &TAPLinux{}
 }
 
 // TAPLinux is an interface for TAP device on Linux platform
@@ -121,6 +118,9 @@ func (t *TAPLinux) SetMask(mask net.IPMask) {
 
 // Init will initialize TAP interface creation process
 func (t *TAPLinux) Init(name string) error {
+	if name == "" {
+		return fmt.Errorf("Failed to configure interface: empty name")
+	}
 	t.Name = name
 	return nil
 }

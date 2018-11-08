@@ -17,7 +17,7 @@ var UsePMTU = false
 
 // PeerToPeer - Main structure
 type PeerToPeer struct {
-	Config          Configuration                        // Network interface configuration tool
+	//Config          Configuration                        // Network interface configuration tool
 	UDPSocket       *Network                             // Peer-to-peer interconnection socket
 	LocalIPs        []net.IP                             // List of IPs available in the system
 	Dht             *DHTClient                           // DHT Client
@@ -54,10 +54,10 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	if p.Interface == nil {
 		return fmt.Errorf("Failed to initialize TAP")
 	}
-	err = p.Interface.Init(interfaceName)
 	if p.Interface.IsConfigured() {
 		return nil
 	}
+	err = p.Interface.Init(interfaceName)
 	if err != nil {
 		return fmt.Errorf("Failed to initialize TAP: %s", err)
 	}
@@ -68,16 +68,13 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	if p.Interface.GetHardwareAddress() == nil {
 		return fmt.Errorf("No Hardware address provided")
 	}
-	if p.Interface.GetName() == "" {
-		return fmt.Errorf("Wrong interface name provided: %s", p.Interface.GetName())
-	}
 
 	// Extract necessary information from config file
-	err = p.Config.Read()
-	if err != nil {
-		Log(Error, "Failed to extract information from config file: %v", err)
-		return err
-	}
+	// err = p.Config.Read()
+	// if err != nil {
+	// 	Log(Error, "Failed to extract information from config file: %v", err)
+	// 	return err
+	// }
 
 	err = p.Interface.Open()
 	if err != nil {
@@ -99,10 +96,10 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 // ListenInterface - Listens TAP interface for incoming packets
 // Read packets received by TAP interface and send them to a handlePacket goroutine
 // This goroutine will execute a callback method based on packet type
-func (p *PeerToPeer) ListenInterface() {
+func (p *PeerToPeer) ListenInterface() error {
 	if p.Interface == nil {
 		Log(Error, "Failed to start TAP listener: nil object")
-		return
+		return fmt.Errorf("nil interface")
 	}
 	p.Interface.Run()
 	for {
@@ -122,8 +119,9 @@ func (p *PeerToPeer) ListenInterface() {
 	Log(Debug, "Shutting down interface listener")
 
 	if p.Interface != nil {
-		p.Interface.Close()
+		return p.Interface.Close()
 	}
+	return fmt.Errorf("Interface already closed")
 }
 
 // IsDeviceExists - checks whether interface with the given name exists in the system or not
@@ -238,7 +236,10 @@ func New(mac, hash, keyfile, key, ttl, target string, fwd bool, port int, outbou
 }
 
 // ReadDHT will read packets from bootstrap node
-func (p *PeerToPeer) ReadDHT() {
+func (p *PeerToPeer) ReadDHT() error {
+	if p.Dht == nil {
+		return fmt.Errorf("ReadDHT: nil DHT")
+	}
 	for !p.Shutdown {
 		packet, err := p.Dht.read()
 		if err != nil {
@@ -256,11 +257,15 @@ func (p *PeerToPeer) ReadDHT() {
 			}
 		}()
 	}
+	return nil
 }
 
 // This method will block for seconds or unless we receive remote port
 // from echo server
-func (p *PeerToPeer) waitForRemotePort() {
+func (p *PeerToPeer) waitForRemotePort() error {
+	if p.UDPSocket == nil {
+		return fmt.Errorf("waitForRemotePort: nil udp socket")
+	}
 	started := time.Now()
 	for p.UDPSocket.remotePort == 0 {
 		time.Sleep(time.Millisecond * 100)
@@ -269,24 +274,28 @@ func (p *PeerToPeer) waitForRemotePort() {
 		}
 	}
 	if p.UDPSocket != nil && p.UDPSocket.remotePort == 0 {
-		Log(Warning, "Didn't received remote port")
+		Log(Warning, "Didn't receive remote port")
 		p.UDPSocket.remotePort = p.UDPSocket.GetPort()
-		return
+		return fmt.Errorf("Didn't receive remote port")
 	}
 	Log(Warning, "Remote port received: %d", p.UDPSocket.remotePort)
+	return nil
 }
 
 // PrepareInterfaces will assign IPs to interfaces
 func (p *PeerToPeer) PrepareInterfaces(ip, interfaceName string) error {
+	if p.Interface == nil {
+		return fmt.Errorf("PrepareInterfaces: nil interface")
+	}
 
 	iface, err := p.validateInterfaceName(interfaceName)
 	if err != nil {
 		Log(Error, "Interface name validation failed: %s", err)
-		return nil
+		return fmt.Errorf("Failed to validate interface name: %s", err)
 	}
 	if p.IsDeviceExists(iface) {
 		Log(Error, "Interface is already in use. Can't create duplicate")
-		return nil
+		return fmt.Errorf("Interface is already in use")
 	}
 
 	if ip == "dhcp" {
@@ -323,9 +332,10 @@ func (p *PeerToPeer) attemptPortForward(port uint16, name string) error {
 }
 
 // Init will initialize PeerToPeer
-func (p *PeerToPeer) Init() {
+func (p *PeerToPeer) Init() error {
 	p.Peers = new(PeerList)
 	p.Peers.Init()
+	return nil
 }
 
 func (p *PeerToPeer) validateMac(mac string) net.HardwareAddr {
@@ -356,7 +366,7 @@ func (p *PeerToPeer) validateInterfaceName(name string) (string, error) {
 	return name, nil
 }
 
-func (p *PeerToPeer) setupHandlers() {
+func (p *PeerToPeer) setupHandlers() error {
 	// Register network message handlers
 	p.MessageHandlers = make(map[uint16]MessageHandler)
 	p.MessageHandlers[MsgTypeNenc] = p.HandleNotEncryptedMessage
@@ -378,10 +388,16 @@ func (p *PeerToPeer) setupHandlers() {
 	p.PacketHandlers[PacketPPPoEDiscovery] = p.handlePPPoEDiscoveryPacket
 	p.PacketHandlers[PacketPPPoESession] = p.handlePPPoESessionPacket
 	p.PacketHandlers[PacketLLDP] = p.handlePacketLLDP
+
+	return nil
 }
 
 // RequestIP asks DHT to get IP from DHCP-like service
 func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
+	if p.Dht == nil {
+		return nil, nil, fmt.Errorf("RequestIP: nil dht")
+	}
+
 	Log(Debug, "Requesting IP from Bootstrap node")
 	requestedAt := time.Now()
 	interval := time.Duration(2 * time.Second)
@@ -444,7 +460,13 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 }
 
 // Run is a main loop
-func (p *PeerToPeer) Run() {
+func (p *PeerToPeer) Run() error {
+	if p.Dht == nil {
+		return fmt.Errorf("Run: nil dht")
+	}
+	if p.Interface == nil {
+		return fmt.Errorf("Run: nil interface")
+	}
 	// Request proxies from DHT
 	p.Dht.sendProxy()
 
@@ -475,9 +497,13 @@ func (p *PeerToPeer) Run() {
 		}
 	}
 	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)
+	return nil
 }
 
-func (p *PeerToPeer) checkLastDHTUpdate() {
+func (p *PeerToPeer) checkLastDHTUpdate() error {
+	if p.Dht == nil {
+		return fmt.Errorf("checkLastDHTUpdate: nil dht")
+	}
 	passed := time.Since(p.Dht.LastUpdate)
 	if passed > time.Duration(30*time.Second) {
 		Log(Debug, "DHT Last Update timeout passed")
@@ -488,12 +514,17 @@ func (p *PeerToPeer) checkLastDHTUpdate() {
 		err := p.Dht.sendFind()
 		if err != nil {
 			Log(Error, "Failed to send update: %s", err)
+			return fmt.Errorf("Failed to send DHT update: %s", err)
 		}
 	}
+	return nil
 }
 
 // TODO: Check if this method is still actual
-func (p *PeerToPeer) removeStoppedPeers() {
+func (p *PeerToPeer) removeStoppedPeers() error {
+	if p.Peers == nil {
+		return fmt.Errorf("removeStoppedPeers: nil peer list")
+	}
 	peers := p.Peers.Get()
 	for id, peer := range peers {
 		if peer.State == PeerStateStop {
@@ -503,9 +534,16 @@ func (p *PeerToPeer) removeStoppedPeers() {
 			break
 		}
 	}
+	return nil
 }
 
-func (p *PeerToPeer) checkProxies() {
+func (p *PeerToPeer) checkProxies() error {
+	if p.Dht == nil {
+		return fmt.Errorf("checkProxies: nil dht")
+	}
+	if p.ProxyManager == nil {
+		return fmt.Errorf("checkProxies: nil proxy manager")
+	}
 	p.ProxyManager.check()
 	// Unlink dead proxies
 	proxies := p.ProxyManager.get()
@@ -520,14 +558,18 @@ func (p *PeerToPeer) checkProxies() {
 		p.ProxyManager.hasChanges = false
 		p.Dht.sendReportProxy(list)
 	}
+	return nil
 }
 
-func (p *PeerToPeer) checkPeers() {
-	if len(p.Dht.ID) != 36 {
-		return
+func (p *PeerToPeer) checkPeers() error {
+	if p.Dht == nil {
+		return fmt.Errorf("checkPeers: nil dht")
 	}
 	if p.Peers == nil {
-		return
+		return fmt.Errorf("checkPeers: nil peer list")
+	}
+	if len(p.Dht.ID) != 36 {
+		return fmt.Errorf("checkPeers ID is too small")
 	}
 	for _, peer := range p.Peers.Get() {
 		for _, e := range peer.EndpointsHeap {
@@ -537,33 +579,40 @@ func (p *PeerToPeer) checkPeers() {
 			e.Measure(p.UDPSocket, p.Dht.ID)
 		}
 	}
+	return nil
 }
 
 // PrepareIntroductionMessage collects client ID, mac and IP address
 // and create a comma-separated line
 // endpoint is an address that received this introduction message
-func (p *PeerToPeer) PrepareIntroductionMessage(id, endpoint string) *P2PMessage {
+func (p *PeerToPeer) PrepareIntroductionMessage(id, endpoint string) (*P2PMessage, error) {
+	if p.Interface == nil {
+		return nil, fmt.Errorf("PrepareIntroductionMessage: nil interface")
+	}
 	var intro = id + "," + p.Interface.GetHardwareAddress().String() + "," + p.Interface.GetIP().String() + "," + endpoint
 	msg, err := p.CreateMessage(MsgTypeIntro, []byte(intro), 0, true)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return msg
+	return msg, nil
 }
 
 // WriteToDevice writes data to created TAP interface
-func (p *PeerToPeer) WriteToDevice(b []byte, proto uint16, truncated bool) {
+func (p *PeerToPeer) WriteToDevice(b []byte, proto uint16, truncated bool) error {
+	if p.Interface == nil {
+		Log(Error, "TAP Interface not initialized")
+		return fmt.Errorf("WriteToDevice: interface is nil")
+	}
+
 	var packet Packet
 	packet.Protocol = int(proto)
 	packet.Packet = b
-	if p.Interface == nil {
-		Log(Error, "TAP Interface not initialized")
-		return
-	}
 	err := p.Interface.WritePacket(&packet)
 	if err != nil {
 		Log(Error, "Failed to write to TAP Interface: %v", err)
+		return fmt.Errorf("Failed to write to TAP Interface: %v", err)
 	}
+	return nil
 }
 
 // ParseIntroString receives a comma-separated string with ID, MAC and IP of a peer
@@ -596,6 +645,12 @@ func (p *PeerToPeer) ParseIntroString(intro string) (*PeerHandshake, error) {
 
 // SendTo sends a p2p packet by MAC address
 func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
+	if p.Peers == nil {
+		return -1, fmt.Errorf("SendTo: nil peer list")
+	}
+	if p.UDPSocket == nil {
+		return -1, fmt.Errorf("SendTo: nil udp socket")
+	}
 	endpoint, err := p.Peers.GetEndpoint(dst.String())
 	if err == nil && endpoint != nil {
 		size, err := p.UDPSocket.SendMessage(msg, endpoint)
@@ -606,10 +661,12 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 
 // Close stops current instance
 func (p *PeerToPeer) Close() error {
-	for i, ip := range ActiveInterfaces {
-		if ip.Equal(p.Interface.GetIP()) {
-			ActiveInterfaces = append(ActiveInterfaces[:i], ActiveInterfaces[i+1:]...)
-			break
+	if p.Interface != nil {
+		for i, ip := range ActiveInterfaces {
+			if ip.Equal(p.Interface.GetIP()) {
+				ActiveInterfaces = append(ActiveInterfaces[:i], ActiveInterfaces[i+1:]...)
+				break
+			}
 		}
 	}
 	hash := p.Dht.NetworkHash

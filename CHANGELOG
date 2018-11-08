@@ -1,5 +1,9 @@
 # Change Log
 
+## [8.1.1] 11/06/2018
+
+* Dynamic IP reconfiguration using `set` command (#1125)
+
 ## [8.1.0] 11/05/2018
 
 * Implemented latency measurement for peers (#445)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -10,8 +11,8 @@ import (
 )
 
 // Set modifies different options of P2P daemon
-func CommandSet(rpcPort int, log, hash, keyfile, key, ttl string) {
-	out, err := sendRequest(rpcPort, "set", &DaemonArgs{Log: log, Keyfile: keyfile, Key: key, TTL: ttl})
+func CommandSet(rpcPort int, log, hash, keyfile, key, ttl, ip string) {
+	out, err := sendRequest(rpcPort, "set", &DaemonArgs{Log: log, Keyfile: keyfile, Key: key, TTL: ttl, IP: ip, Hash: hash})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -44,9 +45,17 @@ func (d *Daemon) execRESTSet(w http.ResponseWriter, r *http.Request) {
 	}
 	response := new(Response)
 	if args.Log != "" {
+		// User modifying log level
 		d.SetLog(&NameValueArg{
 			Name:  "log",
 			Value: args.Log,
+		}, response)
+	} else if args.IP != "" && args.Hash != "" {
+		// User modifying IP of the hash
+		ptp.Log(ptp.Info, "Request IP change for %s: %s", args.Hash, args.IP)
+		d.setIP(&NameValueArg{
+			Name:  args.Hash,
+			Value: args.IP,
 		}, response)
 	} else {
 		response.ExitCode = 0
@@ -59,6 +68,44 @@ func (d *Daemon) execRESTSet(w http.ResponseWriter, r *http.Request) {
 	}
 	ptp.Log(ptp.Info, "RESPONSE: %s", string(resp))
 	w.Write(resp)
+}
+
+// setIP will change IP of specified hash
+func (d *Daemon) setIP(args *NameValueArg, resp *Response) error {
+
+	hash := args.Name
+	if len(hash) == 0 {
+		resp.ExitCode = 11
+		resp.Output = "Empty hash specified"
+		return fmt.Errorf("empty hash")
+	}
+
+	ip := net.ParseIP(args.Value)
+	if ip == nil {
+		resp.ExitCode = 12
+		resp.Output = "Couldn't parse IP " + args.Value
+		return fmt.Errorf("Failed to parse IP")
+	}
+
+	instance := d.Instances.getInstance(hash)
+	if instance == nil {
+		resp.ExitCode = 4
+		resp.Output = "Instance " + hash + " wasn't found"
+		return fmt.Errorf("Instance %s not found", hash)
+	}
+
+	instance.PTP.Interface.SetIP(ip)
+	err := instance.PTP.Interface.Configure()
+	if err != nil {
+		resp.ExitCode = 2
+		resp.Output = "Failed to reconfigure network: " + err.Error()
+		return fmt.Errorf("Failed to configure network: %s", err.Error())
+	}
+
+	resp.ExitCode = 0
+	resp.Output = "Request for IP change was sent. No errors reported."
+
+	return nil
 }
 
 // SetLog modifies specific option

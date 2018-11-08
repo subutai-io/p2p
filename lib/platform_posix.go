@@ -20,12 +20,16 @@ func InitPlatform() {
 }
 
 // CheckPermissions validates platform specific permissions to run TUNTAP utilities
-func CheckPermissions() bool {
-	if os.Getuid() != 0 {
+func HavePrivileges(level int) bool {
+	if level != 0 {
 		Log(Error, "P2P cannot run in daemon mode without root privileges")
 		return false
 	}
 	return true
+}
+
+func GetPrivilegesLevel() int {
+	return os.Getuid()
 }
 
 // Syslog provides additional logging to the syslog server
