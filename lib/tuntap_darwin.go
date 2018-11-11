@@ -127,18 +127,18 @@ func (t *TAPDarwin) Open() error {
 	return nil
 }
 func (t *TAPDarwin) Close() error {
-	if t.file != nil {
-		Log(Info, "Closing network interface %s", t.GetName())
-		err := t.file.Close()
-		if err != nil {
-			return fmt.Errorf("Failed to close network interface: %s", err)
-		}
-		Log(Info, "Interface closed")
-		return nil
+	if t.file == nil {
+		return fmt.Errorf("nil interface file descriptor")
 	}
-	Log(Warning, "Skipping previously closed interface")
+	Log(Info, "Closing network interface %s", t.GetName())
+	err := t.file.Close()
+	if err != nil {
+		return fmt.Errorf("Failed to close network interface: %s", err)
+	}
+	Log(Info, "Interface closed")
 	return nil
 }
+
 func (t *TAPDarwin) Configure() error {
 	setmac := exec.Command(t.Tool, t.Name, "ether", t.Mac.String())
 	err := setmac.Run()

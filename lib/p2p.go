@@ -504,6 +504,9 @@ func (p *PeerToPeer) checkLastDHTUpdate() error {
 	if p.Dht == nil {
 		return fmt.Errorf("checkLastDHTUpdate: nil dht")
 	}
+	if p.ProxyManager == nil {
+		return fmt.Errorf("checkLastDHTUpdate: nil proxy manager")
+	}
 	passed := time.Since(p.Dht.LastUpdate)
 	if passed > time.Duration(30*time.Second) {
 		Log(Debug, "DHT Last Update timeout passed")
@@ -544,6 +547,9 @@ func (p *PeerToPeer) checkProxies() error {
 	if p.ProxyManager == nil {
 		return fmt.Errorf("checkProxies: nil proxy manager")
 	}
+	if p.UDPSocket == nil {
+		return fmt.Errorf("checkProxies: nil socket")
+	}
 	p.ProxyManager.check()
 	// Unlink dead proxies
 	proxies := p.ProxyManager.get()
@@ -567,6 +573,9 @@ func (p *PeerToPeer) checkPeers() error {
 	}
 	if p.Peers == nil {
 		return fmt.Errorf("checkPeers: nil peer list")
+	}
+	if p.UDPSocket == nil {
+		return fmt.Errorf("checkPeers: nil udp socket")
 	}
 	if len(p.Dht.ID) != 36 {
 		return fmt.Errorf("checkPeers ID is too small")
@@ -651,6 +660,12 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 	if p.UDPSocket == nil {
 		return -1, fmt.Errorf("SendTo: nil udp socket")
 	}
+	if msg == nil {
+		return -1, fmt.Errorf("SendTo: nil msg")
+	}
+	if dst == nil {
+		return -1, fmt.Errorf("SendTo: nil dst")
+	}
 	endpoint, err := p.Peers.GetEndpoint(dst.String())
 	if err == nil && endpoint != nil {
 		size, err := p.UDPSocket.SendMessage(msg, endpoint)
@@ -661,16 +676,52 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 
 // Close stops current instance
 func (p *PeerToPeer) Close() error {
-	if p.Interface != nil {
-		for i, ip := range ActiveInterfaces {
-			if ip.Equal(p.Interface.GetIP()) {
-				ActiveInterfaces = append(ActiveInterfaces[:i], ActiveInterfaces[i+1:]...)
-				break
-			}
+	hash := "Unknown hash"
+	if p.Dht != nil {
+		hash = p.Dht.NetworkHash
+	}
+	Log(Info, "Stopping instance %s", hash)
+	p.deactivateInterface()
+	p.stopPeers()
+	p.Shutdown = true
+	p.stopDHT()
+	p.stopSocket()
+	p.stopInterface()
+	p.ReadyToStop = true
+	Log(Info, "Instance %s stopped", hash)
+	return nil
+}
+
+func (p *PeerToPeer) deactivateInterface() error {
+	if p.Interface == nil {
+		return fmt.Errorf("nil interface")
+	}
+	for i, ip := range ActiveInterfaces {
+		if ip.Equal(p.Interface.GetIP()) {
+			ActiveInterfaces = append(ActiveInterfaces[:i], ActiveInterfaces[i+1:]...)
+			return nil
 		}
 	}
-	hash := p.Dht.NetworkHash
-	Log(Info, "Stopping instance %s", hash)
+
+	return fmt.Errorf("Interface %s wasn't listed as active", p.Interface.GetName())
+}
+
+func (p *PeerToPeer) stopInterface() error {
+	if p.Interface == nil {
+		return fmt.Errorf("nil interface")
+	}
+	err := p.Interface.Close()
+	if err != nil {
+		Log(Error, "Failed to close TAP interface: %s", err)
+		return err
+	}
+	return nil
+}
+
+func (p *PeerToPeer) stopPeers() error {
+	if p.Peers == nil {
+		return fmt.Errorf("nil peer list")
+	}
 	peers := p.Peers.Get()
 	for i, peer := range peers {
 		peer.SetState(PeerStateDisconnect, p)
@@ -679,26 +730,30 @@ func (p *PeerToPeer) Close() error {
 	stopStarted := time.Now()
 	for p.Peers.Length() > 0 {
 		if time.Since(stopStarted) > time.Duration(time.Second*5) {
+			Log(Warning, "Peer remove timeout passed")
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 	Log(Debug, "All peers under this instance has been removed")
+	return nil
+}
 
-	p.Shutdown = true
+func (p *PeerToPeer) stopDHT() error {
+	if p.Dht == nil {
+		return fmt.Errorf("nil dht")
+	}
 	err := p.Dht.Close()
 	if err != nil {
 		Log(Error, "Failed to stop DHT: %s", err)
+		return err
 	}
-	p.UDPSocket.Close()
-
-	if p.Interface != nil {
-		err := p.Interface.Close()
-		if err != nil {
-			Log(Error, "Failed to close TAP interface: %s", err)
-		}
-	}
-	p.ReadyToStop = true
-	Log(Info, "Instance %s stopped", hash)
 	return nil
+}
+
+func (p *PeerToPeer) stopSocket() error {
+	if p.UDPSocket == nil {
+		return fmt.Errorf("nil socket")
+	}
+	return p.UDPSocket.Close()
 }

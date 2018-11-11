@@ -144,16 +144,15 @@ func (t *TAPLinux) Open() error {
 
 // Close will close TAP interface by closing it's file descriptor
 func (t *TAPLinux) Close() error {
-	if t.file != nil {
-		Log(Info, "Closing network interface %s", t.GetName())
-		err := t.file.Close()
-		if err != nil {
-			return fmt.Errorf("Failed to close network interface: %s", err)
-		}
-		Log(Info, "Interface closed")
-		return nil
+	if t.file == nil {
+		return fmt.Errorf("nil interface file descriptor")
 	}
-	Log(Warning, "Skipping previously closed interface")
+	Log(Info, "Closing network interface %s", t.GetName())
+	err := t.file.Close()
+	if err != nil {
+		return fmt.Errorf("Failed to close network interface: %s", err)
+	}
+	Log(Info, "Interface closed")
 	return nil
 }
 
