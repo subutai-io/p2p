@@ -8,32 +8,6 @@ import (
 	"time"
 )
 
-func TestRun(t *testing.T) {
-	np := new(NetworkPeer)
-	ptp := new(PeerToPeer)
-	if np.Running == false {
-		if !true {
-			t.Error("Error in Run. np.Running is False")
-		}
-	}
-	np.Running = true
-	np.State = PeerStateStop
-	np.Run(ptp)
-	if !true {
-		t.Error("Error. Can't stop peer")
-	}
-
-}
-
-func TestStateInit(t *testing.T) {
-	np := new(NetworkPeer)
-	ptp := new(PeerToPeer)
-	err := np.stateInit(ptp)
-	if err != nil {
-		t.Error("Error in initializing peer")
-	}
-}
-
 func TestStateConnected(t *testing.T) {
 	np := new(NetworkPeer)
 	ptp := new(PeerToPeer)
@@ -288,6 +262,300 @@ func TestNetworkPeer_SetState(t *testing.T) {
 			}
 			if err := np.SetState(tt.args.state, tt.args.ptpc); (err != nil) != tt.wantErr {
 				t.Errorf("NetworkPeer.SetState() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNetworkPeer_reportState(t *testing.T) {
+	type fields struct {
+		ID                 string
+		Endpoint           *net.UDPAddr
+		KnownIPs           []*net.UDPAddr
+		Proxies            []*net.UDPAddr
+		PeerLocalIP        net.IP
+		PeerHW             net.HardwareAddr
+		State              PeerState
+		RemoteState        PeerState
+		LastContact        time.Time
+		PingCount          uint8
+		LastError          string
+		ConnectionAttempts uint8
+		handlers           map[PeerState]StateHandlerCallback
+		Running            bool
+		EndpointsHeap      []*Endpoint
+		Lock               sync.RWMutex
+		punchingInProgress bool
+		LastFind           time.Time
+		LastPunch          time.Time
+		Stat               PeerStats
+		RoutingRequired    bool
+	}
+	type args struct {
+		ptpc *PeerToPeer
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{"nil ptp", fields{}, args{}, true},
+		{"non-nil ptp", fields{}, args{new(PeerToPeer)}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			np := &NetworkPeer{
+				ID:                 tt.fields.ID,
+				Endpoint:           tt.fields.Endpoint,
+				KnownIPs:           tt.fields.KnownIPs,
+				Proxies:            tt.fields.Proxies,
+				PeerLocalIP:        tt.fields.PeerLocalIP,
+				PeerHW:             tt.fields.PeerHW,
+				State:              tt.fields.State,
+				RemoteState:        tt.fields.RemoteState,
+				LastContact:        tt.fields.LastContact,
+				PingCount:          tt.fields.PingCount,
+				LastError:          tt.fields.LastError,
+				ConnectionAttempts: tt.fields.ConnectionAttempts,
+				handlers:           tt.fields.handlers,
+				Running:            tt.fields.Running,
+				EndpointsHeap:      tt.fields.EndpointsHeap,
+				Lock:               tt.fields.Lock,
+				punchingInProgress: tt.fields.punchingInProgress,
+				LastFind:           tt.fields.LastFind,
+				LastPunch:          tt.fields.LastPunch,
+				Stat:               tt.fields.Stat,
+				RoutingRequired:    tt.fields.RoutingRequired,
+			}
+			if err := np.reportState(tt.args.ptpc); (err != nil) != tt.wantErr {
+				t.Errorf("NetworkPeer.reportState() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNetworkPeer_Run(t *testing.T) {
+	type fields struct {
+		ID                 string
+		Endpoint           *net.UDPAddr
+		KnownIPs           []*net.UDPAddr
+		Proxies            []*net.UDPAddr
+		PeerLocalIP        net.IP
+		PeerHW             net.HardwareAddr
+		State              PeerState
+		RemoteState        PeerState
+		LastContact        time.Time
+		PingCount          uint8
+		LastError          string
+		ConnectionAttempts uint8
+		handlers           map[PeerState]StateHandlerCallback
+		Running            bool
+		EndpointsHeap      []*Endpoint
+		Lock               sync.RWMutex
+		punchingInProgress bool
+		LastFind           time.Time
+		LastPunch          time.Time
+		Stat               PeerStats
+		RoutingRequired    bool
+	}
+	type args struct {
+		ptpc *PeerToPeer
+	}
+
+	ptp := new(PeerToPeer)
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{"nil ptp", fields{}, args{}},
+		{"running peer", fields{Running: true}, args{ptp}},
+		{"stopper peer", fields{State: PeerStateStop}, args{ptp}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			np := &NetworkPeer{
+				ID:                 tt.fields.ID,
+				Endpoint:           tt.fields.Endpoint,
+				KnownIPs:           tt.fields.KnownIPs,
+				Proxies:            tt.fields.Proxies,
+				PeerLocalIP:        tt.fields.PeerLocalIP,
+				PeerHW:             tt.fields.PeerHW,
+				State:              tt.fields.State,
+				RemoteState:        tt.fields.RemoteState,
+				LastContact:        tt.fields.LastContact,
+				PingCount:          tt.fields.PingCount,
+				LastError:          tt.fields.LastError,
+				ConnectionAttempts: tt.fields.ConnectionAttempts,
+				handlers:           tt.fields.handlers,
+				Running:            tt.fields.Running,
+				EndpointsHeap:      tt.fields.EndpointsHeap,
+				Lock:               tt.fields.Lock,
+				punchingInProgress: tt.fields.punchingInProgress,
+				LastFind:           tt.fields.LastFind,
+				LastPunch:          tt.fields.LastPunch,
+				Stat:               tt.fields.Stat,
+				RoutingRequired:    tt.fields.RoutingRequired,
+			}
+			np.Run(tt.args.ptpc)
+		})
+	}
+}
+
+func TestNetworkPeer_stateInit(t *testing.T) {
+	type fields struct {
+		ID                 string
+		Endpoint           *net.UDPAddr
+		KnownIPs           []*net.UDPAddr
+		Proxies            []*net.UDPAddr
+		PeerLocalIP        net.IP
+		PeerHW             net.HardwareAddr
+		State              PeerState
+		RemoteState        PeerState
+		LastContact        time.Time
+		PingCount          uint8
+		LastError          string
+		ConnectionAttempts uint8
+		handlers           map[PeerState]StateHandlerCallback
+		Running            bool
+		EndpointsHeap      []*Endpoint
+		Lock               sync.RWMutex
+		punchingInProgress bool
+		LastFind           time.Time
+		LastPunch          time.Time
+		Stat               PeerStats
+		RoutingRequired    bool
+	}
+	type args struct {
+		ptpc *PeerToPeer
+	}
+
+	ptp := new(PeerToPeer)
+
+	udp0, _ := net.ResolveUDPAddr("udp4", "192.168.0.1:1234")
+
+	kip0 := []*net.UDPAddr{
+		udp0,
+	}
+
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{"nil ptp", fields{}, args{}, true},
+		{"no ips", fields{}, args{ptp}, false},
+		{"no proxies", fields{KnownIPs: kip0}, args{ptp}, false},
+		{"passing", fields{KnownIPs: kip0, Proxies: kip0}, args{ptp}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			np := &NetworkPeer{
+				ID:                 tt.fields.ID,
+				Endpoint:           tt.fields.Endpoint,
+				KnownIPs:           tt.fields.KnownIPs,
+				Proxies:            tt.fields.Proxies,
+				PeerLocalIP:        tt.fields.PeerLocalIP,
+				PeerHW:             tt.fields.PeerHW,
+				State:              tt.fields.State,
+				RemoteState:        tt.fields.RemoteState,
+				LastContact:        tt.fields.LastContact,
+				PingCount:          tt.fields.PingCount,
+				LastError:          tt.fields.LastError,
+				ConnectionAttempts: tt.fields.ConnectionAttempts,
+				handlers:           tt.fields.handlers,
+				Running:            tt.fields.Running,
+				EndpointsHeap:      tt.fields.EndpointsHeap,
+				Lock:               tt.fields.Lock,
+				punchingInProgress: tt.fields.punchingInProgress,
+				LastFind:           tt.fields.LastFind,
+				LastPunch:          tt.fields.LastPunch,
+				Stat:               tt.fields.Stat,
+				RoutingRequired:    tt.fields.RoutingRequired,
+			}
+			if err := np.stateInit(tt.args.ptpc); (err != nil) != tt.wantErr {
+				t.Errorf("NetworkPeer.stateInit() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNetworkPeer_stateRequestedIP(t *testing.T) {
+	type fields struct {
+		ID                 string
+		Endpoint           *net.UDPAddr
+		KnownIPs           []*net.UDPAddr
+		Proxies            []*net.UDPAddr
+		PeerLocalIP        net.IP
+		PeerHW             net.HardwareAddr
+		State              PeerState
+		RemoteState        PeerState
+		LastContact        time.Time
+		PingCount          uint8
+		LastError          string
+		ConnectionAttempts uint8
+		handlers           map[PeerState]StateHandlerCallback
+		Running            bool
+		EndpointsHeap      []*Endpoint
+		Lock               sync.RWMutex
+		punchingInProgress bool
+		LastFind           time.Time
+		LastPunch          time.Time
+		Stat               PeerStats
+		RoutingRequired    bool
+	}
+	type args struct {
+		ptpc *PeerToPeer
+	}
+
+	ptp0 := new(PeerToPeer)
+	ptp1 := new(PeerToPeer)
+	ptp1.Dht = new(DHTClient)
+	ptp2 := new(PeerToPeer)
+	ptp2.Dht = new(DHTClient)
+	ptp2.Dht.Init("myhash")
+
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{"nil ptp", fields{}, args{}, true},
+		{"nil dht", fields{}, args{ptp0}, true},
+		{"node request failed", fields{}, args{ptp1}, true},
+		{"5 attemps", fields{}, args{ptp2}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			np := &NetworkPeer{
+				ID:                 tt.fields.ID,
+				Endpoint:           tt.fields.Endpoint,
+				KnownIPs:           tt.fields.KnownIPs,
+				Proxies:            tt.fields.Proxies,
+				PeerLocalIP:        tt.fields.PeerLocalIP,
+				PeerHW:             tt.fields.PeerHW,
+				State:              tt.fields.State,
+				RemoteState:        tt.fields.RemoteState,
+				LastContact:        tt.fields.LastContact,
+				PingCount:          tt.fields.PingCount,
+				LastError:          tt.fields.LastError,
+				ConnectionAttempts: tt.fields.ConnectionAttempts,
+				handlers:           tt.fields.handlers,
+				Running:            tt.fields.Running,
+				EndpointsHeap:      tt.fields.EndpointsHeap,
+				Lock:               tt.fields.Lock,
+				punchingInProgress: tt.fields.punchingInProgress,
+				LastFind:           tt.fields.LastFind,
+				LastPunch:          tt.fields.LastPunch,
+				Stat:               tt.fields.Stat,
+				RoutingRequired:    tt.fields.RoutingRequired,
+			}
+			if err := np.stateRequestedIP(tt.args.ptpc); (err != nil) != tt.wantErr {
+				t.Errorf("NetworkPeer.stateRequestedIP() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

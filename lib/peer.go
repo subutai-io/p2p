@@ -43,13 +43,14 @@ type NetworkPeer struct {
 	RoutingRequired    bool                               // Whether or not routing is required
 }
 
-func (np *NetworkPeer) reportState(ptpc *PeerToPeer) {
-	stateStr := strconv.Itoa(int(np.State))
-	if stateStr == "" {
-		return
+func (np *NetworkPeer) reportState(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("reportState: nil ptp")
 	}
+	stateStr := strconv.Itoa(int(np.State))
 	Log(Trace, "Reporting state %s to %s", StringifyState(np.State), np.ID)
 	ptpc.Dht.sendState(np.ID, stateStr)
+	return nil
 }
 
 // SetState modify local state of peer
@@ -76,10 +77,13 @@ type NetworkPeerState struct {
 
 // Run is main loop for a peer
 func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
-	np.Lock.Lock()
+	if ptpc == nil {
+		return
+	}
 	if np.Running {
 		return
 	}
+	np.Lock.Lock()
 	np.Running = true
 	np.ConnectionAttempts = 0
 	np.RoutingRequired = false
@@ -131,6 +135,9 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 // Automatically switch to PeerStateRequestedIP or PeerStateDisconnect if
 // too many connection attempts were failed
 func (np *NetworkPeer) stateInit(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
 	// Send request about IPs of a peer
 	Log(Debug, "Initializing new peer: %s", np.ID)
 	ptpc.Dht.sendNode(np.ID, []net.IP{})
@@ -155,6 +162,12 @@ func (np *NetworkPeer) stateInit(ptpc *PeerToPeer) error {
 // If peer doesn't receive endpoints in the timely manner method will switch to
 // PeerStateDisconnect. On success it will switch to PeerStateConnecting
 func (np *NetworkPeer) stateRequestedIP(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
+	if ptpc.Dht == nil {
+		return fmt.Errorf("nil dht")
+	}
 	Log(Debug, "Waiting network addresses for peer: %s", np.ID)
 	requestSentAt := time.Now()
 	updateInterval := time.Duration(time.Millisecond * 1000)
