@@ -2,7 +2,6 @@ package ptp
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"sync"
 	"testing"
@@ -36,6 +35,40 @@ func TestPeerToPeer_HandleP2PMessage(t *testing.T) {
 		rcvBytes []byte
 	}
 
+	cr0 := Crypto{
+		Active: true,
+	}
+
+	cr1 := Crypto{
+		Active: true,
+		ActiveKey: CryptoKey{
+			Key: []byte("1234567812345678"),
+		},
+	}
+
+	msg0 := &P2PMessage{
+		Header: &P2PMessageHeader{
+			Magic: MagicCookie,
+			Type:  MsgTypeIntro,
+		},
+		Data: []byte("welcome"),
+	}
+
+	p0 := new(PeerToPeer)
+	p0.Crypter = cr1
+	msg1, err := p0.CreateMessage(MsgTypeIntro, []byte("welcome"), 0, true)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	p1 := new(PeerToPeer)
+	p1.setupHandlers()
+
+	buf0 := msg0.Serialize()
+	buf1 := msg1.Serialize()
+
+	src0, _ := net.ResolveUDPAddr("udp4", "192.168.0.1:2345")
+
 	tests := []struct {
 		name    string
 		fields  fields
@@ -46,6 +79,9 @@ func TestPeerToPeer_HandleP2PMessage(t *testing.T) {
 		{"entry error", fields{}, args{err: errors.New("test error")}, true},
 		{"2 bytes header", fields{}, args{count: 2, rcvBytes: []byte{0x1, 0x2}}, true},
 		{"decrypt failed", fields{}, args{}, true},
+		{"decryption>failed", fields{Crypter: cr0}, args{len(buf0), src0, nil, buf0}, true},
+		{"decryption>passed", fields{Crypter: cr1}, args{len(buf1), src0, nil, buf1}, true},
+		{"proper handler", fields{MessageHandlers: p1.MessageHandlers}, args{len(buf0), src0, nil, buf0}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -743,12 +779,25 @@ func TestPeerToPeer_HandleLatency(t *testing.T) {
 
 	src0 := &net.UDPAddr{}
 	src1, _ := net.ResolveUDPAddr("udp4", "192.168.1.2:3456")
+	src2, _ := net.ResolveUDPAddr("udp4", "192.168.0.1:4627")
 
 	ts0, _ := time.Now().MarshalBinary()
 
 	d0 := append(LatencyRequestHeader, []byte{0x1, 0x2, 0x3, 0x4, 0x5, 0x6}...)
 	d0 = append(d0, []byte("123e4567-e89b-12d3-a456-426655440000")...)
 	d0 = append(d0, ts0...)
+
+	d1 := append(LatencyResponseHeader, []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}...)
+	d1 = append(d1, []byte("123e4567-e89b-12d3-a456-426655440000")...)
+	d1 = append(d1, ts0...)
+
+	d2 := append(LatencyResponseHeader, []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}...)
+	d2 = append(d2, []byte("123e4567-e89b-12d3-a456-426655440000")...)
+	d2 = append(d2, []byte("")...)
+
+	d3 := append(LatencyResponseHeader, []byte{0xc0, 0xa8, 0x00, 0x1, 0x12, 0x13}...)
+	d3 = append(d3, []byte("123e4567-e89b-12d3-a456-426655440000")...)
+	d3 = append(d3, ts0...)
 
 	msg0 := &P2PMessage{}
 	msg1 := &P2PMessage{
@@ -760,9 +809,23 @@ func TestPeerToPeer_HandleLatency(t *testing.T) {
 	msg3 := &P2PMessage{
 		Data: append(LatencyRequestHeader, []byte("shortpayload")...),
 	}
-	fmt.Println(len(d0))
 	msg4 := &P2PMessage{
 		Data: d0,
+	}
+	msg5 := &P2PMessage{
+		Data: append(LatencyResponseHeader, []byte("shortpayload")...),
+	}
+	msg6 := &P2PMessage{
+		Data: d1,
+	}
+	msg7 := &P2PMessage{
+		Data: d2,
+	}
+	msg8 := &P2PMessage{
+		Data: d3,
+	}
+	msg9 := &P2PMessage{
+		Data: []byte("this is a completely broken packet for a broken test"),
 	}
 
 	proxy0 := &proxyServer{
@@ -786,6 +849,15 @@ func TestPeerToPeer_HandleLatency(t *testing.T) {
 	pl2.peers["123e4567-e89b-12d3-a456-426655440000"] = &NetworkPeer{
 		ID:       "123e4567-e89b-12d3-a456-426655440000",
 		Endpoint: src1,
+	}
+	pl3 := &PeerList{}
+	pl3.Init()
+	pl3.peers["123e4567-e89b-12d3-a456-426655440000"] = &NetworkPeer{
+		ID:       "123e4567-e89b-12d3-a456-426655440000",
+		Endpoint: src1,
+		EndpointsHeap: []*Endpoint{
+			&Endpoint{Addr: src2},
+		},
 	}
 
 	cr0 := Crypto{
@@ -814,6 +886,12 @@ func TestPeerToPeer_HandleLatency(t *testing.T) {
 		{"request>nil endpoint", fields{ProxyManager: pm0, Peers: pl1, UDPSocket: socket0}, args{msg4, src1}, true},
 		// This passes because CreateMessageStatic never fails
 		{"request>failed response", fields{Crypter: cr0, ProxyManager: pm0, Peers: pl2, UDPSocket: socket0}, args{msg4, src1}, false},
+		{"response>short", fields{ProxyManager: pm0, Peers: pl0, UDPSocket: socket0}, args{msg5, src0}, true},
+		{"response>broken address", fields{ProxyManager: pm0, Peers: pl0, UDPSocket: socket0}, args{msg6, src0}, true},
+		{"response>broken timestamp", fields{ProxyManager: pm0, Peers: pl0, UDPSocket: socket0}, args{msg7, src0}, true},
+		{"response>passing", fields{ProxyManager: pm0, Peers: pl3, UDPSocket: socket0}, args{msg8, src1}, false},
+		{"response>ep not found", fields{ProxyManager: pm0, Peers: pl2, UDPSocket: socket0}, args{msg8, src1}, true},
+		{"malformed packet", fields{ProxyManager: pm0, Peers: pl2, UDPSocket: socket0}, args{msg9, src1}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
