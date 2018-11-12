@@ -618,7 +618,7 @@ func TestPeerToPeer_Init(t *testing.T) {
 		fields  fields
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"empty test", fields{}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -672,13 +672,17 @@ func TestPeerToPeer_validateMac(t *testing.T) {
 	type args struct {
 		mac string
 	}
+
+	hw0, _ := net.ParseMAC("00:11:22:33:44:55")
+
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
 		want   net.HardwareAddr
 	}{
-		// TODO: Add test cases.
+		{"empty mac", fields{}, args{"00:11:22:33:44:55"}, hw0},
+		{"empty mac>broken", fields{}, args{"xx:cc:xx:cc:xx:cc"}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

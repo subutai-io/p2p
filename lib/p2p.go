@@ -347,10 +347,10 @@ func (p *PeerToPeer) validateMac(mac string) net.HardwareAddr {
 			Log(Error, "Invalid MAC address provided: %v", err)
 			return nil
 		}
-	} else {
-		mac, hw = GenerateMAC()
-		Log(Debug, "Generate MAC for TAP device: %s", mac)
+		return hw
 	}
+	mac, hw = GenerateMAC()
+	Log(Debug, "Generate MAC for TAP device: %s", mac)
 	return hw
 }
 
