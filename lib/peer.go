@@ -76,12 +76,12 @@ type NetworkPeerState struct {
 }
 
 // Run is main loop for a peer
-func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
+func (np *NetworkPeer) Run(ptpc *PeerToPeer) error {
 	if ptpc == nil {
-		return
+		return fmt.Errorf("nil ptp")
 	}
 	if np.Running {
-		return
+		return fmt.Errorf("already running")
 	}
 	np.Lock.Lock()
 	np.Running = true
@@ -128,6 +128,7 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) {
 		time.Sleep(time.Millisecond * 500)
 	}
 	Log(Info, "Peer %s has been stopped", np.ID)
+	return nil
 }
 
 // State: Peer Initialization
@@ -213,8 +214,8 @@ func (np *NetworkPeer) stateStop(ptpc *PeerToPeer) error {
 // Utilities functions
 
 // RequestForwarder sends a request for a proxy with DHT client
-func (np *NetworkPeer) RequestForwarder(ptpc *PeerToPeer) {
-	ptpc.Dht.sendRequestProxy(np.ID)
+func (np *NetworkPeer) RequestForwarder(ptpc *PeerToPeer) error {
+	return ptpc.Dht.sendRequestProxy(np.ID)
 }
 
 // Run hope punching in a separate goroutine and switch to
@@ -241,9 +242,12 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 	return nil
 }
 
-func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) {
+func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
 	if np.punchingInProgress {
-		return
+		return fmt.Errorf("hole punchin in progress")
 	}
 	np.LastPunch = time.Now()
 	eps := []*net.UDPAddr{}
@@ -279,6 +283,7 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) {
 		round++
 	}
 	np.punchingInProgress = false
+	return nil
 }
 
 func (np *NetworkPeer) isEndpointActive(ep *net.UDPAddr) bool {
@@ -306,6 +311,9 @@ func (np *NetworkPeer) stateWaitingForProxy(ptpc *PeerToPeer) error {
 }
 
 func (np *NetworkPeer) stateWaitingToConnect(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
 	Log(Debug, "Waiting for peer [%s] to join connection state", np.ID)
 	started := time.Now()
 	timeout := time.Duration(30000 * time.Millisecond)
@@ -402,6 +410,9 @@ func (np *NetworkPeer) sortEndpoints(ptpc *PeerToPeer) ([]*Endpoint, []*Endpoint
 }
 
 func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
 	for len(np.EndpointsHeap) == 0 {
 		return nil
 	}
@@ -441,9 +452,6 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 
 	// If current active endpoint is a proxy we will force routing
 	for _, proxy := range proxies {
-		if proxy == nil || proxy.Addr == nil {
-			continue
-		}
 		if proxy.Addr.String() == np.Endpoint.String() {
 			np.RoutingRequired = true
 		}
@@ -454,9 +462,12 @@ func (np *NetworkPeer) route(ptpc *PeerToPeer) error {
 
 // stateConnected is executed when connection was established and peer is operating normally
 func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
 	np.route(ptpc)
 	if np.State != PeerStateConnected {
-		return nil
+		return fmt.Errorf("wrong state")
 	}
 
 	if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && np.Stat.localNum < 1 && np.Stat.internetNum < 1 {
@@ -476,9 +487,12 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 }
 
 func (np *NetworkPeer) stateCooldown(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
 	Log(Debug, "Peer %s in cooldown", np.ID)
 	started := time.Now()
-	for time.Since(started) < time.Duration(time.Second*30) {
+	for time.Since(started) < time.Duration(time.Second*20) {
 		time.Sleep(time.Millisecond * 100)
 	}
 	np.ConnectionAttempts++
@@ -489,9 +503,15 @@ func (np *NetworkPeer) stateCooldown(ptpc *PeerToPeer) error {
 // This method will append new endpoint to the end of endpoints slice
 // without any checks
 func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
+	if addr == nil {
+		return fmt.Errorf("nil endpoint address")
+	}
 	np.Lock.Lock()
 	defer np.Lock.Unlock()
 	for _, ep := range np.EndpointsHeap {
+		if ep.Addr == nil {
+			continue
+		}
 		if ep.Addr.String() == addr.String() {
 			return fmt.Errorf("Endpoint already exists")
 		}
@@ -504,11 +524,23 @@ func (np *NetworkPeer) addEndpoint(addr *net.UDPAddr) error {
 
 // This method will send xpeer ping message to endpoints
 // if ping timeout has been passed
-func (np *NetworkPeer) pingEndpoints(ptpc *PeerToPeer) {
+func (np *NetworkPeer) pingEndpoints(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
+	if ptpc.Dht == nil {
+		return fmt.Errorf("nil dht")
+	}
+	if ptpc.UDPSocket == nil {
+		return fmt.Errorf("nil socket")
+	}
 	np.Lock.RLock()
 	for i, ep := range np.EndpointsHeap {
 		if time.Since(ep.LastPing) > EndpointPingInterval {
 			np.EndpointsHeap[i].LastPing = time.Now()
+			if ep.Addr == nil {
+				continue
+			}
 			payload := append([]byte("q"+ptpc.Dht.ID), []byte(ep.Addr.String())...)
 			msg, err := ptpc.CreateMessage(MsgTypeXpeerPing, payload, 0, true)
 			if err != nil {
@@ -520,13 +552,17 @@ func (np *NetworkPeer) pingEndpoints(ptpc *PeerToPeer) {
 		}
 	}
 	np.Lock.RUnlock()
+	return nil
 }
 
 // This method will check if remote state requires local
 // state to be modified (e.g. on disconnect)
 // This method should be called only when local state is
 // Connected
-func (np *NetworkPeer) syncWithRemoteState(ptpc *PeerToPeer) {
+func (np *NetworkPeer) syncWithRemoteState(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
 	if np.RemoteState == PeerStateDisconnect {
 		Log(Debug, "Peer %s disconnecting", np.ID)
 		np.SetState(PeerStateDisconnect, ptpc)
@@ -541,18 +577,21 @@ func (np *NetworkPeer) syncWithRemoteState(ptpc *PeerToPeer) {
 		Log(Debug, "Peer %s is waiting for us to connect", np.ID)
 		np.SetState(PeerStateWaitingToConnect, ptpc)
 	}
+	return nil
 }
 
 // BumpEndpoint will update LastContact and LastPing of specified peer to current time
-func (np *NetworkPeer) BumpEndpoint(epAddr string) {
+func (np *NetworkPeer) BumpEndpoint(epAddr string) error {
 	np.Lock.Lock()
 	defer np.Lock.Unlock()
 	for _, ep := range np.EndpointsHeap {
 		if ep.Addr.String() == epAddr {
 			ep.LastContact = time.Now()
 			ep.LastPing = time.Now()
+			return nil
 		}
 	}
+	return fmt.Errorf("Endpoint %s wasn't found", epAddr)
 }
 
 // IsRunning will return bool variable
