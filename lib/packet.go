@@ -26,7 +26,7 @@ import (
 type PacketType int
 
 // PacketHandlerCallback represents a callback function for each packet type
-type PacketHandlerCallback func(data []byte, proto int)
+type PacketHandlerCallback func(data []byte, proto int) error
 
 // Packet Types
 const (
@@ -111,83 +111,91 @@ type ARPPacket struct {
 // Receiving a packet by device means that some application sent a network
 // packet within a subnet in which our application works.
 // This method calls appropriate gorouting for extracted packet protocol
-func (p *PeerToPeer) handlePacket(contents []byte, proto int) {
+func (p *PeerToPeer) handlePacket(contents []byte, proto int) error {
 	callback, exists := p.PacketHandlers[PacketType(proto)]
 	if exists {
-		callback(contents, proto)
-	} else {
-		Log(Warning, "Captured undefined packet: %d", PacketType(proto))
+		return callback(contents, proto)
 	}
+	Log(Warning, "Captured undefined packet: %d", PacketType(proto))
+	return fmt.Errorf("Captured undefined packet: %d", PacketType(proto))
 }
 
 // Handles a IPv4 packet and sends it to it's destination
-func (p *PeerToPeer) handlePacketIPv4(contents []byte, proto int) {
+func (p *PeerToPeer) handlePacketIPv4(contents []byte, proto int) error {
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		Log(Error, "Failed to unmarshal IPv4 packet")
+		return fmt.Errorf("Failed to unmarshal IPv4 packet")
 	}
 	if f.EtherType != ethernet.EtherTypeIPv4 {
-		return
+		return fmt.Errorf("Wrong packet type in IPv4 handler. Got %d. Expecting %d", f.EtherType, ethernet.EtherTypeIPv4)
 	}
+
 	msg, err := p.CreateMessage(MsgTypeNenc, contents, uint16(proto), true)
 	if err == nil && msg != nil {
-		p.SendTo(f.Destination, msg)
+		_, err = p.SendTo(f.Destination, msg)
+		return err
 	}
+	return err
 }
 
 // TODO: Implement IPv6 Support
-func (p *PeerToPeer) handlePacketIPv6(contents []byte, proto int) {
-
+func (p *PeerToPeer) handlePacketIPv6(contents []byte, proto int) error {
+	return nil
 }
 
 // TODO: Implement PARC Universal Support
-func (p *PeerToPeer) handlePARCUniversalPacket(contents []byte, proto int) {
-
+func (p *PeerToPeer) handlePARCUniversalPacket(contents []byte, proto int) error {
+	return nil
 }
 
 // TODO: Implement RARP Support
-func (p *PeerToPeer) handleRARPPacket(contents []byte, proto int) {
-
+func (p *PeerToPeer) handleRARPPacket(contents []byte, proto int) error {
+	return nil
 }
 
 // TODO: Implement 802.1q Support
-func (p *PeerToPeer) handle8021qPacket(contents []byte, proto int) {
-
+func (p *PeerToPeer) handle8021qPacket(contents []byte, proto int) error {
+	return nil
 }
 
 // TODO: Implement PPPoE Discovery Support
-func (p *PeerToPeer) handlePPPoEDiscoveryPacket(contents []byte, proto int) {
-
+func (p *PeerToPeer) handlePPPoEDiscoveryPacket(contents []byte, proto int) error {
+	return nil
 }
 
 // TODO: Implement PPPoE Session Support
-func (p *PeerToPeer) handlePPPoESessionPacket(contents []byte, proto int) {
-
+func (p *PeerToPeer) handlePPPoESessionPacket(contents []byte, proto int) error {
+	return nil
 }
 
-func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
+func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) error {
 	// Prepare new ethernet frame and fill it with
 	// contents of the packet
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
 		Log(Error, "Failed to Unmarshal ARP Binary")
-		return
+		return fmt.Errorf("failed to unmarshal ARP binary: %s", err.Error())
 	}
 
 	packet := new(ARPPacket)
 	if err := packet.UnmarshalARP(f.Payload); err != nil {
 		Log(Error, "Failed to unmarshal arp")
-		return
+		return fmt.Errorf("failed to unmarshal ARP packet: %s", err.Error())
 	}
+	if p.Peers == nil {
+		return fmt.Errorf("nil peer list")
+	}
+	fmt.Println(packet.TargetIP.String())
 	id, err := p.Peers.GetID(packet.TargetIP.String())
 	if err != nil {
 		Log(Trace, "Unknown IP requested: %s", packet.TargetIP.String())
-		return
+		return fmt.Errorf("requested unknown IP: %s", packet.TargetIP)
 	}
 	peer := p.Peers.GetPeer(id)
 	if peer == nil {
 		Log(Debug, "Can't lookup address: Specified peer was not found")
-		return
+		return fmt.Errorf("peer not found during arp request: %s", id)
 	}
 	hwAddr := peer.PeerHW
 	if hwAddr == nil {
@@ -205,13 +213,13 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
 	ip := net.ParseIP(packet.TargetIP.String())
 	response, err := reply.NewPacket(OperationReply, hwAddr, ip, packet.SenderHardwareAddr, packet.SenderIP)
 	if err != nil {
-		Log(Error, "Failed to create ARP reply")
-		return
+		Log(Error, "Failed to create ARP response")
+		return fmt.Errorf("failed to create app response: %s", err.Error())
 	}
 	rp, err := response.MarshalBinary()
 	if err != nil {
 		Log(Error, "Failed to marshal ARP response packet")
-		return
+		return fmt.Errorf("failed to marshal arp response binary: %s", err.Error())
 	}
 
 	fr := &ethernet.Frame{
@@ -224,13 +232,14 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) {
 	fb, err := fr.MarshalBinary()
 	if err != nil {
 		Log(Error, "Failed to marshal ARP Ethernet Frame")
+		return fmt.Errorf("failed to marshal ARP ethernet frame: %s", err.Error())
 	}
 	Log(Trace, "%v", packet.String())
-	p.WriteToDevice(fb, uint16(proto), false)
+	return p.WriteToDevice(fb, uint16(proto), false)
 }
 
-func (p *PeerToPeer) handlePacketLLDP(contents []byte, proto int) {
-
+func (p *PeerToPeer) handlePacketLLDP(contents []byte, proto int) error {
+	return nil
 }
 
 func (p *ARPPacket) String() string {
@@ -287,11 +296,6 @@ func (p *ARPPacket) MarshalBinary() ([]byte, error) {
 
 // UnmarshalARP unmarshals ARP header
 func (p *ARPPacket) UnmarshalARP(b []byte) error {
-	// Must have enough room to retrieve hardware address and IP lengths
-	if len(b) < 8 {
-		return io.ErrUnexpectedEOF
-	}
-
 	// Must have enough room to retrieve both hardware address and IP addresses
 	if len(b) < 28 {
 		return io.ErrUnexpectedEOF

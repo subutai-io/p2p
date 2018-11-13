@@ -124,26 +124,11 @@ func (p *PeerToPeer) ListenInterface() error {
 	return fmt.Errorf("Interface already closed")
 }
 
-// IsDeviceExists - checks whether interface with the given name exists in the system or not
-func (p *PeerToPeer) IsDeviceExists(name string) bool {
-	inf, err := net.Interfaces()
-	if err != nil {
-		Log(Error, "Failed to retrieve list of network interfaces")
-		return true
-	}
-	for _, i := range inf {
-		if i.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
 // GenerateDeviceName method will generate device name if none were specified at startup
 func (p *PeerToPeer) GenerateDeviceName(i int) string {
 	tap, _ := newTAP("", "127.0.0.1", "00:00:00:00:00:00", "", 0, p.UsePMTU)
 	var devName = tap.GetBasename() + fmt.Sprintf("%d", i)
-	if p.IsDeviceExists(devName) {
+	if isDeviceExists(devName) {
 		return p.GenerateDeviceName(i + 1)
 	}
 	return devName
@@ -292,8 +277,9 @@ func (p *PeerToPeer) PrepareInterfaces(ip, interfaceName string) error {
 	if err != nil {
 		Log(Error, "Interface name validation failed: %s", err)
 		return fmt.Errorf("Failed to validate interface name: %s", err)
+
 	}
-	if p.IsDeviceExists(iface) {
+	if isDeviceExists(iface) {
 		Log(Error, "Interface is already in use. Can't create duplicate")
 		return fmt.Errorf("Interface is already in use")
 	}
@@ -303,17 +289,22 @@ func (p *PeerToPeer) PrepareInterfaces(ip, interfaceName string) error {
 		if err != nil {
 			return err
 		}
+
 		p.Interface.SetIP(ipn)
 		p.Interface.SetMask(maskn)
-	} else {
-		p.Interface.SetIP(net.ParseIP(ip))
-		ipn, maskn, err := p.ReportIP(ip, p.Interface.GetHardwareAddress().String(), iface)
-		if err != nil {
-			return err
-		}
-		p.Interface.SetIP(ipn)
-		p.Interface.SetMask(maskn)
+		return nil
 	}
+	staticIP := net.ParseIP(ip)
+	if staticIP == nil {
+		return fmt.Errorf("Failed to parse specified IP: %s", ip)
+	}
+	p.Interface.SetIP(staticIP)
+	ipn, maskn, err := p.ReportIP(ip, p.Interface.GetHardwareAddress().String(), iface)
+	if err != nil {
+		return err
+	}
+	p.Interface.SetIP(ipn)
+	p.Interface.SetMask(maskn)
 	return nil
 }
 
@@ -347,10 +338,10 @@ func (p *PeerToPeer) validateMac(mac string) net.HardwareAddr {
 			Log(Error, "Invalid MAC address provided: %v", err)
 			return nil
 		}
-	} else {
-		mac, hw = GenerateMAC()
-		Log(Debug, "Generate MAC for TAP device: %s", mac)
+		return hw
 	}
+	mac, hw = GenerateMAC()
+	Log(Debug, "Generate MAC for TAP device: %s", mac)
 	return hw
 }
 
