@@ -390,11 +390,11 @@ func TestProxyManager_getBestProxy(t *testing.T) {
 	}
 	pr1 := &proxyServer{
 		Status:  proxyActive,
-		Latency: time.Since(time.Unix(0, 0)),
+		Latency: time.Since(time.Unix(10, 0)),
 	}
 	pr2 := &proxyServer{
 		Status:  proxyActive,
-		Latency: time.Since(time.Unix(1, 1)),
+		Latency: time.Since(time.Unix(100, 1)),
 	}
 
 	list := make(map[string]*proxyServer)
