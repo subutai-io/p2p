@@ -155,65 +155,6 @@ func TestPeerToPeer_ListenInterface(t *testing.T) {
 	}
 }
 
-func TestPeerToPeer_IsDeviceExists(t *testing.T) {
-	type fields struct {
-		UDPSocket       *Network
-		LocalIPs        []net.IP
-		Dht             *DHTClient
-		Crypter         Crypto
-		Shutdown        bool
-		ForwardMode     bool
-		ReadyToStop     bool
-		MessageHandlers map[uint16]MessageHandler
-		PacketHandlers  map[PacketType]PacketHandlerCallback
-		PeersLock       sync.Mutex
-		Hash            string
-		Interface       TAP
-		Peers           *PeerList
-		HolePunching    sync.Mutex
-		ProxyManager    *ProxyManager
-		outboundIP      net.IP
-		UsePMTU         bool
-	}
-	type args struct {
-		name string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &PeerToPeer{
-				UDPSocket:       tt.fields.UDPSocket,
-				LocalIPs:        tt.fields.LocalIPs,
-				Dht:             tt.fields.Dht,
-				Crypter:         tt.fields.Crypter,
-				Shutdown:        tt.fields.Shutdown,
-				ForwardMode:     tt.fields.ForwardMode,
-				ReadyToStop:     tt.fields.ReadyToStop,
-				MessageHandlers: tt.fields.MessageHandlers,
-				PacketHandlers:  tt.fields.PacketHandlers,
-				PeersLock:       tt.fields.PeersLock,
-				Hash:            tt.fields.Hash,
-				Interface:       tt.fields.Interface,
-				Peers:           tt.fields.Peers,
-				HolePunching:    tt.fields.HolePunching,
-				ProxyManager:    tt.fields.ProxyManager,
-				outboundIP:      tt.fields.outboundIP,
-				UsePMTU:         tt.fields.UsePMTU,
-			}
-			if got := p.IsDeviceExists(tt.args.name); got != tt.want {
-				t.Errorf("PeerToPeer.IsDeviceExists() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestPeerToPeer_GenerateDeviceName(t *testing.T) {
 	type fields struct {
 		UDPSocket       *Network
@@ -435,12 +376,19 @@ func TestPeerToPeer_waitForRemotePort(t *testing.T) {
 		outboundIP      net.IP
 		UsePMTU         bool
 	}
+
+	socket0 := new(Network)
+	socket1 := new(Network)
+	socket1.remotePort = 1
+
 	tests := []struct {
 		name    string
 		fields  fields
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil socket", fields{}, true},
+		{"no port timeout", fields{UDPSocket: socket0}, true},
+		{"has port", fields{UDPSocket: socket1}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -495,13 +443,21 @@ func TestPeerToPeer_PrepareInterfaces(t *testing.T) {
 		ip            string
 		interfaceName string
 	}
+
+	inf0, _ := newTAP("ip", "10.10.10.1", "00:11:22:33:44:55", "255.255.255.0", 1500, false)
+	n0 := "thisisareallylongnetworkinterfacename"
+
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil interfeace", fields{}, args{}, true},
+		{"broken interface name", fields{Interface: inf0}, args{interfaceName: n0}, true},
+		{"dhcp>request ip failed", fields{Interface: inf0}, args{"dhcp", ""}, true},
+		{"static>broken", fields{Interface: inf0}, args{"badip", ""}, true},
+		{"static>report ip failed", fields{Interface: inf0}, args{"10.10.10.1", ""}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -618,7 +574,7 @@ func TestPeerToPeer_Init(t *testing.T) {
 		fields  fields
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"empty test", fields{}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -672,13 +628,17 @@ func TestPeerToPeer_validateMac(t *testing.T) {
 	type args struct {
 		mac string
 	}
+
+	hw0, _ := net.ParseMAC("00:11:22:33:44:55")
+
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
 		want   net.HardwareAddr
 	}{
-		// TODO: Add test cases.
+		{"empty mac", fields{}, args{"00:11:22:33:44:55"}, hw0},
+		{"empty mac>broken", fields{}, args{"xx:cc:xx:cc:xx:cc"}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
