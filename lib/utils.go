@@ -183,3 +183,18 @@ func SrvLookup(name, proto, domain string) (map[int]string, error) {
 func NanoToMilliseconds(nano int64) int64 {
 	return nano / int64(time.Millisecond)
 }
+
+// isDeviceExists - checks whether interface with the given name exists in the system or not
+func isDeviceExists(name string) bool {
+	inf, err := net.Interfaces()
+	if err != nil {
+		Log(Error, "Failed to retrieve list of network interfaces")
+		return true
+	}
+	for _, i := range inf {
+		if i.Name == name {
+			return true
+		}
+	}
+	return false
+}

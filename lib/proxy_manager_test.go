@@ -357,7 +357,7 @@ func Test_proxyServer_Close(t *testing.T) {
 		fields  fields
 		wantErr bool
 	}{
-	// TODO: Add test cases.
+		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -370,6 +370,66 @@ func Test_proxyServer_Close(t *testing.T) {
 			}
 			if err := p.Close(); (err != nil) != tt.wantErr {
 				t.Errorf("proxyServer.Close() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestProxyManager_getBestProxy(t *testing.T) {
+	type fields struct {
+		proxies    map[string]*proxyServer
+		lock       sync.RWMutex
+		hasChanges bool
+	}
+
+	pr := &proxyServer{
+		Status: proxyDisconnected,
+	}
+	pr0 := &proxyServer{
+		Status: proxyActive,
+	}
+	pr1 := &proxyServer{
+		Status:  proxyActive,
+		Latency: time.Since(time.Unix(0, 0)),
+	}
+	pr2 := &proxyServer{
+		Status:  proxyActive,
+		Latency: time.Since(time.Unix(1, 1)),
+	}
+
+	list := make(map[string]*proxyServer)
+	list["pr"] = pr
+
+	list0 := make(map[string]*proxyServer)
+	list0["pr0"] = pr0
+
+	list1 := make(map[string]*proxyServer)
+	list1["pr1"] = pr1
+	list1["pr2"] = pr2
+
+	list2 := make(map[string]*proxyServer)
+	list2["pr2"] = pr2
+	list2["pr1"] = pr1
+
+	tests := []struct {
+		name   string
+		fields fields
+		want   *proxyServer
+	}{
+		{"no active proxy", fields{proxies: list}, nil},
+		{"empty latency", fields{proxies: list0}, pr0},
+		{"normal latency", fields{proxies: list1}, pr2},
+		{"normal latency", fields{proxies: list2}, pr2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &ProxyManager{
+				proxies:    tt.fields.proxies,
+				lock:       tt.fields.lock,
+				hasChanges: tt.fields.hasChanges,
+			}
+			if got := p.getBestProxy(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ProxyManager.getBestProxy() = %v, want %v", got, tt.want)
 			}
 		})
 	}

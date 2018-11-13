@@ -235,3 +235,24 @@ func TestPeerToPeer_FindNetworkAddresses(t *testing.T) {
 		})
 	}
 }
+
+func Test_isDeviceExists(t *testing.T) {
+	type args struct {
+		name string
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{"empty name", args{}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isDeviceExists(tt.args.name); got != tt.want {
+				t.Errorf("isDeviceExists() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
