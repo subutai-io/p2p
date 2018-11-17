@@ -199,6 +199,9 @@ func (np *NetworkPeer) stateRequestedIP(ptpc *PeerToPeer) error {
 
 // stateDisconnect is executed when we've lost or terminated connection with a peer
 func (np *NetworkPeer) stateDisconnect(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
 	Log(Debug, "Disconnecting %s", np.ID)
 	np.SetState(PeerStateStop, ptpc)
 	// TODO: Send stop to DHT
@@ -207,6 +210,9 @@ func (np *NetworkPeer) stateDisconnect(ptpc *PeerToPeer) error {
 
 // stateStop is executed when we've terminated connection with a peer
 func (np *NetworkPeer) stateStop(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
 	Log(Debug, "Peer %s has been stopped", np.ID)
 	return nil
 }
@@ -215,18 +221,27 @@ func (np *NetworkPeer) stateStop(ptpc *PeerToPeer) error {
 
 // RequestForwarder sends a request for a proxy with DHT client
 func (np *NetworkPeer) RequestForwarder(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
+	if ptpc.Dht == nil {
+		return fmt.Errorf("nil dht")
+	}
 	return ptpc.Dht.sendRequestProxy(np.ID)
 }
 
 // Run hope punching in a separate goroutine and switch to
 // Routing/Connected mode
 func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
 	Log(Debug, "Connecting to %s", np.ID)
 
 	started := time.Now()
 	np.punchUDPHole(ptpc)
 
-	for time.Since(started) < time.Duration(time.Millisecond*30000) {
+	for time.Since(started) < UDPHolePunchTimeout {
 		if len(np.EndpointsHeap) > 0 {
 			np.SetState(PeerStateConnected, ptpc)
 			return nil
@@ -246,6 +261,12 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) error {
 	if ptpc == nil {
 		return fmt.Errorf("nil ptp")
 	}
+	if ptpc.Dht == nil {
+		return fmt.Errorf("nil dht")
+	}
+	if ptpc.UDPSocket == nil {
+		return fmt.Errorf("nil udp socket")
+	}
 	if np.punchingInProgress {
 		return fmt.Errorf("hole punchin in progress")
 	}
@@ -260,7 +281,8 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) error {
 	np.RoutingRequired = true
 	for round < 10 {
 		for _, ep := range eps {
-			if np.isEndpointActive(ep) {
+			active, err := np.isEndpointActive(ep)
+			if err != nil || active {
 				continue
 			}
 			// if IsInterfaceLocal(ep.IP) {
@@ -286,22 +308,37 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) error {
 	return nil
 }
 
-func (np *NetworkPeer) isEndpointActive(ep *net.UDPAddr) bool {
+func (np *NetworkPeer) isEndpointActive(ep *net.UDPAddr) (bool, error) {
+	if ep == nil {
+		return false, fmt.Errorf("nil endpoint")
+	}
 	for _, nep := range np.EndpointsHeap {
+		if nep.Addr == nil {
+			continue
+		}
 		if nep.Addr.String() == ep.String() {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 func (np *NetworkPeer) stateRequestingProxy(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
+	if ptpc.Dht == nil {
+		return fmt.Errorf("nil dht")
+	}
 	ptpc.Dht.sendRequestProxy(np.ID)
 	np.SetState(PeerStateWaitingForProxy, ptpc)
 	return nil
 }
 
 func (np *NetworkPeer) stateWaitingForProxy(ptpc *PeerToPeer) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
 	started := time.Now()
 	for time.Since(started) < time.Duration(time.Millisecond*4000) {
 		time.Sleep(time.Millisecond * 100)
