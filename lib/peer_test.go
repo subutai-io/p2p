@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/subutai-io/p2p/protocol"
 )
 
 func TestNetworkPeer_reportState(t *testing.T) {
@@ -412,7 +414,8 @@ func TestNetworkPeer_stateDisconnect(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil ptp", fields{}, args{}, true},
+		{"passing", fields{}, args{new(PeerToPeer)}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -479,7 +482,8 @@ func TestNetworkPeer_stateStop(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil ptp", fields{}, args{}, true},
+		{"passing", fields{}, args{new(PeerToPeer)}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -540,13 +544,22 @@ func TestNetworkPeer_RequestForwarder(t *testing.T) {
 	type args struct {
 		ptpc *PeerToPeer
 	}
+
+	ptp0 := new(PeerToPeer)
+	ptp1 := new(PeerToPeer)
+	ptp1.Dht = new(DHTClient)
+	ptp1.Dht.Init("test")
+	ptp1.Dht.OutgoingData = make(chan *protocol.DHTPacket, 1)
+
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil ptp", fields{}, args{}, true},
+		{"nil dht", fields{}, args{ptp0}, true},
+		{"passing", fields{ID: "32212558-34fb-4945-b4dc-f316f47e8816"}, args{ptp1}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -607,13 +620,24 @@ func TestNetworkPeer_stateConnecting(t *testing.T) {
 	type args struct {
 		ptpc *PeerToPeer
 	}
+
+	ptp0 := new(PeerToPeer)
+
+	heap0 := []*Endpoint{
+		&Endpoint{},
+	}
+
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil ptp", fields{}, args{}, true},
+		{"disconnect", fields{RemoteState: PeerStateWaitingToConnect}, args{ptp0}, false},
+		{"connected", fields{EndpointsHeap: heap0}, args{ptp0}, false},
+		{"conection failed", fields{}, args{ptp0}, false},
+		//{""}
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -674,13 +698,42 @@ func TestNetworkPeer_punchUDPHole(t *testing.T) {
 	type args struct {
 		ptpc *PeerToPeer
 	}
+
+	udp0, _ := net.ResolveUDPAddr("udp4", "10.0.0.1:2345")
+	udp1, _ := net.ResolveUDPAddr("udp4", "10.0.0.2:3456")
+	udp2, _ := net.ResolveUDPAddr("udp4", "10.0.0.3:4567")
+
+	ptp0 := new(PeerToPeer)
+	ptp1 := new(PeerToPeer)
+	ptp1.Dht = new(DHTClient)
+	ptp2 := new(PeerToPeer)
+	ptp2.Dht = new(DHTClient)
+	ptp2.UDPSocket = new(Network)
+	ptp3 := new(PeerToPeer)
+	ptp3.Dht = new(DHTClient)
+	ptp3.UDPSocket = new(Network)
+	ptp3.UDPSocket.Init("127.0.0.1", 1234)
+
+	ips := []*net.UDPAddr{udp0, udp1, udp2}
+
+	heap0 := []*Endpoint{
+		&Endpoint{
+			Addr: udp0,
+		},
+	}
+
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil ptp", fields{}, args{}, true},
+		{"nil dht", fields{}, args{ptp0}, true},
+		{"nil udp socket", fields{}, args{ptp1}, true},
+		{"in progress", fields{punchingInProgress: true}, args{ptp2}, true},
+		{"active ep", fields{KnownIPs: ips, EndpointsHeap: heap0}, args{ptp2}, false},
+		{"working connection", fields{KnownIPs: ips, EndpointsHeap: heap0}, args{ptp3}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -714,73 +767,6 @@ func TestNetworkPeer_punchUDPHole(t *testing.T) {
 	}
 }
 
-func TestNetworkPeer_isEndpointActive(t *testing.T) {
-	type fields struct {
-		ID                 string
-		Endpoint           *net.UDPAddr
-		KnownIPs           []*net.UDPAddr
-		Proxies            []*net.UDPAddr
-		PeerLocalIP        net.IP
-		PeerHW             net.HardwareAddr
-		State              PeerState
-		RemoteState        PeerState
-		LastContact        time.Time
-		PingCount          uint8
-		LastError          string
-		ConnectionAttempts uint8
-		handlers           map[PeerState]StateHandlerCallback
-		Running            bool
-		EndpointsHeap      []*Endpoint
-		Lock               sync.RWMutex
-		punchingInProgress bool
-		LastFind           time.Time
-		LastPunch          time.Time
-		Stat               PeerStats
-		RoutingRequired    bool
-	}
-	type args struct {
-		ep *net.UDPAddr
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			np := &NetworkPeer{
-				ID:                 tt.fields.ID,
-				Endpoint:           tt.fields.Endpoint,
-				KnownIPs:           tt.fields.KnownIPs,
-				Proxies:            tt.fields.Proxies,
-				PeerLocalIP:        tt.fields.PeerLocalIP,
-				PeerHW:             tt.fields.PeerHW,
-				State:              tt.fields.State,
-				RemoteState:        tt.fields.RemoteState,
-				LastContact:        tt.fields.LastContact,
-				PingCount:          tt.fields.PingCount,
-				LastError:          tt.fields.LastError,
-				ConnectionAttempts: tt.fields.ConnectionAttempts,
-				handlers:           tt.fields.handlers,
-				Running:            tt.fields.Running,
-				EndpointsHeap:      tt.fields.EndpointsHeap,
-				Lock:               tt.fields.Lock,
-				punchingInProgress: tt.fields.punchingInProgress,
-				LastFind:           tt.fields.LastFind,
-				LastPunch:          tt.fields.LastPunch,
-				Stat:               tt.fields.Stat,
-				RoutingRequired:    tt.fields.RoutingRequired,
-			}
-			if got := np.isEndpointActive(tt.args.ep); got != tt.want {
-				t.Errorf("NetworkPeer.isEndpointActive() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestNetworkPeer_stateRequestingProxy(t *testing.T) {
 	type fields struct {
 		ID                 string
@@ -808,13 +794,19 @@ func TestNetworkPeer_stateRequestingProxy(t *testing.T) {
 	type args struct {
 		ptpc *PeerToPeer
 	}
+
+	ptp := new(PeerToPeer)
+	ptp.Dht = new(DHTClient)
+
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil ptp", fields{}, args{}, true},
+		{"nil dht", fields{}, args{new(PeerToPeer)}, true},
+		{"passing", fields{}, args{ptp}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -881,7 +873,8 @@ func TestNetworkPeer_stateWaitingForProxy(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil ptp", fields{}, args{}, true},
+		{"passing", fields{}, args{new(PeerToPeer)}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1768,6 +1761,94 @@ func TestNetworkPeer_IsRunning(t *testing.T) {
 			}
 			if got := np.IsRunning(); got != tt.want {
 				t.Errorf("NetworkPeer.IsRunning() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNetworkPeer_isEndpointActive(t *testing.T) {
+	type fields struct {
+		ID                 string
+		Endpoint           *net.UDPAddr
+		KnownIPs           []*net.UDPAddr
+		Proxies            []*net.UDPAddr
+		PeerLocalIP        net.IP
+		PeerHW             net.HardwareAddr
+		State              PeerState
+		RemoteState        PeerState
+		LastContact        time.Time
+		PingCount          uint8
+		LastError          string
+		ConnectionAttempts uint8
+		handlers           map[PeerState]StateHandlerCallback
+		Running            bool
+		EndpointsHeap      []*Endpoint
+		Lock               sync.RWMutex
+		punchingInProgress bool
+		LastFind           time.Time
+		LastPunch          time.Time
+		Stat               PeerStats
+		RoutingRequired    bool
+	}
+	type args struct {
+		ep *net.UDPAddr
+	}
+
+	udp0, _ := net.ResolveUDPAddr("udp4", "10.0.0.1:2345")
+	udp1, _ := net.ResolveUDPAddr("udp4", "10.0.0.2:3456")
+
+	heap0 := []*Endpoint{
+		&Endpoint{
+			Addr: nil,
+		},
+		&Endpoint{
+			Addr: udp0,
+		},
+	}
+
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{"nil ep", fields{}, args{}, false, true},
+		{"active", fields{EndpointsHeap: heap0}, args{udp0}, true, false},
+		{"not active", fields{EndpointsHeap: heap0}, args{udp1}, false, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			np := &NetworkPeer{
+				ID:                 tt.fields.ID,
+				Endpoint:           tt.fields.Endpoint,
+				KnownIPs:           tt.fields.KnownIPs,
+				Proxies:            tt.fields.Proxies,
+				PeerLocalIP:        tt.fields.PeerLocalIP,
+				PeerHW:             tt.fields.PeerHW,
+				State:              tt.fields.State,
+				RemoteState:        tt.fields.RemoteState,
+				LastContact:        tt.fields.LastContact,
+				PingCount:          tt.fields.PingCount,
+				LastError:          tt.fields.LastError,
+				ConnectionAttempts: tt.fields.ConnectionAttempts,
+				handlers:           tt.fields.handlers,
+				Running:            tt.fields.Running,
+				EndpointsHeap:      tt.fields.EndpointsHeap,
+				Lock:               tt.fields.Lock,
+				punchingInProgress: tt.fields.punchingInProgress,
+				LastFind:           tt.fields.LastFind,
+				LastPunch:          tt.fields.LastPunch,
+				Stat:               tt.fields.Stat,
+				RoutingRequired:    tt.fields.RoutingRequired,
+			}
+			got, err := np.isEndpointActive(tt.args.ep)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NetworkPeer.isEndpointActive() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("NetworkPeer.isEndpointActive() = %v, want %v", got, tt.want)
 			}
 		})
 	}
