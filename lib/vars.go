@@ -102,4 +102,5 @@ const (
 	EndpointTimeout                time.Duration = time.Millisecond * 15000 // Must be greater than EndpointPingInterval
 	ProxyLatencyRequestInterval    time.Duration = time.Second * 15         // How often we should update latency with proxies
 	EndpointLatencyRequestInterval time.Duration = time.Second * 15         // How often we should update latency with endpoints
+	UDPHolePunchTimeout            time.Duration = time.Millisecond * 20000 // How long we will for udp hole punching to finish
 )
