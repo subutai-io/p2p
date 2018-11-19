@@ -115,6 +115,12 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 					resp.Output += fmt.Sprintf("%s [%d] ", ep.Addr.String(), ptp.NanoToMilliseconds(ep.Latency.Nanoseconds()))
 				}
 				resp.Output += "\n"
+				c := peer.Stat.GetConnectionsNum()
+				r := peer.Stat.GetReconnectsNum()
+				hp := peer.Stat.GetHolePunchNum()
+				cdelta := peer.Stat.GetConnectionTimeDelta()
+				rdelta := peer.Stat.GetReconnectionTimeDelta()
+				resp.Output += fmt.Sprintf("Stats: [C: %d] [R: %d] [HP: %d] [CDelta: %d] [RDelta: %d]\n", c, r, hp, cdelta, rdelta)
 			}
 			resp.Output += fmt.Sprintf("\tEndpoints pool: ")
 			pool := []*net.UDPAddr{}

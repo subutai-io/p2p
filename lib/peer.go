@@ -238,6 +238,7 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 
 	for time.Since(started) < UDPHolePunchTimeout {
 		if len(np.EndpointsHeap) > 0 {
+			np.Stat.updateConnectionTime()
 			np.SetState(PeerStateConnected, ptpc)
 			return nil
 		}
@@ -265,6 +266,7 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) error {
 	if np.punchingInProgress {
 		return fmt.Errorf("hole punchin in progress")
 	}
+	np.Stat.holePunchAttempt()
 	np.LastPunch = time.Now()
 	eps := []*net.UDPAddr{}
 	eps = append(eps, np.Proxies...)
@@ -505,6 +507,7 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 	np.Stat.updateConnectionTime()
 
 	if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && np.Stat.localNum < 1 && np.Stat.internetNum < 1 {
+		np.Stat.reconnect()
 		Log(Info, "New hole punch activity: Local %d Internet %d", np.Stat.localNum, np.Stat.internetNum)
 		go np.punchUDPHole(ptpc)
 	}
