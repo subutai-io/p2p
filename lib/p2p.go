@@ -17,7 +17,6 @@ var UsePMTU = false
 
 // PeerToPeer - Main structure
 type PeerToPeer struct {
-	//Config          Configuration                        // Network interface configuration tool
 	UDPSocket       *Network                             // Peer-to-peer interconnection socket
 	LocalIPs        []net.IP                             // List of IPs available in the system
 	Dht             *DHTClient                           // DHT Client
@@ -35,6 +34,9 @@ type PeerToPeer struct {
 	ProxyManager    *ProxyManager                        // Proxy manager
 	outboundIP      net.IP                               // Outbound IP
 	UsePMTU         bool                                 // Whether PMTU capabilities are enabled or not
+	StartedAt       time.Time                            // Timestamp of instance creation time
+	ConfiguredAt    time.Time                            // Time when configuration of the instance was finished
+	// Config          Configuration                        // Network interface configuration tool
 }
 
 // PeerHandshake holds handshake information received from peer
