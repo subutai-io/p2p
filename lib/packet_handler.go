@@ -438,3 +438,16 @@ func (p *PeerToPeer) HandleLatency(msg *P2PMessage, srcAddr *net.UDPAddr) error 
 	Log(Error, "Malformed Latency packet from %s", srcAddr.String())
 	return fmt.Errorf("malformed latency packet from %s", srcAddr.String())
 }
+
+// HandleComm is an internal communication packet for peers
+func (p *PeerToPeer) HandleComm(msg *P2PMessage, srcAddr *net.UDPAddr) error {
+	// commType := binary.BigEndian.Uint16(msg.Data[0:2])
+	// data := msg.Data[2:]
+
+	// switch commType {
+	// case CommStatusReport:
+
+	// }
+
+	return nil
+}
