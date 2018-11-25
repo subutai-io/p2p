@@ -140,6 +140,9 @@ func (t *TAPDarwin) Close() error {
 }
 
 func (t *TAPDarwin) Configure() error {
+	if t.Tool == "" {
+		return fmt.Errorf("TAP.Configure: Configuration tool wasn't specified")
+	}
 	setmac := exec.Command(t.Tool, t.Name, "ether", t.Mac.String())
 	err := setmac.Run()
 	if err != nil {

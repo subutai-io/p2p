@@ -2,6 +2,7 @@ package ptp
 
 import (
 	"encoding/binary"
+	"fmt"
 	"net"
 	"time"
 )
@@ -82,4 +83,31 @@ func (e *Endpoint) addrToBytes() []byte {
 	// net.IP{ipfield[0], ipfield[1], ipfield[2], ipfield[3]}
 	// binary.BigEndian.Uint16(ipfield[4:6])
 	return ipfield
+}
+
+func (e *Endpoint) ping(ptpc *PeerToPeer, id string) error {
+	if ptpc == nil {
+		return fmt.Errorf("nil ptp")
+	}
+	if ptpc.UDPSocket == nil {
+		return fmt.Errorf("nil socket")
+	}
+	e.LastPing = time.Now()
+	if e.Addr == nil {
+		return fmt.Errorf("nil addr")
+	}
+	payload := append([]byte("q"+id), []byte(e.Addr.String())...)
+	msg, err := ptpc.CreateMessage(MsgTypeXpeerPing, payload, 0, true)
+	if err != nil {
+		return err
+	}
+	Log(Trace, "Sending ping to endpoint: %s", e.Addr.String())
+	_, err = ptpc.UDPSocket.SendMessage(msg, e.Addr)
+	return err
+}
+
+func (e *Endpoint) updateLastContact() error {
+	e.LastContact = time.Now()
+	e.LastPing = time.Now()
+	return nil
 }
