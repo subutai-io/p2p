@@ -9,8 +9,21 @@ import (
 
 // Cross-peer communication handlers
 
+// commPacketCheck is a common packet checker that checks for
+// incoming data length
+func commPacketCheck(data []byte) error {
+	if len(data) < 36 {
+		return fmt.Errorf("data is too small for communication packet")
+	}
+	return nil
+}
+
 // commStatusReportHandler handles status reports from another peer
 func commStatusReportHandler(data []byte, p *PeerToPeer) ([]byte, error) {
+	err := commPacketCheck(data)
+	if err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
@@ -19,7 +32,10 @@ func commStatusReportHandler(data []byte, p *PeerToPeer) ([]byte, error) {
 // If subnet is empty, that means that this is a request. Hash is a mandatory, but just for a sanity check
 func commSubnetInfoHandler(data []byte, p *PeerToPeer) ([]byte, error) {
 	//hash := data[0:36]
-
+	err := commPacketCheck(data)
+	if err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
@@ -29,6 +45,10 @@ func commSubnetInfoHandler(data []byte, p *PeerToPeer) ([]byte, error) {
 // res can be 0 - IP unknown
 // res can be 1 - IP known
 func commIPInfoHandler(data []byte, p *PeerToPeer) ([]byte, error) {
+	err := commPacketCheck(data)
+	if err != nil {
+		return nil, err
+	}
 	if p == nil {
 		return nil, fmt.Errorf("nil ptp")
 	}
@@ -46,6 +66,9 @@ func commIPInfoHandler(data []byte, p *PeerToPeer) ([]byte, error) {
 		}
 		return nil, nil
 	}
+	if len(data) != 40 {
+		return nil, fmt.Errorf("wrong data length: %d", len(data))
+	}
 
 	var result uint16 = 0
 
@@ -61,9 +84,17 @@ func commIPInfoHandler(data []byte, p *PeerToPeer) ([]byte, error) {
 }
 
 func commIPSetHandler(data []byte, p *PeerToPeer) ([]byte, error) {
+	err := commPacketCheck(data)
+	if err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
 func commIPConflictHandler(data []byte, p *PeerToPeer) ([]byte, error) {
+	err := commPacketCheck(data)
+	if err != nil {
+		return nil, err
+	}
 	return nil, nil
 }

@@ -441,6 +441,21 @@ func (p *PeerToPeer) HandleLatency(msg *P2PMessage, srcAddr *net.UDPAddr) error 
 
 // HandleComm is an internal communication packet for peers
 func (p *PeerToPeer) HandleComm(msg *P2PMessage, srcAddr *net.UDPAddr) error {
+	if p.UDPSocket == nil {
+		return fmt.Errorf("nil udp socket")
+	}
+	if msg == nil {
+		return fmt.Errorf("nil message")
+	}
+	if srcAddr == nil {
+		return fmt.Errorf("nil source addr")
+	}
+	if msg.Data == nil {
+		return fmt.Errorf("nil data")
+	}
+	if len(msg.Data) < 3 {
+		return fmt.Errorf("payload is too small")
+	}
 	commType := binary.BigEndian.Uint16(msg.Data[0:2])
 	data := msg.Data[2:]
 
@@ -473,6 +488,8 @@ func (p *PeerToPeer) HandleComm(msg *P2PMessage, srcAddr *net.UDPAddr) error {
 		if err != nil {
 			return err
 		}
+	default:
+		return fmt.Errorf("unknown comm type")
 	}
 
 	if response != nil {
