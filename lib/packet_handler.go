@@ -441,13 +441,48 @@ func (p *PeerToPeer) HandleLatency(msg *P2PMessage, srcAddr *net.UDPAddr) error 
 
 // HandleComm is an internal communication packet for peers
 func (p *PeerToPeer) HandleComm(msg *P2PMessage, srcAddr *net.UDPAddr) error {
-	// commType := binary.BigEndian.Uint16(msg.Data[0:2])
-	// data := msg.Data[2:]
+	commType := binary.BigEndian.Uint16(msg.Data[0:2])
+	data := msg.Data[2:]
 
-	// switch commType {
-	// case CommStatusReport:
+	var response []byte
+	var err error
 
-	// }
+	switch commType {
+	case CommStatusReport:
+		response, err = commStatusReportHandler(data, p)
+		if err != nil {
+			return err
+		}
+	case CommSubnetInfo:
+		response, err = commSubnetInfoHandler(data, p)
+		if err != nil {
+			return err
+		}
+	case CommIPInfo:
+		response, err = commIPInfoHandler(data, p)
+		if err != nil {
+			return err
+		}
+	case CommIPSet:
+		response, err = commIPSetHandler(data, p)
+		if err != nil {
+			return err
+		}
+	case CommIPConflict:
+		response, err = commIPConflictHandler(data, p)
+		if err != nil {
+			return err
+		}
+	}
 
-	return nil
+	if response != nil {
+		packet, err := p.CreateMessage(MsgTypeComm, response, 0, true)
+		if err != nil {
+			return err
+		}
+		_, err = p.UDPSocket.SendMessage(packet, srcAddr)
+		return err
+	}
+
+	return fmt.Errorf("nil response")
 }
