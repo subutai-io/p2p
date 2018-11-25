@@ -367,6 +367,7 @@ func (p *PeerToPeer) setupHandlers() error {
 	p.MessageHandlers[MsgTypeIntroReq] = p.HandleIntroRequestMessage
 	p.MessageHandlers[MsgTypeProxy] = p.HandleProxyMessage
 	p.MessageHandlers[MsgTypeLatency] = p.HandleLatency
+	p.MessageHandlers[MsgTypeComm] = p.HandleComm
 
 	// Register packet handlers
 	p.PacketHandlers = make(map[PacketType]PacketHandlerCallback)
@@ -398,12 +399,11 @@ func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 		if time.Since(requestedAt) > interval {
 			if attempt >= 3 {
 				return nil, nil, fmt.Errorf("No IP were received. Swarm is empty")
-			} else {
-				Log(Info, "IP wasn't received. Requesting again: attempt %d/3", (attempt + 1))
-				attempt++
-				p.Dht.sendDHCP(nil, nil)
-				requestedAt = time.Now()
 			}
+			Log(Info, "IP wasn't received. Requesting again: attempt %d/3", (attempt + 1))
+			attempt++
+			p.Dht.sendDHCP(nil, nil)
+			requestedAt = time.Now()
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -433,7 +433,7 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 		Log(Debug, "IP was not in CIDR format. Assumming /24")
 		ip, ipnet, err = net.ParseCIDR(ipAddress)
 		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to setup provided IP address for local device")
+			return nil, nil, fmt.Errorf("Failed to configure interface with provided IP")
 		}
 	}
 	if ipnet == nil {
