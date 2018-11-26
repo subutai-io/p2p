@@ -186,8 +186,8 @@ func TestTAPLinux_GetIP(t *testing.T) {
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
-		tap.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+		t.Run(tt.name, func(t *testing.T) {
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
