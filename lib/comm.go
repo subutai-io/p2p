@@ -55,10 +55,17 @@ func commIPInfoHandler(data []byte, p *PeerToPeer) ([]byte, error) {
 	if p.Peers == nil {
 		return nil, fmt.Errorf("nil peer list")
 	}
+	if len(data) < 40 {
+		return nil, fmt.Errorf("payload it soo small: %d", len(data))
+	}
 
 	hash := data[0:36]
-	ip := data[38:40]
+	ip := data[36:40]
+	fmt.Println(string(hash))
+	fmt.Println(string(ip))
+	fmt.Println(len(data))
 	if len(data) == 42 {
+		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0")
 		result := binary.BigEndian.Uint16(data[40:42])
 		if result == 0 {
 			p.Interface.SetIP(net.IP(ip))
@@ -70,7 +77,7 @@ func commIPInfoHandler(data []byte, p *PeerToPeer) ([]byte, error) {
 		return nil, fmt.Errorf("wrong data length: %d", len(data))
 	}
 
-	var result uint16 = 0
+	var result uint16
 
 	for _, peer := range p.Peers.Get() {
 		if bytes.Equal(peer.PeerLocalIP, ip) {
