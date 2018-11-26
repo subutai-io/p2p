@@ -468,7 +468,7 @@ func (p *PeerToPeer) HandleComm(msg *P2PMessage, srcAddr *net.UDPAddr) error {
 		if err != nil {
 			return err
 		}
-	case CommSubnetInfo:
+	case CommIPSubnet:
 		response, err = commSubnetInfoHandler(data, p)
 		if err != nil {
 			return err
