@@ -962,22 +962,24 @@ func TestPeerToPeer_HandleComm(t *testing.T) {
 	m3 := new(P2PMessage)
 	m3.Data = append([]byte{0x00, 0x00}, []byte(ut)...)
 	m4 := new(P2PMessage)
-	m4.Data = []byte{0x00, 0x01, 0x00}
+	m4.Data = []byte{0x00, 0xa, 0x00}
 	m5 := new(P2PMessage)
-	m5.Data = append([]byte{0x00, 0x01}, []byte(ut)...)
+	m5.Data = append([]byte{0x00, 0xa}, []byte(ut)...)
 	m6 := new(P2PMessage)
-	m6.Data = []byte{0x00, 0x02, 0x00}
+	m6.Data = []byte{0x00, 0xb, 0x00}
 	m7 := new(P2PMessage)
-	m7.Data = append([]byte{0x00, 0x02}, []byte(ut)...)
+	m7.Data = append([]byte{0x00, 0xb}, []byte(ut)...)
 	m7.Data = append(m7.Data, net.ParseIP("10.10.0.1").To4()...)
 	m8 := new(P2PMessage)
-	m8.Data = []byte{0x00, 0x03, 0x00}
+	m8.Data = []byte{0x00, 0xc, 0x00}
 	m9 := new(P2PMessage)
-	m9.Data = append([]byte{0x00, 0x03}, []byte(ut)...)
+	m9.Data = append([]byte{0x00, 0xc}, []byte(ut)...)
 	m10 := new(P2PMessage)
-	m10.Data = []byte{0x00, 0x04, 0x00}
+	m10.Data = []byte{0x00, 0xd, 0x00}
 	m11 := new(P2PMessage)
-	m11.Data = append([]byte{0x00, 0x04}, []byte(ut)...)
+	m11.Data = append([]byte{0x00, 0xd}, []byte(ut)...)
+	m12 := new(P2PMessage)
+	m12.Data = append([]byte{0xd, 0xd}, []byte(ut)...)
 
 	u0, _ := net.ResolveUDPAddr("udp4", "127.0.0.1:2345")
 
@@ -992,6 +994,7 @@ func TestPeerToPeer_HandleComm(t *testing.T) {
 		{"nil src", fields{UDPSocket: s0}, args{m0, nil}, true},
 		{"nil data", fields{UDPSocket: s0}, args{m0, u0}, true},
 		{"small data", fields{UDPSocket: s0}, args{m1, u0}, true},
+		{"unknown", fields{UDPSocket: s0}, args{m12, u0}, true},
 		{"report>fail", fields{UDPSocket: s0}, args{m2, u0}, true},
 		// Always error, since output always nil
 		{"report>pass", fields{UDPSocket: s0}, args{m3, u0}, true},
