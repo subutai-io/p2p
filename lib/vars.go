@@ -33,13 +33,25 @@ const (
 	MsgTypeComm              = 12 // Internal cross peer communication
 )
 
-// Communication packet types
+// Common communication packet types
 const (
 	CommStatusReport uint16 = 0 // Status report between peers
-	CommSubnetInfo          = 1 // Request subnet information from peer
-	CommIPInfo              = 2 // Ask peer if it knows specified IP
-	CommIPSet               = 3 // Notify peer that this peer is now available over specified IP
-	CommIPConflict          = 4 // Notify peer that his IP is in conflict
+	CommPing                = 1 // Ping packet
+	CommLatency             = 2 // Latency packet
+)
+
+// IP communication packets
+const (
+	CommIPSubnet   = 10 // Request subnet information from peer
+	CommIPInfo     = 11 // Ask peer if it knows specified IP
+	CommIPSet      = 12 // Notify peer that this peer is now available over specified IP
+	CommIPConflict = 13 // Notify peer that his IP is in conflict
+)
+
+// Discovery communication packets
+const (
+	CommDiscoveryInit = 20 // Initiate connection with discovery service
+	CommDiscoveryFind = 21 // Find request
 )
 
 // Network Constants

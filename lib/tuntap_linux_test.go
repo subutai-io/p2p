@@ -109,7 +109,7 @@ func TestTAPLinux_GetName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -120,7 +120,7 @@ func TestTAPLinux_GetName(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if got := t.GetName(); got != tt.want {
+			if got := tap.GetName(); got != tt.want {
 				t.Errorf("TAPLinux.GetName() = %v, want %v", got, tt.want)
 			}
 		})
@@ -148,7 +148,7 @@ func TestTAPLinux_GetHardwareAddress(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -159,7 +159,7 @@ func TestTAPLinux_GetHardwareAddress(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if got := t.GetHardwareAddress(); !reflect.DeepEqual(got, tt.want) {
+			if got := tap.GetHardwareAddress(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("TAPLinux.GetHardwareAddress() = %v, want %v", got, tt.want)
 			}
 		})
@@ -186,7 +186,7 @@ func TestTAPLinux_GetIP(t *testing.T) {
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		tap.Run(tt.name, func(t *testing.T) {
 			t := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
@@ -198,7 +198,7 @@ func TestTAPLinux_GetIP(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if got := t.GetIP(); !reflect.DeepEqual(got, tt.want) {
+			if got := tap.GetIP(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("TAPLinux.GetIP() = %v, want %v", got, tt.want)
 			}
 		})
@@ -226,7 +226,7 @@ func TestTAPLinux_GetMask(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -237,7 +237,7 @@ func TestTAPLinux_GetMask(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if got := t.GetMask(); !reflect.DeepEqual(got, tt.want) {
+			if got := tap.GetMask(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("TAPLinux.GetMask() = %v, want %v", got, tt.want)
 			}
 		})
@@ -265,7 +265,7 @@ func TestTAPLinux_GetBasename(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -276,7 +276,7 @@ func TestTAPLinux_GetBasename(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if got := t.GetBasename(); got != tt.want {
+			if got := tap.GetBasename(); got != tt.want {
 				t.Errorf("TAPLinux.GetBasename() = %v, want %v", got, tt.want)
 			}
 		})
@@ -307,7 +307,7 @@ func TestTAPLinux_SetName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -318,7 +318,7 @@ func TestTAPLinux_SetName(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			t.SetName(tt.args.name)
+			tap.SetName(tt.args.name)
 		})
 	}
 }
@@ -347,7 +347,7 @@ func TestTAPLinux_SetHardwareAddress(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -358,7 +358,7 @@ func TestTAPLinux_SetHardwareAddress(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			t.SetHardwareAddress(tt.args.mac)
+			tap.SetHardwareAddress(tt.args.mac)
 		})
 	}
 }
@@ -387,7 +387,7 @@ func TestTAPLinux_SetIP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -398,7 +398,7 @@ func TestTAPLinux_SetIP(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			t.SetIP(tt.args.ip)
+			tap.SetIP(tt.args.ip)
 		})
 	}
 }
@@ -427,7 +427,7 @@ func TestTAPLinux_SetMask(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -438,7 +438,7 @@ func TestTAPLinux_SetMask(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			t.SetMask(tt.args.mask)
+			tap.SetMask(tt.args.mask)
 		})
 	}
 }
@@ -468,7 +468,7 @@ func TestTAPLinux_Init(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -479,7 +479,7 @@ func TestTAPLinux_Init(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if err := t.Init(tt.args.name); (err != nil) != tt.wantErr {
+			if err := tap.Init(tt.args.name); (err != nil) != tt.wantErr {
 				t.Errorf("TAPLinux.Init() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -507,7 +507,7 @@ func TestTAPLinux_Open(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -518,7 +518,7 @@ func TestTAPLinux_Open(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if err := t.Open(); (err != nil) != tt.wantErr {
+			if err := tap.Open(); (err != nil) != tt.wantErr {
 				t.Errorf("TAPLinux.Open() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -546,7 +546,7 @@ func TestTAPLinux_Close(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -557,7 +557,7 @@ func TestTAPLinux_Close(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if err := t.Close(); (err != nil) != tt.wantErr {
+			if err := tap.Close(); (err != nil) != tt.wantErr {
 				t.Errorf("TAPLinux.Close() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -585,7 +585,7 @@ func TestTAPLinux_Configure(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -596,7 +596,7 @@ func TestTAPLinux_Configure(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if err := t.Configure(); (err != nil) != tt.wantErr {
+			if err := tap.Configure(); (err != nil) != tt.wantErr {
 				t.Errorf("TAPLinux.Configure() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -625,7 +625,7 @@ func TestTAPLinux_ReadPacket(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -636,7 +636,7 @@ func TestTAPLinux_ReadPacket(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			got, err := t.ReadPacket()
+			got, err := tap.ReadPacket()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TAPLinux.ReadPacket() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -694,7 +694,7 @@ func TestTAPLinux_handlePacket(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -705,7 +705,7 @@ func TestTAPLinux_handlePacket(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			got, err := t.handlePacket(tt.args.data)
+			got, err := tap.handlePacket(tt.args.data)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TAPLinux.handlePacket() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -742,7 +742,7 @@ func TestTAPLinux_WritePacket(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -753,7 +753,7 @@ func TestTAPLinux_WritePacket(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if err := t.WritePacket(tt.args.packet); (err != nil) != tt.wantErr {
+			if err := tap.WritePacket(tt.args.packet); (err != nil) != tt.wantErr {
 				t.Errorf("TAPLinux.WritePacket() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -780,7 +780,7 @@ func TestTAPLinux_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -791,7 +791,7 @@ func TestTAPLinux_Run(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			t.Run()
+			tap.Run()
 		})
 	}
 }
@@ -817,7 +817,7 @@ func TestTAPLinux_createInterface(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -828,7 +828,7 @@ func TestTAPLinux_createInterface(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if err := t.createInterface(); (err != nil) != tt.wantErr {
+			if err := tap.createInterface(); (err != nil) != tt.wantErr {
 				t.Errorf("TAPLinux.createInterface() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -856,7 +856,7 @@ func TestTAPLinux_setMTU(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -867,7 +867,7 @@ func TestTAPLinux_setMTU(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if err := t.setMTU(); (err != nil) != tt.wantErr {
+			if err := tap.setMTU(); (err != nil) != tt.wantErr {
 				t.Errorf("TAPLinux.setMTU() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -895,7 +895,7 @@ func TestTAPLinux_linkUp(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -906,7 +906,7 @@ func TestTAPLinux_linkUp(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if err := t.linkUp(); (err != nil) != tt.wantErr {
+			if err := tap.linkUp(); (err != nil) != tt.wantErr {
 				t.Errorf("TAPLinux.linkUp() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -934,7 +934,7 @@ func TestTAPLinux_linkDown(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -945,7 +945,7 @@ func TestTAPLinux_linkDown(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if err := t.linkDown(); (err != nil) != tt.wantErr {
+			if err := tap.linkDown(); (err != nil) != tt.wantErr {
 				t.Errorf("TAPLinux.linkDown() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -973,7 +973,7 @@ func TestTAPLinux_setIP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -984,7 +984,7 @@ func TestTAPLinux_setIP(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if err := t.setIP(); (err != nil) != tt.wantErr {
+			if err := tap.setIP(); (err != nil) != tt.wantErr {
 				t.Errorf("TAPLinux.setIP() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1012,7 +1012,7 @@ func TestTAPLinux_setMac(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -1023,7 +1023,7 @@ func TestTAPLinux_setMac(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if err := t.setMac(); (err != nil) != tt.wantErr {
+			if err := tap.setMac(); (err != nil) != tt.wantErr {
 				t.Errorf("TAPLinux.setMac() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1051,7 +1051,7 @@ func TestTAPLinux_IsConfigured(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -1062,7 +1062,7 @@ func TestTAPLinux_IsConfigured(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if got := t.IsConfigured(); got != tt.want {
+			if got := tap.IsConfigured(); got != tt.want {
 				t.Errorf("TAPLinux.IsConfigured() = %v, want %v", got, tt.want)
 			}
 		})
@@ -1089,7 +1089,7 @@ func TestTAPLinux_MarkConfigured(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -1100,7 +1100,7 @@ func TestTAPLinux_MarkConfigured(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			t.MarkConfigured()
+			tap.MarkConfigured()
 		})
 	}
 }
@@ -1125,7 +1125,7 @@ func TestTAPLinux_EnablePMTU(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -1136,7 +1136,7 @@ func TestTAPLinux_EnablePMTU(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			t.EnablePMTU()
+			tap.EnablePMTU()
 		})
 	}
 }
@@ -1161,7 +1161,7 @@ func TestTAPLinux_DisablePMTU(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -1172,7 +1172,7 @@ func TestTAPLinux_DisablePMTU(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			t.DisablePMTU()
+			tap.DisablePMTU()
 		})
 	}
 }
@@ -1198,7 +1198,7 @@ func TestTAPLinux_IsPMTUEnabled(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -1209,7 +1209,7 @@ func TestTAPLinux_IsPMTUEnabled(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if got := t.IsPMTUEnabled(); got != tt.want {
+			if got := tap.IsPMTUEnabled(); got != tt.want {
 				t.Errorf("TAPLinux.IsPMTUEnabled() = %v, want %v", got, tt.want)
 			}
 		})
@@ -1237,7 +1237,7 @@ func TestTAPLinux_IsBroken(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t := &TAPLinux{
+			tap := &TAPLinux{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -1248,7 +1248,7 @@ func TestTAPLinux_IsBroken(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if got := t.IsBroken(); got != tt.want {
+			if got := tap.IsBroken(); got != tt.want {
 				t.Errorf("TAPLinux.IsBroken() = %v, want %v", got, tt.want)
 			}
 		})
