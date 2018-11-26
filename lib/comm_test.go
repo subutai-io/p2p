@@ -107,9 +107,6 @@ func Test_commIPInfoHandler(t *testing.T) {
 	}
 
 	ip := net.ParseIP("127.0.0.1")
-	if ip == nil {
-		t.FailNow()
-	}
 
 	ut := "123e4567-e89b-12d3-a456-426655440000"
 
@@ -119,11 +116,41 @@ func Test_commIPInfoHandler(t *testing.T) {
 	ptp1.Peers = new(PeerList)
 	ptp1.Peers.Init()
 
+	ptp2 := new(PeerToPeer)
+	ptp2.Peers = new(PeerList)
+	ptp2.Peers.Init()
+	ptp2.Interface, _ = newTAP("ip", "10.10.10.1", "00:11:22:33:44:55", "255.255.255.0", 1500, false)
+
+	ptp3 := new(PeerToPeer)
+	ptp3.Peers = new(PeerList)
+	ptp3.Peers.Init()
+	ptp3.Peers.peers["127.0.0.1"] = &NetworkPeer{
+		PeerLocalIP: ip,
+	}
+	ptp3.Interface, _ = newTAP("ip", "10.10.10.1", "00:11:22:33:44:55", "255.255.255.0", 1500, false)
+
 	d0 := append([]byte{0x00, 0x01}, []byte(ut)...)
 
 	d1 := make([]byte, 42)
-	d1 = append([]byte(ut), ip.To4()...)
-	binary.BigEndian.PutUint16(d1[40:42], uint16(1))
+	copy(d1[0:36], ut)
+	copy(d1[36:40], ip.To4())
+	binary.BigEndian.PutUint16(d1[40:42], uint16(0))
+
+	d2 := make([]byte, 42)
+	copy(d2[0:36], ut)
+	copy(d2[36:40], ip.To4())
+	binary.BigEndian.PutUint16(d2[40:42], uint16(1))
+
+	d3 := make([]byte, 41)
+	copy(d3[0:36], ut)
+	copy(d3[36:40], ip.To4())
+	d3[40] = 0x0f
+
+	d4 := make([]byte, 40)
+	copy(d4[0:36], ut)
+	copy(d4[36:40], ip.To4())
+
+	result := ut + string(ip.To4())
 
 	tests := []struct {
 		name    string
@@ -134,9 +161,12 @@ func Test_commIPInfoHandler(t *testing.T) {
 		{"nil case", args{}, nil, true},
 		{"nil ptp", args{d0, nil}, nil, true},
 		{"nil peer list", args{d0, ptp0}, nil, true},
-		{"too small", args{d0, ptp1}, nil, true},
-		{"42 size", args{d1, ptp1}, nil, true},
-		{"passing data", args{d1, ptp1}, nil, true},
+		{"nil interface", args{d0, ptp1}, nil, true},
+		{"too small", args{d0, ptp2}, nil, true},
+		{"42 size>0", args{d1, ptp2}, nil, false},
+		{"42 size>1", args{d2, ptp2}, nil, false},
+		{"41 size", args{d3, ptp2}, nil, true},
+		{"40 size", args{d4, ptp3}, append([]byte(result), []byte{0x00, 0x01}...), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
