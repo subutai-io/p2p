@@ -30,6 +30,28 @@ const (
 	MsgTypeBadTun            = 9  // Notifies about dead tunnel
 	MsgTypeConf              = 10 // Confirmation
 	MsgTypeLatency           = 11 // Latency measurement
+	MsgTypeComm              = 12 // Internal cross peer communication
+)
+
+// Common communication packet types
+const (
+	CommStatusReport uint16 = 0 // Status report between peers
+	CommPing                = 1 // Ping packet
+	CommLatency             = 2 // Latency packet
+)
+
+// IP communication packets
+const (
+	CommIPSubnet   = 10 // Request subnet information from peer
+	CommIPInfo     = 11 // Ask peer if it knows specified IP
+	CommIPSet      = 12 // Notify peer that this peer is now available over specified IP
+	CommIPConflict = 13 // Notify peer that his IP is in conflict
+)
+
+// Discovery communication packets
+const (
+	CommDiscoveryInit = 20 // Initiate connection with discovery service
+	CommDiscoveryFind = 21 // Find request
 )
 
 // Network Constants

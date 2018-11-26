@@ -57,8 +57,8 @@ mrproper:
 	-rm -f config.make
 
 test:
-	go test -v github.com/subutai-io/p2p
-	go test -v github.com/subutai-io/p2p/lib
+	go test github.com/subutai-io/p2p
+	go test github.com/subutai-io/p2p/lib
 	go test --bench . ./...
 
 coverage:
