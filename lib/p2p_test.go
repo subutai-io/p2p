@@ -1,7 +1,6 @@
 package ptp
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"reflect"
@@ -1560,8 +1559,6 @@ func TestPeerToPeer_SendTo(t *testing.T) {
 
 	socket0 := new(Network)
 	msg0 := new(P2PMessage)
-
-	fmt.Printf("%s", dst0.String())
 
 	tests := []struct {
 		name    string

@@ -11,13 +11,6 @@ import (
 // StateHandlerCallback is a peer method callback executed by peer state
 type StateHandlerCallback func(ptpc *PeerToPeer) error
 
-// PeerStats represents different peer statistics
-type PeerStats struct {
-	localNum    int // Number of local network connections
-	internetNum int // Number of internet connections
-	proxyNum    int // Number of proxy connections
-}
-
 // NetworkPeer represents a peer
 type NetworkPeer struct {
 	ID                 string                             // ID of a peer
@@ -87,6 +80,8 @@ func (np *NetworkPeer) Run(ptpc *PeerToPeer) error {
 	np.Running = true
 	np.ConnectionAttempts = 0
 	np.RoutingRequired = false
+
+	np.Stat.startedAt = time.Now()
 
 	np.handlers = make(map[PeerState]StateHandlerCallback)
 	np.handlers[PeerStateInit] = np.stateInit
@@ -243,6 +238,7 @@ func (np *NetworkPeer) stateConnecting(ptpc *PeerToPeer) error {
 
 	for time.Since(started) < UDPHolePunchTimeout {
 		if len(np.EndpointsHeap) > 0 {
+			np.Stat.updateConnectionTime()
 			np.SetState(PeerStateConnected, ptpc)
 			return nil
 		}
@@ -270,6 +266,7 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) error {
 	if np.punchingInProgress {
 		return fmt.Errorf("hole punchin in progress")
 	}
+	np.Stat.holePunchAttempt()
 	np.LastPunch = time.Now()
 	eps := []*net.UDPAddr{}
 	eps = append(eps, np.Proxies...)
@@ -507,7 +504,10 @@ func (np *NetworkPeer) stateConnected(ptpc *PeerToPeer) error {
 		return fmt.Errorf("wrong state")
 	}
 
+	np.Stat.updateConnectionTime()
+
 	if time.Since(np.LastPunch) > time.Duration(time.Millisecond*30000) && np.Stat.localNum < 1 && np.Stat.internetNum < 1 {
+		np.Stat.reconnect()
 		Log(Info, "New hole punch activity: Local %d Internet %d", np.Stat.localNum, np.Stat.internetNum)
 		go np.punchUDPHole(ptpc)
 	}
@@ -572,19 +572,9 @@ func (np *NetworkPeer) pingEndpoints(ptpc *PeerToPeer) error {
 		return fmt.Errorf("nil socket")
 	}
 	np.Lock.RLock()
-	for i, ep := range np.EndpointsHeap {
+	for _, ep := range np.EndpointsHeap {
 		if time.Since(ep.LastPing) > EndpointPingInterval {
-			np.EndpointsHeap[i].LastPing = time.Now()
-			if ep.Addr == nil {
-				continue
-			}
-			payload := append([]byte("q"+ptpc.Dht.ID), []byte(ep.Addr.String())...)
-			msg, err := ptpc.CreateMessage(MsgTypeXpeerPing, payload, 0, true)
-			if err != nil {
-				continue
-			}
-			Log(Trace, "Sending ping to endpoint: %s", ep.Addr.String())
-			ptpc.UDPSocket.SendMessage(msg, ep.Addr)
+			ep.ping(ptpc, ptpc.Dht.ID)
 			time.Sleep(time.Millisecond * 50)
 		}
 	}
@@ -623,9 +613,7 @@ func (np *NetworkPeer) BumpEndpoint(epAddr string) error {
 	defer np.Lock.Unlock()
 	for _, ep := range np.EndpointsHeap {
 		if ep.Addr.String() == epAddr {
-			ep.LastContact = time.Now()
-			ep.LastPing = time.Now()
-			return nil
+			return ep.updateLastContact()
 		}
 	}
 	return fmt.Errorf("Endpoint %s wasn't found", epAddr)

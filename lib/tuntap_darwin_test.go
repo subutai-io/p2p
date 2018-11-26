@@ -1,4 +1,4 @@
-// +build linux
+// +build darwin
 
 package ptp
 
@@ -14,7 +14,7 @@ func TestGetDeviceBase(t *testing.T) {
 		name string
 		want string
 	}{
-		// TODO: Add test cases.
+		{"passing", "tun"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -30,7 +30,7 @@ func TestGetConfigurationTool(t *testing.T) {
 		name string
 		want string
 	}{
-		// TODO: Add test cases.
+		{"ifconfig", "/sbin/ifconfig"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -50,13 +50,27 @@ func Test_newTAP(t *testing.T) {
 		mtu  int
 		pmtu bool
 	}
+
+	ip := net.ParseIP("10.0.0.1")
+	hwa, _ := net.ParseMAC("00:11:22:33:44:55")
+
+	res := &TAPDarwin{
+		IP:   ip,
+		Mac:  hwa,
+		Mask: net.IPv4Mask(255, 255, 255, 0),
+		MTU:  1500,
+		PMTU: false,
+	}
+
 	tests := []struct {
 		name    string
 		args    args
-		want    *TAPLinux
+		want    *TAPDarwin
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"bad ip", args{ip: "badip"}, nil, true},
+		{"bad mac", args{mac: "badmac"}, nil, true},
+		{"passing", args{ip: "10.0.0.1", mac: "00:11:22:33:44:55"}, res, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -75,9 +89,9 @@ func Test_newTAP(t *testing.T) {
 func Test_newEmptyTAP(t *testing.T) {
 	tests := []struct {
 		name string
-		want *TAPLinux
+		want *TAPDarwin
 	}{
-		// TODO: Add test cases.
+		{"empty test", &TAPDarwin{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -88,7 +102,7 @@ func Test_newEmptyTAP(t *testing.T) {
 	}
 }
 
-func TestTAPLinux_GetName(t *testing.T) {
+func TestTAPDarwin_GetName(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -105,11 +119,12 @@ func TestTAPLinux_GetName(t *testing.T) {
 		fields fields
 		want   string
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, ""},
+		{"predefined", fields{Name: "test-name"}, "test-name"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -121,13 +136,13 @@ func TestTAPLinux_GetName(t *testing.T) {
 				PMTU:       tt.fields.PMTU,
 			}
 			if got := tap.GetName(); got != tt.want {
-				t.Errorf("TAPLinux.GetName() = %v, want %v", got, tt.want)
+				t.Errorf("TAPDarwin.GetName() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_GetHardwareAddress(t *testing.T) {
+func TestTAPDarwin_GetHardwareAddress(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -139,16 +154,17 @@ func TestTAPLinux_GetHardwareAddress(t *testing.T) {
 		Configured bool
 		PMTU       bool
 	}
+
 	tests := []struct {
 		name   string
 		fields fields
 		want   net.HardwareAddr
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -160,13 +176,13 @@ func TestTAPLinux_GetHardwareAddress(t *testing.T) {
 				PMTU:       tt.fields.PMTU,
 			}
 			if got := tap.GetHardwareAddress(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("TAPLinux.GetHardwareAddress() = %v, want %v", got, tt.want)
+				t.Errorf("TAPDarwin.GetHardwareAddress() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_GetIP(t *testing.T) {
+func TestTAPDarwin_GetIP(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -183,11 +199,11 @@ func TestTAPLinux_GetIP(t *testing.T) {
 		fields fields
 		want   net.IP
 	}{
-		// TODO: Add test cases.
+		{"epmty", fields{}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -199,13 +215,13 @@ func TestTAPLinux_GetIP(t *testing.T) {
 				PMTU:       tt.fields.PMTU,
 			}
 			if got := tap.GetIP(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("TAPLinux.GetIP() = %v, want %v", got, tt.want)
+				t.Errorf("TAPDarwin.GetIP() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_GetMask(t *testing.T) {
+func TestTAPDarwin_GetMask(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -222,11 +238,11 @@ func TestTAPLinux_GetMask(t *testing.T) {
 		fields fields
 		want   net.IPMask
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -238,13 +254,13 @@ func TestTAPLinux_GetMask(t *testing.T) {
 				PMTU:       tt.fields.PMTU,
 			}
 			if got := tap.GetMask(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("TAPLinux.GetMask() = %v, want %v", got, tt.want)
+				t.Errorf("TAPDarwin.GetMask() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_GetBasename(t *testing.T) {
+func TestTAPDarwin_GetBasename(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -261,11 +277,11 @@ func TestTAPLinux_GetBasename(t *testing.T) {
 		fields fields
 		want   string
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, "tap"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -277,13 +293,13 @@ func TestTAPLinux_GetBasename(t *testing.T) {
 				PMTU:       tt.fields.PMTU,
 			}
 			if got := tap.GetBasename(); got != tt.want {
-				t.Errorf("TAPLinux.GetBasename() = %v, want %v", got, tt.want)
+				t.Errorf("TAPDarwin.GetBasename() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_SetName(t *testing.T) {
+func TestTAPDarwin_SetName(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -303,11 +319,11 @@ func TestTAPLinux_SetName(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, args{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -323,7 +339,7 @@ func TestTAPLinux_SetName(t *testing.T) {
 	}
 }
 
-func TestTAPLinux_SetHardwareAddress(t *testing.T) {
+func TestTAPDarwin_SetHardwareAddress(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -343,11 +359,11 @@ func TestTAPLinux_SetHardwareAddress(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, args{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -363,7 +379,7 @@ func TestTAPLinux_SetHardwareAddress(t *testing.T) {
 	}
 }
 
-func TestTAPLinux_SetIP(t *testing.T) {
+func TestTAPDarwin_SetIP(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -383,11 +399,11 @@ func TestTAPLinux_SetIP(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, args{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -403,7 +419,7 @@ func TestTAPLinux_SetIP(t *testing.T) {
 	}
 }
 
-func TestTAPLinux_SetMask(t *testing.T) {
+func TestTAPDarwin_SetMask(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -423,11 +439,11 @@ func TestTAPLinux_SetMask(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, args{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -443,7 +459,7 @@ func TestTAPLinux_SetMask(t *testing.T) {
 	}
 }
 
-func TestTAPLinux_Init(t *testing.T) {
+func TestTAPDarwin_Init(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -464,11 +480,12 @@ func TestTAPLinux_Init(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"empty name", fields{}, args{}, true},
+		{"passing", fields{}, args{"test-name"}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -480,13 +497,13 @@ func TestTAPLinux_Init(t *testing.T) {
 				PMTU:       tt.fields.PMTU,
 			}
 			if err := tap.Init(tt.args.name); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.Init() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("TAPDarwin.Init() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_Open(t *testing.T) {
+func TestTAPDarwin_Open(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -503,11 +520,11 @@ func TestTAPLinux_Open(t *testing.T) {
 		fields  fields
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -519,13 +536,13 @@ func TestTAPLinux_Open(t *testing.T) {
 				PMTU:       tt.fields.PMTU,
 			}
 			if err := tap.Open(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.Open() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("TAPDarwin.Open() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_Close(t *testing.T) {
+func TestTAPDarwin_Close(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -537,16 +554,23 @@ func TestTAPLinux_Close(t *testing.T) {
 		Configured bool
 		PMTU       bool
 	}
+
+	dsc0, _ := os.OpenFile("/tmp/p2p-tap-close-test-0", os.O_CREATE|os.O_RDWR, 0700)
+	dsc1, _ := os.OpenFile("/tmp/p2p-tap-close-test-1", os.O_CREATE|os.O_RDWR, 0700)
+	dsc1.Close()
+
 	tests := []struct {
 		name    string
 		fields  fields
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil interface", fields{}, true},
+		{"closing closed file", fields{file: dsc1}, true},
+		{"passing", fields{file: dsc0}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -558,13 +582,13 @@ func TestTAPLinux_Close(t *testing.T) {
 				PMTU:       tt.fields.PMTU,
 			}
 			if err := tap.Close(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.Close() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("TAPDarwin.Close() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_Configure(t *testing.T) {
+func TestTAPDarwin_Configure(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -581,11 +605,11 @@ func TestTAPLinux_Configure(t *testing.T) {
 		fields  fields
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"no tool", fields{}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -597,13 +621,13 @@ func TestTAPLinux_Configure(t *testing.T) {
 				PMTU:       tt.fields.PMTU,
 			}
 			if err := tap.Configure(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.Configure() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("TAPDarwin.Configure() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_ReadPacket(t *testing.T) {
+func TestTAPDarwin_ReadPacket(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -625,7 +649,7 @@ func TestTAPLinux_ReadPacket(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -638,86 +662,17 @@ func TestTAPLinux_ReadPacket(t *testing.T) {
 			}
 			got, err := tap.ReadPacket()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.ReadPacket() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("TAPDarwin.ReadPacket() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("TAPLinux.ReadPacket() = %v, want %v", got, tt.want)
+				t.Errorf("TAPDarwin.ReadPacket() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_checksum(t *testing.T) {
-	type args struct {
-		bytes []byte
-	}
-	tests := []struct {
-		name string
-		args args
-		want uint16
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := checksum(tt.args.bytes); got != tt.want {
-				t.Errorf("checksum() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestTAPLinux_handlePacket(t *testing.T) {
-	type fields struct {
-		IP         net.IP
-		Mask       net.IPMask
-		Mac        net.HardwareAddr
-		Name       string
-		Tool       string
-		MTU        int
-		file       *os.File
-		Configured bool
-		PMTU       bool
-	}
-	type args struct {
-		data []byte
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    *Packet
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
-				IP:         tt.fields.IP,
-				Mask:       tt.fields.Mask,
-				Mac:        tt.fields.Mac,
-				Name:       tt.fields.Name,
-				Tool:       tt.fields.Tool,
-				MTU:        tt.fields.MTU,
-				file:       tt.fields.file,
-				Configured: tt.fields.Configured,
-				PMTU:       tt.fields.PMTU,
-			}
-			got, err := tap.handlePacket(tt.args.data)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.handlePacket() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("TAPLinux.handlePacket() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestTAPLinux_WritePacket(t *testing.T) {
+func TestTAPDarwin_WritePacket(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -742,7 +697,7 @@ func TestTAPLinux_WritePacket(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -754,13 +709,13 @@ func TestTAPLinux_WritePacket(t *testing.T) {
 				PMTU:       tt.fields.PMTU,
 			}
 			if err := tap.WritePacket(tt.args.packet); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.WritePacket() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("TAPDarwin.WritePacket() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_Run(t *testing.T) {
+func TestTAPDarwin_Run(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -780,7 +735,7 @@ func TestTAPLinux_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -796,241 +751,7 @@ func TestTAPLinux_Run(t *testing.T) {
 	}
 }
 
-func TestTAPLinux_createInterface(t *testing.T) {
-	type fields struct {
-		IP         net.IP
-		Mask       net.IPMask
-		Mac        net.HardwareAddr
-		Name       string
-		Tool       string
-		MTU        int
-		file       *os.File
-		Configured bool
-		PMTU       bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
-				IP:         tt.fields.IP,
-				Mask:       tt.fields.Mask,
-				Mac:        tt.fields.Mac,
-				Name:       tt.fields.Name,
-				Tool:       tt.fields.Tool,
-				MTU:        tt.fields.MTU,
-				file:       tt.fields.file,
-				Configured: tt.fields.Configured,
-				PMTU:       tt.fields.PMTU,
-			}
-			if err := tap.createInterface(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.createInterface() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestTAPLinux_setMTU(t *testing.T) {
-	type fields struct {
-		IP         net.IP
-		Mask       net.IPMask
-		Mac        net.HardwareAddr
-		Name       string
-		Tool       string
-		MTU        int
-		file       *os.File
-		Configured bool
-		PMTU       bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
-				IP:         tt.fields.IP,
-				Mask:       tt.fields.Mask,
-				Mac:        tt.fields.Mac,
-				Name:       tt.fields.Name,
-				Tool:       tt.fields.Tool,
-				MTU:        tt.fields.MTU,
-				file:       tt.fields.file,
-				Configured: tt.fields.Configured,
-				PMTU:       tt.fields.PMTU,
-			}
-			if err := tap.setMTU(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.setMTU() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestTAPLinux_linkUp(t *testing.T) {
-	type fields struct {
-		IP         net.IP
-		Mask       net.IPMask
-		Mac        net.HardwareAddr
-		Name       string
-		Tool       string
-		MTU        int
-		file       *os.File
-		Configured bool
-		PMTU       bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
-				IP:         tt.fields.IP,
-				Mask:       tt.fields.Mask,
-				Mac:        tt.fields.Mac,
-				Name:       tt.fields.Name,
-				Tool:       tt.fields.Tool,
-				MTU:        tt.fields.MTU,
-				file:       tt.fields.file,
-				Configured: tt.fields.Configured,
-				PMTU:       tt.fields.PMTU,
-			}
-			if err := tap.linkUp(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.linkUp() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestTAPLinux_linkDown(t *testing.T) {
-	type fields struct {
-		IP         net.IP
-		Mask       net.IPMask
-		Mac        net.HardwareAddr
-		Name       string
-		Tool       string
-		MTU        int
-		file       *os.File
-		Configured bool
-		PMTU       bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
-				IP:         tt.fields.IP,
-				Mask:       tt.fields.Mask,
-				Mac:        tt.fields.Mac,
-				Name:       tt.fields.Name,
-				Tool:       tt.fields.Tool,
-				MTU:        tt.fields.MTU,
-				file:       tt.fields.file,
-				Configured: tt.fields.Configured,
-				PMTU:       tt.fields.PMTU,
-			}
-			if err := tap.linkDown(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.linkDown() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestTAPLinux_setIP(t *testing.T) {
-	type fields struct {
-		IP         net.IP
-		Mask       net.IPMask
-		Mac        net.HardwareAddr
-		Name       string
-		Tool       string
-		MTU        int
-		file       *os.File
-		Configured bool
-		PMTU       bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
-				IP:         tt.fields.IP,
-				Mask:       tt.fields.Mask,
-				Mac:        tt.fields.Mac,
-				Name:       tt.fields.Name,
-				Tool:       tt.fields.Tool,
-				MTU:        tt.fields.MTU,
-				file:       tt.fields.file,
-				Configured: tt.fields.Configured,
-				PMTU:       tt.fields.PMTU,
-			}
-			if err := tap.setIP(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.setIP() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestTAPLinux_setMac(t *testing.T) {
-	type fields struct {
-		IP         net.IP
-		Mask       net.IPMask
-		Mac        net.HardwareAddr
-		Name       string
-		Tool       string
-		MTU        int
-		file       *os.File
-		Configured bool
-		PMTU       bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
-				IP:         tt.fields.IP,
-				Mask:       tt.fields.Mask,
-				Mac:        tt.fields.Mac,
-				Name:       tt.fields.Name,
-				Tool:       tt.fields.Tool,
-				MTU:        tt.fields.MTU,
-				file:       tt.fields.file,
-				Configured: tt.fields.Configured,
-				PMTU:       tt.fields.PMTU,
-			}
-			if err := tap.setMac(); (err != nil) != tt.wantErr {
-				t.Errorf("TAPLinux.setMac() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestTAPLinux_IsConfigured(t *testing.T) {
+func TestTAPDarwin_IsConfigured(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -1051,7 +772,7 @@ func TestTAPLinux_IsConfigured(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -1063,13 +784,13 @@ func TestTAPLinux_IsConfigured(t *testing.T) {
 				PMTU:       tt.fields.PMTU,
 			}
 			if got := tap.IsConfigured(); got != tt.want {
-				t.Errorf("TAPLinux.IsConfigured() = %v, want %v", got, tt.want)
+				t.Errorf("TAPDarwin.IsConfigured() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_MarkConfigured(t *testing.T) {
+func TestTAPDarwin_MarkConfigured(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -1089,7 +810,7 @@ func TestTAPLinux_MarkConfigured(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -1105,7 +826,7 @@ func TestTAPLinux_MarkConfigured(t *testing.T) {
 	}
 }
 
-func TestTAPLinux_EnablePMTU(t *testing.T) {
+func TestTAPDarwin_EnablePMTU(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -1125,7 +846,7 @@ func TestTAPLinux_EnablePMTU(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -1141,7 +862,7 @@ func TestTAPLinux_EnablePMTU(t *testing.T) {
 	}
 }
 
-func TestTAPLinux_DisablePMTU(t *testing.T) {
+func TestTAPDarwin_DisablePMTU(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -1161,7 +882,7 @@ func TestTAPLinux_DisablePMTU(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -1177,7 +898,7 @@ func TestTAPLinux_DisablePMTU(t *testing.T) {
 	}
 }
 
-func TestTAPLinux_IsPMTUEnabled(t *testing.T) {
+func TestTAPDarwin_IsPMTUEnabled(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -1198,7 +919,7 @@ func TestTAPLinux_IsPMTUEnabled(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -1210,13 +931,13 @@ func TestTAPLinux_IsPMTUEnabled(t *testing.T) {
 				PMTU:       tt.fields.PMTU,
 			}
 			if got := tap.IsPMTUEnabled(); got != tt.want {
-				t.Errorf("TAPLinux.IsPMTUEnabled() = %v, want %v", got, tt.want)
+				t.Errorf("TAPDarwin.IsPMTUEnabled() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestTAPLinux_IsBroken(t *testing.T) {
+func TestTAPDarwin_IsBroken(t *testing.T) {
 	type fields struct {
 		IP         net.IP
 		Mask       net.IPMask
@@ -1237,7 +958,7 @@ func TestTAPLinux_IsBroken(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tap := &TAPLinux{
+			tap := &TAPDarwin{
 				IP:         tt.fields.IP,
 				Mask:       tt.fields.Mask,
 				Mac:        tt.fields.Mac,
@@ -1249,7 +970,7 @@ func TestTAPLinux_IsBroken(t *testing.T) {
 				PMTU:       tt.fields.PMTU,
 			}
 			if got := tap.IsBroken(); got != tt.want {
-				t.Errorf("TAPLinux.IsBroken() = %v, want %v", got, tt.want)
+				t.Errorf("TAPDarwin.IsBroken() = %v, want %v", got, tt.want)
 			}
 		})
 	}

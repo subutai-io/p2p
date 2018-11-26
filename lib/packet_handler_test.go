@@ -920,3 +920,118 @@ func TestPeerToPeer_HandleLatency(t *testing.T) {
 		})
 	}
 }
+
+func TestPeerToPeer_HandleComm(t *testing.T) {
+	type fields struct {
+		UDPSocket       *Network
+		LocalIPs        []net.IP
+		Dht             *DHTClient
+		Crypter         Crypto
+		Shutdown        bool
+		ForwardMode     bool
+		ReadyToStop     bool
+		MessageHandlers map[uint16]MessageHandler
+		PacketHandlers  map[PacketType]PacketHandlerCallback
+		PeersLock       sync.Mutex
+		Hash            string
+		Interface       TAP
+		Peers           *PeerList
+		HolePunching    sync.Mutex
+		ProxyManager    *ProxyManager
+		outboundIP      net.IP
+		UsePMTU         bool
+	}
+	type args struct {
+		msg     *P2PMessage
+		srcAddr *net.UDPAddr
+	}
+
+	pl0 := new(PeerList)
+	pl0.Init()
+
+	s0 := new(Network)
+	s0.Init("127.0.0.1", 1111)
+
+	ut := "193dd30c-13eb-4367-81e8-1525cf03e8ab"
+
+	m0 := new(P2PMessage)
+	m1 := new(P2PMessage)
+	m1.Data = []byte{0x01}
+	m2 := new(P2PMessage)
+	m2.Data = []byte{0x00, 0x00, 0x03}
+	m3 := new(P2PMessage)
+	m3.Data = append([]byte{0x00, 0x00}, []byte(ut)...)
+	m4 := new(P2PMessage)
+	m4.Data = []byte{0x00, 0xa, 0x00}
+	m5 := new(P2PMessage)
+	m5.Data = append([]byte{0x00, 0xa}, []byte(ut)...)
+	m6 := new(P2PMessage)
+	m6.Data = []byte{0x00, 0xb, 0x00}
+	m7 := new(P2PMessage)
+	m7.Data = append([]byte{0x00, 0xb}, []byte(ut)...)
+	m7.Data = append(m7.Data, net.ParseIP("10.10.0.1").To4()...)
+	m8 := new(P2PMessage)
+	m8.Data = []byte{0x00, 0xc, 0x00}
+	m9 := new(P2PMessage)
+	m9.Data = append([]byte{0x00, 0xc}, []byte(ut)...)
+	m10 := new(P2PMessage)
+	m10.Data = []byte{0x00, 0xd, 0x00}
+	m11 := new(P2PMessage)
+	m11.Data = append([]byte{0x00, 0xd}, []byte(ut)...)
+	m12 := new(P2PMessage)
+	m12.Data = append([]byte{0xd, 0xd}, []byte(ut)...)
+
+	u0, _ := net.ResolveUDPAddr("udp4", "127.0.0.1:2345")
+
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{"nil socket", fields{}, args{}, true},
+		{"nil ptp", fields{UDPSocket: s0}, args{}, true},
+		{"nil src", fields{UDPSocket: s0}, args{m0, nil}, true},
+		{"nil data", fields{UDPSocket: s0}, args{m0, u0}, true},
+		{"small data", fields{UDPSocket: s0}, args{m1, u0}, true},
+		{"unknown", fields{UDPSocket: s0}, args{m12, u0}, true},
+		{"report>fail", fields{UDPSocket: s0}, args{m2, u0}, true},
+		// Always error, since output always nil
+		{"report>pass", fields{UDPSocket: s0}, args{m3, u0}, true},
+		{"subnetinfo>fail", fields{UDPSocket: s0}, args{m4, u0}, true},
+		// Always error, since output always nil
+		{"subnetinfo>pass", fields{UDPSocket: s0}, args{m5, u0}, true},
+		{"ipinfo>fail", fields{UDPSocket: s0}, args{m6, u0}, true},
+		{"ipinfo>pass", fields{UDPSocket: s0, Peers: pl0}, args{m7, u0}, false},
+		{"ipset>fail", fields{UDPSocket: s0}, args{m8, u0}, true},
+		{"ipset>pass", fields{UDPSocket: s0}, args{m9, u0}, true},
+		{"ipconfilct>fail", fields{UDPSocket: s0}, args{m10, u0}, true},
+		{"ipconflict>fail", fields{UDPSocket: s0}, args{m11, u0}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &PeerToPeer{
+				UDPSocket:       tt.fields.UDPSocket,
+				LocalIPs:        tt.fields.LocalIPs,
+				Dht:             tt.fields.Dht,
+				Crypter:         tt.fields.Crypter,
+				Shutdown:        tt.fields.Shutdown,
+				ForwardMode:     tt.fields.ForwardMode,
+				ReadyToStop:     tt.fields.ReadyToStop,
+				MessageHandlers: tt.fields.MessageHandlers,
+				PacketHandlers:  tt.fields.PacketHandlers,
+				PeersLock:       tt.fields.PeersLock,
+				Hash:            tt.fields.Hash,
+				Interface:       tt.fields.Interface,
+				Peers:           tt.fields.Peers,
+				HolePunching:    tt.fields.HolePunching,
+				ProxyManager:    tt.fields.ProxyManager,
+				outboundIP:      tt.fields.outboundIP,
+				UsePMTU:         tt.fields.UsePMTU,
+			}
+			if err := p.HandleComm(tt.args.msg, tt.args.srcAddr); (err != nil) != tt.wantErr {
+				t.Errorf("PeerToPeer.HandleComm() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
