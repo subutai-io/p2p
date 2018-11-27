@@ -946,6 +946,8 @@ func TestPeerToPeer_HandleComm(t *testing.T) {
 		srcAddr *net.UDPAddr
 	}
 
+	i0, _ := newTAP("ip", "10.10.10.1", "00:11:22:33:44:55", "255.255.255.0", 1500, false)
+
 	pl0 := new(PeerList)
 	pl0.Init()
 
@@ -1002,7 +1004,7 @@ func TestPeerToPeer_HandleComm(t *testing.T) {
 		// Always error, since output always nil
 		{"subnetinfo>pass", fields{UDPSocket: s0}, args{m5, u0}, true},
 		{"ipinfo>fail", fields{UDPSocket: s0}, args{m6, u0}, true},
-		{"ipinfo>pass", fields{UDPSocket: s0, Peers: pl0}, args{m7, u0}, false},
+		{"ipinfo>pass", fields{UDPSocket: s0, Peers: pl0, Interface: i0}, args{m7, u0}, false},
 		{"ipset>fail", fields{UDPSocket: s0}, args{m8, u0}, true},
 		{"ipset>pass", fields{UDPSocket: s0}, args{m9, u0}, true},
 		{"ipconfilct>fail", fields{UDPSocket: s0}, args{m10, u0}, true},
