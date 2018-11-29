@@ -95,7 +95,7 @@ func (d *Daemon) setIP(args *NameValueArg, resp *Response) error {
 	}
 
 	instance.PTP.Interface.SetIP(ip)
-	err := instance.PTP.Interface.Configure()
+	err := instance.PTP.Interface.Configure(false)
 	if err != nil {
 		resp.ExitCode = 2
 		resp.Output = "Failed to reconfigure network: " + err.Error()

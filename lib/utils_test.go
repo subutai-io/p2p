@@ -195,7 +195,7 @@ func TestPeerToPeer_FindNetworkAddresses(t *testing.T) {
 		PeersLock       sync.Mutex
 		Hash            string
 		Interface       TAP
-		Peers           *PeerList
+		Peers           *Swarm
 		HolePunching    sync.Mutex
 		ProxyManager    *ProxyManager
 		outboundIP      net.IP
@@ -220,10 +220,9 @@ func TestPeerToPeer_FindNetworkAddresses(t *testing.T) {
 				ReadyToStop:     tt.fields.ReadyToStop,
 				MessageHandlers: tt.fields.MessageHandlers,
 				PacketHandlers:  tt.fields.PacketHandlers,
-				PeersLock:       tt.fields.PeersLock,
 				Hash:            tt.fields.Hash,
 				Interface:       tt.fields.Interface,
-				Peers:           tt.fields.Peers,
+				Swarm:           tt.fields.Peers,
 				HolePunching:    tt.fields.HolePunching,
 				ProxyManager:    tt.fields.ProxyManager,
 				outboundIP:      tt.fields.outboundIP,
@@ -252,6 +251,44 @@ func Test_isDeviceExists(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := isDeviceExists(tt.args.name); got != tt.want {
 				t.Errorf("isDeviceExists() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseIntroString(t *testing.T) {
+	type args struct {
+		intro string
+	}
+
+	hs0 := new(PeerHandshake)
+	hs0.ID = "1"
+	hs0.IP = net.ParseIP("10.11.12.13")
+	hs0.HardwareAddr, _ = net.ParseMAC("00:11:22:33:44:55")
+	hs0.Endpoint, _ = net.ResolveUDPAddr("udp4", "192.168.0.1:1234")
+
+	tests := []struct {
+		name    string
+		args    args
+		want    *PeerHandshake
+		wantErr bool
+	}{
+		{"empty test", args{}, nil, true},
+		{"broken message", args{",,"}, nil, true},
+		{"broken mac", args{",001122334455,,"}, nil, true},
+		{"broken ip", args{",00:11:22:33:44:55,a,"}, nil, true},
+		{"broken udp addr", args{",00:11:22:33:44:55,10.11.12.13,a:b"}, nil, true},
+		{"passing", args{"1,00:11:22:33:44:55,10.11.12.13,192.168.0.1:1234"}, hs0, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseIntroString(tt.args.intro)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseIntroString() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseIntroString() = %v, want %v", got, tt.want)
 			}
 		})
 	}

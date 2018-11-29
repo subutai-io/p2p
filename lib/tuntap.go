@@ -32,21 +32,38 @@ type Packet struct {
 	Packet   []byte
 }
 
+// InterfaceStatus holds Status of the network Interface
+type InterfaceStatus uint8
+
+// Interface Statuses
+const (
+	InterfaceWaiting      InterfaceStatus = 0
+	InterfaceConfiguring  InterfaceStatus = 1
+	InterfaceConfigured   InterfaceStatus = 2
+	InterfaceDeconfigured InterfaceStatus = 3
+	InterfaceRunning      InterfaceStatus = 4
+	InterfaceBroken       InterfaceStatus = 5
+	InterfaceShutdown     InterfaceStatus = 6
+)
+
 // TAP interface
 type TAP interface {
 	GetName() string
 	GetHardwareAddress() net.HardwareAddr
 	GetIP() net.IP
+	GetSubnet() net.IP
 	GetMask() net.IPMask
 	GetBasename() string
 	SetName(string)
 	SetHardwareAddress(net.HardwareAddr)
 	SetIP(net.IP)
+	SetSubnet(net.IP)
 	SetMask(net.IPMask)
 	Init(string) error
 	Open() error
 	Close() error
-	Configure() error
+	Configure(bool) error
+	Deconfigure() error
 	ReadPacket() (*Packet, error)
 	WritePacket(*Packet) error
 	Run()
@@ -56,4 +73,7 @@ type TAP interface {
 	DisablePMTU()
 	IsPMTUEnabled() bool
 	IsBroken() bool
+	SetAuto(bool)
+	IsAuto() bool
+	GetStatus() InterfaceStatus
 }

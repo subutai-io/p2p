@@ -189,7 +189,7 @@ func (d *Daemon) showOutput(data []ShowOutput) ([]byte, error) {
 }
 
 func (d *Daemon) showIP(ip string, instance *P2PInstance) ([]byte, error) {
-	peers := instance.PTP.Peers.Get()
+	peers := instance.PTP.Swarm.Get()
 	for _, peer := range peers {
 		if peer.PeerLocalIP.String() == ip {
 			if peer.State == ptp.PeerStateConnected {
@@ -213,7 +213,7 @@ func (d *Daemon) showIP(ip string, instance *P2PInstance) ([]byte, error) {
 }
 
 func (d *Daemon) showHash(instance *P2PInstance) ([]byte, error) {
-	peers := instance.PTP.Peers.Get()
+	peers := instance.PTP.Swarm.Get()
 	out := []ShowOutput{}
 	for _, peer := range peers {
 		s := ShowOutput{

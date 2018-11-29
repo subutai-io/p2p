@@ -620,7 +620,7 @@ func TestTAPDarwin_Configure(t *testing.T) {
 				Configured: tt.fields.Configured,
 				PMTU:       tt.fields.PMTU,
 			}
-			if err := tap.Configure(); (err != nil) != tt.wantErr {
+			if err := tap.Configure(false); (err != nil) != tt.wantErr {
 				t.Errorf("TAPDarwin.Configure() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

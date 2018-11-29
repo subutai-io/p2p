@@ -145,7 +145,7 @@ func (d *Daemon) Status(hash string) (*statusResponse, error) {
 			ID: id,
 			IP: inst.PTP.Interface.GetIP().String(),
 		}
-		peers := inst.PTP.Peers.Get()
+		peers := inst.PTP.Swarm.Get()
 		for _, peer := range peers {
 			instance.Peers = append(instance.Peers, &statusPeer{
 				ID:        peer.ID,

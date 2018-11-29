@@ -26,7 +26,7 @@ func TestPeerToPeer_handlePacket(t *testing.T) {
 		PeersLock       sync.Mutex
 		Hash            string
 		Interface       TAP
-		Peers           *PeerList
+		Peers           *Swarm
 		HolePunching    sync.Mutex
 		ProxyManager    *ProxyManager
 		outboundIP      net.IP
@@ -61,14 +61,14 @@ func TestPeerToPeer_handlePacket(t *testing.T) {
 				ReadyToStop:     tt.fields.ReadyToStop,
 				MessageHandlers: tt.fields.MessageHandlers,
 				PacketHandlers:  tt.fields.PacketHandlers,
-				PeersLock:       tt.fields.PeersLock,
-				Hash:            tt.fields.Hash,
-				Interface:       tt.fields.Interface,
-				Peers:           tt.fields.Peers,
-				HolePunching:    tt.fields.HolePunching,
-				ProxyManager:    tt.fields.ProxyManager,
-				outboundIP:      tt.fields.outboundIP,
-				UsePMTU:         tt.fields.UsePMTU,
+
+				Hash:         tt.fields.Hash,
+				Interface:    tt.fields.Interface,
+				Swarm:        tt.fields.Peers,
+				HolePunching: tt.fields.HolePunching,
+				ProxyManager: tt.fields.ProxyManager,
+				outboundIP:   tt.fields.outboundIP,
+				UsePMTU:      tt.fields.UsePMTU,
 			}
 			if err := p.handlePacket(tt.args.contents, tt.args.proto); (err != nil) != tt.wantErr {
 				t.Errorf("PeerToPeer.handlePacket() error = %v, wantErr %v", err, tt.wantErr)
@@ -91,7 +91,7 @@ func TestPeerToPeer_handlePacketIPv4(t *testing.T) {
 		PeersLock       sync.Mutex
 		Hash            string
 		Interface       TAP
-		Peers           *PeerList
+		Peers           *Swarm
 		HolePunching    sync.Mutex
 		ProxyManager    *ProxyManager
 		outboundIP      net.IP
@@ -110,7 +110,7 @@ func TestPeerToPeer_handlePacketIPv4(t *testing.T) {
 	p1 = append(p1, buf.Bytes()...)
 	p1 = append(p1, []byte{0x01, 0x02}...)
 
-	pl0 := new(PeerList)
+	pl0 := new(Swarm)
 	pl0.Init()
 
 	socket0 := new(Network)
@@ -138,14 +138,14 @@ func TestPeerToPeer_handlePacketIPv4(t *testing.T) {
 				ReadyToStop:     tt.fields.ReadyToStop,
 				MessageHandlers: tt.fields.MessageHandlers,
 				PacketHandlers:  tt.fields.PacketHandlers,
-				PeersLock:       tt.fields.PeersLock,
-				Hash:            tt.fields.Hash,
-				Interface:       tt.fields.Interface,
-				Peers:           tt.fields.Peers,
-				HolePunching:    tt.fields.HolePunching,
-				ProxyManager:    tt.fields.ProxyManager,
-				outboundIP:      tt.fields.outboundIP,
-				UsePMTU:         tt.fields.UsePMTU,
+
+				Hash:         tt.fields.Hash,
+				Interface:    tt.fields.Interface,
+				Swarm:        tt.fields.Peers,
+				HolePunching: tt.fields.HolePunching,
+				ProxyManager: tt.fields.ProxyManager,
+				outboundIP:   tt.fields.outboundIP,
+				UsePMTU:      tt.fields.UsePMTU,
 			}
 			if err := p.handlePacketIPv4(tt.args.contents, tt.args.proto); (err != nil) != tt.wantErr {
 				t.Errorf("PeerToPeer.handlePacketIPv4() error = %v, wantErr %v", err, tt.wantErr)
@@ -168,7 +168,7 @@ func TestPeerToPeer_handlePacketIPv6(t *testing.T) {
 		PeersLock       sync.Mutex
 		Hash            string
 		Interface       TAP
-		Peers           *PeerList
+		Peers           *Swarm
 		HolePunching    sync.Mutex
 		ProxyManager    *ProxyManager
 		outboundIP      net.IP
@@ -198,14 +198,14 @@ func TestPeerToPeer_handlePacketIPv6(t *testing.T) {
 				ReadyToStop:     tt.fields.ReadyToStop,
 				MessageHandlers: tt.fields.MessageHandlers,
 				PacketHandlers:  tt.fields.PacketHandlers,
-				PeersLock:       tt.fields.PeersLock,
-				Hash:            tt.fields.Hash,
-				Interface:       tt.fields.Interface,
-				Peers:           tt.fields.Peers,
-				HolePunching:    tt.fields.HolePunching,
-				ProxyManager:    tt.fields.ProxyManager,
-				outboundIP:      tt.fields.outboundIP,
-				UsePMTU:         tt.fields.UsePMTU,
+
+				Hash:         tt.fields.Hash,
+				Interface:    tt.fields.Interface,
+				Swarm:        tt.fields.Peers,
+				HolePunching: tt.fields.HolePunching,
+				ProxyManager: tt.fields.ProxyManager,
+				outboundIP:   tt.fields.outboundIP,
+				UsePMTU:      tt.fields.UsePMTU,
 			}
 			if err := p.handlePacketIPv6(tt.args.contents, tt.args.proto); (err != nil) != tt.wantErr {
 				t.Errorf("PeerToPeer.handlePacketIPv6() error = %v, wantErr %v", err, tt.wantErr)
@@ -228,7 +228,7 @@ func TestPeerToPeer_handlePARCUniversalPacket(t *testing.T) {
 		PeersLock       sync.Mutex
 		Hash            string
 		Interface       TAP
-		Peers           *PeerList
+		Peers           *Swarm
 		HolePunching    sync.Mutex
 		ProxyManager    *ProxyManager
 		outboundIP      net.IP
@@ -258,14 +258,14 @@ func TestPeerToPeer_handlePARCUniversalPacket(t *testing.T) {
 				ReadyToStop:     tt.fields.ReadyToStop,
 				MessageHandlers: tt.fields.MessageHandlers,
 				PacketHandlers:  tt.fields.PacketHandlers,
-				PeersLock:       tt.fields.PeersLock,
-				Hash:            tt.fields.Hash,
-				Interface:       tt.fields.Interface,
-				Peers:           tt.fields.Peers,
-				HolePunching:    tt.fields.HolePunching,
-				ProxyManager:    tt.fields.ProxyManager,
-				outboundIP:      tt.fields.outboundIP,
-				UsePMTU:         tt.fields.UsePMTU,
+
+				Hash:         tt.fields.Hash,
+				Interface:    tt.fields.Interface,
+				Swarm:        tt.fields.Peers,
+				HolePunching: tt.fields.HolePunching,
+				ProxyManager: tt.fields.ProxyManager,
+				outboundIP:   tt.fields.outboundIP,
+				UsePMTU:      tt.fields.UsePMTU,
 			}
 			if err := p.handlePARCUniversalPacket(tt.args.contents, tt.args.proto); (err != nil) != tt.wantErr {
 				t.Errorf("PeerToPeer.handlePARCUniversalPacket() error = %v, wantErr %v", err, tt.wantErr)
@@ -288,7 +288,7 @@ func TestPeerToPeer_handleRARPPacket(t *testing.T) {
 		PeersLock       sync.Mutex
 		Hash            string
 		Interface       TAP
-		Peers           *PeerList
+		Peers           *Swarm
 		HolePunching    sync.Mutex
 		ProxyManager    *ProxyManager
 		outboundIP      net.IP
@@ -318,14 +318,14 @@ func TestPeerToPeer_handleRARPPacket(t *testing.T) {
 				ReadyToStop:     tt.fields.ReadyToStop,
 				MessageHandlers: tt.fields.MessageHandlers,
 				PacketHandlers:  tt.fields.PacketHandlers,
-				PeersLock:       tt.fields.PeersLock,
-				Hash:            tt.fields.Hash,
-				Interface:       tt.fields.Interface,
-				Peers:           tt.fields.Peers,
-				HolePunching:    tt.fields.HolePunching,
-				ProxyManager:    tt.fields.ProxyManager,
-				outboundIP:      tt.fields.outboundIP,
-				UsePMTU:         tt.fields.UsePMTU,
+
+				Hash:         tt.fields.Hash,
+				Interface:    tt.fields.Interface,
+				Swarm:        tt.fields.Peers,
+				HolePunching: tt.fields.HolePunching,
+				ProxyManager: tt.fields.ProxyManager,
+				outboundIP:   tt.fields.outboundIP,
+				UsePMTU:      tt.fields.UsePMTU,
 			}
 			if err := p.handleRARPPacket(tt.args.contents, tt.args.proto); (err != nil) != tt.wantErr {
 				t.Errorf("PeerToPeer.handleRARPPacket() error = %v, wantErr %v", err, tt.wantErr)
@@ -348,7 +348,7 @@ func TestPeerToPeer_handle8021qPacket(t *testing.T) {
 		PeersLock       sync.Mutex
 		Hash            string
 		Interface       TAP
-		Peers           *PeerList
+		Peers           *Swarm
 		HolePunching    sync.Mutex
 		ProxyManager    *ProxyManager
 		outboundIP      net.IP
@@ -378,14 +378,14 @@ func TestPeerToPeer_handle8021qPacket(t *testing.T) {
 				ReadyToStop:     tt.fields.ReadyToStop,
 				MessageHandlers: tt.fields.MessageHandlers,
 				PacketHandlers:  tt.fields.PacketHandlers,
-				PeersLock:       tt.fields.PeersLock,
-				Hash:            tt.fields.Hash,
-				Interface:       tt.fields.Interface,
-				Peers:           tt.fields.Peers,
-				HolePunching:    tt.fields.HolePunching,
-				ProxyManager:    tt.fields.ProxyManager,
-				outboundIP:      tt.fields.outboundIP,
-				UsePMTU:         tt.fields.UsePMTU,
+
+				Hash:         tt.fields.Hash,
+				Interface:    tt.fields.Interface,
+				Swarm:        tt.fields.Peers,
+				HolePunching: tt.fields.HolePunching,
+				ProxyManager: tt.fields.ProxyManager,
+				outboundIP:   tt.fields.outboundIP,
+				UsePMTU:      tt.fields.UsePMTU,
 			}
 			if err := p.handle8021qPacket(tt.args.contents, tt.args.proto); (err != nil) != tt.wantErr {
 				t.Errorf("PeerToPeer.handle8021qPacket() error = %v, wantErr %v", err, tt.wantErr)
@@ -408,7 +408,7 @@ func TestPeerToPeer_handlePPPoEDiscoveryPacket(t *testing.T) {
 		PeersLock       sync.Mutex
 		Hash            string
 		Interface       TAP
-		Peers           *PeerList
+		Peers           *Swarm
 		HolePunching    sync.Mutex
 		ProxyManager    *ProxyManager
 		outboundIP      net.IP
@@ -438,14 +438,14 @@ func TestPeerToPeer_handlePPPoEDiscoveryPacket(t *testing.T) {
 				ReadyToStop:     tt.fields.ReadyToStop,
 				MessageHandlers: tt.fields.MessageHandlers,
 				PacketHandlers:  tt.fields.PacketHandlers,
-				PeersLock:       tt.fields.PeersLock,
-				Hash:            tt.fields.Hash,
-				Interface:       tt.fields.Interface,
-				Peers:           tt.fields.Peers,
-				HolePunching:    tt.fields.HolePunching,
-				ProxyManager:    tt.fields.ProxyManager,
-				outboundIP:      tt.fields.outboundIP,
-				UsePMTU:         tt.fields.UsePMTU,
+
+				Hash:         tt.fields.Hash,
+				Interface:    tt.fields.Interface,
+				Swarm:        tt.fields.Peers,
+				HolePunching: tt.fields.HolePunching,
+				ProxyManager: tt.fields.ProxyManager,
+				outboundIP:   tt.fields.outboundIP,
+				UsePMTU:      tt.fields.UsePMTU,
 			}
 			if err := p.handlePPPoEDiscoveryPacket(tt.args.contents, tt.args.proto); (err != nil) != tt.wantErr {
 				t.Errorf("PeerToPeer.handlePPPoEDiscoveryPacket() error = %v, wantErr %v", err, tt.wantErr)
@@ -468,7 +468,7 @@ func TestPeerToPeer_handlePPPoESessionPacket(t *testing.T) {
 		PeersLock       sync.Mutex
 		Hash            string
 		Interface       TAP
-		Peers           *PeerList
+		Peers           *Swarm
 		HolePunching    sync.Mutex
 		ProxyManager    *ProxyManager
 		outboundIP      net.IP
@@ -498,14 +498,14 @@ func TestPeerToPeer_handlePPPoESessionPacket(t *testing.T) {
 				ReadyToStop:     tt.fields.ReadyToStop,
 				MessageHandlers: tt.fields.MessageHandlers,
 				PacketHandlers:  tt.fields.PacketHandlers,
-				PeersLock:       tt.fields.PeersLock,
-				Hash:            tt.fields.Hash,
-				Interface:       tt.fields.Interface,
-				Peers:           tt.fields.Peers,
-				HolePunching:    tt.fields.HolePunching,
-				ProxyManager:    tt.fields.ProxyManager,
-				outboundIP:      tt.fields.outboundIP,
-				UsePMTU:         tt.fields.UsePMTU,
+
+				Hash:         tt.fields.Hash,
+				Interface:    tt.fields.Interface,
+				Swarm:        tt.fields.Peers,
+				HolePunching: tt.fields.HolePunching,
+				ProxyManager: tt.fields.ProxyManager,
+				outboundIP:   tt.fields.outboundIP,
+				UsePMTU:      tt.fields.UsePMTU,
 			}
 			if err := p.handlePPPoESessionPacket(tt.args.contents, tt.args.proto); (err != nil) != tt.wantErr {
 				t.Errorf("PeerToPeer.handlePPPoESessionPacket() error = %v, wantErr %v", err, tt.wantErr)
@@ -528,7 +528,7 @@ func TestPeerToPeer_handlePacketARP(t *testing.T) {
 		PeersLock       sync.Mutex
 		Hash            string
 		Interface       TAP
-		Peers           *PeerList
+		Peers           *Swarm
 		HolePunching    sync.Mutex
 		ProxyManager    *ProxyManager
 		outboundIP      net.IP
@@ -552,14 +552,14 @@ func TestPeerToPeer_handlePacketARP(t *testing.T) {
 		0x01, 0x02, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff}
 	p1 := append(p0, payload0...)
 
-	pl0 := new(PeerList)
+	pl0 := new(Swarm)
 	pl0.Init()
 
-	pl1 := new(PeerList)
+	pl1 := new(Swarm)
 	pl1.Init()
 	pl1.tableIPID[ip] = "broken-id"
 
-	pl2 := new(PeerList)
+	pl2 := new(Swarm)
 	pl2.Init()
 	pl2.tableIPID[ip] = "peer-id0"
 	pl2.peers["peer-id0"] = &NetworkPeer{
@@ -567,7 +567,7 @@ func TestPeerToPeer_handlePacketARP(t *testing.T) {
 		PeerLocalIP: net.ParseIP(ip),
 	}
 
-	pl3 := new(PeerList)
+	pl3 := new(Swarm)
 	pl3.Init()
 	pl3.tableIPID[ip] = "peer-id0"
 	pl3.peers["peer-id0"] = &NetworkPeer{
@@ -603,14 +603,14 @@ func TestPeerToPeer_handlePacketARP(t *testing.T) {
 				ReadyToStop:     tt.fields.ReadyToStop,
 				MessageHandlers: tt.fields.MessageHandlers,
 				PacketHandlers:  tt.fields.PacketHandlers,
-				PeersLock:       tt.fields.PeersLock,
-				Hash:            tt.fields.Hash,
-				Interface:       tt.fields.Interface,
-				Peers:           tt.fields.Peers,
-				HolePunching:    tt.fields.HolePunching,
-				ProxyManager:    tt.fields.ProxyManager,
-				outboundIP:      tt.fields.outboundIP,
-				UsePMTU:         tt.fields.UsePMTU,
+
+				Hash:         tt.fields.Hash,
+				Interface:    tt.fields.Interface,
+				Swarm:        tt.fields.Peers,
+				HolePunching: tt.fields.HolePunching,
+				ProxyManager: tt.fields.ProxyManager,
+				outboundIP:   tt.fields.outboundIP,
+				UsePMTU:      tt.fields.UsePMTU,
 			}
 			if err := p.handlePacketARP(tt.args.contents, tt.args.proto); (err != nil) != tt.wantErr {
 				t.Errorf("PeerToPeer.handlePacketARP() error = %v, wantErr %v", err, tt.wantErr)
@@ -633,7 +633,7 @@ func TestPeerToPeer_handlePacketLLDP(t *testing.T) {
 		PeersLock       sync.Mutex
 		Hash            string
 		Interface       TAP
-		Peers           *PeerList
+		Peers           *Swarm
 		HolePunching    sync.Mutex
 		ProxyManager    *ProxyManager
 		outboundIP      net.IP
@@ -663,14 +663,14 @@ func TestPeerToPeer_handlePacketLLDP(t *testing.T) {
 				ReadyToStop:     tt.fields.ReadyToStop,
 				MessageHandlers: tt.fields.MessageHandlers,
 				PacketHandlers:  tt.fields.PacketHandlers,
-				PeersLock:       tt.fields.PeersLock,
-				Hash:            tt.fields.Hash,
-				Interface:       tt.fields.Interface,
-				Peers:           tt.fields.Peers,
-				HolePunching:    tt.fields.HolePunching,
-				ProxyManager:    tt.fields.ProxyManager,
-				outboundIP:      tt.fields.outboundIP,
-				UsePMTU:         tt.fields.UsePMTU,
+
+				Hash:         tt.fields.Hash,
+				Interface:    tt.fields.Interface,
+				Swarm:        tt.fields.Peers,
+				HolePunching: tt.fields.HolePunching,
+				ProxyManager: tt.fields.ProxyManager,
+				outboundIP:   tt.fields.outboundIP,
+				UsePMTU:      tt.fields.UsePMTU,
 			}
 			if err := p.handlePacketLLDP(tt.args.contents, tt.args.proto); (err != nil) != tt.wantErr {
 				t.Errorf("PeerToPeer.handlePacketLLDP() error = %v, wantErr %v", err, tt.wantErr)
