@@ -15,22 +15,22 @@ const (
 	OperateUpdate ListOperation = 1 // Add/Update entry in map
 )
 
-// PeerList is for handling list of peers with all mappings
-type PeerList struct {
-	peers      map[string]*NetworkPeer
-	tableIPID  map[string]string // Mapping for IP->ID
-	tableMacID map[string]string // Mapping for MAC->ID
-	lock       sync.RWMutex
+// Swarm is for handling list of peers with all mappings
+type Swarm struct {
+	peers      map[string]*NetworkPeer // Map of peers in this swarm
+	tableIPID  map[string]string       // Mapping for IP->ID
+	tableMacID map[string]string       // Mapping for MAC->ID
+	lock       sync.RWMutex            // Mutex for the tables
 }
 
-// Init will initialize PeerList's maps
-func (l *PeerList) Init() {
+// Init will initialize Swarm's maps
+func (l *Swarm) Init() {
 	l.peers = make(map[string]*NetworkPeer)
 	l.tableIPID = make(map[string]string)
 	l.tableMacID = make(map[string]string)
 }
 
-func (l *PeerList) operate(action ListOperation, id string, peer *NetworkPeer) error {
+func (l *Swarm) operate(action ListOperation, id string, peer *NetworkPeer) error {
 	if l.peers == nil {
 		return fmt.Errorf("peers is nil - not initialized")
 	}
@@ -66,7 +66,7 @@ func (l *PeerList) operate(action ListOperation, id string, peer *NetworkPeer) e
 	return nil
 }
 
-func (l *PeerList) updateTables(id, ip, mac string) {
+func (l *Swarm) updateTables(id, ip, mac string) {
 	if ip != "" {
 		l.tableIPID[ip] = id
 	}
@@ -75,7 +75,7 @@ func (l *PeerList) updateTables(id, ip, mac string) {
 	}
 }
 
-func (l *PeerList) deleteTables(ip, mac string) {
+func (l *Swarm) deleteTables(ip, mac string) {
 	if ip != "" {
 		_, exists := l.tableIPID[ip]
 		if exists {
@@ -91,17 +91,17 @@ func (l *PeerList) deleteTables(ip, mac string) {
 }
 
 // Delete will remove entry with specified ID from peer list
-func (l *PeerList) Delete(id string) {
+func (l *Swarm) Delete(id string) {
 	l.operate(OperateDelete, id, nil)
 }
 
 // Update will append/edit peer in list
-func (l *PeerList) Update(id string, peer *NetworkPeer) {
+func (l *Swarm) Update(id string, peer *NetworkPeer) {
 	l.operate(OperateUpdate, id, peer)
 }
 
 // Get returns copy of map with all peers
-func (l *PeerList) Get() map[string]*NetworkPeer {
+func (l *Swarm) Get() map[string]*NetworkPeer {
 	result := make(map[string]*NetworkPeer)
 	l.lock.RLock()
 	for id, peer := range l.peers {
@@ -112,7 +112,7 @@ func (l *PeerList) Get() map[string]*NetworkPeer {
 }
 
 // GetPeer returns single peer by id
-func (l *PeerList) GetPeer(id string) *NetworkPeer {
+func (l *Swarm) GetPeer(id string) *NetworkPeer {
 	l.lock.RLock()
 	peer, exists := l.peers[id]
 	l.lock.RUnlock()
@@ -123,7 +123,7 @@ func (l *PeerList) GetPeer(id string) *NetworkPeer {
 }
 
 // GetEndpoint returns endpoint address and proxy id
-func (l *PeerList) GetEndpoint(mac string) (*net.UDPAddr, error) {
+func (l *Swarm) GetEndpoint(mac string) (*net.UDPAddr, error) {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 	id, exists := l.tableMacID[mac]
@@ -137,7 +137,7 @@ func (l *PeerList) GetEndpoint(mac string) (*net.UDPAddr, error) {
 }
 
 // GetID returns ID by specified IP
-func (l *PeerList) GetID(ip string) (string, error) {
+func (l *Swarm) GetID(ip string) (string, error) {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 	id, exists := l.tableIPID[ip]
@@ -148,13 +148,13 @@ func (l *PeerList) GetID(ip string) (string, error) {
 }
 
 // Length returns size of peer list map
-func (l *PeerList) Length() int {
+func (l *Swarm) Length() int {
 	return len(l.peers)
 }
 
 // RunPeer should be called once on each peer when added
 // to list
-func (l *PeerList) RunPeer(id string, p *PeerToPeer) {
+func (l *Swarm) RunPeer(id string, p *PeerToPeer) {
 	Log(Info, "Running peer %s", id)
 	l.lock.RLock()
 	defer l.lock.RUnlock()

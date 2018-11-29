@@ -1,9 +1,9 @@
 package ptp
 
 import (
+	"encoding/binary"
 	"fmt"
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -26,17 +26,15 @@ type PeerToPeer struct {
 	ReadyToStop     bool                                 // Set to true when instance is ready to stop
 	MessageHandlers map[uint16]MessageHandler            // Callbacks for network packets
 	PacketHandlers  map[PacketType]PacketHandlerCallback // Callbacks for packets received by TAP interface
-	PeersLock       sync.Mutex                           // Lock for peers map
 	Hash            string                               // Infohash for this instance
 	Interface       TAP                                  // TAP Interface
-	Peers           *PeerList                            // Known peers
+	Swarm           *Swarm                               // Known peers
 	HolePunching    sync.Mutex                           // Mutex for hole punching sync
 	ProxyManager    *ProxyManager                        // Proxy manager
 	outboundIP      net.IP                               // Outbound IP
 	UsePMTU         bool                                 // Whether PMTU capabilities are enabled or not
 	StartedAt       time.Time                            // Timestamp of instance creation time
 	ConfiguredAt    time.Time                            // Time when configuration of the instance was finished
-	// Config          Configuration                        // Network interface configuration tool
 }
 
 // PeerHandshake holds handshake information received from peer
@@ -45,6 +43,7 @@ type PeerHandshake struct {
 	IP           net.IP
 	HardwareAddr net.HardwareAddr
 	Endpoint     *net.UDPAddr
+	AutoIP       bool // Whether or not peer have automatic IP
 }
 
 // ActiveInterfaces is a global (daemon-wise) list of reserved IP addresses
@@ -64,7 +63,7 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 		return fmt.Errorf("Failed to initialize TAP: %s", err)
 	}
 
-	if p.Interface.GetIP() == nil {
+	if p.Interface.GetIP() == nil && !p.Interface.IsAuto() {
 		return fmt.Errorf("No IP provided")
 	}
 	if p.Interface.GetHardwareAddress() == nil {
@@ -85,13 +84,20 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	}
 	Log(Debug, "%v TAP Device created", p.Interface.GetName())
 
-	err = p.Interface.Configure()
+	lazy := false
+	if p.Interface.IsAuto() {
+		lazy = true
+	}
+
+	err = p.Interface.Configure(lazy)
 	if err != nil {
 		return err
 	}
 	ActiveInterfaces = append(ActiveInterfaces, p.Interface.GetIP())
-	Log(Debug, "Interface has been configured")
-	p.Interface.MarkConfigured()
+	if !p.Interface.IsAuto() {
+		Log(Debug, "Interface has been configured")
+		p.Interface.MarkConfigured()
+	}
 	return err
 }
 
@@ -107,6 +113,10 @@ func (p *PeerToPeer) ListenInterface() error {
 	for {
 		if p.Shutdown {
 			break
+		}
+		if p.Interface.GetIP() == nil || p.Interface.IsConfigured() == false {
+			time.Sleep(time.Millisecond * 100)
+			continue
 		}
 		packet, err := p.Interface.ReadPacket()
 		if err != nil && err != errPacketTooBig {
@@ -295,6 +305,12 @@ func (p *PeerToPeer) PrepareInterfaces(ip, interfaceName string) error {
 		p.Interface.SetIP(ipn)
 		p.Interface.SetMask(maskn)
 		return nil
+	} else if ip == "auto" {
+		p.Interface.SetAuto(true)
+		p.Interface.SetIP(nil)
+		p.Interface.SetSubnet(nil)
+		p.AssignInterface(iface)
+		return nil
 	}
 	staticIP := net.ParseIP(ip)
 	if staticIP == nil {
@@ -326,8 +342,8 @@ func (p *PeerToPeer) attemptPortForward(port uint16, name string) error {
 
 // Init will initialize PeerToPeer
 func (p *PeerToPeer) Init() error {
-	p.Peers = new(PeerList)
-	p.Peers.Init()
+	p.Swarm = new(Swarm)
+	p.Swarm.Init()
 	return nil
 }
 
@@ -518,14 +534,14 @@ func (p *PeerToPeer) checkLastDHTUpdate() error {
 
 // TODO: Check if this method is still actual
 func (p *PeerToPeer) removeStoppedPeers() error {
-	if p.Peers == nil {
+	if p.Swarm == nil {
 		return fmt.Errorf("removeStoppedPeers: nil peer list")
 	}
-	peers := p.Peers.Get()
+	peers := p.Swarm.Get()
 	for id, peer := range peers {
 		if peer.State == PeerStateStop {
 			Log(Info, "Removing peer %s", id)
-			p.Peers.Delete(id)
+			p.Swarm.Delete(id)
 			Log(Info, "Peer %s has been removed", id)
 			break
 		}
@@ -564,7 +580,7 @@ func (p *PeerToPeer) checkPeers() error {
 	if p.Dht == nil {
 		return fmt.Errorf("checkPeers: nil dht")
 	}
-	if p.Peers == nil {
+	if p.Swarm == nil {
 		return fmt.Errorf("checkPeers: nil peer list")
 	}
 	if p.UDPSocket == nil {
@@ -573,7 +589,14 @@ func (p *PeerToPeer) checkPeers() error {
 	if len(p.Dht.ID) != 36 {
 		return fmt.Errorf("checkPeers ID is too small")
 	}
-	for _, peer := range p.Peers.Get() {
+	for _, peer := range p.Swarm.Get() {
+		if peer.State == PeerStateConnected {
+			if !p.Interface.IsConfigured() && p.Interface.IsAuto() && p.Interface.GetSubnet() == nil && p.Interface.GetIP() == nil {
+				// Starting interface configuration process
+				p.Interface.Configure(true)
+				p.discoverIP()
+			}
+		}
 		for _, e := range peer.EndpointsHeap {
 			if e == nil {
 				continue
@@ -584,6 +607,101 @@ func (p *PeerToPeer) checkPeers() error {
 	return nil
 }
 
+// discoverSubnet will ask all known peers about subnet they use.
+// The first one to response will be used in the further interface configuration process
+func (p *PeerToPeer) discoverIP() error {
+	if p.Swarm == nil {
+		return fmt.Errorf("nil swarm")
+	}
+	if p.Interface == nil {
+		return fmt.Errorf("nil interface")
+	}
+	if p.Dht == nil {
+		return fmt.Errorf("nil dht")
+	}
+
+	Log(Info, "Discovering IP for this swarm")
+
+	p.Interface.SetSubnet(nil)
+	p.Interface.SetIP(nil)
+
+	// Send subnet request
+	payload := make([]byte, 38)
+	binary.BigEndian.PutUint16(payload[0:2], CommIPSubnet)
+	copy(payload[2:38], p.Dht.ID)
+	msg, _ := p.CreateMessage(MsgTypeComm, payload, 0, true)
+	for _, peer := range p.Swarm.Get() {
+		if peer.State == PeerStateConnected && peer.Endpoint != nil {
+			p.UDPSocket.SendMessage(msg, peer.Endpoint)
+		}
+	}
+
+	// Waiting for subnet
+	lastRequest := time.Now()
+	for p.Interface.GetSubnet() == nil {
+		if time.Since(lastRequest) > time.Duration(time.Millisecond*2000) {
+			p.Interface.Deconfigure()
+			return fmt.Errorf("Didn't received subnet information")
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
+
+	sn := p.Interface.GetSubnet()
+	Log(Info, "Received subnet for this swarm: %s", sn.String())
+
+	// Discover free IP
+	i := 255
+	lastRequest = time.Unix(0, 0)
+	for p.Interface.GetIP() == nil && i > 0 {
+		if time.Since(lastRequest) > time.Duration(time.Millisecond*1500) {
+			i--
+			lastRequest = time.Now()
+			payload := make([]byte, 42)
+
+			binary.BigEndian.PutUint16(payload[0:2], CommIPInfo)
+			copy(payload[2:38], p.Dht.ID)
+			copy(payload[38:42], []byte{sn[0], sn[1], sn[2], byte(i)})
+			msg, _ := p.CreateMessage(MsgTypeComm, payload, 0, true)
+			for _, peer := range p.Swarm.Get() {
+				if peer.Endpoint == nil || peer.State != PeerStateConnected {
+					continue
+				}
+
+				p.UDPSocket.SendMessage(msg, peer.Endpoint)
+			}
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
+
+	if p.Interface.GetIP() == nil {
+		Log(Error, "Couldn't find free IP for this swarm")
+		return fmt.Errorf("Failed to get free IP for this swarm")
+	}
+
+	return nil
+}
+
+// notifyIP will notify all known peers about it's new IP
+func (p *PeerToPeer) notifyIP() error {
+	if p.Dht == nil {
+		return fmt.Errorf("nil dht")
+	}
+	payload := make([]byte, 42)
+	binary.BigEndian.PutUint16(payload[0:2], CommIPSet)
+	copy(payload[2:38], p.Dht.ID)
+	copy(payload[38:42], p.Interface.GetIP().To4())
+
+	msg, _ := p.CreateMessage(MsgTypeComm, payload, 0, true)
+
+	for _, peer := range p.Swarm.Get() {
+		if peer.Endpoint != nil {
+			p.UDPSocket.SendMessage(msg, peer.Endpoint)
+		}
+	}
+
+	return nil
+}
+
 // PrepareIntroductionMessage collects client ID, mac and IP address
 // and create a comma-separated line
 // endpoint is an address that received this introduction message
@@ -591,7 +709,13 @@ func (p *PeerToPeer) PrepareIntroductionMessage(id, endpoint string) (*P2PMessag
 	if p.Interface == nil {
 		return nil, fmt.Errorf("PrepareIntroductionMessage: nil interface")
 	}
-	var intro = id + "," + p.Interface.GetHardwareAddress().String() + "," + p.Interface.GetIP().String() + "," + endpoint
+
+	ip := "auto"
+	if !p.Interface.IsAuto() {
+		ip = p.Interface.GetIP().String()
+	}
+
+	var intro = id + "," + p.Interface.GetHardwareAddress().String() + "," + ip + "," + endpoint
 	msg, err := p.CreateMessage(MsgTypeIntro, []byte(intro), 0, true)
 	if err != nil {
 		return nil, err
@@ -617,37 +741,9 @@ func (p *PeerToPeer) WriteToDevice(b []byte, proto uint16, truncated bool) error
 	return nil
 }
 
-// ParseIntroString receives a comma-separated string with ID, MAC and IP of a peer
-// and returns this data
-func (p *PeerToPeer) ParseIntroString(intro string) (*PeerHandshake, error) {
-	hs := &PeerHandshake{}
-	parts := strings.Split(intro, ",")
-	if len(parts) != 4 {
-		return nil, fmt.Errorf("Failed to parse introduction string: %s", intro)
-	}
-	hs.ID = parts[0]
-	// Extract MAC
-	var err error
-	hs.HardwareAddr, err = net.ParseMAC(parts[1])
-	if err != nil {
-		return nil, fmt.Errorf("Failed to parse MAC address from introduction packet: %v", err)
-	}
-	// Extract IP
-	hs.IP = net.ParseIP(parts[2])
-	if hs.IP == nil {
-		return nil, fmt.Errorf("Failed to parse IP address from introduction packet")
-	}
-	hs.Endpoint, err = net.ResolveUDPAddr("udp4", parts[3])
-	if err != nil {
-		return nil, fmt.Errorf("Failed to parse handshake endpoint: %s", parts[3])
-	}
-
-	return hs, nil
-}
-
 // SendTo sends a p2p packet by MAC address
 func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) {
-	if p.Peers == nil {
+	if p.Swarm == nil {
 		return -1, fmt.Errorf("SendTo: nil peer list")
 	}
 	if p.UDPSocket == nil {
@@ -659,7 +755,7 @@ func (p *PeerToPeer) SendTo(dst net.HardwareAddr, msg *P2PMessage) (int, error) 
 	if dst == nil {
 		return -1, fmt.Errorf("SendTo: nil dst")
 	}
-	endpoint, err := p.Peers.GetEndpoint(dst.String())
+	endpoint, err := p.Swarm.GetEndpoint(dst.String())
 	if err == nil && endpoint != nil {
 		size, err := p.UDPSocket.SendMessage(msg, endpoint)
 		return size, err
@@ -712,16 +808,16 @@ func (p *PeerToPeer) stopInterface() error {
 }
 
 func (p *PeerToPeer) stopPeers() error {
-	if p.Peers == nil {
+	if p.Swarm == nil {
 		return fmt.Errorf("nil peer list")
 	}
-	peers := p.Peers.Get()
+	peers := p.Swarm.Get()
 	for i, peer := range peers {
 		peer.SetState(PeerStateDisconnect, p)
-		p.Peers.Update(i, peer)
+		p.Swarm.Update(i, peer)
 	}
 	stopStarted := time.Now()
-	for p.Peers.Length() > 0 {
+	for p.Swarm.Length() > 0 {
 		if time.Since(stopStarted) > time.Duration(time.Second*5) {
 			Log(Warning, "Peer remove timeout passed")
 			break

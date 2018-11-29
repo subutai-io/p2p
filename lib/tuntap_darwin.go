@@ -53,6 +53,7 @@ func newEmptyTAP() *TAPDarwin {
 // TAPDarwin is an interface for TAP device on Linux platform
 type TAPDarwin struct {
 	IP         net.IP           // IP
+	Subnet     net.IP           // Subnet
 	Mask       net.IPMask       // Mask
 	Mac        net.HardwareAddr // Hardware Address
 	Name       string           // Network interface name
@@ -61,6 +62,8 @@ type TAPDarwin struct {
 	file       *os.File         // Interface descriptor
 	Configured bool
 	PMTU       bool
+	Auto       bool
+	Status     InterfaceStatus
 }
 
 // GetName returns a name of interface
@@ -76,6 +79,10 @@ func (t *TAPDarwin) GetHardwareAddress() net.HardwareAddr {
 // GetIP returns IP addres of the interface
 func (t *TAPDarwin) GetIP() net.IP {
 	return t.IP
+}
+
+func (t *TAPDarwin) GetSubnet() net.IP {
+	return t.Subnet
 }
 
 // GetMask returns an IP mask of the interface
@@ -101,6 +108,10 @@ func (t *TAPDarwin) SetHardwareAddress(mac net.HardwareAddr) {
 // SetIP will set IP
 func (t *TAPDarwin) SetIP(ip net.IP) {
 	t.IP = ip
+}
+
+func (t *TAPDarwin) SetSubnet(subnet net.IP) {
+	t.Subnet = subnet
 }
 
 // SetMask will set mask
@@ -139,22 +150,40 @@ func (t *TAPDarwin) Close() error {
 	return nil
 }
 
-func (t *TAPDarwin) Configure() error {
+func (t *TAPDarwin) Configure(lazy bool) error {
 	if t.Tool == "" {
 		return fmt.Errorf("TAP.Configure: Configuration tool wasn't specified")
 	}
+	t.Status = InterfaceConfiguring
+	// if lazy {
+	// 	return nil
+	// }
+	Log(Info, "Setting hardware address to %s", t.Mac.String())
 	setmac := exec.Command(t.Tool, t.Name, "ether", t.Mac.String())
 	err := setmac.Run()
 	if err != nil {
 		Log(Error, "Failed to set MAC: %v", err)
 	}
+
+	if t.IP == nil {
+		return nil
+	}
+
 	// TODO: remove hardcoded mask
 	linkup := exec.Command(t.Tool, t.Name, t.IP.String(), "netmask", "255.255.255.0", "up")
 	err = linkup.Run()
 	if err != nil {
+		t.Status = InterfaceBroken
 		Log(Error, "Failed to up link: %v", err)
 		return err
 	}
+	t.Status = InterfaceConfigured
+	return nil
+}
+
+func (t *TAPDarwin) Deconfigure() error {
+	t.Status = InterfaceDeconfigured
+	t.Configured = false
 	return nil
 }
 
@@ -188,7 +217,7 @@ func (t *TAPDarwin) WritePacket(packet *Packet) error {
 
 // Run will start TAP processes
 func (t *TAPDarwin) Run() {
-
+	t.Status = InterfaceRunning
 }
 
 func (t *TAPDarwin) IsConfigured() bool {
@@ -213,6 +242,18 @@ func (t *TAPDarwin) IsPMTUEnabled() bool {
 
 func (t *TAPDarwin) IsBroken() bool {
 	return false
+}
+
+func (t *TAPDarwin) SetAuto(auto bool) {
+	t.Auto = auto
+}
+
+func (t *TAPDarwin) IsAuto() bool {
+	return t.Auto
+}
+
+func (t *TAPDarwin) GetStatus() InterfaceStatus {
+	return t.Status
 }
 
 // FilterInterface will return true if this interface needs to be filtered out

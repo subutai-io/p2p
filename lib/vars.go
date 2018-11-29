@@ -42,16 +42,16 @@ const (
 
 // IP communication packets
 const (
-	CommIPSubnet   = 10 // Request subnet information from peer
-	CommIPInfo     = 11 // Ask peer if it knows specified IP
-	CommIPSet      = 12 // Notify peer that this peer is now available over specified IP
-	CommIPConflict = 13 // Notify peer that his IP is in conflict
+	CommIPSubnet   uint16 = 10 // Request subnet information from peer
+	CommIPInfo            = 11 // Ask peer if it knows specified IP
+	CommIPSet             = 12 // Notify peer that this peer is now available over specified IP
+	CommIPConflict        = 13 // Notify peer that his IP is in conflict
 )
 
 // Discovery communication packets
 const (
-	CommDiscoveryInit = 20 // Initiate connection with discovery service
-	CommDiscoveryFind = 21 // Find request
+	CommDiscoveryInit uint16 = 20 // Initiate connection with discovery service
+	CommDiscoveryFind        = 21 // Find request
 )
 
 // Network Constants

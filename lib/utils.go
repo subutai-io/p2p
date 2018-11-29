@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -197,4 +198,37 @@ func isDeviceExists(name string) bool {
 		}
 	}
 	return false
+}
+
+// ParseIntroString receives a comma-separated string with ID, MAC and IP of a peer
+// and returns this data
+func ParseIntroString(intro string) (*PeerHandshake, error) {
+	hs := &PeerHandshake{}
+	parts := strings.Split(intro, ",")
+	if len(parts) != 4 {
+		return nil, fmt.Errorf("Failed to parse introduction string: %s", intro)
+	}
+	hs.ID = parts[0]
+	// Extract MAC
+	var err error
+	hs.HardwareAddr, err = net.ParseMAC(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse MAC address from introduction packet: %v", err)
+	}
+	// Extract IP
+	if parts[2] == "auto" {
+		hs.AutoIP = true
+	} else {
+		hs.AutoIP = false
+		hs.IP = net.ParseIP(parts[2])
+		if hs.IP == nil {
+			return nil, fmt.Errorf("Failed to parse IP address from introduction packet")
+		}
+	}
+	hs.Endpoint, err = net.ResolveUDPAddr("udp4", parts[3])
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse handshake endpoint: %s", parts[3])
+	}
+
+	return hs, nil
 }

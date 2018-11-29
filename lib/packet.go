@@ -183,16 +183,16 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) error {
 		Log(Error, "Failed to unmarshal arp")
 		return fmt.Errorf("failed to unmarshal ARP packet: %s", err.Error())
 	}
-	if p.Peers == nil {
+	if p.Swarm == nil {
 		return fmt.Errorf("nil peer list")
 	}
 
-	id, err := p.Peers.GetID(packet.TargetIP.String())
+	id, err := p.Swarm.GetID(packet.TargetIP.String())
 	if err != nil {
 		Log(Trace, "Unknown IP requested: %s", packet.TargetIP.String())
 		return fmt.Errorf("requested unknown IP: %s", packet.TargetIP)
 	}
-	peer := p.Peers.GetPeer(id)
+	peer := p.Swarm.GetPeer(id)
 	if peer == nil {
 		Log(Debug, "Can't lookup address: Specified peer was not found")
 		return fmt.Errorf("peer not found during arp request: %s", id)
@@ -202,12 +202,12 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) error {
 		Log(Error, "Cannot find hardware address for requested IP")
 		_, hwAddr = GenerateMAC()
 		peer.PeerHW = hwAddr
-		p.Peers.Update(id, peer)
+		p.Swarm.Update(id, peer)
 	}
 	if hwAddr.String() == "00:00:00:00:00:00" {
 		_, hwAddr = GenerateMAC()
 		peer.PeerHW = hwAddr
-		p.Peers.Update(id, peer)
+		p.Swarm.Update(id, peer)
 	}
 	var reply ARPPacket
 	ip := net.ParseIP(packet.TargetIP.String())
