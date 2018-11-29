@@ -109,7 +109,7 @@ func (p *PeerToPeer) packetFind(packet *protocol.DHTPacket) error {
 		Log(Debug, "Skipping self [%s = %s]", packet.Data, p.Dht.ID)
 		return nil
 	}
-	if p.Peers == nil {
+	if p.Swarm == nil {
 		return fmt.Errorf("nil peer list")
 	}
 	if p.ProxyManager == nil {
@@ -117,7 +117,7 @@ func (p *PeerToPeer) packetFind(packet *protocol.DHTPacket) error {
 	}
 
 	Log(Debug, "Received `find`: %+v", packet)
-	peer := p.Peers.GetPeer(packet.Data)
+	peer := p.Swarm.GetPeer(packet.Data)
 
 	if peer == nil {
 		peer := new(NetworkPeer)
@@ -174,8 +174,8 @@ func (p *PeerToPeer) packetFind(packet *protocol.DHTPacket) error {
 		if packet.GetExtra() != "skip" {
 			peer.SetState(PeerStateInit, p)
 			peer.LastFind = time.Now()
-			p.Peers.Update(peer.ID, peer)
-			p.Peers.RunPeer(peer.ID, p)
+			p.Swarm.Update(peer.ID, peer)
+			p.Swarm.RunPeer(peer.ID, p)
 		}
 	} else {
 		// This is an existing peer
@@ -224,7 +224,7 @@ func (p *PeerToPeer) packetFind(packet *protocol.DHTPacket) error {
 			}
 		}
 		peer.Proxies = proxies
-		p.Peers.Update(peer.ID, peer)
+		p.Swarm.Update(peer.ID, peer)
 	}
 	return nil
 }
@@ -238,7 +238,7 @@ func (p *PeerToPeer) packetNode(packet *protocol.DHTPacket) error {
 		return fmt.Errorf("nil packet")
 	}
 
-	if p.Peers == nil {
+	if p.Swarm == nil {
 		return fmt.Errorf("nil peer list")
 	}
 
@@ -246,7 +246,7 @@ func (p *PeerToPeer) packetNode(packet *protocol.DHTPacket) error {
 		return fmt.Errorf("Empty IP's list")
 	}
 
-	peer := p.Peers.GetPeer(packet.Data)
+	peer := p.Swarm.GetPeer(packet.Data)
 	if peer == nil {
 		return fmt.Errorf("Peer %s not found", packet.Data)
 	}
@@ -311,7 +311,7 @@ func (p *PeerToPeer) packetProxy(packet *protocol.DHTPacket) error {
 
 // packetRequestProxy received when we was requesting proxy to connect to some peer
 func (p *PeerToPeer) packetRequestProxy(packet *protocol.DHTPacket) error {
-	if p.Peers == nil {
+	if p.Swarm == nil {
 		return fmt.Errorf("nil peer list")
 	}
 	list := []*net.UDPAddr{}
@@ -324,7 +324,7 @@ func (p *PeerToPeer) packetRequestProxy(packet *protocol.DHTPacket) error {
 		list = append(list, addr)
 	}
 
-	peer := p.Peers.GetPeer(packet.Data)
+	peer := p.Swarm.GetPeer(packet.Data)
 	if peer != nil {
 		peer.Proxies = list
 	}
@@ -354,7 +354,7 @@ func (p *PeerToPeer) packetState(packet *protocol.DHTPacket) error {
 	if packet == nil {
 		return fmt.Errorf("nil packet")
 	}
-	if p.Peers == nil {
+	if p.Swarm == nil {
 		return fmt.Errorf("nil peer list")
 	}
 	if len(packet.Data) != 36 {
@@ -368,10 +368,10 @@ func (p *PeerToPeer) packetState(packet *protocol.DHTPacket) error {
 		return fmt.Errorf("Failed to parse state: %s", err)
 	}
 
-	peer := p.Peers.GetPeer(packet.Data)
+	peer := p.Swarm.GetPeer(packet.Data)
 	if peer != nil {
 		peer.RemoteState = PeerState(numericState)
-		p.Peers.Update(packet.Data, peer)
+		p.Swarm.Update(packet.Data, peer)
 		Log(Debug, "Peer %s reported state '%s'", peer.ID, StringifyState(peer.RemoteState))
 	} else {
 		Log(Trace, "Received state of unknown peer. Updating peers")

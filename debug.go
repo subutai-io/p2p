@@ -99,7 +99,7 @@ func (p *Daemon) Debug(args *Args, resp *Response) error {
 		resp.Output += "\n"
 		resp.Output += fmt.Sprintf("Peers:\n")
 
-		peers := inst.PTP.Peers.Get()
+		peers := inst.PTP.Swarm.Get()
 		for _, peer := range peers {
 			resp.Output += fmt.Sprintf("\t--- %s ---\n", peer.ID)
 			resp.Output += fmt.Sprintf("\tStates: %s | %s\n", ptp.StringifyState(peer.State), ptp.StringifyState(peer.RemoteState))

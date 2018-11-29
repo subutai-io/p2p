@@ -61,6 +61,7 @@ func newEmptyTAP() *TAPLinux {
 // TAPLinux is an interface for TAP device on Linux platform
 type TAPLinux struct {
 	IP         net.IP           // IP
+	Subnet     net.IP           // Subnet
 	Mask       net.IPMask       // Mask
 	Mac        net.HardwareAddr // Hardware Address
 	Name       string           // Network interface name
@@ -69,6 +70,8 @@ type TAPLinux struct {
 	file       *os.File         // Interface descriptor
 	Configured bool
 	PMTU       bool // Enables/Disbles PMTU
+	Auto       bool
+	Status     InterfaceStatus
 }
 
 // GetName returns a name of interface
@@ -84,6 +87,10 @@ func (t *TAPLinux) GetHardwareAddress() net.HardwareAddr {
 // GetIP returns IP addres of the interface
 func (t *TAPLinux) GetIP() net.IP {
 	return t.IP
+}
+
+func (t *TAPLinux) GetSubnet() net.IP {
+	return t.Subnet
 }
 
 // GetMask returns an IP mask of the interface
@@ -109,6 +116,10 @@ func (t *TAPLinux) SetHardwareAddress(mac net.HardwareAddr) {
 // SetIP will set IP
 func (t *TAPLinux) SetIP(ip net.IP) {
 	t.IP = ip
+}
+
+func (t *TAPLinux) SetSubnet(subnet net.IP) {
+	t.Subnet = subnet
 }
 
 // SetMask will set mask
@@ -157,32 +168,52 @@ func (t *TAPLinux) Close() error {
 }
 
 // Configure will configure interface using system calls to commands
-func (t *TAPLinux) Configure() error {
+func (t *TAPLinux) Configure(lazy bool) error {
+	t.Status = InterfaceConfiguring
+	if lazy {
+		return nil
+	}
 	Log(Info, "Configuring %s. IP: %s, Mac: %s", t.Name, t.IP.String(), t.Mac.String())
 	err := t.linkUp()
 	if err != nil {
+		t.Status = InterfaceBroken
 		return err
 	}
 
 	err = t.setMTU()
 	if err != nil {
+		t.Status = InterfaceBroken
 		return err
 	}
 
 	// Configure new device
 	err = t.setIP()
 	if err != nil {
+		t.Status = InterfaceBroken
 		return err
 	}
 	err = t.linkDown()
 	if err != nil {
+		t.Status = InterfaceBroken
 		return err
 	}
 	err = t.setMac()
 	if err != nil {
+		t.Status = InterfaceBroken
 		return err
 	}
-	return t.linkUp()
+	err = t.linkUp()
+	if err != nil {
+		t.Status = InterfaceBroken
+		return err
+	}
+	t.Status = InterfaceConfigured
+	return nil
+}
+
+func (t *TAPLinux) Deconfigure() error {
+	t.Status = InterfaceDeconfigured
+	return nil
 }
 
 // ReadPacket will read single packet from network interface
@@ -421,6 +452,18 @@ func (t *TAPLinux) IsPMTUEnabled() bool {
 
 func (t *TAPLinux) IsBroken() bool {
 	return false
+}
+
+func (t *TAPLinux) SetAuto(auto bool) {
+	t.Auto = auto
+}
+
+func (t *TAPLinux) IsAuto() bool {
+	return t.Auto
+}
+
+func (t *TAPLinux) GetStatus() InterfaceStatus {
+	return t.Status
 }
 
 // FilterInterface will return true if this interface needs to be filtered out

@@ -76,6 +76,7 @@ func newTAP(tool, ip, mac, mask string, mtu int, pmtu bool) (*TAPWindows, error)
 		MTU:       DefaultMTU,
 		MacNotSet: true,
 		PMTU:      pmtu,
+		Status:    InterfaceWaiting,
 	}, nil
 }
 
@@ -86,6 +87,7 @@ func newEmptyTAP() *TAPWindows {
 // TAPLinux is an interface for TAP device on Linux platform
 type TAPWindows struct {
 	IP         net.IP           // IP
+	Subnet     net.IP           // Subnet
 	Mask       net.IPMask       // Mask
 	Mac        net.HardwareAddr // Hardware Address
 	MacNotSet  bool
@@ -100,6 +102,8 @@ type TAPWindows struct {
 	Configured bool
 	PMTU       bool
 	Broken     bool // Whether or not TAP interface is broken
+	Auto       bool
+	Status     InterfaceStatus
 }
 
 // GetName returns a name of interface
@@ -149,6 +153,10 @@ func (t *TAPWindows) GetIP() net.IP {
 	return t.IP
 }
 
+func (t *TAPWindows) GetSubnet() net.IP {
+	return t.Subnet
+}
+
 // GetMask returns an IP mask of the interface
 func (t *TAPWindows) GetMask() net.IPMask {
 	return t.Mask
@@ -172,6 +180,10 @@ func (t *TAPWindows) SetHardwareAddress(mac net.HardwareAddr) {
 // SetIP will set IP
 func (t *TAPWindows) SetIP(ip net.IP) {
 	t.IP = ip
+}
+
+func (t *TAPWindows) SetSubnet(subnet net.IP) {
+	t.Subnet = subnet
 }
 
 // SetMask will set mask
@@ -223,7 +235,13 @@ func (t *TAPWindows) Close() error {
 
 // Configure will configure TAP interface and set it's IP, Mask and other
 // parameters
-func (t *TAPWindows) Configure() error {
+func (t *TAPWindows) Configure(lazy bool) error {
+	t.Status = InterfaceConfiguring
+	if lazy {
+		// If lazy set to true we want to stop execution and wait for IP from other
+		// peers
+		return nil
+	}
 	Log(Debug, "Configuring %s. IP: %s Mask: %s", t.Interface, t.IP.String(), t.Mask.String())
 	setip := exec.Command("netsh")
 	setip.SysProcAttr = &syscall.SysProcAttr{}
@@ -233,6 +251,7 @@ func (t *TAPWindows) Configure() error {
 	setip.SysProcAttr.CmdLine = cmd
 	err := setip.Run()
 	if err != nil {
+		t.Status = InterfaceBroken
 		return fmt.Errorf("Failed to properly configure TAP device with netsh: %v", err)
 	}
 
@@ -246,13 +265,21 @@ func (t *TAPWindows) Configure() error {
 		&length,
 		nil)
 	if err != nil {
+		t.Status = InterfaceBroken
 		return fmt.Errorf("Failed to change device status to 'connected': %v", err)
 	}
+	t.Status = InterfaceConfigured
+	return nil
+}
+
+func (t *TAPWindows) Deconfigure() error {
+	t.Status = InterfaceDeconfigured
 	return nil
 }
 
 // Run will start read/write goroutines
 func (t *TAPWindows) Run() {
+	t.Status = InterfaceRunning
 	t.Broken = false
 	Log(Info, "Listening for TAP interface")
 	t.Rx = make(chan []byte, 1500)
@@ -501,7 +528,7 @@ func (t *TAPWindows) checkInterfaces() error {
 func (t *TAPWindows) restoreInterface() error {
 	Log(Info, "Restoring network interface: %s %s", t.Name, t.IP.String())
 
-	err := t.Configure()
+	err := t.Configure(false)
 	if err != nil {
 		Log(Error, "Failed to configure interface: %s", err.Error())
 	}
@@ -512,6 +539,18 @@ func (t *TAPWindows) restoreInterface() error {
 // IsBroken returns true if current TAP interface got deconfigured
 func (t *TAPWindows) IsBroken() bool {
 	return t.Broken
+}
+
+func (t *TAPWindows) SetAuto(auto bool) {
+	t.Auto = auto
+}
+
+func (t *TAPWindows) IsAuto() bool {
+	return t.Auto
+}
+
+func (t *TAPWindows) GetStatus() InterfaceStatus {
+	return t.Status
 }
 
 func tapControlCode(request, method uint32) uint32 {
