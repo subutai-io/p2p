@@ -256,6 +256,9 @@ func Test_commIPConflictHandler(t *testing.T) {
 
 	ptp := new(PeerToPeer)
 
+	ptp1 := new(PeerToPeer)
+	ptp1.Interface, _ = newTAP("ip", "10.10.10.1", "00:11:22:33:44:55", "255.255.255.0", 1500, false)
+
 	tests := []struct {
 		name    string
 		args    args
@@ -263,8 +266,8 @@ func Test_commIPConflictHandler(t *testing.T) {
 		wantErr bool
 	}{
 		{"nil case", args{nil, ptp}, nil, true},
-		{"small size", args{[]byte{0x01}, ptp}, nil, true},
-		{"passing", args{[]byte(ut), ptp}, nil, false},
+		{"small size", args{[]byte{0x01}, ptp1}, nil, true},
+		{"passing", args{[]byte(ut), ptp1}, nil, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

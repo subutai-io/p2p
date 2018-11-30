@@ -154,6 +154,20 @@ func commIPSetHandler(data []byte, p *PeerToPeer) ([]byte, error) {
 	ip := net.IP(data[36:40])
 
 	for _, peer := range p.Swarm.Get() {
+		if bytes.Equal(peer.PeerLocalIP, ip) && peer.Endpoint != nil {
+			// That IP already set on other peer. Call a conflict
+			Log(Info, "Reporting IP conflict")
+			payload := make([]byte, 42)
+			binary.BigEndian.PutUint16(payload[0:2], CommIPConflict)
+			copy(payload[2:38], p.Dht.ID)
+			copy(payload[38:42], ip)
+			msg, _ := p.CreateMessage(MsgTypeComm, payload, 0, true)
+			p.UDPSocket.SendMessage(msg, peer.Endpoint)
+			return nil, nil
+		}
+	}
+
+	for _, peer := range p.Swarm.Get() {
 		if peer.ID == id {
 			peer.PeerLocalIP = ip
 			return nil, nil
@@ -164,9 +178,21 @@ func commIPSetHandler(data []byte, p *PeerToPeer) ([]byte, error) {
 }
 
 func commIPConflictHandler(data []byte, p *PeerToPeer) ([]byte, error) {
+	if p.Interface == nil {
+		return nil, fmt.Errorf("nil interface")
+	}
+
 	err := commPacketCheck(data)
 	if err != nil {
 		return nil, err
 	}
+
+	ip := net.IP(data[36:40])
+
+	if p.Interface.IsAuto() && p.Interface.IsConfigured() && bytes.Equal(ip, p.Interface.GetIP()) {
+		p.Interface.Deconfigure()
+		return nil, nil
+	}
+
 	return nil, nil
 }
