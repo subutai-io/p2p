@@ -51,6 +51,9 @@ func Test_newTAP(t *testing.T) {
 		pmtu bool
 	}
 
+	ip := net.ParseIP("10.0.0.1")
+	hwa, _ := net.ParseMAC("00:11:22:33:44:55")
+
 	res := &TAPLinux{
 		IP:   ip,
 		Mac:  hwa,
