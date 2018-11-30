@@ -178,6 +178,10 @@ func commIPSetHandler(data []byte, p *PeerToPeer) ([]byte, error) {
 }
 
 func commIPConflictHandler(data []byte, p *PeerToPeer) ([]byte, error) {
+	if p.Interface == nil {
+		return nil, fmt.Errorf("nil interface")
+	}
+
 	err := commPacketCheck(data)
 	if err != nil {
 		return nil, err
