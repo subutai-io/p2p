@@ -88,7 +88,7 @@ func Test_newEmptyTAP(t *testing.T) {
 		name string
 		want *TAPLinux
 	}{
-		{"simple test", &TAPLinux{}}
+		{"simple test", &TAPLinux{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
