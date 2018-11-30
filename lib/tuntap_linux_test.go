@@ -166,7 +166,7 @@ func TestTAPLinux_GetHardwareAddress(t *testing.T) {
 		fields fields
 		want   net.HardwareAddr
 	}{
-		// TODO: Add test cases.
+		{"empty", fieds{}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -211,7 +211,7 @@ func TestTAPLinux_GetIP(t *testing.T) {
 		fields fields
 		want   net.IP
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -256,7 +256,7 @@ func TestTAPLinux_GetSubnet(t *testing.T) {
 		fields fields
 		want   net.IP
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -301,7 +301,7 @@ func TestTAPLinux_GetMask(t *testing.T) {
 		fields fields
 		want   net.IPMask
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -346,7 +346,7 @@ func TestTAPLinux_GetBasename(t *testing.T) {
 		fields fields
 		want   string
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, "vptp"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -394,7 +394,7 @@ func TestTAPLinux_SetName(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, args{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -440,7 +440,7 @@ func TestTAPLinux_SetHardwareAddress(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, args{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -486,7 +486,7 @@ func TestTAPLinux_SetIP(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, args{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -532,7 +532,7 @@ func TestTAPLinux_SetSubnet(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, args{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -578,7 +578,7 @@ func TestTAPLinux_SetMask(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{"empty", fields{}, args{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -625,7 +625,8 @@ func TestTAPLinux_Init(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"empty name", fields{}, args{}, true},
+		{"passing", fields{}, args{"name"}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -665,12 +666,17 @@ func TestTAPLinux_Open(t *testing.T) {
 		Auto       bool
 		Status     InterfaceStatus
 	}
+
+	f0, _ := os.OpenFile("/tmp/t", os.O_RWDR, 0)
+	defer f0.Close()
+
 	tests := []struct {
 		name    string
 		fields  fields
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"existing file", fields{file: f0}, true},
+		{"create failed", fields{}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -710,12 +716,15 @@ func TestTAPLinux_Close(t *testing.T) {
 		Auto       bool
 		Status     InterfaceStatus
 	}
+
+	f0, _ := os.OpenFile("/tmp/t", os.O_RWDR, 0)
+
 	tests := []struct {
 		name    string
 		fields  fields
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"nil file descriptor", fields{}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
