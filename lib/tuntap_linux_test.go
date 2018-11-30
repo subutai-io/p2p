@@ -29,9 +29,7 @@ func TestGetConfigurationTool(t *testing.T) {
 	tests := []struct {
 		name string
 		want string
-	}{
-		{"default", "/bin/ip"},
-	}
+	}{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := GetConfigurationTool(); got != tt.want {
