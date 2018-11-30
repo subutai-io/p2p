@@ -75,78 +75,78 @@ type TAPLinux struct {
 }
 
 // GetName returns a name of interface
-func (t *TAPLinux) GetName() string {
-	return t.Name
+func (tap *TAPLinux) GetName() string {
+	return tap.Name
 }
 
 // GetHardwareAddress returns a MAC address of the interface
-func (t *TAPLinux) GetHardwareAddress() net.HardwareAddr {
-	return t.Mac
+func (tap *TAPLinux) GetHardwareAddress() net.HardwareAddr {
+	return tap.Mac
 }
 
 // GetIP returns IP addres of the interface
-func (t *TAPLinux) GetIP() net.IP {
-	return t.IP
+func (tap *TAPLinux) GetIP() net.IP {
+	return tap.IP
 }
 
-func (t *TAPLinux) GetSubnet() net.IP {
-	return t.Subnet
+func (tap *TAPLinux) GetSubnet() net.IP {
+	return tap.Subnet
 }
 
 // GetMask returns an IP mask of the interface
-func (t *TAPLinux) GetMask() net.IPMask {
-	return t.Mask
+func (tap *TAPLinux) GetMask() net.IPMask {
+	return tap.Mask
 }
 
 // GetBasename returns a prefix for automatically generated interface names
-func (t *TAPLinux) GetBasename() string {
+func (tap *TAPLinux) GetBasename() string {
 	return "vptp"
 }
 
 // SetName will set interface name
-func (t *TAPLinux) SetName(name string) {
-	t.Name = name
+func (tap *TAPLinux) SetName(name string) {
+	tap.Name = name
 }
 
 // SetHardwareAddress will set MAC
-func (t *TAPLinux) SetHardwareAddress(mac net.HardwareAddr) {
-	t.Mac = mac
+func (tap *TAPLinux) SetHardwareAddress(mac net.HardwareAddr) {
+	tap.Mac = mac
 }
 
 // SetIP will set IP
-func (t *TAPLinux) SetIP(ip net.IP) {
-	t.IP = ip
+func (tap *TAPLinux) SetIP(ip net.IP) {
+	tap.IP = ip
 }
 
-func (t *TAPLinux) SetSubnet(subnet net.IP) {
-	t.Subnet = subnet
+func (tap *TAPLinux) SetSubnet(subnet net.IP) {
+	tap.Subnet = subnet
 }
 
 // SetMask will set mask
-func (t *TAPLinux) SetMask(mask net.IPMask) {
-	t.Mask = mask
+func (tap *TAPLinux) SetMask(mask net.IPMask) {
+	tap.Mask = mask
 }
 
 // Init will initialize TAP interface creation process
-func (t *TAPLinux) Init(name string) error {
+func (tap *TAPLinux) Init(name string) error {
 	if name == "" {
 		return fmt.Errorf("Failed to configure interface: empty name")
 	}
-	t.Name = name
+	tap.Name = name
 	return nil
 }
 
 // Open will open a file descriptor for a new interface
-func (t *TAPLinux) Open() error {
+func (tap *TAPLinux) Open() error {
 	var err error
-	if t.file != nil {
+	if tap.file != nil {
 		return fmt.Errorf("TAP device is already acquired")
 	}
-	t.file, err = os.OpenFile("/dev/net/tun", os.O_RDWR, 0)
+	tap.file, err = os.OpenFile("/dev/net/tun", os.O_RDWR, 0)
 	if err != nil {
 		return err
 	}
-	err = t.createInterface()
+	err = tap.createInterface()
 	if err != nil {
 		return err
 	}
@@ -154,12 +154,12 @@ func (t *TAPLinux) Open() error {
 }
 
 // Close will close TAP interface by closing it's file descriptor
-func (t *TAPLinux) Close() error {
-	if t.file == nil {
+func (tap *TAPLinux) Close() error {
+	if tap.file == nil {
 		return fmt.Errorf("nil interface file descriptor")
 	}
-	Log(Info, "Closing network interface %s", t.GetName())
-	err := t.file.Close()
+	Log(Info, "Closing network interface %s", tap.GetName())
+	err := tap.file.Close()
 	if err != nil {
 		return fmt.Errorf("Failed to close network interface: %s", err)
 	}
@@ -168,65 +168,65 @@ func (t *TAPLinux) Close() error {
 }
 
 // Configure will configure interface using system calls to commands
-func (t *TAPLinux) Configure(lazy bool) error {
-	t.Status = InterfaceConfiguring
+func (tap *TAPLinux) Configure(lazy bool) error {
+	tap.Status = InterfaceConfiguring
 	if lazy {
 		return nil
 	}
-	Log(Info, "Configuring %s. IP: %s, Mac: %s", t.Name, t.IP.String(), t.Mac.String())
-	err := t.linkUp()
+	Log(Info, "Configuring %s. IP: %s, Mac: %s", tap.Name, tap.IP.String(), tap.Mac.String())
+	err := tap.linkUp()
 	if err != nil {
-		t.Status = InterfaceBroken
+		tap.Status = InterfaceBroken
 		return err
 	}
 
-	err = t.setMTU()
+	err = tap.setMTU()
 	if err != nil {
-		t.Status = InterfaceBroken
+		tap.Status = InterfaceBroken
 		return err
 	}
 
 	// Configure new device
-	err = t.setIP()
+	err = tap.setIP()
 	if err != nil {
-		t.Status = InterfaceBroken
+		tap.Status = InterfaceBroken
 		return err
 	}
-	err = t.linkDown()
+	err = tap.linkDown()
 	if err != nil {
-		t.Status = InterfaceBroken
+		tap.Status = InterfaceBroken
 		return err
 	}
-	err = t.setMac()
+	err = tap.setMac()
 	if err != nil {
-		t.Status = InterfaceBroken
+		tap.Status = InterfaceBroken
 		return err
 	}
-	err = t.linkUp()
+	err = tap.linkUp()
 	if err != nil {
-		t.Status = InterfaceBroken
+		tap.Status = InterfaceBroken
 		return err
 	}
-	t.Status = InterfaceConfigured
+	tap.Status = InterfaceConfigured
 	return nil
 }
 
-func (t *TAPLinux) Deconfigure() error {
-	t.Status = InterfaceDeconfigured
+func (tap *TAPLinux) Deconfigure() error {
+	tap.Status = InterfaceDeconfigured
 	return nil
 }
 
 // ReadPacket will read single packet from network interface
-func (t *TAPLinux) ReadPacket() (*Packet, error) {
+func (tap *TAPLinux) ReadPacket() (*Packet, error) {
 	buf := make([]byte, 4096)
 
-	n, err := t.file.Read(buf)
+	n, err := tap.file.Read(buf)
 	if err != nil {
 		Log(Error, "Failed to read packet: %+v", err)
 		return nil, err
 	}
 
-	return t.handlePacket(buf[0:n])
+	return tap.handlePacket(buf[0:n])
 }
 
 func checksum(bytes []byte) uint16 {
@@ -252,7 +252,7 @@ func checksum(bytes []byte) uint16 {
 	return ^uint16(csum)
 }
 
-func (t *TAPLinux) handlePacket(data []byte) (*Packet, error) {
+func (tap *TAPLinux) handlePacket(data []byte) (*Packet, error) {
 	length := len(data)
 	if length < 14 {
 		return nil, errPacketTooSmall
@@ -260,7 +260,7 @@ func (t *TAPLinux) handlePacket(data []byte) (*Packet, error) {
 	pkt := &Packet{Packet: data[0:length]}
 	pkt.Protocol = int(binary.BigEndian.Uint16(data[12:14]))
 
-	if !t.IsPMTUEnabled() {
+	if !tap.IsPMTUEnabled() {
 		return pkt, nil
 	}
 
@@ -338,7 +338,7 @@ func (t *TAPLinux) handlePacket(data []byte) (*Packet, error) {
 
 			// Send frame to the interface
 			// P2P will drop packet afterwards
-			t.WritePacket(&Packet{int(PacketIPv4), rpacket})
+			tap.WritePacket(&Packet{int(PacketIPv4), rpacket})
 			return nil, nil
 		}
 	}
@@ -348,8 +348,8 @@ func (t *TAPLinux) handlePacket(data []byte) (*Packet, error) {
 }
 
 // WritePacket will write a single packet to interface
-func (t *TAPLinux) WritePacket(packet *Packet) error {
-	n, err := t.file.Write(packet.Packet)
+func (tap *TAPLinux) WritePacket(packet *Packet) error {
+	n, err := tap.file.Write(packet.Packet)
 	if err != nil {
 		return err
 	}
@@ -360,36 +360,36 @@ func (t *TAPLinux) WritePacket(packet *Packet) error {
 }
 
 // Run will start TAP processes
-func (t *TAPLinux) Run() {
+func (tap *TAPLinux) Run() {
 
 }
 
-func (t *TAPLinux) createInterface() error {
+func (tap *TAPLinux) createInterface() error {
 	var req ifReq
 	req.Flags = 0
-	copy(req.Name[:15], t.Name)
+	copy(req.Name[:15], tap.Name)
 	req.Flags |= iffTap
 	req.Flags |= iffnopi
-	_, _, err := syscall.Syscall(syscall.SYS_IOCTL, t.file.Fd(), uintptr(syscall.TUNSETIFF), uintptr(unsafe.Pointer(&req)))
+	_, _, err := syscall.Syscall(syscall.SYS_IOCTL, tap.file.Fd(), uintptr(syscall.TUNSETIFF), uintptr(unsafe.Pointer(&req)))
 	if err != 0 {
 		return err
 	}
 	return nil
 }
 
-func (t *TAPLinux) setMTU() error {
-	mtu := fmt.Sprintf("%d", t.MTU)
-	setmtu := exec.Command(t.Tool, "link", "set", "dev", t.Name, "mtu", mtu)
+func (tap *TAPLinux) setMTU() error {
+	mtu := fmt.Sprintf("%d", tap.MTU)
+	setmtu := exec.Command(tap.Tool, "link", "set", "dev", tap.Name, "mtu", mtu)
 	err := setmtu.Run()
 	if err != nil {
-		Log(Error, "Failed to set MTU on device %s: %v", t.Name, err)
+		Log(Error, "Failed to set MTU on device %s: %v", tap.Name, err)
 		return err
 	}
 	return nil
 }
 
-func (t *TAPLinux) linkUp() error {
-	linkup := exec.Command(t.Tool, "link", "set", "dev", t.Name, "up")
+func (tap *TAPLinux) linkUp() error {
+	linkup := exec.Command(tap.Tool, "link", "set", "dev", tap.Name, "up")
 	err := linkup.Run()
 	if err != nil {
 		Log(Error, "Failed to up link: %v", err)
@@ -398,8 +398,8 @@ func (t *TAPLinux) linkUp() error {
 	return nil
 }
 
-func (t *TAPLinux) linkDown() error {
-	linkup := exec.Command(t.Tool, "link", "set", "dev", t.Name, "down")
+func (tap *TAPLinux) linkDown() error {
+	linkup := exec.Command(tap.Tool, "link", "set", "dev", tap.Name, "down")
 	err := linkup.Run()
 	if err != nil {
 		Log(Error, "Failed to up link: %v", err)
@@ -408,9 +408,9 @@ func (t *TAPLinux) linkDown() error {
 	return nil
 }
 
-func (t *TAPLinux) setIP() error {
-	Log(Info, "Setting %s IP on device %s", t.IP.String(), t.Name)
-	setip := exec.Command(t.Tool, "addr", "add", t.IP.String()+"/24", "dev", t.Name)
+func (tap *TAPLinux) setIP() error {
+	Log(Info, "Setting %s IP on device %s", tap.IP.String(), tap.Name)
+	setip := exec.Command(tap.Tool, "addr", "add", tap.IP.String()+"/24", "dev", tap.Name)
 	err := setip.Run()
 	if err != nil {
 		Log(Error, "Failed to set IP: %v", err)
@@ -419,9 +419,9 @@ func (t *TAPLinux) setIP() error {
 	return err
 }
 
-func (t *TAPLinux) setMac() error {
-	Log(Info, "Setting %s MAC on device %s", t.Mac.String(), t.Name)
-	setmac := exec.Command(t.Tool, "link", "set", "dev", t.Name, "address", t.Mac.String())
+func (tap *TAPLinux) setMac() error {
+	Log(Info, "Setting %s MAC on device %s", tap.Mac.String(), tap.Name)
+	setmac := exec.Command(tap.Tool, "link", "set", "dev", tap.Name, "address", tap.Mac.String())
 	err := setmac.Run()
 	if err != nil {
 		Log(Error, "Failed to set MAC: %v", err)
@@ -430,40 +430,40 @@ func (t *TAPLinux) setMac() error {
 	return err
 }
 
-func (t *TAPLinux) IsConfigured() bool {
-	return t.Configured
+func (tap *TAPLinux) IsConfigured() bool {
+	return tap.Configured
 }
 
-func (t *TAPLinux) MarkConfigured() {
-	t.Configured = true
+func (tap *TAPLinux) MarkConfigured() {
+	tap.Configured = true
 }
 
-func (t *TAPLinux) EnablePMTU() {
-	t.PMTU = true
+func (tap *TAPLinux) EnablePMTU() {
+	tap.PMTU = true
 }
 
-func (t *TAPLinux) DisablePMTU() {
-	t.PMTU = false
+func (tap *TAPLinux) DisablePMTU() {
+	tap.PMTU = false
 }
 
-func (t *TAPLinux) IsPMTUEnabled() bool {
-	return t.PMTU
+func (tap *TAPLinux) IsPMTUEnabled() bool {
+	return tap.PMTU
 }
 
-func (t *TAPLinux) IsBroken() bool {
+func (tap *TAPLinux) IsBroken() bool {
 	return false
 }
 
-func (t *TAPLinux) SetAuto(auto bool) {
-	t.Auto = auto
+func (tap *TAPLinux) SetAuto(auto bool) {
+	tap.Auto = auto
 }
 
-func (t *TAPLinux) IsAuto() bool {
-	return t.Auto
+func (tap *TAPLinux) IsAuto() bool {
+	return tap.Auto
 }
 
-func (t *TAPLinux) GetStatus() InterfaceStatus {
-	return t.Status
+func (tap *TAPLinux) GetStatus() InterfaceStatus {
+	return tap.Status
 }
 
 // FilterInterface will return true if this interface needs to be filtered out
