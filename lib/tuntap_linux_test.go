@@ -51,7 +51,7 @@ func Test_newTAP(t *testing.T) {
 		pmtu bool
 	}
 
-	res := &TAPDarwin{
+	res := &TAPLinux{
 		IP:   ip,
 		Mac:  hwa,
 		Mask: net.IPv4Mask(255, 255, 255, 0),
