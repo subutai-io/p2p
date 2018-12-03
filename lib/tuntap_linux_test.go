@@ -166,7 +166,7 @@ func TestTAPLinux_GetHardwareAddress(t *testing.T) {
 		fields fields
 		want   net.HardwareAddr
 	}{
-		{"empty", fieds{}, nil},
+		{"empty", fields{}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -667,7 +667,7 @@ func TestTAPLinux_Open(t *testing.T) {
 		Status     InterfaceStatus
 	}
 
-	f0, _ := os.OpenFile("/tmp/t", os.O_RWDR, 0)
+	f0, _ := os.OpenFile("/tmp/t", os.O_RDWR, 0)
 	defer f0.Close()
 
 	tests := []struct {
@@ -717,7 +717,7 @@ func TestTAPLinux_Close(t *testing.T) {
 		Status     InterfaceStatus
 	}
 
-	f0, _ := os.OpenFile("/tmp/t2", os.O_RWDR, 0)
+	f0, _ := os.OpenFile("/tmp/t2", os.O_RDWR, 0)
 
 	tests := []struct {
 		name    string
