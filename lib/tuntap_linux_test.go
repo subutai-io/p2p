@@ -717,7 +717,7 @@ func TestTAPLinux_Close(t *testing.T) {
 		Status     InterfaceStatus
 	}
 
-	f0, _ := os.OpenFile("/tmp/t", os.O_RWDR, 0)
+	f0, _ := os.OpenFile("/tmp/t2", os.O_RWDR, 0)
 
 	tests := []struct {
 		name    string
@@ -725,6 +725,7 @@ func TestTAPLinux_Close(t *testing.T) {
 		wantErr bool
 	}{
 		{"nil file descriptor", fields{}, true},
+		{"fd", fields{file: }}
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

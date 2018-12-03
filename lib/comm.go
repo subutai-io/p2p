@@ -113,10 +113,14 @@ func commIPInfoHandler(data []byte, p *PeerToPeer) ([]byte, error) {
 
 	var result uint16
 
-	for _, peer := range p.Swarm.Get() {
-		if bytes.Equal(peer.PeerLocalIP.To4(), ip) {
-			result = 1
-			break
+	if bytes.Equal(p.Interface.GetIP(), ip) {
+		result = 1
+	} else {
+		for _, peer := range p.Swarm.Get() {
+			if bytes.Equal(peer.PeerLocalIP.To4(), ip) {
+				result = 1
+				break
+			}
 		}
 	}
 
