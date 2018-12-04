@@ -1,8 +1,9 @@
 # Change Log
 
-## [8.1.1] 11/06/2018
+## [8.2.0] 12/04/2018
 
-* Dynamic IP reconfiguration using `set` command (#1125)
+* Dynamic IP reconfiguration using `set` command (#1124, #1125)
+* Automatic IP configuration (#816)
 
 ## [8.1.0] 11/05/2018
 
