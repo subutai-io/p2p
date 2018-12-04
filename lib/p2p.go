@@ -296,7 +296,8 @@ func (p *PeerToPeer) PrepareInterfaces(ip, interfaceName string) error {
 		return fmt.Errorf("Interface is already in use")
 	}
 
-	if ip == "dhcp" {
+	if ip == "dhcp" || ip == "auto" {
+		ip = "dhcp"
 		ipn, maskn, err := p.RequestIP(p.Interface.GetHardwareAddress().String(), iface)
 		if err != nil {
 			return err
@@ -305,7 +306,7 @@ func (p *PeerToPeer) PrepareInterfaces(ip, interfaceName string) error {
 		p.Interface.SetIP(ipn)
 		p.Interface.SetMask(maskn)
 		return nil
-	} else if ip == "auto" {
+	} else if ip == "discover" {
 		p.Interface.SetAuto(true)
 		p.Interface.SetIP(nil)
 		p.Interface.SetSubnet(nil)
