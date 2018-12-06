@@ -145,7 +145,7 @@ func main() {
 				cli.IntFlag{
 					Name:        "mtu",
 					Usage:       "Specify global MTU value that will be set on p2p interfaces",
-					Value:       ptp.DefaultMTU,
+					Value:       0,
 					Destination: &MTU,
 				},
 				cli.StringFlag{

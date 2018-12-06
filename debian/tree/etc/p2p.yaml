@@ -1,0 +1,3 @@
+iptool: /sbin/ip
+pmtu: false
+mtu: 1500
