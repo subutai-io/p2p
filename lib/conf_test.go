@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func Test_conf_readConf(t *testing.T) {
+func Test_Conf_Load(t *testing.T) {
 	type fields struct {
 		IPTool  string
 		TAPTool string
@@ -18,10 +18,10 @@ func Test_conf_readConf(t *testing.T) {
 	}
 
 	d1 := []byte("-")
-	ioutil.WriteFile("/tmp/test-yaml-config-p2p-bad", d1, 0777)
+	ioutil.WriteFile("/tmp/test-yaml-Config-p2p-bad", d1, 0777)
 
 	d2 := []byte("iptool: /sbin/ip")
-	ioutil.WriteFile("/tmp/test-yaml-config-p2p-ok", d2, 0777)
+	ioutil.WriteFile("/tmp/test-yaml-Config-p2p-ok", d2, 0777)
 
 	tests := []struct {
 		name    string
@@ -29,28 +29,28 @@ func Test_conf_readConf(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"empty filepath", fields{}, args{""}, true},
+		{"empty filepath", fields{}, args{""}, false},
 		{"wrong filepath", fields{}, args{"/"}, true},
-		{"bad yaml", fields{}, args{"/tmp/test-yaml-config-p2p-bad"}, true},
-		{"normal yaml", fields{}, args{"/tmp/test-yaml-config-p2p-ok"}, false},
+		{"bad yaml", fields{}, args{"/tmp/test-yaml-Config-p2p-bad"}, true},
+		{"normal yaml", fields{}, args{"/tmp/test-yaml-Config-p2p-ok"}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &conf{
+			c := &Conf{
 				IPTool:  tt.fields.IPTool,
 				TAPTool: tt.fields.TAPTool,
 				INFFile: tt.fields.INFFile,
 				MTU:     tt.fields.MTU,
 				PMTU:    tt.fields.PMTU,
 			}
-			if err := c.readConf(tt.args.filepath); (err != nil) != tt.wantErr {
-				t.Errorf("conf.readConf() error = %v, wantErr %v", err, tt.wantErr)
+			if err := c.Load(tt.args.filepath); (err != nil) != tt.wantErr {
+				t.Errorf("Conf.Load() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func Test_conf_getIPTool(t *testing.T) {
+func Test_Conf_getIPTool(t *testing.T) {
 	type fields struct {
 		IPTool  string
 		TAPTool string
@@ -62,8 +62,8 @@ func Test_conf_getIPTool(t *testing.T) {
 		preset string
 	}
 
-	c1 := new(conf)
-	c1.readConf("/")
+	c1 := new(Conf)
+	c1.Load("/")
 
 	f1 := fields{
 		IPTool:  c1.IPTool,
@@ -85,21 +85,21 @@ func Test_conf_getIPTool(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &conf{
+			c := &Conf{
 				IPTool:  tt.fields.IPTool,
 				TAPTool: tt.fields.TAPTool,
 				INFFile: tt.fields.INFFile,
 				MTU:     tt.fields.MTU,
 				PMTU:    tt.fields.PMTU,
 			}
-			if got := c.getIPTool(tt.args.preset); got != tt.want {
-				t.Errorf("conf.getIPTool() = %v, want %v", got, tt.want)
+			if got := c.GetIPTool(tt.args.preset); got != tt.want {
+				t.Errorf("Conf.getIPTool() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_conf_getTAPTool(t *testing.T) {
+func Test_Conf_getTAPTool(t *testing.T) {
 	type fields struct {
 		IPTool  string
 		TAPTool string
@@ -111,8 +111,8 @@ func Test_conf_getTAPTool(t *testing.T) {
 		preset string
 	}
 
-	c1 := new(conf)
-	c1.readConf("/")
+	c1 := new(Conf)
+	c1.Load("/")
 
 	f1 := fields{
 		IPTool:  c1.IPTool,
@@ -134,21 +134,21 @@ func Test_conf_getTAPTool(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &conf{
+			c := &Conf{
 				IPTool:  tt.fields.IPTool,
 				TAPTool: tt.fields.TAPTool,
 				INFFile: tt.fields.INFFile,
 				MTU:     tt.fields.MTU,
 				PMTU:    tt.fields.PMTU,
 			}
-			if got := c.getTAPTool(tt.args.preset); got != tt.want {
-				t.Errorf("conf.getTAPTool() = %v, want %v", got, tt.want)
+			if got := c.GetTAPTool(tt.args.preset); got != tt.want {
+				t.Errorf("Conf.getTAPTool() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_conf_getINFFile(t *testing.T) {
+func Test_Conf_getINFFile(t *testing.T) {
 	type fields struct {
 		IPTool  string
 		TAPTool string
@@ -160,8 +160,8 @@ func Test_conf_getINFFile(t *testing.T) {
 		preset string
 	}
 
-	c1 := new(conf)
-	c1.readConf("/")
+	c1 := new(Conf)
+	c1.Load("/")
 
 	f1 := fields{
 		IPTool:  c1.IPTool,
@@ -183,21 +183,21 @@ func Test_conf_getINFFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &conf{
+			c := &Conf{
 				IPTool:  tt.fields.IPTool,
 				TAPTool: tt.fields.TAPTool,
 				INFFile: tt.fields.INFFile,
 				MTU:     tt.fields.MTU,
 				PMTU:    tt.fields.PMTU,
 			}
-			if got := c.getINFFile(tt.args.preset); got != tt.want {
-				t.Errorf("conf.getINFFile() = %v, want %v", got, tt.want)
+			if got := c.GetINFFile(tt.args.preset); got != tt.want {
+				t.Errorf("Conf.getINFFile() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_conf_getMTU(t *testing.T) {
+func Test_Conf_getMTU(t *testing.T) {
 	type fields struct {
 		IPTool  string
 		TAPTool string
@@ -209,8 +209,8 @@ func Test_conf_getMTU(t *testing.T) {
 		preset int
 	}
 
-	c1 := new(conf)
-	c1.readConf("/")
+	c1 := new(Conf)
+	c1.Load("/")
 
 	f1 := fields{
 		IPTool:  c1.IPTool,
@@ -232,21 +232,21 @@ func Test_conf_getMTU(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &conf{
+			c := &Conf{
 				IPTool:  tt.fields.IPTool,
 				TAPTool: tt.fields.TAPTool,
 				INFFile: tt.fields.INFFile,
 				MTU:     tt.fields.MTU,
 				PMTU:    tt.fields.PMTU,
 			}
-			if got := c.getMTU(tt.args.preset); got != tt.want {
-				t.Errorf("conf.getMTU() = %v, want %v", got, tt.want)
+			if got := c.GetMTU(tt.args.preset); got != tt.want {
+				t.Errorf("Conf.getMTU() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_conf_getPMTU(t *testing.T) {
+func Test_Conf_getPMTU(t *testing.T) {
 	type fields struct {
 		IPTool  string
 		TAPTool string
@@ -258,17 +258,6 @@ func Test_conf_getPMTU(t *testing.T) {
 		preset bool
 	}
 
-	c1 := new(conf)
-	c1.readConf("/")
-
-	f1 := fields{
-		IPTool:  c1.IPTool,
-		TAPTool: c1.TAPTool,
-		INFFile: c1.INFFile,
-		MTU:     c1.MTU,
-		PMTU:    c1.PMTU,
-	}
-
 	tests := []struct {
 		name   string
 		fields fields
@@ -276,20 +265,18 @@ func Test_conf_getPMTU(t *testing.T) {
 		want   bool
 	}{
 		{"empty pmtu val", fields{}, args{}, false},
-		{"default value", f1, args{false}, false},
-		{"preset value", f1, args{true}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &conf{
+			c := &Conf{
 				IPTool:  tt.fields.IPTool,
 				TAPTool: tt.fields.TAPTool,
 				INFFile: tt.fields.INFFile,
 				MTU:     tt.fields.MTU,
 				PMTU:    tt.fields.PMTU,
 			}
-			if got := c.getPMTU(tt.args.preset); got != tt.want {
-				t.Errorf("conf.getPMTU() = %v, want %v", got, tt.want)
+			if got := c.GetPMTU(); got != tt.want {
+				t.Errorf("Conf.getPMTU() = %v, want %v", got, tt.want)
 			}
 		})
 	}
