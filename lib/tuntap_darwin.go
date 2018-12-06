@@ -199,8 +199,17 @@ func (t *TAPDarwin) ReadPacket() (*Packet, error) {
 	var pkt *Packet
 	pkt = &Packet{Packet: buf[0:n]}
 	pkt.Protocol = int(binary.BigEndian.Uint16(buf[12:14]))
-	// pkt.Truncated = false
-	return pkt, nil
+
+	if !t.IsPMTUEnabled() {
+		return pkt, nil
+	}
+
+	// Return packet
+	skip, err := pmtu(buf, t)
+	if skip {
+		return nil, err
+	}
+	return pkt, err
 }
 
 // WritePacket will write a single packet to interface

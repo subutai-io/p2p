@@ -322,7 +322,17 @@ func (t *TAPWindows) ReadPacket() (*Packet, error) {
 	var pkt *Packet
 	pkt = &Packet{Packet: buf[0:n]}
 	pkt.Protocol = int(binary.BigEndian.Uint16(buf[p : p+2]))
-	return pkt, nil
+
+	if !t.IsPMTUEnabled() {
+		return pkt, nil
+	}
+
+	// Return packet
+	skip, err := pmtu(buf, t)
+	if skip {
+		return nil, err
+	}
+	return pkt, err
 }
 
 func (t *TAPWindows) WritePacket(pkt *Packet) error {
