@@ -2,6 +2,8 @@
 
 package ptp
 
+const DefaultConfigLocation = "/Applications/SubutaiP2P.app/Contents/Resources/p2p.yaml"
+
 // Platform specific defaults
 const (
 	DefaultIPTool  = "/sbin/ifconfig" // Default network interface configuration tool for Darwin OS

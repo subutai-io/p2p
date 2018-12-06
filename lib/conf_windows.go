@@ -2,6 +2,8 @@
 
 package ptp
 
+const DefaultConfigLocation = "C:\\ProgramData\\subutai\\bin\\p2p.yaml"
+
 // Platform specific defaults
 const (
 	DefaultIPTool  = "netsh.exe"                                            // Default network interface configuration tool for Darwin OS
