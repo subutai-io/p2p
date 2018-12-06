@@ -43,6 +43,37 @@ type DaemonArgs struct {
 var bootstrap DHTConnection
 var UsePMTU bool
 
+func processConfigFile(configFile string) (*ptp.Conf, error) {
+	if configFile == "" {
+		return nil, fmt.Errorf("no config file provided")
+	}
+
+	conf := new(ptp.Conf)
+	err := conf.Load(configFile)
+	if err != nil {
+		return conf, err
+	}
+	return conf, nil
+}
+
+func configureMTU(conf *ptp.Conf, mtu int, pmtu bool) {
+	if conf == nil {
+		ptp.GlobalMTU = ptp.DefaultMTU
+		ptp.UsePMTU = false
+		ptp.Log(ptp.Error, "Couldn't configure MTU: conf nil")
+		return
+	}
+	ptp.GlobalMTU = conf.GetMTU(mtu)
+	ptp.Log(ptp.Info, "MTU is set to %d", ptp.GlobalMTU)
+	if pmtu == false && conf.GetPMTU() == false {
+		ptp.Log(ptp.Info, "PMTU disabled")
+		ptp.UsePMTU = false
+	} else {
+		ptp.Log(ptp.Info, "PMTU enabled")
+		ptp.UsePMTU = true
+	}
+}
+
 // ExecDaemon starts P2P daemon
 func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel, configFile string, mtu int, pmtu bool) {
 	ptp.Log(ptp.Info, "Initializing P2P Daemon")
@@ -51,6 +82,18 @@ func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel, configF
 	} else {
 		ptp.SetMinLogLevelString(logLevel)
 	}
+
+	var err error
+	if configFile == "" {
+		configFile = ptp.DefaultConfigLocation
+	}
+	config, err := processConfigFile(configFile)
+	if err != nil {
+		ptp.Log(ptp.Error, "Failed to load config file %s: %s", configFile, err.Error())
+	} else {
+		ptp.Log(ptp.Info, "Loaded configuration from %s", configFile)
+	}
+
 	if targetURL == "" {
 		targetURL = "subutai.io"
 	}
@@ -60,14 +103,13 @@ func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel, configF
 	StartProfiling(profiling)
 	ptp.InitPlatform()
 	ptp.InitErrors()
-	ptp.UsePMTU = pmtu
+
+	configureMTU(config, mtu, pmtu)
 
 	if !ptp.HavePrivileges(ptp.GetPrivilegesLevel()) {
 		os.Exit(1)
 	}
 	StartTime = time.Now()
-
-	ptp.GlobalMTU = mtu
 
 	ReadyToServe = false
 

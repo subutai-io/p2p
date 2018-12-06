@@ -2,6 +2,8 @@
 
 package ptp
 
+const DefaultConfigLocation = "/etc/p2p.yaml"
+
 // Platform specific defaults
 const (
 	DefaultIPTool  = "/sbin/ip" // Default network interface configuration tool for Darwin OS
