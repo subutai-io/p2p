@@ -24,3 +24,4 @@ override_dh_auto_install:
 	dh_auto_install -- --no-source
 	mkdir -p debian/subutai-p2p/etc/default/
 	cp debian/tree/etc/default/* debian/subutai-p2p/etc/default
+	cp debian/tree/etc/p2p.yaml debian/subutai-p2p/etc/p2p.yaml
