@@ -167,7 +167,7 @@ func main() {
 				},
 				cli.StringFlag{
 					Name:        "config",
-					Usage:       "Path to configuration file",
+					Usage:       "Path to configuration YAML file",
 					Value:       "",
 					Destination: &ConfigFile,
 				},
