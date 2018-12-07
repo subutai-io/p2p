@@ -211,9 +211,8 @@ try {
 			stage("Packaging for Windows")
 			notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
 
-			// if exist "C:\\tmp" RD /S /Q "c:\\tmp"
 			bat """
-				if exist "C:\\tmp" DELTREE /Y "c:\\tmp"
+				if exist "C:\\tmp" RD /S /Q "c:\\tmp"
 				if not exist "C:\\tmp" mkdir "C:\\tmp"
 				echo rm -rf /c/tmp/p2p-packaging > c:\\tmp\\p2p-win.do
 				echo git clone git@github.com:optdyn/p2p-packaging.git /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
