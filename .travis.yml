@@ -16,17 +16,17 @@ matrix:
         - make linux
         - make test
         - make coverage
-        - cp bin/p2p /tmp/p2p-packages/linux/debian
-        - if [ ! -z "$TRAVIS_TAG" ] ; 
-          then (cd /tmp/p2p-packages && ./configure --debian --branch=HEAD) ;
-          else (cd /tmp/p2p-packages && ./configure --debian --branch=$TRAVIS_BRANCH) ;
-          fi
-        - (cd /tmp/p2p-packages/linux && debuild -B -d)
-        - if [ ! -z "$TRAVIS_TAG" ] ; 
-          then (cd /tmp/p2p-packages && ./prepare-deb.sh HEAD /tmp/p2p-packages /tmp/p2p-packages) ; 
-          else (cd /tmp/p2p-packages && ./prepare-deb.sh $TRAVIS_BRANCH /tmp/p2p-packages /tmp/p2p-packages) ;
-          fi
-        - ls -l /tmp/p2p-packages
+#        - cp bin/p2p /tmp/p2p-packages/linux/debian
+#        - if [ ! -z "$TRAVIS_TAG" ] ; 
+#          then (cd /tmp/p2p-packages && ./configure --debian --branch=HEAD) ;
+#          else (cd /tmp/p2p-packages && ./configure --debian --branch=$TRAVIS_BRANCH) ;
+#          fi
+#        - (cd /tmp/p2p-packages/linux && debuild -B -d)
+#        - if [ ! -z "$TRAVIS_TAG" ] ; 
+#          then (cd /tmp/p2p-packages && ./prepare-deb.sh HEAD /tmp/p2p-packages /tmp/p2p-packages) ; 
+#          else (cd /tmp/p2p-packages && ./prepare-deb.sh $TRAVIS_BRANCH /tmp/p2p-packages /tmp/p2p-packages) ;
+#          fi
+#        - ls -l /tmp/p2p-packages
       after_success:
         - bash <(curl -s https://codecov.io/bash)
 #      deploy:
