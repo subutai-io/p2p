@@ -9,24 +9,24 @@ matrix:
         - sudo apt-get update -qq
         - sudo apt-get install -qq build-essential devscripts debhelper
         - git clone https://github.com/subutai-io/p2p-packages.git /tmp/p2p-packages
-        - openssl aes-256-cbc -K $encrypted_62c1e8a94b65_key -iv $encrypted_62c1e8a94b65_iv -in /tmp/p2p-packages/secret.key.enc -out /tmp/p2p-packages/secret.key -d
-        - gpg --import /tmp/p2p-packages/secret.key && rm -f /tmp/p2p-packages/secret.key
+#        - openssl aes-256-cbc -K $encrypted_62c1e8a94b65_key -iv $encrypted_62c1e8a94b65_iv -in /tmp/p2p-packages/secret.key.enc -out /tmp/p2p-packages/secret.key -d
+#        - gpg --import /tmp/p2p-packages/secret.key && rm -f /tmp/p2p-packages/secret.key
         - go get github.com/google/gofuzz
       script:
         - make linux
         - make test
         - make coverage
-        - cp bin/p2p /tmp/p2p-packages/linux/debian
-        - if [ ! -z "$TRAVIS_TAG" ] ; 
-          then (cd /tmp/p2p-packages && ./configure --debian --branch=HEAD) ;
-          else (cd /tmp/p2p-packages && ./configure --debian --branch=$TRAVIS_BRANCH) ;
-          fi
-        - (cd /tmp/p2p-packages/linux && debuild -B -d)
-        - if [ ! -z "$TRAVIS_TAG" ] ; 
-          then (cd /tmp/p2p-packages && ./prepare-deb.sh HEAD /tmp/p2p-packages /tmp/p2p-packages) ; 
-          else (cd /tmp/p2p-packages && ./prepare-deb.sh $TRAVIS_BRANCH /tmp/p2p-packages /tmp/p2p-packages) ;
-          fi
-        - ls -l /tmp/p2p-packages
+#        - cp bin/p2p /tmp/p2p-packages/linux/debian
+#        - if [ ! -z "$TRAVIS_TAG" ] ; 
+#          then (cd /tmp/p2p-packages && ./configure --debian --branch=HEAD) ;
+#          else (cd /tmp/p2p-packages && ./configure --debian --branch=$TRAVIS_BRANCH) ;
+#          fi
+#        - (cd /tmp/p2p-packages/linux && debuild -B -d)
+#        - if [ ! -z "$TRAVIS_TAG" ] ; 
+#          then (cd /tmp/p2p-packages && ./prepare-deb.sh HEAD /tmp/p2p-packages /tmp/p2p-packages) ; 
+#          else (cd /tmp/p2p-packages && ./prepare-deb.sh $TRAVIS_BRANCH /tmp/p2p-packages /tmp/p2p-packages) ;
+#          fi
+#        - ls -l /tmp/p2p-packages
       after_success:
         - bash <(curl -s https://codecov.io/bash)
 #      deploy:
@@ -54,16 +54,17 @@ matrix:
     - os: osx
       before_install:
         - git clone https://github.com/subutai-io/p2p-packages.git /tmp/p2p-packages
-        - openssl aes-256-cbc -K $encrypted_62c1e8a94b65_key -iv $encrypted_62c1e8a94b65_iv -in /tmp/p2p-packages/secret.key.enc -out /tmp/p2p-packages/secret.key -d
-        - gpg --import /tmp/p2p-packages/secret.key && rm -f /tmp/p2p-packages/secret.key
+#        - openssl aes-256-cbc -K $encrypted_62c1e8a94b65_key -iv $encrypted_62c1e8a94b65_iv -in /tmp/p2p-packages/secret.key.enc -out /tmp/p2p-packages/secret.key -d
+#        - gpg --import /tmp/p2p-packages/secret.key && rm -f /tmp/p2p-packages/secret.key
       script:
-        - which bash
+#        - which bash
         - make macos
-        - /tmp/p2p-packages/darwin/pack.sh bin/p2p_osx
-        - if [ ! -z "$TRAVIS_TAG" ] ; 
-          then (mv /tmp/p2p-packages/darwin/p2p.pkg /tmp/subutai-p2p.pkg) ; 
-          else (mv /tmp/p2p-packages/darwin/p2p.pkg /tmp/subutai-p2p-$TRAVIS_BRANCH.pkg) ;
-          fi
+        - make test
+#        - /tmp/p2p-packages/darwin/pack.sh bin/p2p_osx
+#        - if [ ! -z "$TRAVIS_TAG" ] ; 
+#          then (mv /tmp/p2p-packages/darwin/p2p.pkg /tmp/subutai-p2p.pkg) ; 
+#          else (mv /tmp/p2p-packages/darwin/p2p.pkg /tmp/subutai-p2p-$TRAVIS_BRANCH.pkg) ;
+#          fi
 #      deploy:
 #        - provider: script
 #          script: /tmp/p2p-packages/deploy.sh bin/p2p_osx dev

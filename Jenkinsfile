@@ -211,13 +211,13 @@ try {
 			stage("Packaging for Windows")
 			notifyBuildDetails = "\nFailed on stage - Starting Windows Packaging"
 
-			// if exist "C:\\tmp" RD /S /Q "c:\\tmp"
 			bat """
-				if exist "C:\\tmp" DELTREE /Y "c:\\tmp"
+				if exist "C:\\tmp" RD /S /Q "c:\\tmp"
 				if not exist "C:\\tmp" mkdir "C:\\tmp"
 				echo rm -rf /c/tmp/p2p-packaging > c:\\tmp\\p2p-win.do
 				echo git clone git@github.com:optdyn/p2p-packaging.git /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
 				echo cd /c/tmp/p2p-packaging >> c:\\tmp\\p2p-win.do
+				echo git reset --hard >> c:\\tmp\\p2p-win.do
 				echo git checkout -B ${env.BRANCH_NAME} >> c:\\tmp\\p2p-win.do
 				echo git pull origin ${env.BRANCH_NAME} >> c:\\tmp\\p2p-win.do
 				echo curl -fsSLk "https://${env.BRANCH_NAME}bazaar.subutai.io/rest/v1/cdn/raw?name=p2p-${env.BRANCH_NAME}.exe&download&latest" -o /c/tmp/p2p-packaging/p2p.exe >> c:\\tmp\\p2p-win.do
