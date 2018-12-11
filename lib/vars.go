@@ -50,8 +50,14 @@ const (
 
 // Discovery communication packets
 const (
-	CommDiscoveryInit uint16 = 20 // Initiate connection with discovery service
-	CommDiscoveryFind        = 21 // Find request
+	CommDiscoveryInit        uint16 = 20 // Initiate connection with discovery service
+	CommDiscoveryFind               = 21 // Find request
+	CommDiscoveryNode               = 22 // Node request
+	CommDiscoveryPing               = 23 // Ping request/response
+	CommDiscoveryProxy              = 24 // Proxy request/response/registration
+	CommDiscoveryStatus             = 25 // Status notification
+	CommDiscoveryIP                 = 26 // IP request/response
+	CommDiscoveryUnsupported        = 27 // Unsupported packet version
 )
 
 // Network Constants
