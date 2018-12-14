@@ -204,12 +204,14 @@ func (t *TAPDarwin) ReadPacket() (*Packet, error) {
 		return pkt, nil
 	}
 
-	// Return packet
-	skip, err := pmtu(buf, t)
-	if skip {
-		return nil, err
+	if pkt.Protocol == int(PacketIPv4) {
+		// Return packet
+		skip, err := pmtu(buf, t)
+		if skip {
+			return nil, err
+		}
 	}
-	return pkt, err
+	return pkt, nil
 }
 
 // WritePacket will write a single packet to interface
