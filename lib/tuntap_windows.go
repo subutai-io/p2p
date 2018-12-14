@@ -327,12 +327,14 @@ func (t *TAPWindows) ReadPacket() (*Packet, error) {
 		return pkt, nil
 	}
 
-	// Return packet
-	skip, err := pmtu(buf, t)
-	if skip {
-		return nil, err
+	if pkt.Protocol == int(PacketIPv4) {
+		// Return packet
+		skip, err := pmtu(buf, t)
+		if skip {
+			return nil, err
+		}
 	}
-	return pkt, err
+	return pkt, nil
 }
 
 func (t *TAPWindows) WritePacket(pkt *Packet) error {
