@@ -318,10 +318,9 @@ func (t *TAPWindows) ReadPacket() (*Packet, error) {
 	if n <= 4 {
 		return nil, nil
 	}
-	p := 12
 	var pkt *Packet
 	pkt = &Packet{Packet: buf[0:n]}
-	pkt.Protocol = int(binary.BigEndian.Uint16(buf[p : p+2]))
+	pkt.Protocol = int(binary.BigEndian.Uint16(buf[12:14]))
 
 	if !t.IsPMTUEnabled() {
 		return pkt, nil
