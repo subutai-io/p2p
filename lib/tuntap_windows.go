@@ -322,18 +322,20 @@ func (t *TAPWindows) ReadPacket() (*Packet, error) {
 	pkt = &Packet{Packet: buf[0:n]}
 	pkt.Protocol = int(binary.BigEndian.Uint16(buf[12:14]))
 
-	if !t.IsPMTUEnabled() {
-		return pkt, nil
-	}
-
-	if pkt.Protocol == int(PacketIPv4) {
-		// Return packet
-		skip, err := pmtu(buf, t)
-		if skip {
-			return nil, err
-		}
-	}
 	return pkt, nil
+
+	// if !t.IsPMTUEnabled() {
+	// 	return pkt, nil
+	// }
+
+	// if pkt.Protocol == int(PacketIPv4) {
+	// 	// Return packet
+	// 	skip, err := pmtu(buf, t)
+	// 	if skip {
+	// 		return nil, err
+	// 	}
+	// }
+	// return pkt, nil
 }
 
 func (t *TAPWindows) WritePacket(pkt *Packet) error {
