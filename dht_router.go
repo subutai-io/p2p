@@ -107,8 +107,10 @@ func (dht *DHTRouter) routeData(data []byte) {
 			ptp.Log(ptp.Info, "Connected to a bootstrap node: %s [%s]", dht.addr.String(), packet.Data)
 			dht.packetVersion = fmt.Sprintf("%d", packet.Version)
 			if packet.Extra != "" {
+				ptp.Log(ptp.Info, "DHT Version: %s", packet.Extra)
 				dht.version = packet.Extra
 			}
+			packet.Query = "handshaked"
 			dht.data <- packet
 			return
 		}
