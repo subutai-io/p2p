@@ -131,7 +131,19 @@ func (dht *DHTConnection) run() {
 		ptp.Log(ptp.Trace, "Routing DHT Packet %+v", packet)
 		// Ping should always provide us with outbound IP value
 		if packet.Type == protocol.DHTPacketType_Ping && packet.Data != "" {
+			ptp.Log(ptp.Info, "Received outbound IP: %s", packet.Data)
 			dht.ip = packet.Data
+
+			if packet.Extra != "" && packet.Query == "handshaked" {
+				// Resend our IP
+				for _, inst := range dht.instances {
+					if inst == nil || inst.PTP == nil {
+						continue
+					}
+					inst.PTP.ReportIP(inst.PTP.Interface.GetIP().String(), inst.PTP.Interface.GetHardwareAddress().String(), inst.PTP.Interface.GetName())
+				}
+			}
+
 			continue
 		}
 		if packet.Infohash == "" {

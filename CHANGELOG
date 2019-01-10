@@ -1,5 +1,9 @@
 # Change Log
 
+## [8.3.1] 01/10/2019
+
+* Force sending of IP data to Discovery node
+
 ## [8.3.0] 12/21/2018
 
 * Configuration file support for Linux, Windows and MacOS (#1069, #1068)
