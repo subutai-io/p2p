@@ -60,6 +60,8 @@ type PeerIP struct {
 
 // Init bootstrap for this instance
 func (dht *DHTClient) Init(hash string) error {
+	dht.IncomingData = nil
+	dht.OutgoingData = nil
 	dht.LastUpdate = time.Now()
 	dht.NetworkHash = hash
 	dht.ID = GenerateToken()
