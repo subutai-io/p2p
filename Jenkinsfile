@@ -282,9 +282,11 @@ def notifyBuild(String buildStatus = 'STARTED', String details = '') {
 	summary = "${subject} (${env.BUILD_URL})${details}"
   }
   // Get token
-  def slackToken = getSlackToken('p2p-bots')
+  //def slackToken = getSlackToken('p2p-bots')
   // Send notifications
-  slackSend (color: colorCode, message: summary, teamDomain: 'optdyn', token: "${slackToken}")
+  //slackSend (color: colorCode, message: summary, teamDomain: 'optdyn', token: "${slackToken}")
+  def mattermost_rest = "https://mm.optdyn.com/hooks/bixecqjzujg498nyqp9kw8myja"
+  mattermostSend(color: colorCode, icon: "https://jenkins.io/images/logos/jenkins/jenkins.png", message: summary, channel: "#p2p-bots", endpoint: "${mattermost_rest}" )
 }
 
 // get slack token from global jenkins credentials store
