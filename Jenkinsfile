@@ -59,11 +59,11 @@ try {
 		/* Build subutai binary */
 		notifyBuildDetails = "\nFailed on Stage - Build p2p"
 
+		/* go get golang.org/x/sys/windows */
 		sh """
 			export GOPATH=${workspace}/${goenvDir}
 			export GOBIN=${workspace}/${goenvDir}/bin
 			go get
-			go get golang.org/x/sys/windows
 			./configure --dht=${dhtSrv} --branch=${env.BRANCH_NAME}
 			make all
 		"""
