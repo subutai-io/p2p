@@ -170,12 +170,12 @@ func (r *Restore) disableStaleInstances(inst *P2PInstance) error {
 		var t time.Time
 		err := t.UnmarshalText([]byte(e.LastSuccess))
 		if err != nil {
-			ptp.Log(ptp.Error, "Failed to unmarshal date for save file entry %s. Disabling it")
+			ptp.Log(ptp.Error, "Failed to unmarshal date for save file entry %s. Disabling it", e.Hash)
 			r.entries[i].Enabled = false
 			continue
 		}
 		if time.Since(t) > time.Duration(time.Hour*24*20) {
-			ptp.Log(ptp.Warning, "Instance %s was active more than 20 days ago")
+			ptp.Log(ptp.Warning, "Instance %s was active more than 20 days ago", e.Hash)
 			r.entries[i].Enabled = false
 		}
 	}
