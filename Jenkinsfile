@@ -122,6 +122,7 @@ try {
 			sh """
 			rm -rf ${CWD}/p2p
 			git clone https://github.com/subutai-io/p2p
+            go get -u github.com/urfave/cli
 			"""
 
 			if (env.BRANCH_NAME != 'master') {
