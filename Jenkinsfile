@@ -63,7 +63,8 @@ try {
 		sh """
 			export GOPATH=${workspace}/${goenvDir}
 			export GOBIN=${workspace}/${goenvDir}/bin
-			go get
+            go get
+			go get -u github.com/urfave/cli
 			./configure --dht=${dhtSrv} --branch=${env.BRANCH_NAME}
 			make all
 		"""
