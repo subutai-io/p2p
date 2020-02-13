@@ -274,17 +274,19 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) error {
 	Log(Debug, "Hole punching %s", np.ID)
 
 	np.punchingInProgress = true
-	round := 0
 	np.RoutingRequired = true
-	for round < 10 {
-		for _, ep := range eps {
+	for _, ep := range eps {
+		round := 0
+		maxRounds := 10
+		isPrivate, _ := isPrivateIP(ep.IP)
+		if isPrivate {
+			maxRounds = 1
+		}
+		for round < maxRounds {
 			active, err := np.isEndpointActive(ep)
 			if err != nil || active {
 				continue
 			}
-			// if IsInterfaceLocal(ep.IP) {
-			// 	continue
-			// }
 			payload := []byte(ptpc.Dht.ID + ep.String())
 			msg, err := ptpc.CreateMessage(MsgTypeIntroReq, payload, 0, true)
 			if err != nil {
@@ -297,9 +299,8 @@ func (np *NetworkPeer) punchUDPHole(ptpc *PeerToPeer) error {
 				continue
 			}
 			time.Sleep(time.Millisecond * 50)
+			round++
 		}
-		time.Sleep(time.Millisecond * 50)
-		round++
 	}
 	np.punchingInProgress = false
 	return nil

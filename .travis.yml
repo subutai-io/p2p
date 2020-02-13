@@ -1,9 +1,9 @@
 language: go
-go: 1.9
+go: 1.13
 matrix:
   include:
     - os: linux
-      dist: trusty
+      dist: bionic
       sudo: required
       before_install:
         - sudo apt-get update -qq
