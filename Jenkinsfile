@@ -105,7 +105,7 @@ try {
 
                 String date = new Date().format( 'yyyyMMddHHMMSS' );
 
-                def CWD = pwd();
+                def CWD = pwd()
 
                 sh """
                     rm -rf ${CWD}/p2p
