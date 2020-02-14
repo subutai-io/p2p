@@ -100,12 +100,11 @@ try {
 
         node("deb") {
             notifyBuild('INFO', "Building Debian Package");
+            def CWD = pwd()
             stage("Building Debian") {
                 notifyBuildDetails = "\nFailed on stage - Building Debian Package";
 
                 String date = new Date().format( 'yyyyMMddHHMMSS' );
-
-                def CWD = pwd()
 
                 sh """
                     rm -rf ${CWD}/p2p
