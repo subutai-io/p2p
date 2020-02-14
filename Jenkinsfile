@@ -49,8 +49,8 @@ try {
 
                 sh """
                     if test ! -d ${goenvDir}; then mkdir -p ${goenvDir}/src/github.com/subutai-io/; fi
-                        ln -s ${workspace} ${workspace}/${goenvDir}/src/github.com/subutai-io/p2p
-                            """
+                    ln -s ${workspace} ${workspace}/${goenvDir}/src/github.com/subutai-io/p2p
+                """;
             }
 
             stage("Build p2p") {
@@ -60,12 +60,12 @@ try {
                 /* go get golang.org/x/sys/windows */
                 sh """
                     export GOPATH=${workspace}/${goenvDir}
-                export GOBIN=${workspace}/${goenvDir}/bin
+                    export GOBIN=${workspace}/${goenvDir}/bin
                     go get
                     go get -u github.com/urfave/cli
                     ./configure --dht=${dhtSrv} --branch=${env.BRANCH_NAME}
-                make all
-                    """;
+                    make all
+                """;
 
                 /* stash p2p binary to use it in next node() */
                 stash includes: 'bin/p2p.exe', name: 'p2p.exe';
@@ -82,66 +82,66 @@ try {
             stage("Upload p2p binaries to CDN") {
                 /* Get subutai binary from stage and push it to same branch of subos repo
                  */
-                notifyBuildDetails = "\nFailed on Stage - Upload p2p binaries to CDN"
+                notifyBuildDetails = "\nFailed on Stage - Upload p2p binaries to CDN";
 
-                    /* upload p2p */
-                    unstash 'p2p.exe'
-                    unstash 'p2p_osx'
-                    unstash 'upload-ipfs.sh'
-                    if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
-                        sh """
-                            set +x
-                            ./upload-ipfs.sh ${env.BRANCH_NAME} MSYS_NT-10.0
-                            ./upload-ipfs.sh ${env.BRANCH_NAME} Darwin
-                            """
-                    }
+                /* upload p2p */
+                unstash 'p2p.exe';
+                unstash 'p2p_osx';
+                unstash 'upload-ipfs.sh';
+                if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
+                    sh """
+                        set +x
+                        ./upload-ipfs.sh ${env.BRANCH_NAME} MSYS_NT-10.0
+                        ./upload-ipfs.sh ${env.BRANCH_NAME} Darwin
+                        """;
+                }
             }
         }
 
         node("deb") {
-            notifyBuild('INFO', "Building Debian Package")
-                stage("Building Debian") {
-                    notifyBuildDetails = "\nFailed on stage - Building Debian Package"
+            notifyBuild('INFO', "Building Debian Package");
+            stage("Building Debian") {
+                notifyBuildDetails = "\nFailed on stage - Building Debian Package";
 
-                        String date = new Date().format( 'yyyyMMddHHMMSS' )
+                String date = new Date().format( 'yyyyMMddHHMMSS' );
 
-                        def CWD = pwd()
+                def CWD = pwd();
 
-                        sh """
-                        rm -rf ${CWD}/p2p
-                        git clone https://github.com/subutai-io/p2p
-                        go get -u github.com/urfave/cli
-                        """
+                sh """
+                    rm -rf ${CWD}/p2p
+                    git clone https://github.com/subutai-io/p2p
+                    go get -u github.com/urfave/cli
+                """;
 
-                        if (env.BRANCH_NAME != 'master') {
-                            sh """
-                                cd ${CWD}/p2p
-                                git checkout --track origin/${env.BRANCH_NAME} && rm -rf .git*
-                                """
-                        }
-
-                    String plain_version = sh (script: """
-                            cat ${CWD}/p2p/VERSION | tr -d '\n'
-                            """, returnStdout: true)
-                        def p2p_version = "${plain_version}+${date}"
-                        global_version = plain_version
-
-                        product_code = sh (script: """
-                                cat /proc/sys/kernel/random/uuid | awk '{print toupper(\$0)}' | tr -d '\n'
-                                """, returnStdout: true)
-
-                        sh """
+                if (env.BRANCH_NAME != 'master') {
+                    sh """
                         cd ${CWD}/p2p
-                        sed -i 's/quilt/native/' debian/source/format
-                        sed -i 's/DHT_ENDPOINT/${dhtSrv}/' debian/rules
-                        sed -i 's/DEFAULT_LOG_LEVEL/${p2p_log_level}/' debian/rules
-                        dch -v '${p2p_version}' -D stable 'Test build for ${p2p_version}' 1>/dev/null 2>/dev/null
-                        """
+                        git checkout --track origin/${env.BRANCH_NAME} && rm -rf .git*
+                    """;
                 }
 
+                String plain_version = sh (script: """
+                        cat ${CWD}/p2p/VERSION | tr -d '\n'
+                        """, returnStdout: true);
+                def p2p_version = "${plain_version}+${date}";
+                global_version = plain_version;
+
+                product_code = sh (script: """
+                        cat /proc/sys/kernel/random/uuid | awk '{print toupper(\$0)}' | tr -d '\n'
+                        """, returnStdout: true);
+
+                sh """
+                    cd ${CWD}/p2p
+                    sed -i 's/quilt/native/' debian/source/format
+                    sed -i 's/DHT_ENDPOINT/${dhtSrv}/' debian/rules
+                    sed -i 's/DEFAULT_LOG_LEVEL/${p2p_log_level}/' debian/rules
+                    dch -v '${p2p_version}' -D stable 'Test build for ${p2p_version}' 1>/dev/null 2>/dev/null
+                    """;
+            }
+
             stage("Build P2P package") {
-                notifyBuildDetails = "\nFailed on Stage - Build package"
-                    sh """
+                notifyBuildDetails = "\nFailed on Stage - Build package";
+                sh """
                     cd p2p
                     dpkg-buildpackage -rfakeroot -us -uc
                     cd ${CWD} || exit 1
@@ -149,20 +149,20 @@ try {
                         echo '\$i:';
                 dpkg -c \$i;
                 done
-                    """
+                    """;
             }
 
             stage("Upload Packages") {
-                notifyBuildDetails = "\nFailed on Stage - Upload"
-                    sh """
+                notifyBuildDetails = "\nFailed on Stage - Upload";
+                sh """
                     cd ${CWD}
                 ./upload-ipfs.sh ${env.BRANCH_NAME} Linux
                     touch uploading_agent
                     scp uploading_agent subutai*.deb dak@debup.subutai.io:incoming/${env.BRANCH_NAME}/
                 ssh dak@debup.subutai.io sh /var/reprepro/scripts/scan-incoming.sh ${env.BRANCH_NAME} agent
-                    """
+                    """;
 
-                    sh """
+                sh """
                     set -x
                     rm -rf /tmp/p2p-packaging
                     git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
@@ -170,33 +170,33 @@ try {
                     ${gitcmd}
                 cp ${CWD}/subutai*.deb . 
                     ./upload-ipfs.sh ${env.BRANCH_NAME}
-                """
+                """;
             }
         }
 
         if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
 
             node("mac") {
-                notifyBuild('INFO', "Packaging P2P for Darwin")
-                    stage("Packaging for Darwin") {
-                        notifyBuildDetails = "\nFailed on stage - Starting Darwin Packaging"
+                notifyBuild('INFO', "Packaging P2P for Darwin");
+                stage("Packaging for Darwin") {
+                    notifyBuildDetails = "\nFailed on stage - Starting Darwin Packaging";
 
-                            sh """
-                            set -x
-                            rm -rf /tmp/p2p-packaging
-                            git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
-                            cd /tmp/p2p-packaging
-                            curl -fsSLk 'https://${env.BRANCH_NAME}bazaar.subutai.io/rest/v1/cdn/raw?name=p2p-${env.BRANCH_NAME}_osx&download&latest' -o /tmp/p2p-packaging/darwin/p2p_osx
-                            chmod +x /tmp/p2p-packaging/darwin/p2p_osx
-                            /tmp/p2p-packaging/darwin/pack.sh /tmp/p2p-packaging/darwin/p2p_osx ${env.BRANCH_NAME}
-                        """
+                    sh """
+                        set -x
+                        rm -rf /tmp/p2p-packaging
+                        git clone git@github.com:optdyn/p2p-packaging.git /tmp/p2p-packaging
+                        cd /tmp/p2p-packaging
+                        curl -fsSLk 'https://${env.BRANCH_NAME}bazaar.subutai.io/rest/v1/cdn/raw?name=p2p-${env.BRANCH_NAME}_osx&download&latest' -o /tmp/p2p-packaging/darwin/p2p_osx
+                        chmod +x /tmp/p2p-packaging/darwin/p2p_osx
+                        /tmp/p2p-packaging/darwin/pack.sh /tmp/p2p-packaging/darwin/p2p_osx ${env.BRANCH_NAME}
+                    """;
 
-                            notifyBuildDetails = "\nFailed on stage - Uploading Darwin Package"
+                    notifyBuildDetails = "\nFailed on stage - Uploading Darwin Package";
 
-                            sh """
-                            /tmp/p2p-packaging/./upload-ipfs.sh ${env.BRANCH_NAME}
-                        """
-                    }
+                    sh """
+                        /tmp/p2p-packaging/./upload-ipfs.sh ${env.BRANCH_NAME}
+                    """;
+                }
             }
         } // If branch == master
 
@@ -227,9 +227,9 @@ try {
                                 echo signtool.exe sign /tr http://timestamp.comodoca.com/authenticode /f "c:\\users\\tray\\od.p12" /p testpassword "c:\\tmp\\p2p-packaging\\windows\\P2PInstaller\\Release\\P2PInstaller.msi" >> c:\\tmp\\p2p-pack.bat
 
 
-                                """
+                                """;
 
-                                notifyBuildDetails = "\nFailed on stage - Deploying DevOps";
+                notifyBuildDetails = "\nFailed on stage - Deploying DevOps";
                 bat "c:\\tmp\\p2p-win.do";
 
                 notifyBuildDetails = "\nFailed on stage - Building package";
