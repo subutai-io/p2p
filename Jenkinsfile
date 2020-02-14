@@ -108,20 +108,20 @@ try {
                 def CWD = pwd()
 
                 sh """
-                    rm -rf ${CWD}/p2p
+                    rm -rf \${CWD}/p2p
                     git clone https://github.com/subutai-io/p2p
                     go get -u github.com/urfave/cli
                 """;
 
                 if (env.BRANCH_NAME != 'master') {
                     sh """
-                        cd ${CWD}/p2p
+                        cd \${CWD}/p2p
                         git checkout --track origin/${env.BRANCH_NAME} && rm -rf .git*
                     """;
                 }
 
                 String plain_version = sh (script: """
-                        cat ${CWD}/p2p/VERSION | tr -d '\n'
+                        cat \${CWD}/p2p/VERSION | tr -d '\n'
                         """, returnStdout: true);
                 def p2p_version = "${plain_version}+${date}";
                 global_version = plain_version;
@@ -144,7 +144,7 @@ try {
                 sh """
                     cd p2p
                     dpkg-buildpackage -rfakeroot -us -uc
-                    cd ${CWD} || exit 1
+                    cd \${CWD} || exit 1
                     for i in *.deb; do
                         echo '\$i:';
                 dpkg -c \$i;
