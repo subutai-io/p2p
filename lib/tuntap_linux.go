@@ -56,20 +56,20 @@ func newEmptyTAP() *TAPLinux {
 
 // TAPLinux is an interface for TAP device on Linux platform
 type TAPLinux struct {
-	IP         net.IP           // IP
-	Subnet     net.IP           // Subnet
-	Mask       net.IPMask       // Mask
-	Mac        net.HardwareAddr // Hardware Address
-	Name       string           // Network interface name
-	Tool       string           // Path to `ip`
-	MTU        int              // MTU value
-	file       unix.FileHandle  // TAP Interface File Handle
-	fd         int              // File descriptor
-	Configured bool             // Whether interface was configured
-	PMTU       bool             // Enables/Disbles PMTU
+	IP     net.IP           // IP
+	Subnet net.IP           // Subnet
+	Mask   net.IPMask       // Mask
+	Mac    net.HardwareAddr // Hardware Address
+	Name   string           // Network interface name
+	Tool   string           // Path to `ip`
+	MTU    int              // MTU value
+	//file       unix.FileHandle  // TAP Interface File Handle
+	fd         int  // File descriptor
+	Configured bool // Whether interface was configured
+	PMTU       bool // Enables/Disbles PMTU
 	Auto       bool
 	Status     InterfaceStatus
-	//file       *os.File         // Interface descriptor
+	file       *os.File // Interface descriptor
 }
 
 // GetName returns a name of interface
@@ -154,7 +154,7 @@ func (tap *TAPLinux) Open() error {
 
 // Close will close TAP interface by closing it's file descriptor
 func (tap *TAPLinux) Close() error {
-	if tap.file == 0 {
+	if tap.file == nil {
 		return fmt.Errorf("nil interface file descriptor")
 	}
 	Log(Info, "Closing network interface %s", tap.GetName())
@@ -273,7 +273,7 @@ func (tap *TAPLinux) createInterface() error {
 	copy(req.Name[:15], tap.Name)
 	req.Flags |= iffTap
 	req.Flags |= iffnopi
-	_, _, err := syscall.Syscall(syscall.SYS_IOCTL, uintptr(tap.file), uintptr(syscall.TUNSETIFF), uintptr(unsafe.Pointer(&req)))
+	_, _, err := syscall.Syscall(syscall.SYS_IOCTL, uintptr(tap.fd), uintptr(syscall.TUNSETIFF), uintptr(unsafe.Pointer(&req)))
 	if err != 0 {
 		return err
 	}
