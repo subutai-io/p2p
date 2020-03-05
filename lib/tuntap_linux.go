@@ -5,6 +5,7 @@ package ptp
 import (
 	"encoding/binary"
 	"fmt"
+	"golang.org/x/sys/unix"
 	"io"
 	"net"
 	"os"
@@ -62,11 +63,13 @@ type TAPLinux struct {
 	Name       string           // Network interface name
 	Tool       string           // Path to `ip`
 	MTU        int              // MTU value
-	file       *os.File         // Interface descriptor
-	Configured bool
-	PMTU       bool // Enables/Disbles PMTU
+	file       unix.FileHandle  // TAP Interface File Handle
+	fd         int              // File descriptor
+	Configured bool             // Whether interface was configured
+	PMTU       bool             // Enables/Disbles PMTU
 	Auto       bool
 	Status     InterfaceStatus
+	//file       *os.File         // Interface descriptor
 }
 
 // GetName returns a name of interface
@@ -137,10 +140,11 @@ func (tap *TAPLinux) Open() error {
 	if tap.file != nil {
 		return fmt.Errorf("TAP device is already acquired")
 	}
-	tap.file, err = os.OpenFile("/dev/net/tun", os.O_RDWR, 0)
+	tap.fd, err = unix.Open("/dev/net/tun", os.O_RDWR, 0)
 	if err != nil {
 		return err
 	}
+	tap.file = os.NewFile(uintptr(tap.fd), "/dev/net/tun")
 	err = tap.createInterface()
 	if err != nil {
 		return err
@@ -150,7 +154,7 @@ func (tap *TAPLinux) Open() error {
 
 // Close will close TAP interface by closing it's file descriptor
 func (tap *TAPLinux) Close() error {
-	if tap.file == nil {
+	if tap.file == 0 {
 		return fmt.Errorf("nil interface file descriptor")
 	}
 	Log(Info, "Closing network interface %s", tap.GetName())
@@ -269,7 +273,7 @@ func (tap *TAPLinux) createInterface() error {
 	copy(req.Name[:15], tap.Name)
 	req.Flags |= iffTap
 	req.Flags |= iffnopi
-	_, _, err := syscall.Syscall(syscall.SYS_IOCTL, tap.file.Fd(), uintptr(syscall.TUNSETIFF), uintptr(unsafe.Pointer(&req)))
+	_, _, err := syscall.Syscall(syscall.SYS_IOCTL, uintptr(tap.file), uintptr(syscall.TUNSETIFF), uintptr(unsafe.Pointer(&req)))
 	if err != 0 {
 		return err
 	}
