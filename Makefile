@@ -59,7 +59,7 @@ mrproper:
 test:
 	go test github.com/subutai-io/p2p
 	go test github.com/subutai-io/p2p/lib
-	go test --bench . ./...
+#	go test --bench . ./...
 
 coverage:
 	go test -coverprofile=coverage.txt -covermode=atomic github.com/subutai-io/p2p/lib
