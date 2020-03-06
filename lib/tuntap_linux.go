@@ -56,20 +56,20 @@ func newEmptyTAP() *TAPLinux {
 
 // TAPLinux is an interface for TAP device on Linux platform
 type TAPLinux struct {
-	IP     net.IP           // IP
-	Subnet net.IP           // Subnet
-	Mask   net.IPMask       // Mask
-	Mac    net.HardwareAddr // Hardware Address
-	Name   string           // Network interface name
-	Tool   string           // Path to `ip`
-	MTU    int              // MTU value
-	//file       unix.FileHandle  // TAP Interface File Handle
-	fd         int  // File descriptor
-	Configured bool // Whether interface was configured
-	PMTU       bool // Enables/Disbles PMTU
+	IP         net.IP           // IP
+	Subnet     net.IP           // Subnet
+	Mask       net.IPMask       // Mask
+	Mac        net.HardwareAddr // Hardware Address
+	Name       string           // Network interface name
+	Tool       string           // Path to `ip`
+	MTU        int              // MTU value
+	fd         int              // File descriptor
+	Configured bool             // Whether interface was configured
+	PMTU       bool             // Enables/Disbles PMTU
 	Auto       bool
 	Status     InterfaceStatus
 	file       *os.File // Interface descriptor
+	//file       unix.FileHandle  // TAP Interface File Handle
 }
 
 // GetName returns a name of interface
