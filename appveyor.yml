@@ -41,7 +41,7 @@ build_script:
 #deploy_script:
 #  - C:\msys64\usr\bin\bash -lc "/c/root/p2p-packages/deploy.sh /c/root/p2p-packages/p2p.exe %APPVEYOR_REPO_BRANCH% -appveyor-test"
 
-notifications:
-  - provider: Slack
-    incoming_webhook:
-      secure: EH0gGIsLRLevwZRtCfJVMO6Bw+OP7p+1eyWatC0h6IorO7ksOj+PsENn5duSz59F45IIrPB0c318ZAzXGEhiUhD/Huor6zS/mQfejsO5RTg=
+#notifications:
+#  - provider: Slack
+#    incoming_webhook:
+#      secure: EH0gGIsLRLevwZRtCfJVMO6Bw+OP7p+1eyWatC0h6IorO7ksOj+PsENn5duSz59F45IIrPB0c318ZAzXGEhiUhD/Huor6zS/mQfejsO5RTg=

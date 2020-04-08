@@ -97,8 +97,8 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "p2p"
 	app.Version = AppVersion
-	app.Authors = []cli.Author{
-		cli.Author{
+	app.Authors = []*cli.Author{
+		&cli.Author{
 			Name: "subutai.io",
 		},
 	}
@@ -107,65 +107,65 @@ func main() {
 	app.Usage = "Subutai P2P daemon/client application"
 	app.Copyright = "Copyright 2018 Subutai.io"
 
-	app.Commands = []cli.Command{
+	app.Commands = []*cli.Command{
 		{
 			Name:  "daemon",
 			Usage: "Run p2p in daemon mode",
 			Flags: []cli.Flag{
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:        "rpc-port",
 					Usage:       "RPC port",
 					Value:       52523,
 					Destination: &RPCPort,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "target",
 					Usage:       "Comma-separated list of endpoints",
 					Value:       TargetURL,
 					Destination: &TargetURL,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "save",
 					Usage:       "Path to save/restore instance data file",
 					Value:       "",
 					Destination: &SaveFile,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "profile",
 					Usage:       "Run p2p in profiling mode. Possible value: mem, cpu",
 					Value:       "",
 					Destination: &Profiling,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "syslog",
 					Usage:       "Specify syslog socket",
 					Value:       "",
 					Destination: &Syslog,
 				},
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:        "mtu",
 					Usage:       "Specify global MTU value that will be set on p2p interfaces",
 					Value:       0,
 					Destination: &MTU,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "log",
 					Usage:       "Log level. Available levels: trace, debug, info, warning, error",
 					Value:       "",
 					Destination: &LogLevel,
 				},
-				cli.BoolFlag{
+				&cli.BoolFlag{
 					Name:        "pmtu",
 					Usage:       "When specified - enables PMTU capabilities",
 					Destination: &PMTU,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "srv",
 					Usage:       "Specify DHT SRV lookup entry. Supported: dht, devdht, masterdht",
 					Value:       "",
 					Destination: &SRVEntry,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "config",
 					Usage:       "Path to configuration YAML file",
 					Value:       "",
@@ -184,12 +184,12 @@ func main() {
 			Name:  "service",
 			Usage: "[Windows Only] Run Windows Service",
 			Flags: []cli.Flag{
-				cli.BoolFlag{
+				&cli.BoolFlag{
 					Name:        "install",
 					Usage:       "If set - windows service will be installed",
 					Destination: &InstallService,
 				},
-				cli.BoolFlag{
+				&cli.BoolFlag{
 					Name:        "remove",
 					Usage:       "If set - service will be removed if it's already present in the system",
 					Destination: &RemoveService,
@@ -211,67 +211,67 @@ func main() {
 			Name:  "start",
 			Usage: "Start new p2p instance",
 			Flags: []cli.Flag{
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:        "rpc-port",
 					Usage:       "RPC port",
 					Value:       52523,
 					Destination: &RPCPort,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "hash",
 					Usage:       "Infohash of p2p swarm",
 					Value:       "",
 					Destination: &Infohash,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "ip",
 					Usage:       "IP Address of p2p interface. Can be specified in CIDR format or use \"dhcp\" to pick free unused IP",
 					Value:       "dhcp",
 					Destination: &IP,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "mac",
 					Usage:       "Hardware address of a p2p interface",
 					Value:       "",
 					Destination: &Mac,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "dev",
 					Usage:       "Name of the p2p interface",
 					Value:       "",
 					Destination: &InterfaceName,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "keyfile",
 					Usage:       "Path to a file containing crypto-key",
 					Value:       "",
 					Destination: &Keyfile,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "key",
 					Usage:       "AES crypto key",
 					Value:       "",
 					Destination: &Key,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "ttl, until",
 					Usage:       "Time until specified key will be active",
 					Value:       "",
 					Destination: &Until,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "ports",
 					Usage:       "Ports range that should be used by p2p in a START-END format",
 					Value:       "",
 					Destination: &Ports,
 				},
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:        "port",
 					Usage:       "UDP port for current instance",
 					Value:       0,
 					Destination: &UDPPort,
 				},
-				cli.BoolFlag{
+				&cli.BoolFlag{
 					Name:        "fwd",
 					Usage:       "Force proxy servers usage",
 					Destination: &UseForwarders,
@@ -286,19 +286,19 @@ func main() {
 			Name:  "stop",
 			Usage: "Shutdown p2p instance",
 			Flags: []cli.Flag{
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:        "rpc-port",
 					Usage:       "RPC port",
 					Value:       52523,
 					Destination: &RPCPort,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "hash",
 					Usage:       "Infohash of instance that needs to be shutdown",
 					Value:       "",
 					Destination: &Infohash,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "dev",
 					Usage:       "Specify interface name that needs to be removed from interface history",
 					Value:       "",
@@ -314,40 +314,40 @@ func main() {
 			Name:  "show",
 			Usage: "Display different information about p2p daemon or instances",
 			Flags: []cli.Flag{
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:        "rpc-port",
 					Usage:       "RPC port",
 					Value:       52523,
 					Destination: &RPCPort,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "hash",
 					Usage:       "Display information about specific instance",
 					Value:       "",
 					Destination: &Infohash,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "check, ip",
 					Usage:       "Check if integration with specified IP has been completed",
 					Value:       "",
 					Destination: &IP,
 				},
-				cli.BoolFlag{
+				&cli.BoolFlag{
 					Name:        "interfaces",
 					Usage:       "List interfaces used by p2p",
 					Destination: &ShowInterfaces,
 				},
-				cli.BoolFlag{
+				&cli.BoolFlag{
 					Name:        "bind",
 					Usage:       "Show swarm names along with interfaces",
 					Destination: &ShowBind,
 				},
-				cli.BoolFlag{
+				&cli.BoolFlag{
 					Name:        "all",
 					Usage:       "In combination with -interfaces this will show all interfaces used by p2p, even those that is already not in use",
 					Destination: &ShowAll,
 				},
-				cli.BoolFlag{
+				&cli.BoolFlag{
 					Name:        "mtu",
 					Usage:       "Display current MTU value in P2P",
 					Destination: &ShowMTU,
@@ -362,37 +362,37 @@ func main() {
 			Name:  "set",
 			Usage: "Modify daemon or instance",
 			Flags: []cli.Flag{
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:        "rpc-port",
 					Usage:       "RPC port",
 					Value:       52523,
 					Destination: &RPCPort,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "log",
 					Usage:       "Log level. Available levels: trace, debug, info, warning, error",
 					Value:       "",
 					Destination: &LogLevel,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "key",
 					Usage:       "Append specified key to a list of crypto keys. Must be used with combination of -until",
 					Value:       "",
 					Destination: &Key,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "ttl, until",
 					Usage:       "Specify until what time this key should work",
 					Value:       "",
 					Destination: &Until,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "hash",
 					Usage:       "Specify infohash of instance, that should be modified",
 					Value:       "",
 					Destination: &Infohash,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "ip",
 					Usage:       "Modify IP address of interface with specified hash",
 					Value:       "",
@@ -408,7 +408,7 @@ func main() {
 			Name:  "debug",
 			Usage: "Display debug information",
 			Flags: []cli.Flag{
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:        "rpc-port",
 					Usage:       "RPC port",
 					Value:       52523,
@@ -424,13 +424,13 @@ func main() {
 			Name:  "status",
 			Usage: "Display connectivity status",
 			Flags: []cli.Flag{
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:        "rpc-port",
 					Usage:       "RPC port",
 					Value:       52523,
 					Destination: &RPCPort,
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:        "hash",
 					Usage:       "Limit results to specified instance",
 					Value:       "",
