@@ -39,7 +39,7 @@ func SetMinLogLevel(level LogLevel) {
 	logLevelMin = level
 }
 
-// SetMinLogLevel sets a minimal logging level. Accepts a string for setting
+// SetMinLogLevelString sets a minimal logging level. Accepts a string for setting
 func SetMinLogLevelString(level string) error {
 	level = strings.ToLower(level)
 	if level == "trace" {
