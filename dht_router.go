@@ -45,7 +45,7 @@ func (dht *DHTRouter) run() {
 		data := make([]byte, ptp.DHTBufferSize)
 		n, err := dht.conn.Read(data)
 		if err != nil {
-			ptp.Log(ptp.Warning, "BSN socket closed: %s", err)
+			ptp.Warn("BSN socket closed: %s", err)
 			dht.running = false
 			dht.handshaked = false
 			continue
@@ -60,7 +60,7 @@ func (dht *DHTRouter) handleData(data []byte) {
 	dht.rx += uint64(length)
 	i := 0
 	handled := 0
-	ptp.Log(ptp.Trace, "Handling data: data length is [%d]", len(data))
+	ptp.Trace("Handling data: data length is [%d]", len(data))
 	for i >= 0 {
 		i = bytes.Index(data, []byte{0x0a, 0x0b, 0x0c, 0x0a})
 		if i <= 0 {
@@ -82,13 +82,13 @@ func (dht *DHTRouter) handleData(data []byte) {
 func (dht *DHTRouter) routeData(data []byte) {
 	packet := &protocol.DHTPacket{}
 	err := proto.Unmarshal(data, packet)
-	ptp.Log(ptp.Trace, "DHTPacket size: [%d]", len(data))
-	ptp.Log(ptp.Trace, "DHTPacket contains: %+v --- %+v", bytes.NewBuffer(data).String(), packet)
+	ptp.Trace("DHTPacket size: [%d]", len(data))
+	ptp.Trace("DHTPacket contains: %+v --- %+v", bytes.NewBuffer(data).String(), packet)
 	if err != nil {
-		ptp.Log(ptp.Warning, "Corrupted data from DHT: %s [%d]", err, len(data))
+		ptp.Warn("Corrupted data from DHT: %s [%d]", err, len(data))
 		return
 	}
-	ptp.Log(ptp.Trace, "Received DHT packet: %+v", packet)
+	ptp.Trace("Received DHT packet: %+v", packet)
 	if packet.Type == protocol.DHTPacketType_Ping && dht.handshaked == false {
 		supported := false
 		for _, v := range ptp.SupportedVersion {
@@ -97,17 +97,17 @@ func (dht *DHTRouter) routeData(data []byte) {
 			}
 		}
 		if !supported {
-			ptp.Log(ptp.Error, "Version mismatch. Server have %d. We have %d", packet.Version, ptp.PacketVersion)
+			ptp.Error("Version mismatch. Server have %d. We have %d", packet.Version, ptp.PacketVersion)
 			dht.stop = true
 			if dht.conn != nil {
 				dht.conn.Close()
 			}
 		} else {
 			dht.handshaked = true
-			ptp.Log(ptp.Info, "Connected to a bootstrap node: %s [%s]", dht.addr.String(), packet.Data)
+			ptp.Info("Connected to a bootstrap node: %s [%s]", dht.addr.String(), packet.Data)
 			dht.packetVersion = fmt.Sprintf("%d", packet.Version)
 			if packet.Extra != "" {
-				ptp.Log(ptp.Info, "DHT Version: %s", packet.Extra)
+				ptp.Info("DHT Version: %s", packet.Extra)
 				dht.version = packet.Extra
 			}
 			packet.Query = "handshaked"
@@ -116,7 +116,7 @@ func (dht *DHTRouter) routeData(data []byte) {
 		}
 	}
 	if !dht.handshaked {
-		ptp.Log(ptp.Trace, "Skipping packet: not handshaked")
+		ptp.Trace("Skipping packet: not handshaked")
 		return
 	}
 	dht.data <- packet
@@ -135,7 +135,7 @@ func (dht *DHTRouter) connect() {
 	dht.conn, err = net.DialTCP("tcp4", nil, dht.addr)
 	if err != nil {
 		dht.fails++
-		ptp.Log(ptp.Error, "Failed to establish connection with %s: %s", dht.addr.String(), err)
+		ptp.Error("Failed to establish connection with %s: %s", dht.addr.String(), err)
 		return
 	}
 	dht.lastContact = time.Now()
@@ -148,7 +148,7 @@ func (dht *DHTRouter) sleep() {
 	if multiplier > 30 {
 		multiplier = 30
 	}
-	ptp.Log(ptp.Info, "Waiting for %d second before reconnecting", multiplier)
+	ptp.Info("Waiting for %d second before reconnecting", multiplier)
 	started := time.Now()
 	timeout := time.Duration(time.Second * time.Duration(multiplier))
 	for time.Since(started) < timeout {
@@ -163,11 +163,11 @@ func (dht *DHTRouter) keepAlive() {
 		if time.Since(lastPing) > time.Duration(time.Millisecond*30000) && time.Since(dht.lastContact) > time.Duration(time.Millisecond*40) {
 			lastPing = time.Now()
 			if dht.ping() != nil {
-				ptp.Log(ptp.Error, "DHT router ping failed")
+				ptp.Error("DHT router ping failed")
 			}
 		}
 		if time.Since(dht.lastContact) > time.Duration(time.Millisecond*60000) && dht.running {
-			ptp.Log(ptp.Warning, "Disconnected from DHT router %s by timeout", dht.addr.String())
+			ptp.Warn("Disconnected from DHT router %s by timeout", dht.addr.String())
 			dht.handshaked = false
 			dht.running = false
 			dht.conn.Close()
@@ -185,7 +185,7 @@ func (dht *DHTRouter) sendRaw(data []byte) (int, error) {
 }
 
 func (dht *DHTRouter) ping() error {
-	ptp.Log(ptp.Trace, "Sending ping to dht %s", dht.addr.String())
+	ptp.Trace("Sending ping to dht %s", dht.addr.String())
 	packet := &protocol.DHTPacket{
 		Type:    protocol.DHTPacketType_Ping,
 		Query:   "req",

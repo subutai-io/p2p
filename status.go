@@ -113,12 +113,12 @@ func (d *Daemon) execRESTStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	response, err := d.Status(args.Hash)
 	if err != nil {
-		ptp.Log(ptp.Error, "Internal error: %s", err)
+		ptp.Error("Internal error: %s", err)
 		return
 	}
 	output, err := json.Marshal(response)
 	if err != nil {
-		ptp.Log(ptp.Error, "Failed to marshal status response: %s", err)
+		ptp.Error("Failed to marshal status response: %s", err)
 		return
 	}
 	w.Write(output)

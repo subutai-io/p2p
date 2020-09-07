@@ -73,16 +73,16 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	// Extract necessary information from config file
 	// err = p.Config.Read()
 	// if err != nil {
-	// 	Log(Error, "Failed to extract information from config file: %v", err)
+	// 	Error( "Failed to extract information from config file: %v", err)
 	// 	return err
 	// }
 
 	err = p.Interface.Open()
 	if err != nil {
-		Log(Error, "Failed to open TAP device %s: %v", p.Interface.GetName(), err)
+		Error("Failed to open TAP device %s: %v", p.Interface.GetName(), err)
 		return err
 	}
-	Log(Debug, "%v TAP Device created", p.Interface.GetName())
+	Debug("%v TAP Device created", p.Interface.GetName())
 
 	lazy := false
 	if p.Interface.IsAuto() {
@@ -95,7 +95,7 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 	}
 	ActiveInterfaces = append(ActiveInterfaces, p.Interface.GetIP())
 	if !p.Interface.IsAuto() {
-		Log(Debug, "Interface has been configured")
+		Debug("Interface has been configured")
 		p.Interface.MarkConfigured()
 	}
 	return err
@@ -106,7 +106,7 @@ func (p *PeerToPeer) AssignInterface(interfaceName string) error {
 // This goroutine will execute a callback method based on packet type
 func (p *PeerToPeer) ListenInterface() error {
 	if p.Interface == nil {
-		Log(Error, "Failed to start TAP listener: nil object")
+		Error("Failed to start TAP listener: nil object")
 		return fmt.Errorf("nil interface")
 	}
 	p.Interface.Run()
@@ -120,7 +120,7 @@ func (p *PeerToPeer) ListenInterface() error {
 		}
 		packet, err := p.Interface.ReadPacket()
 		if err != nil && err != errPacketTooBig {
-			Log(Error, "Reading packet: %s", err)
+			Error("Reading packet: %s", err)
 			p.Close()
 			break
 		}
@@ -128,7 +128,7 @@ func (p *PeerToPeer) ListenInterface() error {
 			go p.handlePacket(packet.Packet, packet.Protocol)
 		}
 	}
-	Log(Debug, "Shutting down interface listener")
+	Debug("Shutting down interface listener")
 
 	if p.Interface != nil {
 		return p.Interface.Close()
@@ -163,15 +163,15 @@ func (p *PeerToPeer) IsIPv4(ip string) bool {
 // This function will return new PeerToPeer object which later
 // should be configured and started using Run() method
 func New(mac, hash, keyfile, key, ttl, target string, fwd bool, port int, outboundIP net.IP) *PeerToPeer {
-	Log(Debug, "Starting new P2P Instance: %s", hash)
-	Log(Debug, "Mac: %s", mac)
+	Debug("Starting new P2P Instance: %s", hash)
+	Debug("Mac: %s", mac)
 	p := new(PeerToPeer)
 	p.outboundIP = outboundIP
 	p.Init()
 	var err error
 	p.Interface, err = newTAP(GetConfigurationTool(), "127.0.0.1", "00:00:00:00:00:00", "", DefaultMTU, UsePMTU)
 	if err != nil {
-		Log(Error, "Failed to create TAP object: %s", err)
+		Error("Failed to create TAP object: %s", err)
 		return nil
 	}
 	p.Interface.SetHardwareAddress(p.validateMac(mac))
@@ -197,9 +197,9 @@ func New(mac, hash, keyfile, key, ttl, target string, fwd bool, port int, outbou
 	}
 
 	if p.Crypter.Active {
-		Log(Debug, "Traffic encryption is enabled. Key valid until %s", p.Crypter.ActiveKey.Until.String())
+		Debug("Traffic encryption is enabled. Key valid until %s", p.Crypter.ActiveKey.Until.String())
 	} else {
-		Log(Debug, "No AES key were provided. Traffic encryption is disabled")
+		Debug("No AES key were provided. Traffic encryption is disabled")
 	}
 
 	p.Hash = hash
@@ -217,12 +217,12 @@ func New(mac, hash, keyfile, key, ttl, target string, fwd bool, port int, outbou
 	// a introduction packet along with a hash to a DHT bootstrap
 	// nodes that was hardcoded into it's code
 
-	Log(Debug, "Started UDP Listener at port %d", p.UDPSocket.GetPort())
+	Debug("Started UDP Listener at port %d", p.UDPSocket.GetPort())
 
 	p.Dht = new(DHTClient)
 	err = p.Dht.Init(p.Hash)
 	if err != nil {
-		Log(Error, "Failed to initialize DHT: %s", err)
+		Error("Failed to initialize DHT: %s", err)
 		return nil
 	}
 
@@ -245,12 +245,12 @@ func (p *PeerToPeer) ReadDHT() error {
 		go func() {
 			cb, e := p.Dht.TCPCallbacks[packet.Type]
 			if !e {
-				Log(Error, "Unsupported packet from DHT")
+				Error("Unsupported packet from DHT")
 				return
 			}
 			err = cb(packet)
 			if err != nil {
-				Log(Error, "DHT: %s", err)
+				Error("DHT: %s", err)
 			}
 		}()
 	}
@@ -271,11 +271,11 @@ func (p *PeerToPeer) waitForRemotePort() error {
 		}
 	}
 	if p.UDPSocket != nil && p.UDPSocket.remotePort == 0 {
-		Log(Warning, "Didn't receive remote port")
+		Warn("Didn't receive remote port")
 		p.UDPSocket.remotePort = p.UDPSocket.GetPort()
 		return fmt.Errorf("Didn't receive remote port")
 	}
-	Log(Warning, "Remote port received: %d", p.UDPSocket.remotePort)
+	Warn("Remote port received: %d", p.UDPSocket.remotePort)
 	return nil
 }
 
@@ -287,12 +287,12 @@ func (p *PeerToPeer) PrepareInterfaces(ip, interfaceName string) error {
 
 	iface, err := p.validateInterfaceName(interfaceName)
 	if err != nil {
-		Log(Error, "Interface name validation failed: %s", err)
+		Error("Interface name validation failed: %s", err)
 		return fmt.Errorf("Failed to validate interface name: %s", err)
 
 	}
 	if isDeviceExists(iface) {
-		Log(Error, "Interface is already in use. Can't create duplicate")
+		Error("Interface is already in use. Can't create duplicate")
 		return fmt.Errorf("Interface is already in use")
 	}
 
@@ -328,7 +328,7 @@ func (p *PeerToPeer) PrepareInterfaces(ip, interfaceName string) error {
 }
 
 func (p *PeerToPeer) attemptPortForward(port uint16, name string) error {
-	Log(Debug, "Trying to forward port %d", port)
+	Debug("Trying to forward port %d", port)
 	d, err := upnp.Discover()
 	if err != nil {
 		return err
@@ -337,7 +337,7 @@ func (p *PeerToPeer) attemptPortForward(port uint16, name string) error {
 	if err != nil {
 		return err
 	}
-	Log(Debug, "Port %d has been forwarded", port)
+	Debug("Port %d has been forwarded", port)
 	return nil
 }
 
@@ -354,13 +354,13 @@ func (p *PeerToPeer) validateMac(mac string) net.HardwareAddr {
 	if mac != "" {
 		hw, err = net.ParseMAC(mac)
 		if err != nil {
-			Log(Error, "Invalid MAC address provided: %v", err)
+			Error("Invalid MAC address provided: %v", err)
 			return nil
 		}
 		return hw
 	}
 	mac, hw = GenerateMAC()
-	Log(Debug, "Generate MAC for TAP device: %s", mac)
+	Debug("Generate MAC for TAP device: %s", mac)
 	return hw
 }
 
@@ -369,7 +369,7 @@ func (p *PeerToPeer) validateInterfaceName(name string) (string, error) {
 		name = p.GenerateDeviceName(1)
 	} else {
 		if len(name) > MaximumInterfaceNameLength {
-			Log(Debug, "Interface name length should be %d symbols max", MaximumInterfaceNameLength)
+			Debug("Interface name length should be %d symbols max", MaximumInterfaceNameLength)
 			return "", fmt.Errorf("Interface name is too big")
 		}
 	}
@@ -409,7 +409,7 @@ func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 		return nil, nil, fmt.Errorf("RequestIP: nil dht")
 	}
 
-	Log(Debug, "Requesting IP from Bootstrap node")
+	Debug("Requesting IP from Bootstrap node")
 	requestedAt := time.Now()
 	interval := time.Duration(2 * time.Second)
 	attempt := 0
@@ -419,7 +419,7 @@ func (p *PeerToPeer) RequestIP(mac, device string) (net.IP, net.IPMask, error) {
 			if attempt >= 3 {
 				return nil, nil, fmt.Errorf("No IP were received. Swarm is empty")
 			}
-			Log(Info, "IP wasn't received. Requesting again: attempt %d/3", (attempt + 1))
+			Info("IP wasn't received. Requesting again: attempt %d/3", (attempt + 1))
 			attempt++
 			p.Dht.sendDHCP(nil, nil)
 			requestedAt = time.Now()
@@ -441,7 +441,7 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 		return nil, nil, fmt.Errorf("nil dht")
 	}
 
-	Log(Debug, "Reporting IP to bootstranp node: %s", ipAddress)
+	Debug("Reporting IP to bootstranp node: %s", ipAddress)
 	ip, ipnet, err := net.ParseCIDR(ipAddress)
 	if err != nil {
 		nip := net.ParseIP(ipAddress)
@@ -449,7 +449,7 @@ func (p *PeerToPeer) ReportIP(ipAddress, mac, device string) (net.IP, net.IPMask
 			return nil, nil, fmt.Errorf("Invalid address were provided for network interface. Use -ip \"dhcp\" or specify correct IP address")
 		}
 		ipAddress += `/24`
-		Log(Debug, "IP was not in CIDR format. Assumming /24")
+		Debug("IP was not in CIDR format. Assumming /24")
 		ip, ipnet, err = net.ParseCIDR(ipAddress)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to configure interface with provided IP")
@@ -502,11 +502,11 @@ func (p *PeerToPeer) Run() error {
 			p.Dht.sendFind()
 		}
 		if p.Interface.IsBroken() {
-			Log(Info, "TAP interface is broken. Shutting down instance %s", p.Hash)
+			Info("TAP interface is broken. Shutting down instance %s", p.Hash)
 			p.Close()
 		}
 	}
-	Log(Info, "Shutting down instance %s completed", p.Dht.NetworkHash)
+	Info("Shutting down instance %s completed", p.Dht.NetworkHash)
 	return nil
 }
 
@@ -519,14 +519,14 @@ func (p *PeerToPeer) checkLastDHTUpdate() error {
 	}
 	passed := time.Since(p.Dht.LastUpdate)
 	if passed > time.Duration(30*time.Second) {
-		Log(Debug, "DHT Last Update timeout passed")
+		Debug("DHT Last Update timeout passed")
 		// Request new proxies if we don't have any more
 		if len(p.ProxyManager.get()) == 0 {
 			p.Dht.sendProxy()
 		}
 		err := p.Dht.sendFind()
 		if err != nil {
-			Log(Error, "Failed to send update: %s", err)
+			Error("Failed to send update: %s", err)
 			return fmt.Errorf("Failed to send DHT update: %s", err)
 		}
 	}
@@ -541,9 +541,9 @@ func (p *PeerToPeer) removeStoppedPeers() error {
 	peers := p.Swarm.Get()
 	for id, peer := range peers {
 		if peer.State == PeerStateStop {
-			Log(Info, "Removing peer %s", id)
+			Info("Removing peer %s", id)
 			p.Swarm.Delete(id)
-			Log(Info, "Peer %s has been removed", id)
+			Info("Peer %s has been removed", id)
 			break
 		}
 	}
@@ -621,7 +621,7 @@ func (p *PeerToPeer) discoverIP() error {
 		return fmt.Errorf("nil dht")
 	}
 
-	Log(Info, "Discovering IP for this swarm")
+	Info("Discovering IP for this swarm")
 
 	p.Interface.SetSubnet(nil)
 	p.Interface.SetIP(nil)
@@ -648,7 +648,7 @@ func (p *PeerToPeer) discoverIP() error {
 	}
 
 	sn := p.Interface.GetSubnet()
-	Log(Info, "Received subnet for this swarm: %s", sn.String())
+	Info("Received subnet for this swarm: %s", sn.String())
 
 	// Discover free IP
 	i := 255
@@ -675,7 +675,7 @@ func (p *PeerToPeer) discoverIP() error {
 	}
 
 	if p.Interface.GetIP() == nil {
-		Log(Error, "Couldn't find free IP for this swarm")
+		Error("Couldn't find free IP for this swarm")
 		return fmt.Errorf("Failed to get free IP for this swarm")
 	}
 
@@ -727,7 +727,7 @@ func (p *PeerToPeer) PrepareIntroductionMessage(id, endpoint string) (*P2PMessag
 // WriteToDevice writes data to created TAP interface
 func (p *PeerToPeer) WriteToDevice(b []byte, proto uint16, truncated bool) error {
 	if p.Interface == nil {
-		Log(Error, "TAP Interface not initialized")
+		Error("TAP Interface not initialized")
 		return fmt.Errorf("WriteToDevice: interface is nil")
 	}
 
@@ -736,7 +736,7 @@ func (p *PeerToPeer) WriteToDevice(b []byte, proto uint16, truncated bool) error
 	packet.Packet = b
 	err := p.Interface.WritePacket(&packet)
 	if err != nil {
-		Log(Error, "Failed to write to TAP Interface: %v", err)
+		Error("Failed to write to TAP Interface: %v", err)
 		return fmt.Errorf("Failed to write to TAP Interface: %v", err)
 	}
 	return nil
@@ -770,7 +770,7 @@ func (p *PeerToPeer) Close() error {
 	if p.Dht != nil {
 		hash = p.Dht.NetworkHash
 	}
-	Log(Info, "Stopping instance %s", hash)
+	Info("Stopping instance %s", hash)
 	p.deactivateInterface()
 	p.stopPeers()
 	p.Shutdown = true
@@ -778,7 +778,7 @@ func (p *PeerToPeer) Close() error {
 	p.stopSocket()
 	p.stopInterface()
 	p.ReadyToStop = true
-	Log(Info, "Instance %s stopped", hash)
+	Info("Instance %s stopped", hash)
 	return nil
 }
 
@@ -802,7 +802,7 @@ func (p *PeerToPeer) stopInterface() error {
 	}
 	err := p.Interface.Close()
 	if err != nil {
-		Log(Error, "Failed to close TAP interface: %s", err)
+		Error("Failed to close TAP interface: %s", err)
 		return err
 	}
 	return nil
@@ -820,12 +820,12 @@ func (p *PeerToPeer) stopPeers() error {
 	stopStarted := time.Now()
 	for p.Swarm.Length() > 0 {
 		if time.Since(stopStarted) > time.Duration(time.Second*5) {
-			Log(Warning, "Peer remove timeout passed")
+			Warn("Peer remove timeout passed")
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	Log(Debug, "All peers under this instance has been removed")
+	Debug("All peers under this instance has been removed")
 	return nil
 }
 
@@ -835,7 +835,7 @@ func (p *PeerToPeer) stopDHT() error {
 	}
 	err := p.Dht.Close()
 	if err != nil {
-		Log(Error, "Failed to stop DHT: %s", err)
+		Error("Failed to stop DHT: %s", err)
 		return err
 	}
 	return nil

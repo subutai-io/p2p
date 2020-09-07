@@ -41,7 +41,7 @@ var StartTime time.Time
 func StartProfiling(profile string) {
 	pwd, err := os.Getwd()
 	if err != nil {
-		ptp.Log(ptp.Error, "Getwd() error : %v", err)
+		ptp.Error("Getwd() error : %v", err)
 		return
 	}
 
@@ -50,15 +50,15 @@ func StartProfiling(profile string) {
 		fileName := fmt.Sprintf("%s/%s.prof", pwd, timeStr)
 		f, err := os.Create(fileName)
 		if err != nil {
-			ptp.Log(ptp.Error, "Create cpu_prof file failed. %v", err)
+			ptp.Error("Create cpu_prof file failed. %v", err)
 			return
 		}
-		ptp.Log(ptp.Info, "Start cpu profiling to file %s", fileName)
+		ptp.Info("Start cpu profiling to file %s", fileName)
 		pprof.StartCPUProfile(f)
 	} else if profile == "memory" {
 		_, err := os.Create(fmt.Sprintf("%s/%s.p2p_mem_prof", pwd, timeStr))
 		if err != nil {
-			ptp.Log(ptp.Error, "Create mem_prof file failed. %v", err)
+			ptp.Error("Create mem_prof file failed. %v", err)
 			return
 		}
 	}

@@ -36,13 +36,13 @@ func (c Crypto) EnrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKey 
 	// Default value is +1 hour
 	ckey.Until = ckey.Until.Add(60 * time.Minute)
 	if err != nil {
-		Log(Warning, "Failed to parse TTL. Falling back to default value of 1 hour")
+		Warning("Failed to parse TTL. Falling back to default value of 1 hour")
 	} else {
 		ckey.Until = time.Unix(i, 0)
 	}
 	ckey.Key = []byte(key)
 	if err != nil {
-		Log(Error, "Failed to parse provided TTL value: %v", err)
+		Error("Failed to parse provided TTL value: %v", err)
 		return ckey
 	}
 	return ckey
@@ -52,14 +52,14 @@ func (c Crypto) EnrichKeyValues(ckey CryptoKey, key, datetime string) CryptoKey 
 func (c Crypto) ReadKeysFromFile(filepath string) {
 	yamlFile, err := ioutil.ReadFile(filepath)
 	if err != nil {
-		Log(Error, "Failed to read key file yaml: %v", err)
+		Error("Failed to read key file yaml: %v", err)
 		c.Active = false
 		return
 	}
 	var ckey CryptoKey
 	err = yaml.Unmarshal(yamlFile, ckey)
 	if err != nil {
-		Log(Error, "Failed to parse config: %v", err)
+		Error("Failed to parse config: %v", err)
 		c.Active = false
 		return
 	}

@@ -23,15 +23,15 @@ func GetDeviceBase() string {
 func GetConfigurationTool() string {
 	path, err := exec.LookPath("ip")
 	if err != nil {
-		Log(Error, "Failed to find `ip` in path. Returning default /bin/ip")
+		Error("Failed to find `ip` in path. Returning default /bin/ip")
 		return "/bin/ip"
 	}
-	Log(Info, "Network configuration tool found: %s", path)
+	Info("Network configuration tool found: %s", path)
 	return path
 }
 
 func newTAP(tool, ip, mac, mask string, mtu int, pmtu bool) (*TAPLinux, error) {
-	Log(Debug, "Acquiring TAP interface [Linux]")
+	Debug("Acquiring TAP interface [Linux]")
 	nip := net.ParseIP(ip)
 	if nip == nil {
 		return nil, fmt.Errorf("Failed to parse IP during TAP creation")
@@ -157,12 +157,12 @@ func (tap *TAPLinux) Close() error {
 	if tap.file == nil {
 		return fmt.Errorf("nil interface file descriptor")
 	}
-	Log(Info, "Closing network interface %s", tap.GetName())
+	Info("Closing network interface %s", tap.GetName())
 	err := tap.file.Close()
 	if err != nil {
 		return fmt.Errorf("Failed to close network interface: %s", err)
 	}
-	Log(Info, "Interface closed")
+	Info("Interface closed")
 	return nil
 }
 
@@ -172,7 +172,7 @@ func (tap *TAPLinux) Configure(lazy bool) error {
 	if lazy {
 		return nil
 	}
-	Log(Info, "Configuring %s. IP: %s, Mac: %s", tap.Name, tap.IP.String(), tap.Mac.String())
+	Info("Configuring %s. IP: %s, Mac: %s", tap.Name, tap.IP.String(), tap.Mac.String())
 	err := tap.linkUp()
 	if err != nil {
 		tap.Status = InterfaceBroken
@@ -221,7 +221,7 @@ func (tap *TAPLinux) ReadPacket() (*Packet, error) {
 
 	n, err := tap.file.Read(buf)
 	if err != nil {
-		Log(Error, "Failed to read packet: %+v", err)
+		Error("Failed to read packet: %+v", err)
 		return nil, err
 	}
 
@@ -285,7 +285,7 @@ func (tap *TAPLinux) setMTU() error {
 	setmtu := exec.Command(tap.Tool, "link", "set", "dev", tap.Name, "mtu", mtu)
 	err := setmtu.Run()
 	if err != nil {
-		Log(Error, "Failed to set MTU on device %s: %v", tap.Name, err)
+		Error("Failed to set MTU on device %s: %v", tap.Name, err)
 		return err
 	}
 	return nil
@@ -295,7 +295,7 @@ func (tap *TAPLinux) linkUp() error {
 	linkup := exec.Command(tap.Tool, "link", "set", "dev", tap.Name, "up")
 	err := linkup.Run()
 	if err != nil {
-		Log(Error, "Failed to up link: %v", err)
+		Error("Failed to up link: %v", err)
 		return err
 	}
 	return nil
@@ -305,29 +305,29 @@ func (tap *TAPLinux) linkDown() error {
 	linkup := exec.Command(tap.Tool, "link", "set", "dev", tap.Name, "down")
 	err := linkup.Run()
 	if err != nil {
-		Log(Error, "Failed to up link: %v", err)
+		Error("Failed to up link: %v", err)
 		return err
 	}
 	return nil
 }
 
 func (tap *TAPLinux) setIP() error {
-	Log(Info, "Setting %s IP on device %s", tap.IP.String(), tap.Name)
+	Info("Setting %s IP on device %s", tap.IP.String(), tap.Name)
 	setip := exec.Command(tap.Tool, "addr", "add", tap.IP.String()+"/24", "dev", tap.Name)
 	err := setip.Run()
 	if err != nil {
-		Log(Error, "Failed to set IP: %v", err)
+		Error("Failed to set IP: %v", err)
 		return err
 	}
 	return err
 }
 
 func (tap *TAPLinux) setMac() error {
-	Log(Info, "Setting %s MAC on device %s", tap.Mac.String(), tap.Name)
+	Info("Setting %s MAC on device %s", tap.Mac.String(), tap.Name)
 	setmac := exec.Command(tap.Tool, "link", "set", "dev", tap.Name, "address", tap.Mac.String())
 	err := setmac.Run()
 	if err != nil {
-		Log(Error, "Failed to set MAC: %v", err)
+		Error("Failed to set MAC: %v", err)
 		return err
 	}
 	return err
@@ -379,10 +379,10 @@ func FilterInterface(infName, infIP string) bool {
 			return true
 		}
 	}
-	Log(Trace, "ping -4 -w 1 -c 1 -I %s ptest.subutai.io", infName)
+	Trace("ping -4 -w 1 -c 1 -I %s ptest.subutai.io", infName)
 	ping := exec.Command("ping", "-4", "-w", "1", "-c", "1", "-I", infName, "ptest.subutai.io")
 	if ping.Run() != nil {
-		Log(Debug, "Filtered %s %s", infName, infIP)
+		Debug("Filtered %s %s", infName, infIP)
 		return true
 	}
 	return false

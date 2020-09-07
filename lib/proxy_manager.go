@@ -78,19 +78,19 @@ func (p *ProxyManager) check() {
 		if proxy.Status == proxyConnecting && time.Since(proxy.Created) > time.Duration(10*time.Second) {
 			err := proxy.Close()
 			if err != nil {
-				Log(Debug, "Failed to close proxy: %s", err)
+				Debug("Failed to close proxy: %s", err)
 			}
-			Log(Debug, "Failed to connect to proxy %s", id)
+			Debug("Failed to connect to proxy %s", id)
 		}
 		if proxy.Status == proxyActive && time.Since(proxy.LastUpdate) > time.Duration(90*time.Second) {
 			err := proxy.Close()
 			if err != nil {
-				Log(Debug, "Failed to close proxy: %s", err)
+				Debug("Failed to close proxy: %s", err)
 			}
-			Log(Debug, "Proxy %s has been disconnected by timeout", id)
+			Debug("Proxy %s has been disconnected by timeout", id)
 		}
 		if proxy.Status == proxyDisconnected {
-			Log(Debug, "Removing proxy %s", id)
+			Debug("Removing proxy %s", id)
 			p.operate(OperateDelete, id, nil)
 			p.hasChanges = true
 		}
@@ -131,7 +131,7 @@ func (p *ProxyManager) setLatency(l time.Duration, addr *net.UDPAddr) error {
 			proxy.Latency = l
 			proxy.LastLatencyQuery = time.Now()
 			proxy.MeasureInProgress = false
-			Log(Trace, "Proxy %s is now on latency %d", addr.String(), NanoToMilliseconds(l.Nanoseconds()))
+			Trace("Proxy %s is now on latency %d", addr.String(), NanoToMilliseconds(l.Nanoseconds()))
 			p.operate(OperateUpdate, id, proxy)
 			return nil
 		}

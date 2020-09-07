@@ -76,7 +76,7 @@ func (d *Daemon) execRESTStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ptp.Log(ptp.Debug, "Executing start command: %+v", args)
+	ptp.Debug("Executing start command: %+v", args)
 	response := new(Response)
 	err = d.run(&RunArgs{
 		IP:      args.IP,
@@ -110,11 +110,11 @@ func (d *Daemon) execRESTStart(w http.ResponseWriter, r *http.Request) {
 	}
 	err = d.Restore.save()
 	if err != nil {
-		ptp.Log(ptp.Error, "Failed to save instance information: %s", err.Error())
+		ptp.Error("Failed to save instance information: %s", err.Error())
 	}
 	resp, err := getResponse(response.ExitCode, response.Output)
 	if err != nil {
-		ptp.Log(ptp.Error, "Internal error: %s", err)
+		ptp.Error("Internal error: %s", err)
 		return
 	}
 	w.Write(resp)
@@ -125,7 +125,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 	resp.ExitCode = 0
 	resp.Output = "Running new P2P instance for " + args.Hash + "\n"
 
-	ptp.Log(ptp.Trace, "Requested new P2P instance: %+v", args)
+	ptp.Trace("Requested new P2P instance: %+v", args)
 
 	// Validate if interface name is unique
 	if args.Dev != "" {
@@ -166,7 +166,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 
 		err := bootstrap.registerInstance(newInst.ID, newInst)
 		if err != nil {
-			ptp.Log(ptp.Error, "Failed to register instance with bootstrap nodes: %s", err.Error())
+			ptp.Error("Failed to register instance with bootstrap nodes: %s", err.Error())
 			if newInst.PTP != nil {
 				newInst.PTP.Close()
 				newInst.PTP = nil
@@ -193,7 +193,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 
 		err = newInst.PTP.PrepareInterfaces(args.IP, args.Dev)
 		if err != nil {
-			ptp.Log(ptp.Error, "Failed to configure network interface: %s", err)
+			ptp.Error("Failed to configure network interface: %s", err)
 			if newInst.PTP != nil {
 				newInst.PTP.Close()
 				newInst.PTP = nil
@@ -217,7 +217,7 @@ func (d *Daemon) run(args *RunArgs, resp *Response) error {
 		}
 
 		usedIPs = append(usedIPs, newInst.PTP.Interface.GetIP().String())
-		ptp.Log(ptp.Info, "Instance created")
+		ptp.Info("Instance created")
 		newInst.Args.LastSuccess = time.Now()
 		d.Instances.update(args.Hash, newInst)
 

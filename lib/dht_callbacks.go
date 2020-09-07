@@ -13,7 +13,7 @@ type dhtCallback func(*protocol.DHTPacket) error
 
 func (p *PeerToPeer) setupTCPCallbacks() {
 	if p.Dht == nil {
-		Log(Error, "Can't setup TCP callbacks: DHT is nil")
+		Error("Can't setup TCP callbacks: DHT is nil")
 		return
 	}
 	p.Dht.TCPCallbacks = make(map[protocol.DHTPacketType]dhtCallback)
@@ -53,7 +53,7 @@ func (p *PeerToPeer) packetConnect(packet *protocol.DHTPacket) error {
 		return fmt.Errorf("Received malformed ID")
 	}
 	p.Dht.ID = packet.Id
-	Log(Info, "Received personal ID for this session: %s", p.Dht.ID)
+	Info("Received personal ID for this session: %s", p.Dht.ID)
 	p.Dht.Connected = true
 	return nil
 }
@@ -68,12 +68,12 @@ func (p *PeerToPeer) packetDHCP(packet *protocol.DHTPacket) error {
 	if packet.Data != "" && packet.Extra != "" {
 		ip, network, err := net.ParseCIDR(fmt.Sprintf("%s/%s", packet.Data, packet.Extra))
 		if err != nil {
-			Log(Error, "Failed to parse DHCP packet: %s", err)
+			Error("Failed to parse DHCP packet: %s", err)
 			return err
 		}
 		p.Dht.IP = ip
 		p.Dht.Network = network
-		Log(Info, "Received network information: %s", network.String())
+		Info("Received network information: %s", network.String())
 	}
 	return nil
 }
@@ -82,15 +82,13 @@ func (p *PeerToPeer) packetError(packet *protocol.DHTPacket) error {
 	if packet == nil {
 		return fmt.Errorf("nil packet")
 	}
-	lvl := LogLevel(Trace)
 	if packet.Data == "" {
-		lvl = Error
+		Error("Bootstrap node returns: %s", packet.Extra)
 	} else if packet.Data == "Warning" {
-		lvl = Warning
+		Warn("Bootstrap node returns: %s", packet.Extra)
 	} else if packet.Data == "Error" {
-		lvl = Error
+		Error("Bootstrap node returns: %s", packet.Extra)
 	}
-	Log(lvl, "Bootstrap node returns: %s", packet.Extra)
 	return nil
 }
 
@@ -102,11 +100,11 @@ func (p *PeerToPeer) packetFind(packet *protocol.DHTPacket) error {
 		return fmt.Errorf("nil dht")
 	}
 	if len(packet.Arguments) == 0 {
-		Log(Warning, "Received empty peer list")
+		Warning("Received empty peer list")
 		return nil
 	}
 	if packet.Data == p.Dht.ID {
-		Log(Debug, "Skipping self [%s = %s]", packet.Data, p.Dht.ID)
+		Debug("Skipping self [%s = %s]", packet.Data, p.Dht.ID)
 		return nil
 	}
 	if p.Swarm == nil {
@@ -116,12 +114,12 @@ func (p *PeerToPeer) packetFind(packet *protocol.DHTPacket) error {
 		return fmt.Errorf("nil proxy manager")
 	}
 
-	Log(Debug, "Received `find`: %+v", packet)
+	Debug("Received `find`: %+v", packet)
 	peer := p.Swarm.GetPeer(packet.Data)
 
 	if peer == nil {
 		peer := new(NetworkPeer)
-		Log(Debug, "Received new peer %s", packet.Data)
+		Debug("Received new peer %s", packet.Data)
 		peer.ID = packet.Data
 		for _, ip := range packet.Arguments {
 			addr, err := net.ResolveUDPAddr("udp4", ip)
@@ -144,7 +142,7 @@ func (p *PeerToPeer) packetFind(packet *protocol.DHTPacket) error {
 
 			if isNew {
 				peer.KnownIPs = append(peer.KnownIPs, addr)
-				Log(Debug, "Adding endpoint: %s", addr.String())
+				Debug("Adding endpoint: %s", addr.String())
 			}
 		}
 		for _, proxy := range packet.Proxies {
@@ -168,7 +166,7 @@ func (p *PeerToPeer) packetFind(packet *protocol.DHTPacket) error {
 
 			if isNew {
 				peer.Proxies = append(peer.Proxies, addr)
-				Log(Debug, "Adding proxy: %s", addr.String())
+				Debug("Adding proxy: %s", addr.String())
 			}
 		}
 		if packet.GetExtra() != "skip" {
@@ -200,7 +198,7 @@ func (p *PeerToPeer) packetFind(packet *protocol.DHTPacket) error {
 			}
 			if isNew {
 				ips = append(ips, addr)
-				Log(Debug, "Updating endpoint: %s", addr.String())
+				Debug("Updating endpoint: %s", addr.String())
 			}
 		}
 		peer.KnownIPs = ips
@@ -220,7 +218,7 @@ func (p *PeerToPeer) packetFind(packet *protocol.DHTPacket) error {
 			}
 			if isNew {
 				proxies = append(proxies, addr)
-				Log(Debug, "Updating proxy: %s", addr.String())
+				Debug("Updating proxy: %s", addr.String())
 			}
 		}
 		peer.Proxies = proxies
@@ -251,7 +249,7 @@ func (p *PeerToPeer) packetNode(packet *protocol.DHTPacket) error {
 		return fmt.Errorf("Peer %s not found", packet.Data)
 	}
 
-	Log(Debug, "Received peer %s IPs", packet.Data)
+	Debug("Received peer %s IPs", packet.Data)
 	list := []*net.UDPAddr{}
 	for _, addr := range packet.Arguments {
 		if addr == "" {
@@ -259,7 +257,7 @@ func (p *PeerToPeer) packetNode(packet *protocol.DHTPacket) error {
 		}
 		ip, err := net.ResolveUDPAddr("udp4", addr)
 		if err != nil {
-			Log(Error, "Failed to resolve one of peer addresses: %s", err)
+			Error("Failed to resolve one of peer addresses: %s", err)
 			continue
 		}
 		list = append(list, ip)
@@ -291,7 +289,7 @@ func (p *PeerToPeer) packetProxy(packet *protocol.DHTPacket) error {
 	if p.Dht == nil {
 		return fmt.Errorf("nil dht")
 	}
-	Log(Debug, "Received list of proxies")
+	Debug("Received list of proxies")
 	for _, proxy := range packet.Proxies {
 		proxyAddr, err := net.ResolveUDPAddr("udp4", proxy)
 		if err != nil {
@@ -318,7 +316,7 @@ func (p *PeerToPeer) packetRequestProxy(packet *protocol.DHTPacket) error {
 	for _, proxy := range packet.Proxies {
 		addr, err := net.ResolveUDPAddr("udp4", proxy)
 		if err != nil {
-			Log(Error, "Can't parse proxy %s for peer %s", proxy, packet.Data)
+			Error("Can't parse proxy %s for peer %s", proxy, packet.Data)
 			continue
 		}
 		list = append(list, addr)
@@ -332,7 +330,7 @@ func (p *PeerToPeer) packetRequestProxy(packet *protocol.DHTPacket) error {
 }
 
 func (p *PeerToPeer) packetReportProxy(packet *protocol.DHTPacket) error {
-	Log(Info, "DHT confirmed proxy registration")
+	Info("DHT confirmed proxy registration")
 	return nil
 }
 
@@ -341,7 +339,7 @@ func (p *PeerToPeer) packetRegisterProxy(packet *protocol.DHTPacket) error {
 		return fmt.Errorf("nil packet")
 	}
 	if packet.Data == "OK" {
-		Log(Info, "Proxy registration confirmed")
+		Info("Proxy registration confirmed")
 	}
 	return nil
 }
@@ -372,9 +370,9 @@ func (p *PeerToPeer) packetState(packet *protocol.DHTPacket) error {
 	if peer != nil {
 		peer.RemoteState = PeerState(numericState)
 		p.Swarm.Update(packet.Data, peer)
-		Log(Debug, "Peer %s reported state '%s'", peer.ID, StringifyState(peer.RemoteState))
+		Debug("Peer %s reported state '%s'", peer.ID, StringifyState(peer.RemoteState))
 	} else {
-		Log(Trace, "Received state of unknown peer. Updating peers")
+		Trace("Received state of unknown peer. Updating peers")
 		//p.Dht.sendFind()
 	}
 	return nil
@@ -397,14 +395,14 @@ func (p *PeerToPeer) packetUnknown(packet *protocol.DHTPacket) error {
 	if p.Interface == nil {
 		return fmt.Errorf("nil interface")
 	}
-	Log(Debug, "Received unknown packet")
+	Debug("Received unknown packet")
 	p.FindNetworkAddresses()
 	if len(packet.Data) > 0 && packet.Data == "DHCP" {
-		Log(Warning, "Network information was requested")
+		Warn("Network information was requested")
 		p.ReportIP(p.Interface.GetIP().String(), p.Interface.GetHardwareAddress().String(), p.Interface.GetName())
 		return nil
 	}
-	Log(Warning, "Bootstap node refuses our identity. Reconnecting")
+	Warn("Bootstap node refuses our identity. Reconnecting")
 	return p.Dht.Connect(p.LocalIPs, p.ProxyManager.GetList())
 }
 
@@ -415,6 +413,6 @@ func (p *PeerToPeer) packetUnsupported(packet *protocol.DHTPacket) error {
 	if p.Dht == nil {
 		return fmt.Errorf("nil dht")
 	}
-	Log(Error, "Bootstap node doesn't support our version. Shutting down")
+	Error("Bootstap node doesn't support our version. Shutting down")
 	return p.Dht.Close()
 }

@@ -60,23 +60,23 @@ func configureMTU(conf *ptp.Conf, mtu int, pmtu bool) {
 	if conf == nil {
 		ptp.GlobalMTU = ptp.DefaultMTU
 		ptp.UsePMTU = false
-		ptp.Log(ptp.Error, "Couldn't configure MTU: conf nil")
+		ptp.Error("Couldn't configure MTU: conf nil")
 		return
 	}
 	ptp.GlobalMTU = conf.GetMTU(mtu)
-	ptp.Log(ptp.Info, "MTU is set to %d", ptp.GlobalMTU)
+	ptp.Info("MTU is set to %d", ptp.GlobalMTU)
 	if pmtu == false && conf.GetPMTU() == false {
-		ptp.Log(ptp.Info, "PMTU disabled")
+		ptp.Info("PMTU disabled")
 		ptp.UsePMTU = false
 	} else {
-		ptp.Log(ptp.Info, "PMTU enabled")
+		ptp.Info("PMTU enabled")
 		ptp.UsePMTU = true
 	}
 }
 
 // ExecDaemon starts P2P daemon
 func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel, configFile string, mtu int, pmtu bool) {
-	ptp.Log(ptp.Info, "Initializing P2P Daemon")
+	ptp.Info("Initializing P2P Daemon")
 	if logLevel == "" {
 		ptp.SetMinLogLevelString(DefaultLog)
 	} else {
@@ -89,17 +89,17 @@ func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel, configF
 	}
 	config, err := processConfigFile(configFile)
 	if err != nil {
-		ptp.Log(ptp.Error, "Failed to load config file %s: %s", configFile, err.Error())
+		ptp.Error("Failed to load config file %s: %s", configFile, err.Error())
 	} else {
-		ptp.Log(ptp.Info, "Loaded configuration from %s", configFile)
+		ptp.Info("Loaded configuration from %s", configFile)
 	}
 
 	if targetURL == "" {
 		targetURL = "subutai.io"
 	}
-	if syslog != "" {
+	/*if syslog != "" {
 		ptp.SetSyslogSocket(syslog)
-	}
+	}*/
 	StartProfiling(profiling)
 	ptp.InitPlatform()
 	ptp.InitErrors()
@@ -123,7 +123,7 @@ func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel, configF
 			if err == nil {
 				bootstrapConnected = true
 			} else {
-				ptp.Log(ptp.Error, "Failed to connect to %s", targetURL)
+				ptp.Error("Failed to connect to %s", targetURL)
 			}
 		}
 		time.Sleep(time.Millisecond * 100)
@@ -162,7 +162,7 @@ func ExecDaemon(port int, targetURL, sFile, profiling, syslog, logLevel, configF
 			if inst.PTP.ReadyToStop {
 				err := proc.Stop(&DaemonArgs{Hash: id}, &Response{})
 				if err != nil {
-					ptp.Log(ptp.Error, "Failed to stop instance: %s", err)
+					ptp.Error("Failed to stop instance: %s", err)
 				}
 			}
 		}
@@ -201,7 +201,7 @@ func waitActiveBootstrap() {
 			}
 		}
 		if active == 0 {
-			ptp.Log(ptp.Info, "No active bootstrap nodes")
+			ptp.Info("No active bootstrap nodes")
 			os.Exit(0)
 		}
 		time.Sleep(time.Millisecond * 100)
@@ -213,12 +213,12 @@ func restoreInstances(daemon *Daemon) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	if daemon.Restore != nil && daemon.Restore.isActive() {
-		ptp.Log(ptp.Info, "Restore subsystem initialized")
+		ptp.Info("Restore subsystem initialized")
 
 		// loading from restore file
 		err := daemon.Restore.load()
 		if err != nil {
-			ptp.Log(ptp.Error, "Failed to restore from file")
+			ptp.Error("Failed to restore from file")
 			return
 		}
 
@@ -227,7 +227,7 @@ func restoreInstances(daemon *Daemon) {
 			return
 		}
 
-		ptp.Log(ptp.Info, "Attempt to restore %d instances", len(entries))
+		ptp.Info("Attempt to restore %d instances", len(entries))
 
 		restored := 0
 
@@ -242,7 +242,7 @@ func restoreInstances(daemon *Daemon) {
 				TTL:     e.TTL,
 			}, new(Response))
 			if err != nil {
-				ptp.Log(ptp.Error, "Failed to start instance %s during restore: %s", e.Hash, err.Error())
+				ptp.Error("Failed to start instance %s during restore: %s", e.Hash, err.Error())
 				continue
 			} else {
 				restored++
@@ -251,22 +251,22 @@ func restoreInstances(daemon *Daemon) {
 		}
 		err = daemon.Restore.save()
 		if err != nil {
-			ptp.Log(ptp.Error, "Failed to save restore file")
+			ptp.Error("Failed to save restore file")
 		}
-		ptp.Log(ptp.Info, "Restored %d of %d instances", restored, len(entries))
+		ptp.Info("Restored %d of %d instances", restored, len(entries))
 	}
 }
 
 func validateDHT(dht string) error {
 	if dht == "" {
-		ptp.Log(ptp.Error, "Empty bootstrap list")
+		ptp.Error("Empty bootstrap list")
 		return errEmptyDHTEndpoint
 	}
 	eps := strings.Split(dht, ",")
 	for _, ep := range eps {
 		_, err := net.ResolveTCPAddr("tcp4", ep)
 		if err != nil {
-			ptp.Log(ptp.Error, "Bootstrap %s have bad format or wrong address: %s", ep, err)
+			ptp.Error("Bootstrap %s have bad format or wrong address: %s", ep, err)
 			return errBadDHTEndpoint
 		}
 	}

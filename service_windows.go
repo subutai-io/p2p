@@ -36,7 +36,7 @@ loop:
 				//				changes <- svc.Status{State: svc.ContinuePending}
 				changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 			default:
-				ptp.Log(ptp.Error, "Unexpected control request #%d", c)
+				ptp.Error("Unexpected control request #%d", c)
 			}
 		}
 	}
@@ -46,12 +46,12 @@ loop:
 func ExecService() error {
 	isIntSess, err := svc.IsAnInteractiveSession()
 	if err != nil {
-		ptp.Log(ptp.Error, "Failed to determine if we are running in an interactive session: %v", err)
+		ptp.Error("Failed to determine if we are running in an interactive session: %v", err)
 		os.Exit(106)
 		return nil
 	}
 	if isIntSess {
-		ptp.Log(ptp.Info, "Running in an interactive session")
+		ptp.Info("Running in an interactive session")
 		elog := debug.New("Subutai P2P")
 		defer elog.Close()
 		elog.Info(1, fmt.Sprintf("Debug mode ON"))
@@ -64,7 +64,7 @@ func ExecService() error {
 	} else {
 		elog, err := eventlog.Open("Subutai P2P")
 		if err != nil {
-			ptp.Log(ptp.Error, "Failed to get access to event logger")
+			ptp.Error("Failed to get access to event logger")
 			return nil
 		}
 		defer elog.Close()

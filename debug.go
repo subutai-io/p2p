@@ -51,7 +51,7 @@ func (d *Daemon) execRESTDebug(w http.ResponseWriter, r *http.Request) {
 	}, response)
 	resp, err := getResponse(response.ExitCode, response.Output)
 	if err != nil {
-		ptp.Log(ptp.Error, "Internal error: %s", err)
+		ptp.Error("Internal error: %s", err)
 		return
 	}
 	w.Write(resp)

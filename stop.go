@@ -55,7 +55,7 @@ func (d *Daemon) execRESTStop(w http.ResponseWriter, r *http.Request) {
 	if handleMarshalError(err, w) != nil {
 		return
 	}
-	ptp.Log(ptp.Debug, "Executing stop command: %+v", args)
+	ptp.Debug("Executing stop command: %+v", args)
 	response := new(Response)
 	d.Stop(&DaemonArgs{
 		Hash: args.Hash,
@@ -63,7 +63,7 @@ func (d *Daemon) execRESTStop(w http.ResponseWriter, r *http.Request) {
 	}, response)
 	resp, err := getResponse(response.ExitCode, response.Output)
 	if err != nil {
-		ptp.Log(ptp.Error, "Internal error: %s", err)
+		ptp.Error("Internal error: %s", err)
 		return
 	}
 	w.Write(resp)
@@ -86,11 +86,11 @@ func (p *Daemon) Stop(args *DaemonArgs, resp *Response) error {
 			if p.Restore.isActive() {
 				err := p.Restore.removeEntry(args.Hash)
 				if err != nil {
-					ptp.Log(ptp.Error, err.Error())
+					ptp.Error(err.Error())
 				} else {
 					err := p.Restore.save()
 					if err != nil {
-						ptp.Log(ptp.Error, "Failed to save dump: %s", err.Error())
+						ptp.Error("Failed to save dump: %s", err.Error())
 					}
 				}
 			}

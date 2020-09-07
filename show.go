@@ -131,7 +131,7 @@ func (d *Daemon) execRESTShow(w http.ResponseWriter, r *http.Request) {
 		All:        args.All,
 	})
 	if err != nil {
-		ptp.Log(ptp.Error, "Internal error: %s", err)
+		ptp.Error("Internal error: %s", err)
 		return
 	}
 	w.Write(output)
@@ -284,6 +284,6 @@ func (d *Daemon) showInstances() ([]byte, error) {
 }
 
 func (d *Daemon) showMTU() ([]byte, error) {
-	ptp.Log(ptp.Trace, "Retrieving MTU value: %d", ptp.GlobalMTU)
+	ptp.Trace("Retrieving MTU value: %d", ptp.GlobalMTU)
 	return d.showOutput([]ShowOutput{{MTU: fmt.Sprintf("%d", ptp.GlobalMTU)}})
 }

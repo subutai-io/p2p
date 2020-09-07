@@ -28,7 +28,7 @@ func (p *proxyServer) Init(addr *net.UDPAddr) error {
 
 // Close will stop proxy
 func (p *proxyServer) Close() error {
-	Log(Info, "Stopping proxy %s, Endpoint: %s", p.Addr.String(), p.Endpoint.String())
+	Info("Stopping proxy %s, Endpoint: %s", p.Addr.String(), p.Endpoint.String())
 	p.Addr = nil
 	p.Endpoint = nil
 	p.Status = proxyDisconnected
@@ -54,11 +54,11 @@ func (p *proxyServer) Measure(n *Network) {
 	ts, _ := time.Now().MarshalBinary()
 	msg, err := CreateMessageStatic(MsgTypeLatency, append(LatencyProxyHeader, ts...))
 	if err != nil {
-		Log(Error, "Failed to create latency measurement packet for proxy: %s", err.Error())
+		Error("Failed to create latency measurement packet for proxy: %s", err.Error())
 		p.LastLatencyQuery = time.Now()
 		p.MeasureInProgress = false
 		return
 	}
-	Log(Trace, "Measuring latency with proxy %s", p.Addr.String())
+	Trace("Measuring latency with proxy %s", p.Addr.String())
 	n.SendMessage(msg, p.Addr)
 }

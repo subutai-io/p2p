@@ -54,11 +54,11 @@ func (e *Endpoint) Measure(n *Network, id string) {
 
 	msg, err := CreateMessageStatic(MsgTypeLatency, payload)
 	if err != nil {
-		Log(Error, "Failed to create latency measurement packet for endpoint: %s", err.Error())
+		Error("Failed to create latency measurement packet for endpoint: %s", err.Error())
 		e.LastLatencyQuery = time.Now()
 		return
 	}
-	Log(Trace, "Measuring latency with endpoint %s", e.Addr.String())
+	Trace("Measuring latency with endpoint %s", e.Addr.String())
 	n.SendMessage(msg, e.Addr)
 }
 
@@ -101,7 +101,7 @@ func (e *Endpoint) ping(ptpc *PeerToPeer, id string) error {
 	if err != nil {
 		return err
 	}
-	Log(Trace, "Sending ping to endpoint: %s", e.Addr.String())
+	Trace("Sending ping to endpoint: %s", e.Addr.String())
 	_, err = ptpc.UDPSocket.SendMessage(msg, e.Addr)
 	return err
 }

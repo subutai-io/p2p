@@ -155,12 +155,12 @@ func (l *Swarm) Length() int {
 // RunPeer should be called once on each peer when added
 // to list
 func (l *Swarm) RunPeer(id string, p *PeerToPeer) {
-	Log(Info, "Running peer %s", id)
+	Info("Running peer %s", id)
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 	if !l.peers[id].IsRunning() {
 		go l.peers[id].Run(p)
 	} else {
-		Log(Info, "Peer %s is already running", id)
+		Info("Peer %s is already running", id)
 	}
 }

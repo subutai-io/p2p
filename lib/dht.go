@@ -121,7 +121,7 @@ func (dht *DHTClient) Connect(ipList []net.IP, proxyList []*proxyServer) error {
 		}
 		time.Sleep(time.Millisecond * 100)
 	}
-	Log(Error, "DHT handshake didn't finish")
+	Error("DHT handshake didn't finish")
 	return fmt.Errorf("Couldn't handshake with bootstrap node")
 }
 
@@ -167,7 +167,7 @@ func (dht *DHTClient) send(packet *protocol.DHTPacket) error {
 			}
 		}
 	} else {
-		// Log(Debug, "%+v ||| %+v", dht.OutgoingData, dht.isShutdown)
+		// Debug("%+v ||| %+v", dht.OutgoingData, dht.isShutdown)
 		return fmt.Errorf("Trying to send to closed channel")
 	}
 	return nil
@@ -179,7 +179,7 @@ func (dht *DHTClient) sendFind() error {
 	if dht.NetworkHash == "" {
 		return fmt.Errorf("Failed to find peers: Infohash is not set")
 	}
-	Log(Debug, "Requesting swarm updates")
+	Debug("Requesting swarm updates")
 	packet := &protocol.DHTPacket{
 		Type:     protocol.DHTPacketType_Find,
 		Id:       dht.ID,
@@ -258,7 +258,7 @@ func (dht *DHTClient) sendDHCP(ip net.IP, network *net.IPNet) error {
 }
 
 func (dht *DHTClient) sendProxy() error {
-	Log(Debug, "Requesting proxies")
+	Debug("Requesting proxies")
 	packet := &protocol.DHTPacket{
 		Type:     protocol.DHTPacketType_Proxy,
 		Infohash: dht.NetworkHash,

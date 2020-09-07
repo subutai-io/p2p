@@ -189,7 +189,7 @@ func (uc *Network) KeepAlive(target string) error {
 
 	data := []byte{0x0D, 0x0A}
 	keepAlive := time.Now()
-	Log(Debug, "Started keep alive session with %s", addr)
+	Debug("Started keep alive session with %s", addr)
 	i := 0
 	for i < 20 {
 		uc.SendRawBytes(data, addr)
@@ -220,7 +220,7 @@ type UDPReceivedCallback func(count int, src_addr *net.UDPAddr, err error, buff 
 
 // Listen is a main listener of a network traffic
 func (uc *Network) Listen(receivedCallback UDPReceivedCallback) error {
-	Log(Info, "Started UDP listener")
+	Info("Started UDP listener")
 	if uc.conn == nil {
 		return fmt.Errorf("Nil connection")
 	}
@@ -228,7 +228,7 @@ func (uc *Network) Listen(receivedCallback UDPReceivedCallback) error {
 		n, src, err := uc.conn.ReadFromUDP(uc.inBuffer[:])
 		receivedCallback(n, src, err, uc.inBuffer[:])
 	}
-	Log(Info, "Stopping UDP Listener")
+	Info("Stopping UDP Listener")
 	return nil
 }
 

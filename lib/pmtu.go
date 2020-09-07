@@ -40,7 +40,7 @@ func pmtu(data []byte, tap TAP) (bool, error) {
 	if protocol == int(PacketIPv4) && length > GlobalMTU-150 {
 		header, err := ipv4.ParseHeader(data[14:])
 		if err != nil {
-			Log(Error, "Failed to parse IPv4 packet: %s", err.Error())
+			Error("Failed to parse IPv4 packet: %s", err.Error())
 			return false, nil
 		}
 
@@ -49,7 +49,7 @@ func pmtu(data []byte, tap TAP) (bool, error) {
 			// Extract packet contents as an ethernet frame for later re-use
 			f := new(ethernet.Frame)
 			if err := f.UnmarshalBinary(data); err != nil {
-				Log(Error, "Failed to Unmarshal IPv4")
+				Error("Failed to Unmarshal IPv4")
 				return false, nil
 			}
 
@@ -64,7 +64,7 @@ func pmtu(data []byte, tap TAP) (bool, error) {
 			}
 			payloadICMP, err := packetICMP.Marshal(nil)
 			if err != nil {
-				Log(Error, "Failed to marshal ICMP: %s", err.Error())
+				Error("Failed to marshal ICMP: %s", err.Error())
 				return false, errICMPMarshalFailed
 			}
 
@@ -83,7 +83,7 @@ func pmtu(data []byte, tap TAP) (bool, error) {
 			}
 			ipHeader, err := iph.Marshal()
 			if err != nil {
-				Log(Error, "Failed to marshal header: %s", err.Error())
+				Error("Failed to marshal header: %s", err.Error())
 				return false, nil
 			}
 
@@ -100,7 +100,7 @@ func pmtu(data []byte, tap TAP) (bool, error) {
 			nf.Payload = pl
 			rpacket, err := nf.MarshalBinary()
 			if err != nil {
-				Log(Error, "Failed to marshal ethernet")
+				Error("Failed to marshal ethernet")
 				return false, nil
 			}
 

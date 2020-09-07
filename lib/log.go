@@ -1,22 +1,23 @@
 package ptp
 
 import (
-	"log"
-	"os"
-	"strings"
 	"fmt"
+	"github.com/sirupsen/logrus"
+	"log"
+	"strings"
 )
 
 // LogLevel is a level of the log message
-type LogLevel int32
+// type LogLevel int32
+type LogLevel logrus.Level
 
 // Log Levels
 const (
-	Trace LogLevel = iota
-	Debug
-	Info
-	Warning
-	Error
+	LTrace LogLevel = iota
+	LDebug
+	LInfo
+	LWarning
+	LError
 )
 
 var logPrefixes = [...]string{"[TRACE] ", "[DEBUG] ", "[INFO] ", "[WARNING] ", "[ERROR] "}
@@ -26,13 +27,16 @@ var logFlags = [...]int{log.Ldate | log.Ltime,
 	log.Ldate | log.Ltime,
 	log.Ldate | log.Ltime}
 
-var logLevelMin = Info
+var logLevelMin = LInfo
 var syslogSocket = ""
+
+/*
 var stdLoggers = [...]*log.Logger{log.New(os.Stdout, logPrefixes[Trace], logFlags[Trace]),
 	log.New(os.Stdout, logPrefixes[Debug], logFlags[Debug]),
 	log.New(os.Stdout, logPrefixes[Info], logFlags[Info]),
 	log.New(os.Stdout, logPrefixes[Warning], logFlags[Warning]),
 	log.New(os.Stdout, logPrefixes[Error], logFlags[Error])}
+*/
 
 // SetMinLogLevel sets a minimal logging level. Accepts a LogLevel constant for setting
 func SetMinLogLevel(level LogLevel) {
@@ -43,20 +47,20 @@ func SetMinLogLevel(level LogLevel) {
 func SetMinLogLevelString(level string) error {
 	level = strings.ToLower(level)
 	if level == "trace" {
-		SetMinLogLevel(Trace)
+		SetMinLogLevel(LTrace)
 	} else if level == "debug" {
-		SetMinLogLevel(Debug)
+		SetMinLogLevel(LDebug)
 	} else if level == "info" {
-		SetMinLogLevel(Info)
+		SetMinLogLevel(LInfo)
 	} else if level == "warning" {
-		SetMinLogLevel(Warning)
+		SetMinLogLevel(LWarning)
 	} else if level == "error" {
-		SetMinLogLevel(Error)
+		SetMinLogLevel(LError)
 	} else {
-		Log(Warning, "Unknown log level %s was provided. Supported log levels are:\ntrace\ndebug\ninfo\nwarning\nerror\n", level)
+		Warn("Unknown log level %s was provided. Supported log levels are:\ntrace\ndebug\ninfo\nwarning\nerror\n", level)
 		return fmt.Errorf("Could not set provided log level")
 	}
-	Log(Info, "Logging level has switched to %s level", level)
+	Info("Logging level has switched to %s level", level)
 	return nil
 }
 
@@ -64,6 +68,7 @@ func SetMinLogLevelString(level string) error {
 func MinLogLevel() LogLevel { return logLevelMin }
 
 // Log writes a log message
+/*
 func Log(level LogLevel, format string, v ...interface{}) {
 	if level < logLevelMin {
 		return
@@ -73,8 +78,35 @@ func Log(level LogLevel, format string, v ...interface{}) {
 		go Syslog(level, format, v...)
 	}
 }
+*/
 
 // SetSyslogSocket sets an adders of the syslog server
+/*
 func SetSyslogSocket(socket string) {
 	syslogSocket = socket
+}
+*/
+
+func Trace(msg ...interface{}) {
+	logrus.Trace(msg)
+}
+
+func Debug(msg ...interface{}) {
+	logrus.Debug(msg)
+}
+
+func Info(msg ...interface{}) {
+	logrus.Info(msg...)
+}
+
+func Warn(msg ...interface{}) {
+	logrus.Warn(msg...)
+}
+
+func Warning(msg ...interface{}) {
+	logrus.Warn(msg...)
+}
+
+func Error(msg ...interface{}) {
+	logrus.Error(msg...)
 }

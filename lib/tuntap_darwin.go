@@ -19,15 +19,15 @@ func GetDeviceBase() string {
 func GetConfigurationTool() string {
 	path, err := exec.LookPath("ifconfig")
 	if err != nil {
-		Log(Error, "Failed to find `ifconfig` in path. Returning default /sbin/ifconfig")
+		Error("Failed to find `ifconfig` in path. Returning default /sbin/ifconfig")
 		return "/sbin/ifconfig"
 	}
-	Log(Info, "Network configuration tool found: %s", path)
+	Info("Network configuration tool found: %s", path)
 	return path
 }
 
 func newTAP(tool, ip, mac, mask string, mtu int, pmtu bool) (*TAPDarwin, error) {
-	Log(Info, "Acquiring TAP interface [Darwin]")
+	Info("Acquiring TAP interface [Darwin]")
 	nip := net.ParseIP(ip)
 	if nip == nil {
 		return nil, fmt.Errorf("Failed to parse IP during TAP creation")
@@ -141,12 +141,12 @@ func (t *TAPDarwin) Close() error {
 	if t.file == nil {
 		return fmt.Errorf("nil interface file descriptor")
 	}
-	Log(Info, "Closing network interface %s", t.GetName())
+	Info("Closing network interface %s", t.GetName())
 	err := t.file.Close()
 	if err != nil {
 		return fmt.Errorf("Failed to close network interface: %s", err)
 	}
-	Log(Info, "Interface closed")
+	Info("Interface closed")
 	return nil
 }
 
@@ -158,11 +158,11 @@ func (t *TAPDarwin) Configure(lazy bool) error {
 	// if lazy {
 	// 	return nil
 	// }
-	Log(Info, "Setting hardware address to %s", t.Mac.String())
+	Info("Setting hardware address to %s", t.Mac.String())
 	setmac := exec.Command(t.Tool, t.Name, "ether", t.Mac.String())
 	err := setmac.Run()
 	if err != nil {
-		Log(Error, "Failed to set MAC: %v", err)
+		Error("Failed to set MAC: %v", err)
 	}
 
 	if t.IP == nil {
@@ -174,7 +174,7 @@ func (t *TAPDarwin) Configure(lazy bool) error {
 	err = linkup.Run()
 	if err != nil {
 		t.Status = InterfaceBroken
-		Log(Error, "Failed to up link: %v", err)
+		Error("Failed to up link: %v", err)
 		return err
 	}
 	t.Status = InterfaceConfigured
@@ -277,10 +277,10 @@ func FilterInterface(infName, infIP string) bool {
 			return true
 		}
 	}
-	Log(Trace, "ping -t 1 -c 1 -S %s ptest.subutai.io", infIP)
+	Trace("ping -t 1 -c 1 -S %s ptest.subutai.io", infIP)
 	ping := exec.Command("ping", "-t", "1", "-c", "1", "-S", infIP, "ptest.subutai.io")
 	if ping.Run() != nil {
-		Log(Debug, "Filtered %s %s", infName, infIP)
+		Debug("Filtered %s %s", infName, infIP)
 		return true
 	}
 	return false

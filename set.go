@@ -52,7 +52,7 @@ func (d *Daemon) execRESTSet(w http.ResponseWriter, r *http.Request) {
 		}, response)
 	} else if args.IP != "" && args.Hash != "" {
 		// User modifying IP of the hash
-		ptp.Log(ptp.Info, "Request IP change for %s: %s", args.Hash, args.IP)
+		ptp.Info("Request IP change for %s: %s", args.Hash, args.IP)
 		d.setIP(&NameValueArg{
 			Name:  args.Hash,
 			Value: args.IP,
@@ -63,10 +63,10 @@ func (d *Daemon) execRESTSet(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := getResponse(response.ExitCode, response.Output)
 	if err != nil {
-		ptp.Log(ptp.Error, "Internal error: %s", err)
+		ptp.Error("Internal error: %s", err)
 		return
 	}
-	ptp.Log(ptp.Info, "RESPONSE: %s", string(resp))
+	ptp.Info("RESPONSE: %s", string(resp))
 	w.Write(resp)
 }
 
@@ -111,7 +111,7 @@ func (d *Daemon) setIP(args *NameValueArg, resp *Response) error {
 // SetLog modifies specific option
 func (d *Daemon) SetLog(args *NameValueArg, resp *Response) error {
 	args.Value = strings.ToLower(args.Value)
-	ptp.Log(ptp.Info, "Setting option %s to %s", args.Name, args.Value)
+	ptp.Info("Setting option %s to %s", args.Name, args.Value)
 	resp.ExitCode = 0
 	if args.Name == "log" {
 		resp.Output = "Logging level has switched to " + args.Value + " level"

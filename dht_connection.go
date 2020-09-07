@@ -30,12 +30,12 @@ type DHTConnection struct {
 }
 
 func (dht *DHTConnection) init(target string) error {
-	ptp.Log(ptp.Debug, "Initializing connection to a bootstrap nodes")
+	ptp.Debug("Initializing connection to a bootstrap nodes")
 	dht.incoming = make(chan *protocol.DHTPacket)
 	var err error
 	dht.routersList, err = ptp.SrvLookup(target, "tcp", "subutai.io")
 	if err != nil {
-		ptp.Log(ptp.Debug, "Failed to get bootstrap nodes: %s", err.Error())
+		ptp.Debug("Failed to get bootstrap nodes: %s", err.Error())
 		dht.routersList = make(map[int]string)
 	}
 	if len(dht.routersList) == 0 {
@@ -47,7 +47,7 @@ func (dht *DHTConnection) init(target string) error {
 		}
 		addr, err := net.ResolveTCPAddr("tcp4", r)
 		if err != nil {
-			ptp.Log(ptp.Error, "Bad router address provided [%s]: %s", r, err)
+			ptp.Error("Bad router address provided [%s]: %s", r, err)
 			return ErrorBadRouterAddress
 		}
 		router := new(DHTRouter)
@@ -63,7 +63,7 @@ func (dht *DHTConnection) init(target string) error {
 func (dht *DHTConnection) registerInstance(hash string, inst *P2PInstance) error {
 	dht.lock.Lock()
 	defer dht.lock.Unlock()
-	ptp.Log(ptp.Debug, "Registering instance %s on bootstrap", hash)
+	ptp.Debug("Registering instance %s on bootstrap", hash)
 
 	exists := false
 	for ihash, _ := range dht.instances {
@@ -94,7 +94,7 @@ func (dht *DHTConnection) registerInstance(hash string, inst *P2PInstance) error
 			dht.send(packet)
 		}
 	}()
-	ptp.Log(ptp.Debug, "Instance was registered with bootstrap client")
+	ptp.Debug("Instance was registered with bootstrap client")
 	return nil
 }
 
@@ -102,17 +102,17 @@ func (dht *DHTConnection) send(packet *protocol.DHTPacket) {
 	if packet == nil {
 		return
 	}
-	ptp.Log(ptp.Trace, "Sending DHT packet %+v", packet)
+	ptp.Trace("Sending DHT packet %+v", packet)
 	data, err := proto.Marshal(packet)
 	if err != nil {
-		ptp.Log(ptp.Error, "Failed to marshal DHT Packet: %s", err)
+		ptp.Error("Failed to marshal DHT Packet: %s", err)
 	}
-	ptp.Log(ptp.Trace, "Sending marshaled DHT Packet of size [%d]", len(data))
+	ptp.Trace("Sending marshaled DHT Packet of size [%d]", len(data))
 	for i, router := range dht.routers {
 		if router.running && router.handshaked {
 			n, err := router.sendRaw(data)
 			if err != nil {
-				ptp.Log(ptp.Error, "Failed to send data to %s", router.addr.String())
+				ptp.Error("Failed to send data to %s", router.addr.String())
 				continue
 			}
 			if n >= 0 {
@@ -128,10 +128,10 @@ func (dht *DHTConnection) run() {
 		if packet == nil {
 			continue
 		}
-		ptp.Log(ptp.Trace, "Routing DHT Packet %+v", packet)
+		ptp.Trace("Routing DHT Packet %+v", packet)
 		// Ping should always provide us with outbound IP value
 		if packet.Type == protocol.DHTPacketType_Ping && packet.Data != "" {
-			ptp.Log(ptp.Info, "Received outbound IP: %s", packet.Data)
+			ptp.Info("Received outbound IP: %s", packet.Data)
 			dht.ip = packet.Data
 
 			if packet.Extra != "" && packet.Query == "handshaked" {
@@ -153,7 +153,7 @@ func (dht *DHTConnection) run() {
 		if e && i != nil && i.PTP != nil && !i.PTP.Shutdown && i.PTP.Dht != nil && i.PTP.Dht.IncomingData != nil {
 			i.PTP.Dht.IncomingData <- packet
 		} else {
-			ptp.Log(ptp.Debug, "DHT received data for unknown instance %s: %+v", packet.Infohash, packet)
+			ptp.Debug("DHT received data for unknown instance %s: %+v", packet.Infohash, packet)
 		}
 	}
 }
@@ -161,7 +161,7 @@ func (dht *DHTConnection) run() {
 func (dht *DHTConnection) unregisterInstance(hash string) error {
 	dht.lock.Lock()
 	defer dht.lock.Unlock()
-	ptp.Log(ptp.Debug, "Unregistering instance %s from bootstrap", hash)
+	ptp.Debug("Unregistering instance %s from bootstrap", hash)
 	inst, e := dht.instances[hash]
 	if !e {
 		return fmt.Errorf("Can't unregister hash %s: Instance doesn't exists", hash)
@@ -169,7 +169,7 @@ func (dht *DHTConnection) unregisterInstance(hash string) error {
 	if inst != nil && inst.PTP != nil && inst.PTP.Dht != nil {
 		err := inst.PTP.Dht.Close()
 		if err != nil {
-			ptp.Log(ptp.Error, "Failed to stop DHT on instance %s", hash)
+			ptp.Error("Failed to stop DHT on instance %s", hash)
 		}
 	}
 	delete(dht.instances, hash)

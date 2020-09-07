@@ -16,7 +16,7 @@ type MessageHandler func(message *P2PMessage, srcAddr *net.UDPAddr) error
 // HandleP2PMessage is a handler for new messages received from P2P network
 func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error, rcvBytes []byte) error {
 	if err != nil {
-		Log(Error, "P2P Message Handle: %v", err)
+		Error("P2P Message Handle: %v", err)
 		return err
 	}
 	buf := make([]byte, count)
@@ -24,11 +24,11 @@ func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error
 
 	msg, desErr := P2PMessageFromBytes(buf)
 	if desErr != nil {
-		Log(Error, "P2PMessageFromBytes error: %v", desErr)
+		Error("P2PMessageFromBytes error: %v", desErr)
 		return fmt.Errorf("Failed to unmarshal message: %s", desErr.Error())
 	}
 	if msg == nil {
-		Log(Error, "Received broken message")
+		Error("Received broken message")
 		return fmt.Errorf("Broken P2P message")
 	}
 	// Decrypt message if crypter is active
@@ -36,7 +36,7 @@ func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error
 		var decErr error
 		msg.Data, decErr = p.Crypter.decrypt(p.Crypter.ActiveKey.Key, msg.Data)
 		if decErr != nil {
-			Log(Error, "Failed to decrypt message: %s", decErr)
+			Error("Failed to decrypt message: %s", decErr)
 			return fmt.Errorf("Failed to decrypt message: %s", decErr)
 		}
 		msg.Data = msg.Data[:msg.Header.Length]
@@ -46,7 +46,7 @@ func (p *PeerToPeer) HandleP2PMessage(count int, srcAddr *net.UDPAddr, err error
 	if exists {
 		return callback(msg, srcAddr)
 	}
-	Log(Warning, "Unknown message received")
+	Warn("Unknown message received")
 	return fmt.Errorf("Unknown message received")
 }
 
@@ -61,7 +61,7 @@ func (p *PeerToPeer) HandleNotEncryptedMessage(msg *P2PMessage, srcAddr *net.UDP
 	if srcAddr == nil {
 		return fmt.Errorf("nil source addr")
 	}
-	Log(Trace, "Data: %s, From: %s", msg.Data, srcAddr.String())
+	Trace("Data: %s, From: %s", msg.Data, srcAddr.String())
 	p.WriteToDevice(msg.Data, msg.Header.NetProto, false)
 	return nil
 }
@@ -95,7 +95,7 @@ func (p *PeerToPeer) HandlePingMessage(msg *P2PMessage, srcAddr *net.UDPAddr) er
 		return nil
 	}
 	if port != p.UDPSocket.GetPort() && port != p.UDPSocket.remotePort && port != 0 {
-		Log(Debug, "Port translation detected %d -> %d", p.UDPSocket.GetPort(), port)
+		Debug("Port translation detected %d -> %d", p.UDPSocket.GetPort(), port)
 		p.UDPSocket.remotePort = port
 	}
 	return nil
@@ -132,7 +132,7 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 
 		msg, err := p.CreateMessage(MsgTypeXpeerPing, response, 0, true)
 		if err != nil {
-			Log(Debug, "Failed to create ping response: %s", err)
+			Debug("Failed to create ping response: %s", err)
 			return fmt.Errorf("failed to create crosspeer ping message")
 		}
 
@@ -162,7 +162,7 @@ func (p *PeerToPeer) HandleXpeerPingMessage(msg *P2PMessage, srcAddr *net.UDPAdd
 				}
 			}
 		}
-		Log(Debug, "Received ping from unknown endpoint: %s [%s ID: %s]", srcAddr.String(), endpoint, id)
+		Debug("Received ping from unknown endpoint: %s [%s ID: %s]", srcAddr.String(), endpoint, id)
 		return fmt.Errorf("Received ping from unknown endpoint: %s [%s ID: %s]", srcAddr.String(), endpoint, id)
 	} else if query == "r" {
 		endpoint := msg.Data[1:]
@@ -192,19 +192,19 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) e
 	if p.Swarm == nil {
 		return fmt.Errorf("nil peer list")
 	}
-	Log(Debug, "Introduction string from %s", srcAddr)
+	Debug("Introduction string from %s", srcAddr)
 	hs, err := ParseIntroString(string(msg.Data))
 	if err != nil {
-		Log(Debug, "Failed to parse handshake response: %s", err)
+		Debug("Failed to parse handshake response: %s", err)
 		return err
 	}
 	if len(hs.ID) != 36 {
-		Log(Debug, "Received wrong ID in introduction message: %s", hs.ID)
+		Debug("Received wrong ID in introduction message: %s", hs.ID)
 		return fmt.Errorf("ID length mismatch in introduction message: %d", len(hs.ID))
 	}
 	peer := p.Swarm.GetPeer(hs.ID)
 	if peer == nil {
-		Log(Trace, "Unknown peer in handshke response")
+		Trace("Unknown peer in handshke response")
 		return fmt.Errorf("Received unknown peer in handshake response")
 	}
 
@@ -222,13 +222,13 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) e
 			continue
 		}
 		if np.PeerHW.String() == peer.PeerHW.String() {
-			Log(Warning, "%s: Duplicate MAC has been detected on peer %s. Disconnecting it", peer.ID, np.ID)
+			Warn("%s: Duplicate MAC has been detected on peer %s. Disconnecting it", peer.ID, np.ID)
 			np.SetState(PeerStateDisconnect, p)
 			continue
 		}
 		for _, ep := range np.EndpointsHeap {
 			if ep.Addr.String() == hs.Endpoint.String() {
-				Log(Warning, "%s: Endpoint %s was used by another peer %s. Disconnecting it.", peer.ID, ep.Addr.String(), np.ID)
+				Warn("%s: Endpoint %s was used by another peer %s. Disconnecting it.", peer.ID, ep.Addr.String(), np.ID)
 				np.SetState(PeerStateDisconnect, p)
 				break
 			}
@@ -236,7 +236,7 @@ func (p *PeerToPeer) HandleIntroMessage(msg *P2PMessage, srcAddr *net.UDPAddr) e
 	}
 
 	p.Swarm.Update(hs.ID, peer)
-	Log(Debug, "Connection with peer %s has been established over %s", hs.ID, hs.Endpoint.String())
+	Debug("Connection with peer %s has been established over %s", hs.ID, hs.Endpoint.String())
 	return nil
 }
 
@@ -267,18 +267,18 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 	id := string(msg.Data[0:36])
 	peer := p.Swarm.GetPeer(id)
 	if peer == nil {
-		Log(Trace, "Introduction request came from unknown peer: %s -> %s [%s]", id, msg.Data[36:], srcAddr.String())
+		Trace("Introduction request came from unknown peer: %s -> %s [%s]", id, msg.Data[36:], srcAddr.String())
 		return fmt.Errorf("Introduction request from unknown peer: %s -> %s [%s]", id, msg.Data[36:], srcAddr.String())
 	}
 	response, err := p.PrepareIntroductionMessage(p.Dht.ID, string(msg.Data[36:]))
 	if err != nil {
-		Log(Error, "Failed to prepare intro message: %s", err.Error())
+		Error("Failed to prepare intro message: %s", err.Error())
 		return fmt.Errorf("Failed to prepare introduction message: %s", err.Error())
 	}
 	eps := []*net.UDPAddr{}
 	eps = append(eps, peer.KnownIPs...)
 	eps = append(eps, peer.Proxies...)
-	Log(Debug, "Sending handshake response")
+	Debug("Sending handshake response")
 
 	srcFound := false
 	for _, ep := range eps {
@@ -294,7 +294,7 @@ func (p *PeerToPeer) HandleIntroRequestMessage(msg *P2PMessage, srcAddr *net.UDP
 		time.Sleep(time.Millisecond * 10)
 		_, err := p.UDPSocket.SendMessage(response, ep)
 		if err != nil {
-			Log(Error, "Failed to respond to introduction request: %s", err.Error())
+			Error("Failed to respond to introduction request: %s", err.Error())
 			return fmt.Errorf("Failed to response to introduction reuqest: %s", err.Error())
 		}
 	}
@@ -314,15 +314,15 @@ func (p *PeerToPeer) HandleProxyMessage(msg *P2PMessage, srcAddr *net.UDPAddr) e
 		return fmt.Errorf("nil proxy manager")
 	}
 
-	Log(Debug, "New proxy message from %s", srcAddr)
+	Debug("New proxy message from %s", srcAddr)
 	ep, err := net.ResolveUDPAddr("udp4", string(msg.Data))
 	if err != nil {
-		Log(Error, "Failed to resolve proxy address: %s", err.Error())
+		Error("Failed to resolve proxy address: %s", err.Error())
 		return fmt.Errorf("Failed to resolve proxy address: %s", err.Error())
 	}
 	rc := p.ProxyManager.activate(srcAddr.String(), ep)
 	if rc {
-		Log(Debug, "This peer is now available over %s", ep.String())
+		Debug("This peer is now available over %s", ep.String())
 		return nil
 	}
 	return fmt.Errorf("Failed to activate proxy %s", ep.String())
@@ -352,7 +352,7 @@ func (p *PeerToPeer) HandleLatency(msg *P2PMessage, srcAddr *net.UDPAddr) error 
 	if len(msg.Data) < 12 {
 		return fmt.Errorf("payload is too short")
 	}
-	Log(Trace, "Latency response from %s", srcAddr.String())
+	Trace("Latency response from %s", srcAddr.String())
 
 	if bytes.Equal(msg.Data[:4], LatencyProxyHeader) {
 		// This is a response from proxy
@@ -360,13 +360,13 @@ func (p *PeerToPeer) HandleLatency(msg *P2PMessage, srcAddr *net.UDPAddr) error 
 		ts := time.Time{}
 		err := ts.UnmarshalBinary(msg.Data[4:])
 		if err != nil {
-			Log(Error, "Failed to unmarshal latency packet from %s: %s", srcAddr.String(), err.Error())
+			Error("Failed to unmarshal latency packet from %s: %s", srcAddr.String(), err.Error())
 			return fmt.Errorf("Failed to unmarshal latency from %s: %s", srcAddr.String(), err.Error())
 		}
 		latency := time.Since(ts)
 
 		if p.ProxyManager.setLatency(latency, srcAddr) != nil {
-			Log(Error, "Couldn't set latency for proxy: %s", srcAddr)
+			Error("Couldn't set latency for proxy: %s", srcAddr)
 			return fmt.Errorf("Failed to set latency for proxy %s", srcAddr.String())
 		}
 		return nil
@@ -374,7 +374,7 @@ func (p *PeerToPeer) HandleLatency(msg *P2PMessage, srcAddr *net.UDPAddr) error 
 		// This is a request of latency from endpoint
 
 		if len(msg.Data) < 52 {
-			Log(Error, "Broken latency request packet: too small [%d]", len(msg.Data))
+			Error("Broken latency request packet: too small [%d]", len(msg.Data))
 			return fmt.Errorf("latency packet request is too small: %d bytes", len(msg.Data))
 		}
 
@@ -382,18 +382,18 @@ func (p *PeerToPeer) HandleLatency(msg *P2PMessage, srcAddr *net.UDPAddr) error 
 		peerID := string(msg.Data[10:46])
 		peer := p.Swarm.GetPeer(peerID)
 		if peer == nil {
-			Log(Trace, "Received latency request from unknown peers: %s [Origin: %s]", peerID, srcAddr.String())
+			Trace("Received latency request from unknown peers: %s [Origin: %s]", peerID, srcAddr.String())
 			return fmt.Errorf("latency request from unknown peer: %s [Origin: %s]", peerID, srcAddr.String())
 		}
 		if peer.Endpoint == nil {
-			Log(Trace, "Received latency request from not integrated peer %s [Origin: %s]", peerID, srcAddr.String())
+			Trace("Received latency request from not integrated peer %s [Origin: %s]", peerID, srcAddr.String())
 			return fmt.Errorf("Received latency request from not integrated peer %s [Origin: %s]", peerID, srcAddr.String())
 		}
 
-		Log(Trace, "Latency request from %s", srcAddr.String())
+		Trace("Latency request from %s", srcAddr.String())
 		response, err := p.CreateMessage(MsgTypeLatency, append(LatencyResponseHeader, msg.Data[4:]...), 0, false)
 		if err != nil {
-			Log(Error, "Failed to create latency response for %s: %s", srcAddr.String(), err.Error())
+			Error("Failed to create latency response for %s: %s", srcAddr.String(), err.Error())
 			return fmt.Errorf("Failed to create latency response for %s: %s", srcAddr.String(), err.Error())
 		}
 
@@ -403,7 +403,7 @@ func (p *PeerToPeer) HandleLatency(msg *P2PMessage, srcAddr *net.UDPAddr) error 
 		// This is a response of latency from endpoint
 
 		if len(msg.Data) < 52 {
-			Log(Error, "Broken latency response packet: too small [%d]", len(msg.Data))
+			Error("Broken latency response packet: too small [%d]", len(msg.Data))
 			return fmt.Errorf("latency response packet is too small: %d bytes", len(msg.Data))
 		}
 
@@ -414,14 +414,14 @@ func (p *PeerToPeer) HandleLatency(msg *P2PMessage, srcAddr *net.UDPAddr) error 
 		port := binary.BigEndian.Uint16(ipfield[4:6])
 		addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", ip.String(), port))
 		if err != nil || addr.String() == "255.255.255.255:65535" || addr.String() == "0.0.0.0:0" {
-			Log(Error, "Received malformed latency packet: address is broken")
+			Error("Received malformed latency packet: address is broken")
 			return fmt.Errorf("malformed latency packet: broken address")
 		}
 
 		ts := time.Time{}
 		err = ts.UnmarshalBinary(msg.Data[46:])
 		if err != nil {
-			Log(Error, "Failed to unmarshal latency packet from %s: %s", srcAddr.String(), err.Error())
+			Error("Failed to unmarshal latency packet from %s: %s", srcAddr.String(), err.Error())
 			return fmt.Errorf("failed to unmarshal latency packet from %s: %s", srcAddr.String(), err.Error())
 		}
 		latency := time.Since(ts)
@@ -434,10 +434,10 @@ func (p *PeerToPeer) HandleLatency(msg *P2PMessage, srcAddr *net.UDPAddr) error 
 				}
 			}
 		}
-		Log(Error, "Can't set latency value for endpoint %s: Peer or endpoint wasn't found", addr.String())
+		Error("Can't set latency value for endpoint %s: Peer or endpoint wasn't found", addr.String())
 		return fmt.Errorf("couldn't set latency value for endpoint %s: not found", addr.String())
 	}
-	Log(Error, "Malformed Latency packet from %s", srcAddr.String())
+	Error("Malformed Latency packet from %s", srcAddr.String())
 	return fmt.Errorf("malformed latency packet from %s", srcAddr.String())
 }
 
@@ -492,7 +492,7 @@ func (p *PeerToPeer) HandleComm(msg *P2PMessage, srcAddr *net.UDPAddr) error {
 			return err
 		}
 	default:
-		Log(Error, "Unknown communication packet: %d", commType)
+		Error("Unknown communication packet: %d", commType)
 		return fmt.Errorf("unknown comm type")
 	}
 

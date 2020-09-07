@@ -94,20 +94,20 @@ func sendRequest(port int, command string, args *DaemonArgs) (*RESTResponse, err
 func sendRequestRaw(port int, command string, r *request) ([]byte, error) {
 	data, err := json.Marshal(r)
 	if err != nil {
-		ptp.Log(ptp.Error, "%s: %s", errorFailedToMarshal, err)
+		ptp.Error("%s: %s", errorFailedToMarshal, err)
 		return nil, errorFailedToMarshal
 	}
 
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/rest/v1/%s", port, command), bytes.NewBuffer(data))
 	if err != nil {
-		ptp.Log(ptp.Error, "%s: %s", errorFailedToCreatePOSTRequest, err)
+		ptp.Error("%s: %s", errorFailedToCreatePOSTRequest, err)
 		return nil, errorFailedToCreatePOSTRequest
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		ptp.Log(ptp.Error, "%s. Check if p2p daemon is running", errorFailedToExecuteRequest)
+		ptp.Error("%s. Check if p2p daemon is running", errorFailedToExecuteRequest)
 		return nil, errorFailedToExecuteRequest
 	}
 	defer resp.Body.Close()
@@ -145,10 +145,10 @@ func getResponse(exitCode int, outputMessage string) ([]byte, error) {
 func handleMarshalError(err error, w http.ResponseWriter) error {
 	if err != nil {
 		errText := fmt.Sprintf("Failed to read request body: %s", err)
-		ptp.Log(ptp.Error, "%s", errText)
+		ptp.Error("%s", errText)
 		resp, err := getResponse(1, errText)
 		if err != nil {
-			ptp.Log(ptp.Error, "Internal error: %s", err)
+			ptp.Error("Internal error: %s", err)
 			return err
 		}
 		w.Write(resp)

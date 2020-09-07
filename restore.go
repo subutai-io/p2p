@@ -72,7 +72,7 @@ func (r *Restore) save() error {
 		r.lock.Unlock()
 		return err
 	}
-	ptp.Log(ptp.Info, "Saving instances")
+	ptp.Info("Saving instances")
 	_, err = file.Write(data)
 	if err != nil {
 		r.lock.Unlock()
@@ -170,12 +170,12 @@ func (r *Restore) disableStaleInstances(inst *P2PInstance) error {
 		var t time.Time
 		err := t.UnmarshalText([]byte(e.LastSuccess))
 		if err != nil {
-			ptp.Log(ptp.Error, "Failed to unmarshal date for save file entry %s. Disabling it", e.Hash)
+			ptp.Error("Failed to unmarshal date for save file entry %s. Disabling it", e.Hash)
 			r.entries[i].Enabled = false
 			continue
 		}
 		if time.Since(t) > time.Duration(time.Hour*24*20) {
-			ptp.Log(ptp.Warning, "Instance %s was active more than 20 days ago", e.Hash)
+			ptp.Warn("Instance %s was active more than 20 days ago", e.Hash)
 			r.entries[i].Enabled = false
 		}
 	}
@@ -268,7 +268,7 @@ func (r *Restore) decodeInstances(data []byte) error {
 	}
 
 	r.lock.Lock()
-	ptp.Log(ptp.Info, "Decoded %d entries from the old format", len(args))
+	ptp.Info("Decoded %d entries from the old format", len(args))
 	r.entries = args
 	r.lock.Unlock()
 	return nil

@@ -51,15 +51,15 @@ func GetDeviceBase() string {
 func GetConfigurationTool() string {
 	path, err := exec.LookPath("netsh")
 	if err != nil {
-		Log(Error, "Failed to find `netsh` in path. Returning default netsh")
+		Error("Failed to find `netsh` in path. Returning default netsh")
 		return "netsh"
 	}
-	Log(Info, "Network configuration tool found: %s", path)
+	Info("Network configuration tool found: %s", path)
 	return path
 }
 
 func newTAP(tool, ip, mac, mask string, mtu int, pmtu bool) (*TAPWindows, error) {
-	Log(Debug, "Acquiring TAP interface [Windows]")
+	Debug("Acquiring TAP interface [Windows]")
 	nip := net.ParseIP(ip)
 	if nip == nil {
 		return nil, fmt.Errorf("Failed to parse IP during TAP creation")
@@ -118,7 +118,7 @@ func (t *TAPWindows) GetHardwareAddress() net.HardwareAddr {
 		var length uint32
 		err := syscall.DeviceIoControl(t.file, getMacIOCTL, &mac[0], uint32(len(mac)), &mac[0], uint32(len(mac)), &length, nil)
 		if err != nil {
-			Log(Error, "Failed to retrieve Mac")
+			Error("Failed to retrieve Mac")
 			return t.Mac
 		}
 		var macAddr bytes.Buffer
@@ -137,10 +137,10 @@ func (t *TAPWindows) GetHardwareAddress() net.HardwareAddr {
 			}
 			i++
 		}
-		Log(Debug, "MAC: %s", macAddr.String())
+		Debug("MAC: %s", macAddr.String())
 		deviceMac, err := net.ParseMAC(macAddr.String())
 		if err != nil {
-			Log(Error, "Failed to extract mac: %s", err)
+			Error("Failed to extract mac: %s", err)
 		}
 		t.Mac = deviceMac
 		t.MacNotSet = false
@@ -203,21 +203,21 @@ func (t *TAPWindows) Init(name string) error {
 func (t *TAPWindows) Open() error {
 	handle, err := t.queryNetworkKey()
 	if err != nil {
-		Log(Error, "Failed to query Windows registry: %v", err)
+		Error("Failed to query Windows registry: %v", err)
 		return err
 	}
 	err = t.queryAdapters(handle)
 	if err != nil {
-		Log(Error, "Failed to query network adapters: %v", err)
+		Error("Failed to query network adapters: %v", err)
 		return err
 	}
 	if t.Name == "" {
-		Log(Error, "Failed to query network adapters: %v", err)
+		Error("Failed to query network adapters: %v", err)
 		return errors.New("Empty network adapter")
 	}
 	err = syscall.CloseHandle(handle)
 	if err != nil {
-		Log(Error, "Failed to close retrieved handle: %v", err)
+		Error("Failed to close retrieved handle: %v", err)
 	}
 	return nil
 }
@@ -242,12 +242,12 @@ func (t *TAPWindows) Configure(lazy bool) error {
 		// peers
 		return nil
 	}
-	Log(Debug, "Configuring %s. IP: %s Mask: %s", t.Interface, t.IP.String(), t.Mask.String())
+	Debug("Configuring %s. IP: %s Mask: %s", t.Interface, t.IP.String(), t.Mask.String())
 	setip := exec.Command("netsh")
 	setip.SysProcAttr = &syscall.SysProcAttr{}
 	// TODO: Unhardcode mask
 	cmd := fmt.Sprintf(`netsh interface ip set address "%s" static %s %s`, t.Interface, t.IP.String(), "255.255.255.0")
-	Log(Debug, "Executing: %s", cmd)
+	Debug("Executing: %s", cmd)
 	setip.SysProcAttr.CmdLine = cmd
 	err := setip.Run()
 	if err != nil {
@@ -281,19 +281,19 @@ func (t *TAPWindows) Deconfigure() error {
 func (t *TAPWindows) Run() {
 	t.Status = InterfaceRunning
 	t.Broken = false
-	Log(Info, "Listening for TAP interface")
+	Info("Listening for TAP interface")
 	t.Rx = make(chan []byte, 1500)
 	t.Tx = make(chan []byte, 1500)
 	// Start reader
 	go func() {
 		if err := t.read(t.Rx); err != nil {
-			Log(Error, "Failed to read packet: %v", err)
+			Error("Failed to read packet: %v", err)
 		}
 	}()
 	// Start writer
 	go func() {
 		if err := t.write(t.Tx); err != nil {
-			Log(Error, "Failed ro write packet: %v", err)
+			Error("Failed ro write packet: %v", err)
 		}
 	}()
 	// Start TUNTAP interface checker
@@ -360,7 +360,7 @@ func (t *TAPWindows) read(ch chan []byte) (err error) {
 		if err := syscall.ReadFile(t.file, buf, &l, &rx); err != nil {
 		}
 		if _, err := syscall.WaitForSingleObject(rx.HEvent, syscall.INFINITE); err != nil {
-			Log(Error, "Failed to read from TUN/TAP: %v", err)
+			Error("Failed to read from TUN/TAP: %v", err)
 		}
 		rx.Offset += l
 		ch <- buf
@@ -402,7 +402,7 @@ func (t *TAPWindows) queryAdapters(handle syscall.Handle) error {
 		adapter := make([]uint16, length)
 		err := syscall.RegEnumKeyEx(handle, index, &adapter[0], &length, nil, nil, nil, nil)
 		if err == NoMoreItems {
-			Log(Debug, "No more items in Windows Registry")
+			Debug("No more items in Windows Registry")
 			return nil
 		}
 		index++
@@ -432,7 +432,7 @@ func (t *TAPWindows) queryAdapters(handle syscall.Handle) error {
 
 		adapterName := string(utf16.Decode(aNameUtf16))
 		adapterName = t.removeZeroes(adapterName)
-		Log(Debug, "AdapterName : %s, len : %d", adapterName, len(adapterName))
+		Debug("AdapterName : %s, len : %d", adapterName, len(adapterName))
 
 		var isInUse = false
 		for _, i := range UsedInterfaces {
@@ -441,7 +441,7 @@ func (t *TAPWindows) queryAdapters(handle syscall.Handle) error {
 			}
 		}
 		if isInUse {
-			Log(Debug, "Adapter already in use. Skipping.")
+			Debug("Adapter already in use. Skipping.")
 			continue
 		}
 		UsedInterfaces = append(UsedInterfaces, adapterName)
@@ -459,7 +459,7 @@ func (t *TAPWindows) queryAdapters(handle syscall.Handle) error {
 			syscall.CloseHandle(t.Handle)
 			continue
 		}
-		Log(Info, "Acquired control over TAP interface: %s", adapterName)
+		Info("Acquired control over TAP interface: %s", adapterName)
 		t.Name = adapterID
 		t.Interface = adapterName
 		return nil
@@ -511,7 +511,7 @@ func (t *TAPWindows) IsPMTUEnabled() bool {
 func (t *TAPWindows) checkInterfaces() error {
 	interfaces, err := net.Interfaces()
 	if err != nil {
-		Log(Error, "Failed to check interfaces: %s", err.Error())
+		Error("Failed to check interfaces: %s", err.Error())
 		return err
 	}
 	found := false
@@ -532,18 +532,18 @@ func (t *TAPWindows) checkInterfaces() error {
 		}
 	}
 	if !found {
-		Log(Info, "Interface got deconfigured: %s %s", t.Name, t.IP.String())
+		Info("Interface got deconfigured: %s %s", t.Name, t.IP.String())
 		return fmt.Errorf("Interface got deconfigured: %s %s", t.Name, t.IP.String())
 	}
 	return nil
 }
 
 func (t *TAPWindows) restoreInterface() error {
-	Log(Info, "Restoring network interface: %s %s", t.Name, t.IP.String())
+	Info("Restoring network interface: %s %s", t.Name, t.IP.String())
 
 	err := t.Configure(false)
 	if err != nil {
-		Log(Error, "Failed to configure interface: %s", err.Error())
+		Error("Failed to configure interface: %s", err.Error())
 	}
 
 	return nil
@@ -585,10 +585,10 @@ func FilterInterface(infName, infIP string) bool {
 		}
 	}
 
-	Log(Trace, "ping -4 -w 1000 -n 1 -S %s ptest.subutai.io", infIP)
+	Trace("ping -4 -w 1000 -n 1 -S %s ptest.subutai.io", infIP)
 	ping := exec.Command("ping", "-4", "-w", "1000", "-n", "1", "-S", infIP, "ptest.subutai.io")
 	if ping.Run() != nil {
-		Log(Debug, "Filtered %s %s", infName, infIP)
+		Debug("Filtered %s %s", infName, infIP)
 		return true
 	}
 	return false

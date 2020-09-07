@@ -19,14 +19,14 @@ func GenerateMAC() (string, net.HardwareAddr) {
 	buf := make([]byte, 6)
 	_, err := rand.Read(buf)
 	if err != nil {
-		Log(Error, "Failed to generate MAC: %v", err)
+		Error("Failed to generate MAC: %v", err)
 		return "", nil
 	}
 	buf[0] |= 2
 	mac := fmt.Sprintf("06:%02x:%02x:%02x:%02x:%02x", buf[1], buf[2], buf[3], buf[4], buf[5])
 	hw, err := net.ParseMAC(mac)
 	if err != nil {
-		Log(Error, "Corrupted MAC address generated: %v", err)
+		Error("Corrupted MAC address generated: %v", err)
 		return "", nil
 	}
 	return mac, hw
@@ -40,11 +40,11 @@ func GenerateToken() string {
 	result := ""
 	id, err := uuid.NewUUID()
 	if err != nil {
-		Log(Error, "Failed to generate token for peer")
+		Error("Failed to generate token for peer")
 		return result
 	}
 	result = id.String()
-	Log(Debug, "Token generated: %s", result)
+	Debug("Token generated: %s", result)
 	return result
 }
 
@@ -102,15 +102,15 @@ func IsInterfaceLocal(ip net.IP) bool {
 // FindNetworkAddresses method lists interfaces available in the system and retrieves their
 // IP addresses
 func (p *PeerToPeer) FindNetworkAddresses() error {
-	Log(Debug, "Looking for available network interfaces")
+	Debug("Looking for available network interfaces")
 	interfaces, err := net.Interfaces()
 	if err != nil {
-		Log(Error, "Failed to retrieve list of network interfaces: %s", err.Error())
+		Error("Failed to retrieve list of network interfaces: %s", err.Error())
 		return fmt.Errorf("Failed to retrieve list of network interfaces: %s", err.Error())
 	}
 	p.LocalIPs = p.LocalIPs[:0]
 	p.LocalIPs = p.ParseInterfaces(interfaces)
-	Log(Trace, "%d interfaces were saved", len(p.LocalIPs))
+	Trace("%d interfaces were saved", len(p.LocalIPs))
 	return nil
 }
 
@@ -125,17 +125,17 @@ func (p *PeerToPeer) ParseInterfaces(interfaces []net.Interface) []net.IP {
 	for _, i := range interfaces {
 		addresses, err := i.Addrs()
 		if err != nil {
-			Log(Error, "Failed to retrieve address for interface: %s", err.Error())
+			Error("Failed to retrieve address for interface: %s", err.Error())
 			continue
 		}
 		if len(addresses) == 0 {
-			Log(Warning, "No IPs assigned to interface %s", i.Name)
+			Warn("No IPs assigned to interface %s", i.Name)
 			continue
 		}
 		for _, addr := range addresses {
 			ip, _, err := net.ParseCIDR(addr.String())
 			if err != nil {
-				Log(Error, "Failed to parse CIDR notation: %v", err)
+				Error("Failed to parse CIDR notation: %v", err)
 				continue
 			}
 
@@ -168,11 +168,11 @@ func SrvLookup(name, proto, domain string) (map[int]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	Log(Debug, "SRV lookup for name cname: %s addrs: %+v", cname, addrs)
+	Debug("SRV lookup for name cname: %s addrs: %+v", cname, addrs)
 	result := make(map[int]string)
 	i := 0
 	for _, addr := range addrs {
-		Log(Trace, "Lookup result: %s:%d", addr.Target, addr.Port)
+		Trace("Lookup result: %s:%d", addr.Target, addr.Port)
 		result[i] = fmt.Sprintf("%s:%d", addr.Target, addr.Port)
 		i++
 	}
@@ -189,7 +189,7 @@ func NanoToMilliseconds(nano int64) int64 {
 func isDeviceExists(name string) bool {
 	inf, err := net.Interfaces()
 	if err != nil {
-		Log(Error, "Failed to retrieve list of network interfaces")
+		Error("Failed to retrieve list of network interfaces")
 		return true
 	}
 	for _, i := range inf {

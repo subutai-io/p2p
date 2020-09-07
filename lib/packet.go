@@ -116,7 +116,7 @@ func (p *PeerToPeer) handlePacket(contents []byte, proto int) error {
 	if exists {
 		return callback(contents, proto)
 	}
-	Log(Warning, "Captured undefined packet: %d", PacketType(proto))
+	Warn("Captured undefined packet: %d", PacketType(proto))
 	return fmt.Errorf("Captured undefined packet: %d", PacketType(proto))
 }
 
@@ -124,7 +124,7 @@ func (p *PeerToPeer) handlePacket(contents []byte, proto int) error {
 func (p *PeerToPeer) handlePacketIPv4(contents []byte, proto int) error {
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
-		Log(Error, "Failed to unmarshal IPv4 packet")
+		Error("Failed to unmarshal IPv4 packet")
 		return fmt.Errorf("Failed to unmarshal IPv4 packet")
 	}
 	if f.EtherType != ethernet.EtherTypeIPv4 {
@@ -174,13 +174,13 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) error {
 	// contents of the packet
 	f := new(ethernet.Frame)
 	if err := f.UnmarshalBinary(contents); err != nil {
-		Log(Error, "Failed to Unmarshal ARP Binary")
+		Error("Failed to Unmarshal ARP Binary")
 		return fmt.Errorf("failed to unmarshal ARP binary: %s", err.Error())
 	}
 
 	packet := new(ARPPacket)
 	if err := packet.UnmarshalARP(f.Payload); err != nil {
-		Log(Error, "Failed to unmarshal arp")
+		Error("Failed to unmarshal arp")
 		return fmt.Errorf("failed to unmarshal ARP packet: %s", err.Error())
 	}
 	if p.Swarm == nil {
@@ -189,17 +189,17 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) error {
 
 	id, err := p.Swarm.GetID(packet.TargetIP.String())
 	if err != nil {
-		Log(Trace, "Unknown IP requested: %s", packet.TargetIP.String())
+		Trace("Unknown IP requested: %s", packet.TargetIP.String())
 		return fmt.Errorf("requested unknown IP: %s", packet.TargetIP)
 	}
 	peer := p.Swarm.GetPeer(id)
 	if peer == nil {
-		Log(Debug, "Can't lookup address: Specified peer was not found")
+		Debug("Can't lookup address: Specified peer was not found")
 		return fmt.Errorf("peer not found during arp request: %s", id)
 	}
 	hwAddr := peer.PeerHW
 	if hwAddr == nil {
-		Log(Error, "Cannot find hardware address for requested IP")
+		Error("Cannot find hardware address for requested IP")
 		_, hwAddr = GenerateMAC()
 		peer.PeerHW = hwAddr
 		p.Swarm.Update(id, peer)
@@ -213,12 +213,12 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) error {
 	ip := net.ParseIP(packet.TargetIP.String())
 	response, err := reply.NewPacket(OperationReply, hwAddr, ip, packet.SenderHardwareAddr, packet.SenderIP)
 	if err != nil {
-		Log(Error, "Failed to create ARP response")
+		Error("Failed to create ARP response")
 		return fmt.Errorf("failed to create app response: %s", err.Error())
 	}
 	rp, err := response.MarshalBinary()
 	if err != nil {
-		Log(Error, "Failed to marshal ARP response packet")
+		Error("Failed to marshal ARP response packet")
 		return fmt.Errorf("failed to marshal arp response binary: %s", err.Error())
 	}
 
@@ -231,10 +231,10 @@ func (p *PeerToPeer) handlePacketARP(contents []byte, proto int) error {
 
 	fb, err := fr.MarshalBinary()
 	if err != nil {
-		Log(Error, "Failed to marshal ARP Ethernet Frame")
+		Error("Failed to marshal ARP Ethernet Frame")
 		return fmt.Errorf("failed to marshal ARP ethernet frame: %s", err.Error())
 	}
-	Log(Trace, "%v", packet.String())
+	Trace("%v", packet.String())
 	return p.WriteToDevice(fb, uint16(proto), false)
 }
 

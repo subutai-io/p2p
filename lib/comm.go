@@ -97,14 +97,14 @@ func commIPInfoHandler(data []byte, p *PeerToPeer) ([]byte, error) {
 	if len(data) == 42 {
 		result := binary.BigEndian.Uint16(data[40:42])
 		if result == 0 && p.Interface.GetIP() == nil {
-			Log(Info, "IP %s is unknown to this swarm. Setting it", ip.String())
+			Info("IP %s is unknown to this swarm. Setting it", ip.String())
 			p.Interface.SetIP(ip)
 			p.Interface.Configure(false)
 			p.Interface.MarkConfigured()
 			go p.notifyIP()
 			return nil, nil
 		}
-		Log(Info, "IP %s is already known to this swarm. Ignoring it", ip.String())
+		Info("IP %s is already known to this swarm. Ignoring it", ip.String())
 		return nil, nil
 	}
 	if len(data) != 40 {
@@ -125,9 +125,9 @@ func commIPInfoHandler(data []byte, p *PeerToPeer) ([]byte, error) {
 	}
 
 	if result == 1 {
-		Log(Debug, "Peer requested info about IP %s. That IP is known to us", ip.String())
+		Debug("Peer requested info about IP %s. That IP is known to us", ip.String())
 	} else {
-		Log(Debug, "Peer requested info about IP %s. We don't know that IP", ip.String())
+		Debug("Peer requested info about IP %s. We don't know that IP", ip.String())
 	}
 
 	response := make([]byte, 44)
@@ -160,7 +160,7 @@ func commIPSetHandler(data []byte, p *PeerToPeer) ([]byte, error) {
 	for _, peer := range p.Swarm.Get() {
 		if bytes.Equal(peer.PeerLocalIP, ip) && peer.Endpoint != nil {
 			// That IP already set on other peer. Call a conflict
-			Log(Info, "Reporting IP conflict")
+			Info("Reporting IP conflict")
 			payload := make([]byte, 42)
 			binary.BigEndian.PutUint16(payload[0:2], CommIPConflict)
 			copy(payload[2:38], p.Dht.ID)
