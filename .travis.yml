@@ -14,6 +14,7 @@ matrix:
         - make linux
         - make test
         - make coverage
+        - debuild 
       after_success:
         - bash <(curl -s https://codecov.io/bash)
     - os: osx
