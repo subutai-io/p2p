@@ -8,7 +8,7 @@ import (
 	"time"
 
 	ptp "github.com/subutai-io/p2p/lib"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 // These variables must be customized at build time
