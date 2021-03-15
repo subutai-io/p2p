@@ -36,6 +36,9 @@ try {
             deleteDir();
 
             stage("Checkout source") {
+                sh """
+                    go version
+                """;
                 notifyBuildDetails = "\nFailed on Stage - Checkout source";
                 checkout scm;
                 p2pCommitId = sh (script: "git rev-parse HEAD", returnStdout: true);
