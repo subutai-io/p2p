@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
 	"time"
 
@@ -34,6 +37,8 @@ func (dht *DHTRouter) run() {
 	dht.version = "Unknown"
 	dht.packetVersion = "Unknown"
 
+	reader := bufio.NewReader(dht.conn)
+
 	for !dht.stop {
 		for !dht.running {
 			dht.connect()
@@ -42,16 +47,29 @@ func (dht *DHTRouter) run() {
 			}
 			dht.sleep()
 		}
-		data := make([]byte, ptp.DHTBufferSize)
-		n, err := dht.conn.Read(data)
+
+		lengthBuf := make([]byte, 2)
+		_, err := io.ReadFull(reader, lengthBuf[:2])
 		if err != nil {
-			ptp.Log(ptp.Warning, "BSN socket closed: %s", err)
+			ptp.Log(ptp.Warning, "BSN socket closed [1]: %s", err.Error())
 			dht.running = false
 			dht.handshaked = false
 			continue
 		}
+
 		dht.lastContact = time.Now()
-		go dht.handleData(data[:n])
+		length := binary.BigEndian.Uint16(lengthBuf)
+		buffer := make([]byte, length)
+		n, err := io.ReadFull(reader, buffer[:length])
+		if err != nil {
+			ptp.Log(ptp.Warning, "BSN socket closed [2]: %s", err.Error())
+			dht.running = false
+			dht.handshaked = false
+			continue
+		}
+
+		dht.lastContact = time.Now()
+		go dht.handleData(buffer[:n])
 	}
 }
 
@@ -80,6 +98,7 @@ func (dht *DHTRouter) handleData(data []byte) {
 }
 
 func (dht *DHTRouter) routeData(data []byte) {
+
 	packet := &protocol.DHTPacket{}
 	err := proto.Unmarshal(data, packet)
 	ptp.Log(ptp.Trace, "DHTPacket size: [%d]", len(data))
@@ -181,7 +200,18 @@ func (dht *DHTRouter) sendRaw(data []byte) (int, error) {
 	if dht.conn == nil {
 		return -1, fmt.Errorf("Can't send: connection is nil")
 	}
+
+	data = dht.AddHeader(data)
+
 	return dht.conn.Write(data)
+}
+
+func (dht *DHTRouter) AddHeader(data []byte) []byte {
+	header := make([]byte, 2)
+	length := len(data)
+	binary.BigEndian.PutUint16(header[0:2], uint16(length))
+
+	return append(header, data...)
 }
 
 func (dht *DHTRouter) ping() error {
