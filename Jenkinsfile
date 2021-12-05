@@ -36,6 +36,9 @@ try {
             deleteDir();
 
             stage("Checkout source") {
+                sh """
+                    go version
+                """;
                 notifyBuildDetails = "\nFailed on Stage - Checkout source";
                 checkout scm;
                 p2pCommitId = sh (script: "git rev-parse HEAD", returnStdout: true);
@@ -61,8 +64,7 @@ try {
                 sh """
                     export GOPATH=${workspace}/${goenvDir}
                     export GOBIN=${workspace}/${goenvDir}/bin
-                    go get
-                    go get -u github.com/urfave/cli
+                    go get -u
                     ./configure --dht=${dhtSrv} --branch=${env.BRANCH_NAME}
                     make all
                 """;

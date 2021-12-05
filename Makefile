@@ -21,6 +21,7 @@ APP=$(NAME_PREFIX)
 build: directories
 build: bin/$(APP)
 linux: bin/$(APP)
+linux: bin/$(APP)-arm6
 windows: bin/$(APP).exe
 macos: bin/$(APP)_osx
 all: linux windows macos
@@ -28,6 +29,10 @@ all: linux windows macos
 bin/$(APP): $(SOURCES) service_posix.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
 	GOOS=linux $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.TargetURL=$(DHT) -X main.BuildID=$(BUILD) -X main.DefaultLog=$(LOG_LEVEL)" -o $@ -v $^
+
+bin/$(APP)-arm6: $(SOURCES) service_posix.go
+	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
+	GOOS=linux GOARCH=arm GOARM=6 $(CC) build -ldflags="-w -s -X main.AppVersion=$(VERSION)$(BRANCH_POSTFIX) -X main.TargetURL=$(DHT) -X main.BuildID=$(BUILD) -X main.DefaultLog=$(LOG_LEVEL)" -o $@ -v $^
 
 bin/$(APP).exe: $(SOURCES) service_windows.go
 	@if [ ! -d "$(GOPATH)/src/github.com/subutai-io/p2p" ]; then mkdir -p $(GOPATH)/src/github.com/subutai-io/; ln -s $(shell pwd) $(GOPATH)/src/github.com/subutai-io/p2p; fi
@@ -41,10 +46,12 @@ clean:
 	-rm -f bin/$(APP)
 	-rm -f bin/$(APP).exe
 	-rm -f bin/$(APP)_osx
+	-rm -f bin/$(APP)-arm*
 	-rm -f $(APP)
 	-rm -f $(APP)_osx
 	-rm -f $(APP).exe
 	-rm -f $(APP)-$(OS)*
+	-rm -f $(APP)-arm*
 	-rm -f $(NAME_PREFIX)
 	-rm -f $(NAME_PREFIX)_osx
 	-rm -f $(NAME_PREFIX).exe
@@ -57,8 +64,8 @@ mrproper:
 	-rm -f config.make
 
 test:
-	go test github.com/subutai-io/p2p
-	go test github.com/subutai-io/p2p/lib
+	go test -v github.com/subutai-io/p2p
+	go test -v github.com/subutai-io/p2p/lib
 #	go test --bench . ./...
 
 coverage:

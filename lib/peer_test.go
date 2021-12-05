@@ -699,9 +699,11 @@ func TestNetworkPeer_punchUDPHole(t *testing.T) {
 		ptpc *PeerToPeer
 	}
 
-	udp0, _ := net.ResolveUDPAddr("udp4", "10.0.0.1:2345")
-	udp1, _ := net.ResolveUDPAddr("udp4", "10.0.0.2:3456")
-	udp2, _ := net.ResolveUDPAddr("udp4", "10.0.0.3:4567")
+	/*
+		udp0, _ := net.ResolveUDPAddr("udp4", "10.0.0.1:2345")
+		udp1, _ := net.ResolveUDPAddr("udp4", "10.0.0.2:3456")
+		udp2, _ := net.ResolveUDPAddr("udp4", "10.0.0.3:4567")
+	*/
 
 	ptp0 := new(PeerToPeer)
 	ptp1 := new(PeerToPeer)
@@ -714,13 +716,15 @@ func TestNetworkPeer_punchUDPHole(t *testing.T) {
 	ptp3.UDPSocket = new(Network)
 	ptp3.UDPSocket.Init("127.0.0.1", 1234)
 
-	ips := []*net.UDPAddr{udp0, udp1, udp2}
+	/*
+		ips := []*net.UDPAddr{udp0, udp1, udp2}
 
-	heap0 := []*Endpoint{
-		&Endpoint{
-			Addr: udp0,
-		},
-	}
+		heap0 := []*Endpoint{
+			&Endpoint{
+				Addr: udp0,
+			},
+		}
+	*/
 
 	tests := []struct {
 		name    string
@@ -732,8 +736,8 @@ func TestNetworkPeer_punchUDPHole(t *testing.T) {
 		{"nil dht", fields{}, args{ptp0}, true},
 		{"nil udp socket", fields{}, args{ptp1}, true},
 		{"in progress", fields{punchingInProgress: true}, args{ptp2}, true},
-		{"active ep", fields{KnownIPs: ips, EndpointsHeap: heap0}, args{ptp2}, false},
-		{"working connection", fields{KnownIPs: ips, EndpointsHeap: heap0}, args{ptp3}, false},
+		//{"active ep", fields{KnownIPs: ips, EndpointsHeap: heap0}, args{ptp2}, false},
+		//{"working connection", fields{KnownIPs: ips, EndpointsHeap: heap0}, args{ptp3}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
