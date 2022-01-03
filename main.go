@@ -8,7 +8,7 @@ import (
 	"time"
 
 	ptp "github.com/subutai-io/p2p/lib"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli"
 )
 
 // These variables must be customized at build time
@@ -97,8 +97,8 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "p2p"
 	app.Version = AppVersion
-	app.Authors = []*cli.Author{
-		&cli.Author{
+	app.Authors = []cli.Author{
+		cli.Author{
 			Name: "subutai.io",
 		},
 	}
@@ -107,7 +107,7 @@ func main() {
 	app.Usage = "Subutai P2P daemon/client application"
 	app.Copyright = "Copyright 2018 Subutai.io"
 
-	app.Commands = []*cli.Command{
+	app.Commands = []cli.Command{
 		{
 			Name:  "daemon",
 			Usage: "Run p2p in daemon mode",

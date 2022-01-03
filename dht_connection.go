@@ -11,6 +11,8 @@ import (
 	"github.com/subutai-io/p2p/protocol"
 )
 
+const DHTPacketVersion uint16 = 1
+
 // DHT Errors
 var (
 	ErrorNoRouters        = errors.New("Routers wasn't specified")

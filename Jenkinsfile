@@ -31,7 +31,7 @@ switch (env.BRANCH_NAME) {
 try {
     notifyBuild('STARTED')
 
-        node("deb") {
+        node("gobuild") {
             String goenvDir = ".goenv";
             deleteDir();
 
@@ -77,7 +77,7 @@ try {
         }
 
     if (env.BRANCH_NAME == 'dev' || env.BRANCH_NAME == 'master') {
-        node("deb") {
+        node("gobuild") {
             /* Upload builed p2p artifacts to CDN */
             deleteDir();
 
@@ -100,7 +100,7 @@ try {
             }
         }
 
-        node("deb") {
+        node("gobuild") {
             notifyBuild('INFO', "Building Debian Package");
             def CWD = pwd()
             stage("Building Debian") {
